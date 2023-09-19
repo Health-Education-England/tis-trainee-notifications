@@ -18,6 +18,7 @@ gradlew bootRun
 
 | Name                              | Description                                                                                                             | Default     |
 |-----------------------------------|-------------------------------------------------------------------------------------------------------------------------|-------------|
+| AWS_XRAY_DAEMON_ADDRESS           | The AWS XRay daemon host.                                                                                               |             |
 | ENVIRONMENT                       | The environment to log events against.                                                                                  | local       |
 | SENTRY_DSN                        | A Sentry error monitoring Data Source Name.                                                                             |             |
 
@@ -25,9 +26,8 @@ gradlew bootRun
 
 #### Service Health
 
-Spring Actuator is included to provide health check and info endpoints, which
-can be accessed at `<host>:<port>/sync/actuator/health` and
-`<host>:<port>/sync/actuator/info` respectively.
+Spring Actuator is included to provide a health check endpoint, which  can be
+accessed at `<host>:<port>/notifications/actuator/health`.
 
 ### Testing
 

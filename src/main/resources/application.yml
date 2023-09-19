@@ -6,6 +6,12 @@ server:
 application:
   environment: ${ENVIRONMENT:local}
 
+com:
+  amazonaws:
+    xray:
+      emitters:
+        daemon-address: ${AWS_XRAY_DAEMON_ADDRESS:}
+
 sentry:
   dsn: ${SENTRY_DSN:}
   environment: application.environment

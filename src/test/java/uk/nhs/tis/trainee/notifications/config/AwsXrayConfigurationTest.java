@@ -19,18 +19,29 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package uk.nhs.tis.trainee.notifications;
+package uk.nhs.tis.trainee.notifications.config;
 
-import org.springframework.boot.SpringApplication;
-import org.springframework.boot.autoconfigure.SpringBootApplication;
+import static org.hamcrest.CoreMatchers.instanceOf;
+import static org.hamcrest.MatcherAssert.assertThat;
 
-/**
- * An application for the management and sending of trainee notifications.
- */
-@SpringBootApplication
-public class TisTraineeNotificationsApplication {
+import com.amazonaws.xray.jakarta.servlet.AWSXRayServletFilter;
+import jakarta.servlet.Filter;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
-  public static void main(String[] args) {
-    SpringApplication.run(TisTraineeNotificationsApplication.class);
+class AwsXrayConfigurationTest {
+
+  private AwsXrayConfiguration configuration;
+
+  @BeforeEach
+  void setUp() {
+    configuration = new AwsXrayConfiguration();
+  }
+
+  @Test
+  void shouldCreateInstanceOfAwsXrayServletFilter() {
+    Filter filter = configuration.tracingFilter("testEnvironment");
+
+    assertThat("Unexpected filter type.", filter, instanceOf(AWSXRayServletFilter.class));
   }
 }

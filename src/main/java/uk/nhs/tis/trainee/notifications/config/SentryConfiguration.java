@@ -19,18 +19,33 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package uk.nhs.tis.trainee.notifications;
+package uk.nhs.tis.trainee.notifications.config;
 
-import org.springframework.boot.SpringApplication;
-import org.springframework.boot.autoconfigure.SpringBootApplication;
+import io.sentry.Sentry;
+import jakarta.annotation.PostConstruct;
+import java.util.Optional;
+import org.springframework.context.annotation.Configuration;
+import uk.nhs.tis.trainee.notifications.config.EcsMetadataConfiguration.EcsMetadata;
 
 /**
- * An application for the management and sending of trainee notifications.
+ * Additional configuration for Sentry.
  */
-@SpringBootApplication
-public class TisTraineeNotificationsApplication {
+@Configuration
+public class SentryConfiguration {
 
-  public static void main(String[] args) {
-    SpringApplication.run(TisTraineeNotificationsApplication.class);
+  private final Optional<EcsMetadata> ecsMetadata;
+
+  SentryConfiguration(Optional<EcsMetadata> ecsMetadata) {
+    this.ecsMetadata = ecsMetadata;
+  }
+
+  /**
+   * Configure the Sentry scope with additional ECS metadata.
+   */
+  @PostConstruct
+  void configureScope() {
+    ecsMetadata.ifPresent(metadata ->
+        Sentry.configureScope(scope -> scope.setContexts("EcsMetadata", metadata))
+    );
   }
 }

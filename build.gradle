@@ -42,6 +42,8 @@ dependencies {
   ext.sentryVersion = "6.29.0"
   implementation "io.sentry:sentry-spring-boot-starter:$sentryVersion"
   implementation "io.sentry:sentry-logback:$sentryVersion"
+
+  implementation "com.amazonaws:aws-xray-recorder-sdk-spring:2.14.0"
 }
 
 checkstyle {
