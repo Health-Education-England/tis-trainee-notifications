@@ -1,9 +1,11 @@
 server:
-  # TODO: Update server port and context path to a unique value.
-  port: 8080
+  port: 8211
   servlet:
-    context-path: /template
+    context-path: /notifications
+
+application:
+  environment: ${ENVIRONMENT:local}
 
 sentry:
   dsn: ${SENTRY_DSN:}
-  environment: ${SENTRY_ENVIRONMENT:}
+  environment: application.environment

@@ -1,49 +1,56 @@
-# TIS Microservice Template
+# TIS Trainee Notifications
 
 ## About
-This is a template to be used for TIS microservices with the following
-technology:
+This service manages and sends notifications to trainees based on TIS
+Self-Service events.
 
- - Java 17
- - Spring Boot
- - Gradle
- - JUnit 5
+## Developing
 
-Boilerplate code is to be generated with:
- - Lombok
- - MapStruct
+### Running
 
-Code quality checking and enforcement is done with the following tools:
- - EditorConfig
- - Checkstyle
- - JaCoCo
- - SonarQube
+```shell
+gradlew bootRun
+```
 
-Error and exception logging is done using Sentry.
+#### Pre-Requisites
 
-## TODO
-To use this template, create a new repository from it and follow the TODOs in
-the code, with the following additional changes.
- - Update copyright year in [LICENSE](LICENSE).
- - Update copyright year in [TemplateApplication].
- - Update copyright year in [TemplateApplicationTest].
- - Update this README.
- - Sentry:
-    - Set up Sentry project.
-    - Provide `SENTRY_DSN` and `SENTRY_ENVIRONMENT` as environmental variables
-   during deployment.
- - Sonar:
-    - Add repository to SonarCloud.
-    - Add SonarCloud API key to repository secrets.
- - Update Dependabot configuration to remove unneeded teams.
- - Update the references to `tis-template` and port number in [task-definition].
+#### Environmental Variables
+
+| Name                              | Description                                                                                                             | Default     |
+|-----------------------------------|-------------------------------------------------------------------------------------------------------------------------|-------------|
+| ENVIRONMENT                       | The environment to log events against.                                                                                  | local       |
+| SENTRY_DSN                        | A Sentry error monitoring Data Source Name.                                                                             |             |
+
+#### Usage Examples
+
+#### Service Health
+
+Spring Actuator is included to provide health check and info endpoints, which
+can be accessed at `<host>:<port>/sync/actuator/health` and
+`<host>:<port>/sync/actuator/info` respectively.
+
+### Testing
+
+The Gradle `test` task can be used to run automated tests and produce coverage
+reports.
+```shell
+gradlew test
+```
+
+The Gradle `check` lifecycle task can be used to run automated tests and also
+verify formatting conforms to the code style guidelines.
+```shell
+gradlew check
+```
+
+### Building
+
+```shell
+gradlew bootBuildImage
+```
 
 ## Versioning
 This project uses [Semantic Versioning](semver.org).
 
 ## License
 This project is license under [The MIT License (MIT)](LICENSE).
-
-[task-definition]: .aws/task-definition-template.json
-[TemplateApplication]: src/main/java/uk/nhs/hee/tis/template/TemplateApplication.java
-[TemplateApplicationTest]: src/test/java/uk/nhs/hee/tis/template/TemplateApplicationTest.java
