@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright 2022 Crown Copyright (Health Education England)
+ * Copyright 2023 Crown Copyright (Health Education England)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
  * associated documentation files (the "Software"), to deal in the Software without restriction,
@@ -19,17 +19,18 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package uk.nhs.hee.tis.template;
+package uk.nhs.tis.trainee.notifications;
 
-import org.junit.jupiter.api.Test;
-import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
 
-@SpringBootTest
-//TODO: Update package and class name.
-class TemplateApplicationTest {
+/**
+ * An application for the management and sending of trainee notifications.
+ */
+@SpringBootApplication
+public class TisTraineeNotificationsApplication {
 
-  @Test
-  void contextLoads() {
-
+  public static void main(String[] args) {
+    SpringApplication.run(TisTraineeNotificationsApplication.class);
   }
 }
