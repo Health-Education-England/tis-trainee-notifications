@@ -4,7 +4,14 @@ server:
     context-path: /notifications
 
 application:
+  email:
+      sender: ${EMAIL_SENDER}
   environment: ${ENVIRONMENT:local}
+  host: ${HOST:}
+  queues:
+      coj-received: ${COJ_RECEIVED_QUEUE}
+  timezone: Europe/London
+
 
 com:
   amazonaws:
