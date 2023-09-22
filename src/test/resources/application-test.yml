@@ -1,0 +1,13 @@
+application:
+  email:
+    sender: dummy-value
+  queues:
+    coj-received: dummy-value
+
+spring:
+  cloud:
+    aws:
+      region:
+        static: eu-west-2
+      sqs:
+        enabled: false

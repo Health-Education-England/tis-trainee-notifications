@@ -10,7 +10,7 @@ plugins {
 }
 
 group = "uk.nhs.tis.trainee"
-version = "0.0.2"
+version = "0.1.0"
 
 configurations {
   compileOnly {
@@ -22,11 +22,22 @@ repositories {
   mavenCentral()
 }
 
+dependencyManagement {
+  imports {
+    mavenBom "io.awspring.cloud:spring-cloud-aws-dependencies:3.0.2"
+  }
+}
+
 dependencies {
   // Spring Boot starters
   implementation "org.springframework.boot:spring-boot-starter-actuator"
+  implementation "org.springframework.boot:spring-boot-starter-mail"
+  implementation "org.springframework.boot:spring-boot-starter-thymeleaf"
   implementation "org.springframework.boot:spring-boot-starter-web"
   testImplementation "org.springframework.boot:spring-boot-starter-test"
+
+  implementation "io.awspring.cloud:spring-cloud-aws-starter-ses"
+  implementation "io.awspring.cloud:spring-cloud-aws-starter-sqs"
 
   // Lombok
   compileOnly "org.projectlombok:lombok"

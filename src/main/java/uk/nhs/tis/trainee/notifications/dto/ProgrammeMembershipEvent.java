@@ -19,18 +19,30 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package uk.nhs.tis.trainee.notifications;
+package uk.nhs.tis.trainee.notifications.dto;
 
-import org.junit.jupiter.api.Test;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.ActiveProfiles;
+import com.fasterxml.jackson.annotation.JsonAlias;
+import java.time.Instant;
 
-@SpringBootTest
-@ActiveProfiles("test")
-class TisTraineeNotificationsApplicationTest {
+/**
+ * A Programme Membership event.
+ *
+ * @param traineeId           The trainee associated with the Programme membership.
+ * @param managingDeanery     The programme owner.
+ * @param conditionsOfJoining The Programme Membership's Conditions of Joining.
+ */
+public record ProgrammeMembershipEvent(
+    @JsonAlias("traineeTisId")
+    String traineeId,
+    String managingDeanery,
+    ConditionsOfJoining conditionsOfJoining) {
 
-  @Test
-  void contextLoads() {
+  /**
+   * A Programme Membership's Conditions of Joining details.
+   *
+   * @param syncedAt The timestamp for the signed Conditions of Joining being received.
+   */
+  public record ConditionsOfJoining(Instant syncedAt) {
 
   }
 }

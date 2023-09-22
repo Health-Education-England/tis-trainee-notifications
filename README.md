@@ -16,11 +16,14 @@ gradlew bootRun
 
 #### Environmental Variables
 
-| Name                              | Description                                                                                                             | Default     |
-|-----------------------------------|-------------------------------------------------------------------------------------------------------------------------|-------------|
-| AWS_XRAY_DAEMON_ADDRESS           | The AWS XRay daemon host.                                                                                               |             |
-| ENVIRONMENT                       | The environment to log events against.                                                                                  | local       |
-| SENTRY_DSN                        | A Sentry error monitoring Data Source Name.                                                                             |             |
+| Name                    | Description                                                        | Default |
+|-------------------------|--------------------------------------------------------------------|---------|
+| APP_DOMAIN              | The domain to be used for links in email notifications. (Optional) |         |
+| AWS_XRAY_DAEMON_ADDRESS | The AWS XRay daemon host. (Optional)                               |         |
+| COJ_RECEIVED_QUEUE      | The queue URL for Conditions of Joining received events.           |         |
+| ENVIRONMENT             | The environment to log events against.                             | local   |
+| EMAIL_SENDER            | Where email notifications are to be sent from.                     |         |
+| SENTRY_DSN              | A Sentry error monitoring Data Source Name. (Optional)             |         |
 
 #### Usage Examples
 
