@@ -34,17 +34,27 @@ import org.springframework.stereotype.Component;
 import uk.nhs.tis.trainee.notifications.dto.ProgrammeMembershipEvent;
 import uk.nhs.tis.trainee.notifications.service.EmailService;
 
+/**
+ * A listener for Conditions of Joining events.
+ */
 @Slf4j
 @Component
 public class ConditionsOfJoiningListener {
 
-  private static final String COJ_CONFIRMATION_SUBJECT = "We've received your Conditions of Joining";
-  private static final String COJ_CONFIRMATION_TEMPLATE = "email/coj-confirmation";
+  private static final String CONFIRMATION_SUBJECT = "We've received your Conditions of Joining";
+  private static final String CONFIRMATION_TEMPLATE = "email/coj-confirmation";
 
   private final EmailService emailService;
   private final URI appDomain;
   private final String timezone;
 
+  /**
+   * Construct a listener for conditions of joining events.
+   *
+   * @param emailService The service to use for sending emails.
+   * @param appDomain    The application domain to link to.
+   * @param timezone     The timezone to base event times on.
+   */
   public ConditionsOfJoiningListener(EmailService emailService,
       @Value("${application.domain}") URI appDomain,
       @Value("${application.timezone}") String timezone) {
@@ -53,6 +63,12 @@ public class ConditionsOfJoiningListener {
     this.timezone = timezone;
   }
 
+  /**
+   * Handle Conditions of Joining received events.
+   *
+   * @param event The program membership event.
+   * @throws MessagingException If the message could not be sent.
+   */
   @SqsListener("${application.queues.coj-received}")
   public void handleConditionsOfJoiningReceived(ProgrammeMembershipEvent event)
       throws MessagingException {
@@ -78,8 +94,8 @@ public class ConditionsOfJoiningListener {
     }
 
     if (destination != null) {
-      emailService.sendMessage(destination, COJ_CONFIRMATION_SUBJECT,
-          COJ_CONFIRMATION_TEMPLATE, templateVariables);
+      emailService.sendMessage(destination, CONFIRMATION_SUBJECT,
+          CONFIRMATION_TEMPLATE, templateVariables);
       log.info("COJ received notification sent to {}.", destination);
     } else {
       String message = "Could not find email address for user '%s'".formatted(traineeId);

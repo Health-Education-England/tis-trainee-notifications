@@ -51,12 +51,12 @@ public class EmailService {
     this.sender = sender;
   }
 
-  /***
+  /**
    * Send an email message using a given template.
    *
-   * @param recipient Where the email should be sent.
-   * @param subject The email subject line.
-   * @param templateName The email template to use.
+   * @param recipient         Where the email should be sent.
+   * @param subject           The email subject line.
+   * @param templateName      The email template to use.
    * @param templateVariables The variables to pass to the template.
    * @throws MessagingException When the message could not be sent.
    */
