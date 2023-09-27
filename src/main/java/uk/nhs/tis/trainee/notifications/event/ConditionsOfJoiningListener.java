@@ -85,7 +85,7 @@ public class ConditionsOfJoiningListener {
     }
 
     // Get the doctor's name.
-    String traineeId = event.traineeId();
+    String traineeId = event.personId();
     String destination = null;
     if (traineeId != null) {
       // TODO: get name and email from trainee ID.

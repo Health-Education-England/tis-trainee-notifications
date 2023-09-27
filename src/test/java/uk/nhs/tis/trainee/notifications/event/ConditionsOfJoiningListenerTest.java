@@ -48,7 +48,7 @@ class ConditionsOfJoiningListenerTest {
   private static final URI APP_DOMAIN = URI.create("https://local.notifications.com");
   private static final String TIMEZONE = "Europe/London";
 
-  private static final String TRAINEE_ID = "40";
+  private static final String PERSON_ID = "40";
   private static final String MANAGING_DEANERY = "deanery1";
   private static final Instant SYNCED_AT = Instant.now();
 
@@ -73,7 +73,7 @@ class ConditionsOfJoiningListenerTest {
   @Test
   void shouldSetDestinationWhenCojReceived() throws MessagingException {
     // TODO: rewrite for Cognito lookup.
-    ProgrammeMembershipEvent event = new ProgrammeMembershipEvent(TRAINEE_ID, MANAGING_DEANERY,
+    ProgrammeMembershipEvent event = new ProgrammeMembershipEvent(PERSON_ID, MANAGING_DEANERY,
         new ConditionsOfJoining(SYNCED_AT));
 
     listener.handleConditionsOfJoiningReceived(event);
@@ -83,7 +83,7 @@ class ConditionsOfJoiningListenerTest {
 
   @Test
   void shouldSetSubjectWhenCojReceived() throws MessagingException {
-    ProgrammeMembershipEvent event = new ProgrammeMembershipEvent(TRAINEE_ID, MANAGING_DEANERY,
+    ProgrammeMembershipEvent event = new ProgrammeMembershipEvent(PERSON_ID, MANAGING_DEANERY,
         new ConditionsOfJoining(SYNCED_AT));
 
     listener.handleConditionsOfJoiningReceived(event);
@@ -94,7 +94,7 @@ class ConditionsOfJoiningListenerTest {
 
   @Test
   void shouldSetTemplateWhenCojReceived() throws MessagingException {
-    ProgrammeMembershipEvent event = new ProgrammeMembershipEvent(TRAINEE_ID, MANAGING_DEANERY,
+    ProgrammeMembershipEvent event = new ProgrammeMembershipEvent(PERSON_ID, MANAGING_DEANERY,
         new ConditionsOfJoining(SYNCED_AT));
 
     listener.handleConditionsOfJoiningReceived(event);
@@ -104,7 +104,7 @@ class ConditionsOfJoiningListenerTest {
 
   @Test
   void shouldIncludeDomainWhenCojReceived() throws MessagingException {
-    ProgrammeMembershipEvent event = new ProgrammeMembershipEvent(TRAINEE_ID, MANAGING_DEANERY,
+    ProgrammeMembershipEvent event = new ProgrammeMembershipEvent(PERSON_ID, MANAGING_DEANERY,
         new ConditionsOfJoining(SYNCED_AT));
 
     listener.handleConditionsOfJoiningReceived(event);
@@ -118,7 +118,7 @@ class ConditionsOfJoiningListenerTest {
 
   @Test
   void shouldIncludeDeaneryWhenCojReceived() throws MessagingException {
-    ProgrammeMembershipEvent event = new ProgrammeMembershipEvent(TRAINEE_ID, MANAGING_DEANERY,
+    ProgrammeMembershipEvent event = new ProgrammeMembershipEvent(PERSON_ID, MANAGING_DEANERY,
         new ConditionsOfJoining(SYNCED_AT));
 
     listener.handleConditionsOfJoiningReceived(event);
@@ -133,7 +133,7 @@ class ConditionsOfJoiningListenerTest {
 
   @Test
   void shouldIncludeGmtSyncedAtWhenCojReceived() throws MessagingException {
-    ProgrammeMembershipEvent event = new ProgrammeMembershipEvent(TRAINEE_ID, MANAGING_DEANERY,
+    ProgrammeMembershipEvent event = new ProgrammeMembershipEvent(PERSON_ID, MANAGING_DEANERY,
         new ConditionsOfJoining(Instant.parse("2021-02-03T04:05:06Z")));
 
     listener.handleConditionsOfJoiningReceived(event);
@@ -152,7 +152,7 @@ class ConditionsOfJoiningListenerTest {
 
   @Test
   void shouldIncludeBstSyncedAtWhenCojReceived() throws MessagingException {
-    ProgrammeMembershipEvent event = new ProgrammeMembershipEvent(TRAINEE_ID, MANAGING_DEANERY,
+    ProgrammeMembershipEvent event = new ProgrammeMembershipEvent(PERSON_ID, MANAGING_DEANERY,
         new ConditionsOfJoining(Instant.parse("2021-08-03T23:05:06Z")));
 
     listener.handleConditionsOfJoiningReceived(event);
@@ -172,7 +172,7 @@ class ConditionsOfJoiningListenerTest {
   @Test
   void shouldIncludeNameWhenCojReceived() throws MessagingException {
     // TODO: rewrite for Cognito lookup.
-    ProgrammeMembershipEvent event = new ProgrammeMembershipEvent(TRAINEE_ID, MANAGING_DEANERY,
+    ProgrammeMembershipEvent event = new ProgrammeMembershipEvent(PERSON_ID, MANAGING_DEANERY,
         new ConditionsOfJoining(SYNCED_AT));
 
     listener.handleConditionsOfJoiningReceived(event);

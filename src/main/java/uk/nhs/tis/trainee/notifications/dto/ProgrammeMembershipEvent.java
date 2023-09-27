@@ -21,21 +21,17 @@
 
 package uk.nhs.tis.trainee.notifications.dto;
 
-import com.fasterxml.jackson.annotation.JsonAlias;
 import java.time.Instant;
 
 /**
  * A Programme Membership event.
  *
- * @param traineeId           The trainee associated with the Programme membership.
+ * @param personId            The person associated with the Programme membership.
  * @param managingDeanery     The programme owner.
  * @param conditionsOfJoining The Programme Membership's Conditions of Joining.
  */
-public record ProgrammeMembershipEvent(
-    @JsonAlias("traineeTisId")
-    String traineeId,
-    String managingDeanery,
-    ConditionsOfJoining conditionsOfJoining) {
+public record ProgrammeMembershipEvent(String personId, String managingDeanery,
+                                       ConditionsOfJoining conditionsOfJoining) {
 
   /**
    * A Programme Membership's Conditions of Joining details.
