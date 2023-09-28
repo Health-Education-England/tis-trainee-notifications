@@ -4,6 +4,11 @@ server:
     context-path: /notifications
 
 application:
+  cache:
+    key-prefix: Notifications
+    time-to-live: PT24H
+  cognito:
+    user-pool-id: ${COGNITO_USER_POOL_ID}
   domain: ${APP_DOMAIN:}
   email:
       sender: ${EMAIL_SENDER}
@@ -22,3 +27,13 @@ com:
 sentry:
   dsn: ${SENTRY_DSN:}
   environment: application.environment
+
+spring:
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      ssl:
+        enabled: ${REDIS_SSL:false}
+      username: ${REDIS_USERNAME:default}
+      password: ${REDIS_PASSWORD:password}
