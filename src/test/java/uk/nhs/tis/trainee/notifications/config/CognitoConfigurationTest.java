@@ -25,10 +25,12 @@ import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
+import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.regions.providers.AwsRegionProvider;
 import software.amazon.awssdk.services.cognitoidentityprovider.CognitoIdentityProviderClient;
 
@@ -44,6 +46,7 @@ class CognitoConfigurationTest {
   @Test
   void getAwsCognitoIdentityProvider() {
     AwsRegionProvider regionProvider = mock(AwsRegionProvider.class);
+    when(regionProvider.getRegion()).thenReturn(Region.AWS_GLOBAL);
     AwsCredentialsProvider credentialsProvider = mock(AwsCredentialsProvider.class);
 
     CognitoIdentityProviderClient cognitoIdp = configuration.getCognitoIdentityProviderClient(

@@ -10,7 +10,7 @@ spring:
   cloud:
     aws:
       region:
-        static: eu-west-2
+        static: aws-global
       sqs:
         enabled: false
     compatibility-verifier:
