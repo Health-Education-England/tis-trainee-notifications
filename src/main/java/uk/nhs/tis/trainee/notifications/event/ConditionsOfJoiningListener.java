@@ -28,11 +28,16 @@ import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.logging.log4j.util.Strings;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import uk.nhs.tis.trainee.notifications.dto.ProgrammeMembershipEvent;
+import uk.nhs.tis.trainee.notifications.dto.UserAccountDetails;
 import uk.nhs.tis.trainee.notifications.service.EmailService;
+import uk.nhs.tis.trainee.notifications.service.UserAccountService;
 
 /**
  * A listener for Conditions of Joining events.
@@ -44,6 +49,7 @@ public class ConditionsOfJoiningListener {
   private static final String CONFIRMATION_SUBJECT = "We've received your Conditions of Joining";
   private static final String CONFIRMATION_TEMPLATE = "email/coj-confirmation";
 
+  private final UserAccountService userAccountService;
   private final EmailService emailService;
   private final URI appDomain;
   private final String timezone;
@@ -55,9 +61,11 @@ public class ConditionsOfJoiningListener {
    * @param appDomain    The application domain to link to.
    * @param timezone     The timezone to base event times on.
    */
-  public ConditionsOfJoiningListener(EmailService emailService,
+  public ConditionsOfJoiningListener(UserAccountService userAccountService,
+      EmailService emailService,
       @Value("${application.domain}") URI appDomain,
       @Value("${application.timezone}") String timezone) {
+    this.userAccountService = userAccountService;
     this.emailService = emailService;
     this.appDomain = appDomain;
     this.timezone = timezone;
@@ -88,9 +96,21 @@ public class ConditionsOfJoiningListener {
     String traineeId = event.personId();
     String destination = null;
     if (traineeId != null) {
-      // TODO: get name and email from trainee ID.
-      templateVariables.put("name", "Dr Gilliam");
-      destination = "anthony.gilliam@tis.nhs.uk";
+      Set<String> userAccountIds = userAccountService.getUserAccountIds(traineeId);
+
+      switch (userAccountIds.size()) {
+        case 0 -> throw new IllegalArgumentException("No user account found for the given ID.");
+        case 1 -> {
+          UserAccountDetails userDetails = userAccountService.getUserDetails(
+              userAccountIds.iterator().next());
+          String familyName = userDetails.familyName();
+          String name = Strings.isBlank(familyName) ? "Doctor" : "Dr " + familyName;
+          templateVariables.put("name", name);
+          destination = userDetails.email();
+        }
+        default ->
+            throw new IllegalArgumentException("Multiple user accounts found for the given ID.");
+      }
     }
 
     if (destination != null) {

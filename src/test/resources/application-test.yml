@@ -1,4 +1,6 @@
 application:
+  cognito:
+    user-pool-id: dummy-value
   email:
     sender: dummy-value
   queues:
@@ -8,6 +10,8 @@ spring:
   cloud:
     aws:
       region:
-        static: eu-west-2
+        static: aws-global
       sqs:
         enabled: false
+    compatibility-verifier:
+      enabled: false # TODO: For unknown reasons there is currently a flagged incompatibility between Spring Cloud 2022.0.4 and Spring Boot 3.1.x.

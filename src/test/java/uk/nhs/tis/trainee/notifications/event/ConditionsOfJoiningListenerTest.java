@@ -22,12 +22,15 @@
 package uk.nhs.tis.trainee.notifications.event;
 
 import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import jakarta.mail.MessagingException;
 import java.net.URI;
@@ -36,12 +39,17 @@ import java.time.Month;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import software.amazon.awssdk.services.cognitoidentityprovider.model.UserNotFoundException;
 import uk.nhs.tis.trainee.notifications.dto.ProgrammeMembershipEvent;
 import uk.nhs.tis.trainee.notifications.dto.ProgrammeMembershipEvent.ConditionsOfJoining;
+import uk.nhs.tis.trainee.notifications.dto.UserAccountDetails;
 import uk.nhs.tis.trainee.notifications.service.EmailService;
+import uk.nhs.tis.trainee.notifications.service.UserAccountService;
 
 class ConditionsOfJoiningListenerTest {
 
@@ -49,20 +57,27 @@ class ConditionsOfJoiningListenerTest {
   private static final String TIMEZONE = "Europe/London";
 
   private static final String PERSON_ID = "40";
+  private static final String USER_ID = UUID.randomUUID().toString();
   private static final String MANAGING_DEANERY = "deanery1";
   private static final Instant SYNCED_AT = Instant.now();
 
   private ConditionsOfJoiningListener listener;
+  private UserAccountService userAccountService;
   private EmailService emailService;
 
   @BeforeEach
   void setUp() {
+    userAccountService = mock(UserAccountService.class);
+    when(userAccountService.getUserAccountIds(PERSON_ID)).thenReturn(Set.of(USER_ID));
+    when(userAccountService.getUserDetails(USER_ID)).thenReturn(new UserAccountDetails("", ""));
+
     emailService = mock(EmailService.class);
-    listener = new ConditionsOfJoiningListener(emailService, APP_DOMAIN, TIMEZONE);
+    listener = new ConditionsOfJoiningListener(userAccountService, emailService, APP_DOMAIN,
+        TIMEZONE);
   }
 
   @Test
-  void shouldThrowExceptionWhenCojReceivedWithoutTraineeId() {
+  void shouldThrowExceptionWhenCojReceivedWithoutPersonId() {
     ProgrammeMembershipEvent event = new ProgrammeMembershipEvent(null, MANAGING_DEANERY,
         new ConditionsOfJoining(SYNCED_AT));
 
@@ -71,8 +86,55 @@ class ConditionsOfJoiningListenerTest {
   }
 
   @Test
+  void shouldThrowExceptionWhenCojReceivedAndPersonIdNotFound() {
+    when(userAccountService.getUserAccountIds(PERSON_ID)).thenReturn(Set.of());
+
+    ProgrammeMembershipEvent event = new ProgrammeMembershipEvent(PERSON_ID, MANAGING_DEANERY,
+        new ConditionsOfJoining(SYNCED_AT));
+
+    assertThrows(IllegalArgumentException.class,
+        () -> listener.handleConditionsOfJoiningReceived(event));
+  }
+
+  @Test
+  void shouldThrowExceptionWhenCojReceivedAndMultiplePersonIdResults() {
+    when(userAccountService.getUserAccountIds(PERSON_ID)).thenReturn(
+        Set.of(USER_ID, UUID.randomUUID().toString()));
+
+    ProgrammeMembershipEvent event = new ProgrammeMembershipEvent(PERSON_ID, MANAGING_DEANERY,
+        new ConditionsOfJoining(SYNCED_AT));
+
+    assertThrows(IllegalArgumentException.class,
+        () -> listener.handleConditionsOfJoiningReceived(event));
+  }
+
+  @Test
+  void shouldThrowExceptionWhenCojReceivedAndUserDetailsNotFound() {
+    when(userAccountService.getUserDetails(USER_ID)).thenThrow(UserNotFoundException.class);
+
+    ProgrammeMembershipEvent event = new ProgrammeMembershipEvent(PERSON_ID, MANAGING_DEANERY,
+        new ConditionsOfJoining(SYNCED_AT));
+
+    assertThrows(UserNotFoundException.class,
+        () -> listener.handleConditionsOfJoiningReceived(event));
+  }
+
+  @Test
+  void shouldThrowExceptionWhenCojReceivedAndSendingFails() throws MessagingException {
+    doThrow(MessagingException.class).when(emailService).sendMessage(any(), any(), any(), any());
+
+    ProgrammeMembershipEvent event = new ProgrammeMembershipEvent(PERSON_ID, MANAGING_DEANERY,
+        new ConditionsOfJoining(SYNCED_AT));
+
+    assertThrows(MessagingException.class, () -> listener.handleConditionsOfJoiningReceived(event));
+  }
+
+
+  @Test
   void shouldSetDestinationWhenCojReceived() throws MessagingException {
-    // TODO: rewrite for Cognito lookup.
+    when(userAccountService.getUserDetails(USER_ID)).thenReturn(
+        new UserAccountDetails("anthony.gilliam@tis.nhs.uk", ""));
+
     ProgrammeMembershipEvent event = new ProgrammeMembershipEvent(PERSON_ID, MANAGING_DEANERY,
         new ConditionsOfJoining(SYNCED_AT));
 
@@ -132,6 +194,36 @@ class ConditionsOfJoiningListenerTest {
   }
 
   @Test
+  void shouldNotIncludeSyncedAtWhenNullCojReceived() throws MessagingException {
+    ProgrammeMembershipEvent event = new ProgrammeMembershipEvent(PERSON_ID, MANAGING_DEANERY,
+        null);
+
+    listener.handleConditionsOfJoiningReceived(event);
+
+    ArgumentCaptor<Map<String, Object>> templateVarsCaptor = ArgumentCaptor.forClass(Map.class);
+    verify(emailService).sendMessage(any(), any(), any(), templateVarsCaptor.capture());
+
+    Map<String, Object> templateVariables = templateVarsCaptor.getValue();
+    ZonedDateTime syncedAt = (ZonedDateTime) templateVariables.get("syncedAt");
+    assertThat("Unexpected synced at.", syncedAt, nullValue());
+  }
+
+  @Test
+  void shouldNotIncludeSyncedAtWhenCojReceivedWithNullSyncedAt() throws MessagingException {
+    ProgrammeMembershipEvent event = new ProgrammeMembershipEvent(PERSON_ID, MANAGING_DEANERY,
+        new ConditionsOfJoining(null));
+
+    listener.handleConditionsOfJoiningReceived(event);
+
+    ArgumentCaptor<Map<String, Object>> templateVarsCaptor = ArgumentCaptor.forClass(Map.class);
+    verify(emailService).sendMessage(any(), any(), any(), templateVarsCaptor.capture());
+
+    Map<String, Object> templateVariables = templateVarsCaptor.getValue();
+    ZonedDateTime syncedAt = (ZonedDateTime) templateVariables.get("syncedAt");
+    assertThat("Unexpected synced at.", syncedAt, nullValue());
+  }
+
+  @Test
   void shouldIncludeGmtSyncedAtWhenCojReceived() throws MessagingException {
     ProgrammeMembershipEvent event = new ProgrammeMembershipEvent(PERSON_ID, MANAGING_DEANERY,
         new ConditionsOfJoining(Instant.parse("2021-02-03T04:05:06Z")));
@@ -170,8 +262,10 @@ class ConditionsOfJoiningListenerTest {
   }
 
   @Test
-  void shouldIncludeNameWhenCojReceived() throws MessagingException {
-    // TODO: rewrite for Cognito lookup.
+  void shouldIncludeNameWhenCojReceivedAndNameAvailable() throws MessagingException {
+    when(userAccountService.getUserDetails(USER_ID)).thenReturn(
+        new UserAccountDetails("", "Gilliam"));
+
     ProgrammeMembershipEvent event = new ProgrammeMembershipEvent(PERSON_ID, MANAGING_DEANERY,
         new ConditionsOfJoining(SYNCED_AT));
 
@@ -182,5 +276,19 @@ class ConditionsOfJoiningListenerTest {
 
     Map<String, Object> templateVariables = templateVarsCaptor.getValue();
     assertThat("Unexpected name.", templateVariables.get("name"), is("Dr Gilliam"));
+  }
+
+  @Test
+  void shouldAddressDoctorWhenCojReceivedAndNameNotAvailable() throws MessagingException {
+    ProgrammeMembershipEvent event = new ProgrammeMembershipEvent(PERSON_ID, MANAGING_DEANERY,
+        new ConditionsOfJoining(SYNCED_AT));
+
+    listener.handleConditionsOfJoiningReceived(event);
+
+    ArgumentCaptor<Map<String, Object>> templateVarsCaptor = ArgumentCaptor.forClass(Map.class);
+    verify(emailService).sendMessage(any(), any(), any(), templateVarsCaptor.capture());
+
+    Map<String, Object> templateVariables = templateVarsCaptor.getValue();
+    assertThat("Unexpected name.", templateVariables.get("name"), is("Doctor"));
   }
 }
