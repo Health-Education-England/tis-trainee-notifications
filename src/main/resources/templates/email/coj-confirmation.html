@@ -13,7 +13,7 @@
     </p>
     <p>
       You can access a PDF of your signed Conditions of Joining by visiting
-      <a th:href="${not #strings.isEmpty(host)}? @{{host}/programmes(host=${host})} : _">TIS Self-Service</a>.
+      <a th:href="${not #strings.isEmpty(domain)}? @{{domain}/programmes(domain=${domain})} : _">TIS Self-Service</a>.
     </p>
   </body>
 </html>
