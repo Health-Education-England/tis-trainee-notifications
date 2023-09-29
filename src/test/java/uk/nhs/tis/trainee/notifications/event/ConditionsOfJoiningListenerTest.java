@@ -22,6 +22,7 @@
 package uk.nhs.tis.trainee.notifications.event;
 
 import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
@@ -100,7 +101,7 @@ class ConditionsOfJoiningListenerTest {
     when(userAccountService.getUserAccountIds(PERSON_ID)).thenReturn(
         Set.of(USER_ID, UUID.randomUUID().toString()));
 
-    ProgrammeMembershipEvent event = new ProgrammeMembershipEvent(null, MANAGING_DEANERY,
+    ProgrammeMembershipEvent event = new ProgrammeMembershipEvent(PERSON_ID, MANAGING_DEANERY,
         new ConditionsOfJoining(SYNCED_AT));
 
     assertThrows(IllegalArgumentException.class,
@@ -190,6 +191,36 @@ class ConditionsOfJoiningListenerTest {
     Map<String, Object> templateVariables = templateVarsCaptor.getValue();
     assertThat("Unexpected managing deanery.", templateVariables.get("managingDeanery"),
         is(MANAGING_DEANERY));
+  }
+
+  @Test
+  void shouldNotIncludeSyncedAtWhenNullCojReceived() throws MessagingException {
+    ProgrammeMembershipEvent event = new ProgrammeMembershipEvent(PERSON_ID, MANAGING_DEANERY,
+        null);
+
+    listener.handleConditionsOfJoiningReceived(event);
+
+    ArgumentCaptor<Map<String, Object>> templateVarsCaptor = ArgumentCaptor.forClass(Map.class);
+    verify(emailService).sendMessage(any(), any(), any(), templateVarsCaptor.capture());
+
+    Map<String, Object> templateVariables = templateVarsCaptor.getValue();
+    ZonedDateTime syncedAt = (ZonedDateTime) templateVariables.get("syncedAt");
+    assertThat("Unexpected synced at.", syncedAt, nullValue());
+  }
+
+  @Test
+  void shouldNotIncludeSyncedAtWhenCojReceivedWithNullSyncedAt() throws MessagingException {
+    ProgrammeMembershipEvent event = new ProgrammeMembershipEvent(PERSON_ID, MANAGING_DEANERY,
+        new ConditionsOfJoining(null));
+
+    listener.handleConditionsOfJoiningReceived(event);
+
+    ArgumentCaptor<Map<String, Object>> templateVarsCaptor = ArgumentCaptor.forClass(Map.class);
+    verify(emailService).sendMessage(any(), any(), any(), templateVarsCaptor.capture());
+
+    Map<String, Object> templateVariables = templateVarsCaptor.getValue();
+    ZonedDateTime syncedAt = (ZonedDateTime) templateVariables.get("syncedAt");
+    assertThat("Unexpected synced at.", syncedAt, nullValue());
   }
 
   @Test
