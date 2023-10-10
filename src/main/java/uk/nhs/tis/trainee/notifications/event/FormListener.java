@@ -21,6 +21,10 @@
 
 package uk.nhs.tis.trainee.notifications.event;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import io.awspring.cloud.sqs.annotation.SqsListener;
 import jakarta.mail.MessagingException;
 import java.net.URI;
@@ -33,6 +37,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.logging.log4j.util.Strings;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
+import software.amazon.awssdk.services.sqs.model.Message;
 import uk.nhs.tis.trainee.notifications.dto.FormUpdateEvent;
 import uk.nhs.tis.trainee.notifications.dto.UserAccountDetails;
 import uk.nhs.tis.trainee.notifications.service.EmailService;
@@ -73,13 +78,24 @@ public class FormListener {
   /**
    * Handle form update events.
    *
-   * @param event The form update event.
+   * @param msg The form update event message.
    * @throws MessagingException If the message could not be sent.
    */
   @SqsListener("${application.queues.form-updated}")
-  public void handleFormUpdate(FormUpdateEvent event)
-      throws MessagingException {
-    log.info("Handling form update event {}.", event);
+  public void handleFormUpdate(Message msg) throws MessagingException {
+    //TODO: fix the mapper to allow a FormUpdateEvent parameter
+    //AND/OR is the message coming in a funny format?
+    log.info("Handling form update event {}.", msg);
+    ObjectMapper mapper = new ObjectMapper()
+        .registerModule(new JavaTimeModule())
+        .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+    FormUpdateEvent event = null;
+    try {
+      Map<String,String> bodyMap = mapper.readValue(msg.body(), Map.class);
+      event = mapper.readValue(bodyMap.get("Message"), FormUpdateEvent.class);
+    } catch (JsonProcessingException e) {
+      throw new RuntimeException(e);
+    }
     Map<String, Object> templateVariables = new HashMap<>();
     templateVariables.put("domain", appDomain);
     templateVariables.put("formName", event.formName());

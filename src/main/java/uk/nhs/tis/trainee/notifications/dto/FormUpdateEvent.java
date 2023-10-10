@@ -22,9 +22,7 @@
 package uk.nhs.tis.trainee.notifications.dto;
 
 import java.time.Instant;
-import java.util.HashMap;
 import java.util.Map;
-import lombok.Data;
 
 /**
  * A Form update event.
@@ -36,13 +34,12 @@ import lombok.Data;
  * @param eventDate      The date and time the form was updated.
  * @param formContentDto The form content map of fields and values.
  */
-@Data
-public class FormUpdateEvent {
-
-  private String formName;
-  private String lifecycleState;
-  private String traineeId;
-  private String formType;
-  private Instant eventDate;
-  private Map<String, Object> formContentDto = new HashMap<>();
+public record FormUpdateEvent(
+   String formName,
+   String lifecycleState,
+   String traineeId,
+   String formType,
+   Instant eventDate,
+   Map<String, Object> formContentDto
+) {
 }
