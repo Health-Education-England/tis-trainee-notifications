@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+</head>
+<body>
+<p>Dear <span data-th-text="${name} ?: _">Doctor</span>,</p>
+<p>
+  We want to inform you that your local deanery office (programme owner) has
+  <span th:text="${lifecycleState}? | (${lifecycleState}) | : _"></span>
+  FormR on
+  <span th:text="${eventDate}? | on ${#temporals.format(eventDate, 'dd MMMM yyyy')}| : _"></span>.
+</p>
+<p>
+  You can access your PDF signed formR by visiting
+  <a th:href="${not #strings.isEmpty(domain)}? @{{domain}/@{{formType}}/@{{formName}}(domain=${domain},formType=${formType},formName=${formName})} : _">TIS Self-Service Forms</a>.
+</p>
+</body>
+</html>
