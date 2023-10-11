@@ -30,7 +30,6 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.logging.log4j.util.Strings;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import uk.nhs.tis.trainee.notifications.dto.ProgrammeMembershipEvent;
@@ -56,9 +55,10 @@ public class ConditionsOfJoiningListener {
   /**
    * Construct a listener for conditions of joining events.
    *
-   * @param emailService The service to use for sending emails.
-   * @param appDomain    The application domain to link to.
-   * @param timezone     The timezone to base event times on.
+   * @param userAccountService The service for getting user account details.
+   * @param emailService       The service to use for sending emails.
+   * @param appDomain          The application domain to link to.
+   * @param timezone           The timezone to base event times on.
    */
   public ConditionsOfJoiningListener(UserAccountService userAccountService,
       EmailService emailService,
@@ -102,9 +102,7 @@ public class ConditionsOfJoiningListener {
         case 1 -> {
           UserAccountDetails userDetails = userAccountService.getUserDetails(
               userAccountIds.iterator().next());
-          String familyName = userDetails.familyName();
-          String name = Strings.isBlank(familyName) ? "Doctor" : "Dr " + familyName;
-          templateVariables.put("name", name);
+          templateVariables.put("name", userDetails.familyName());
           destination = userDetails.email();
         }
         default ->

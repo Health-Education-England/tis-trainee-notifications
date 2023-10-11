@@ -1,6 +1,7 @@
 application:
   cognito:
     user-pool-id: dummy-value
+  domain: https://local.notifications.com
   email:
     sender: dummy-value
   queues:
