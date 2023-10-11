@@ -46,7 +46,7 @@ import uk.nhs.tis.trainee.notifications.service.UserAccountService;
 public class FormListener {
 
   private static final String FORM_UPDATE_SUBJECT = "Your Form R has been updated";
-  private static final String FORM_UPDATE_TEMPLATE = "email/form-update";
+  private static final String FORM_UPDATE_TEMPLATE = "email/form-updated";
 
   private final UserAccountService userAccountService;
   private final EmailService emailService;
