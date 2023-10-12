@@ -35,11 +35,12 @@ import java.util.Map;
  * @param formContentDto The form content map of fields and values.
  */
 public record FormUpdateEvent(
-   String formName,
-   String lifecycleState,
-   String traineeId,
-   String formType,
-   Instant eventDate,
-   Map<String, Object> formContentDto
+    String formName,
+    String lifecycleState,
+    String traineeId,
+    String formType,
+    Instant eventDate,
+    Map<String, Object> formContentDto
 ) {
+
 }

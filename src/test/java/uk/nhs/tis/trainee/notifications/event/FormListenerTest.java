@@ -23,6 +23,7 @@ package uk.nhs.tis.trainee.notifications.event;
 
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -111,7 +112,7 @@ class FormListenerTest {
   }
 
   @Test
-  void shouldThrowExceptionWhenFormUpdateddAndUserDetailsNotFound() {
+  void shouldThrowExceptionWhenFormUpdatedAndUserDetailsNotFound() {
     when(userAccountService.getUserDetails(USER_ID)).thenThrow(UserNotFoundException.class);
 
     FormUpdateEvent event = new FormUpdateEvent(FORM_NAME, FORM_LIFECYCLE_STATE, PERSON_ID,
@@ -261,6 +262,20 @@ class FormListenerTest {
     assertThat("Unexpected event date month.", eventDate.getMonth(), is(Month.AUGUST));
     assertThat("Unexpected event date year.", eventDate.getYear(), is(2021));
     assertThat("Unexpected event date zone.", eventDate.getZone(), is(ZoneId.of(TIMEZONE)));
+  }
+
+  @Test
+  void shouldNotIncludeEventDateIfNotIncludedWhenFormUpdated() throws MessagingException {
+    FormUpdateEvent event = new FormUpdateEvent(FORM_NAME, FORM_LIFECYCLE_STATE, PERSON_ID,
+        FORM_TYPE, null, FORM_CONTENT);
+
+    listener.handleFormUpdate(event);
+
+    ArgumentCaptor<Map<String, Object>> templateVarsCaptor = ArgumentCaptor.forClass(Map.class);
+    verify(emailService).sendMessage(any(), any(), any(), templateVarsCaptor.capture());
+
+    Map<String, Object> templateVariables = templateVarsCaptor.getValue();
+    assertNull(templateVariables.get("eventDate"), "Unexpected event date.");
   }
 
   @Test
