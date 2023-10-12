@@ -69,7 +69,7 @@ class ConditionsOfJoiningListenerTest {
   void setUp() {
     userAccountService = mock(UserAccountService.class);
     when(userAccountService.getUserAccountIds(PERSON_ID)).thenReturn(Set.of(USER_ID));
-    when(userAccountService.getUserDetails(USER_ID)).thenReturn(new UserAccountDetails("", ""));
+    when(userAccountService.getUserDetails(USER_ID)).thenReturn(new UserAccountDetails("", null));
 
     emailService = mock(EmailService.class);
     listener = new ConditionsOfJoiningListener(userAccountService, emailService, APP_DOMAIN,
@@ -275,11 +275,11 @@ class ConditionsOfJoiningListenerTest {
     verify(emailService).sendMessage(any(), any(), any(), templateVarsCaptor.capture());
 
     Map<String, Object> templateVariables = templateVarsCaptor.getValue();
-    assertThat("Unexpected name.", templateVariables.get("name"), is("Dr Gilliam"));
+    assertThat("Unexpected name.", templateVariables.get("name"), is("Gilliam"));
   }
 
   @Test
-  void shouldAddressDoctorWhenCojReceivedAndNameNotAvailable() throws MessagingException {
+  void shouldNotIncludeNameWhenCojReceivedAndNameNotAvailable() throws MessagingException {
     ProgrammeMembershipEvent event = new ProgrammeMembershipEvent(PERSON_ID, MANAGING_DEANERY,
         new ConditionsOfJoining(SYNCED_AT));
 
@@ -289,6 +289,6 @@ class ConditionsOfJoiningListenerTest {
     verify(emailService).sendMessage(any(), any(), any(), templateVarsCaptor.capture());
 
     Map<String, Object> templateVariables = templateVarsCaptor.getValue();
-    assertThat("Unexpected name.", templateVariables.get("name"), is("Doctor"));
+    assertThat("Unexpected name.", templateVariables.get("name"), nullValue());
   }
 }

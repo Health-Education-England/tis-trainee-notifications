@@ -4,16 +4,28 @@
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
   </head>
   <body>
-    <p>Dear <span data-th-text="${name} ?: _">Doctor</span>,</p>
+    <p>
+      Dear
+      <span th:text="${not #strings.isEmpty(name)} ? |Dr ${name}| : _"
+        >Doctor</span
+      >,
+    </p>
     <p>
       We want to inform you that your local deanery office
-      <span th:text="${managingDeanery}? | (${managingDeanery}) | : _"></span>
-      has received your signed Conditions of Joining
-      <span th:text="${syncedAt}? | on ${#temporals.format(syncedAt, 'dd MMMM yyyy')}| : _"></span>.
+      <span
+        th:text="${not #strings.isEmpty(managingDeanery)} ? | (${managingDeanery}) | : _"
+      ></span
+      >has received your signed Conditions of Joining<span
+        th:text="${syncedAt} ? | on ${#temporals.format(syncedAt, 'dd MMMM yyyy')}| : _"
+      ></span
+      >.
     </p>
     <p>
       You can access a PDF of your signed Conditions of Joining by visiting
-      <a th:href="${not #strings.isEmpty(domain)}? @{{domain}/programmes(domain=${domain})} : _">TIS Self-Service</a>.
+      <a
+        th:href="${not #strings.isEmpty(domain)} ? @{{domain}/programmes(domain=${domain})} : _"
+        >TIS Self-Service</a
+      >.
     </p>
   </body>
 </html>
