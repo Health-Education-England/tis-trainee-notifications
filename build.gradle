@@ -59,7 +59,7 @@ dependencies {
   implementation "io.sentry:sentry-logback:$sentryVersion"
 
   testImplementation "org.springframework.cloud:spring-cloud-starter-bootstrap"
-  testImplementation "com.playtika.testcontainers:embedded-redis:3.0.1"
+  testImplementation "com.playtika.testcontainers:embedded-redis:3.0.4"
   testImplementation "org.testcontainers:junit-jupiter:1.19.1"
 
   testImplementation "org.jsoup:jsoup:1.16.1"
