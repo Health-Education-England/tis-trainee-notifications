@@ -76,7 +76,7 @@ class FormListenerTest {
     when(userAccountService.getUserDetails(USER_ID)).thenReturn(new UserAccountDetails("", null));
 
     emailService = mock(EmailService.class);
-    listener = new FormListener(userAccountService, emailService, APP_DOMAIN, TIMEZONE);
+    listener = new FormListener(emailService);
   }
 
   @Test
@@ -124,7 +124,8 @@ class FormListenerTest {
 
   @Test
   void shouldThrowExceptionWhenFormUpdatedAndSendingFails() throws MessagingException {
-    doThrow(MessagingException.class).when(emailService).sendMessage(any(), any(), any(), any());
+    doThrow(MessagingException.class)
+        .when(emailService).sendMessageToExistingUser(any(), any(), any());
 
     FormUpdateEvent event = new FormUpdateEvent(FORM_NAME, FORM_LIFECYCLE_STATE, PERSON_ID,
         FORM_TYPE, FORM_UPDATED_AT, FORM_CONTENT);
@@ -143,7 +144,8 @@ class FormListenerTest {
 
     listener.handleFormUpdate(event);
 
-    verify(emailService).sendMessage(eq("anthony.gilliam@tis.nhs.uk"), any(), any(), any());
+    verify(emailService).sendMessageToExistingUser(
+        eq("anthony.gilliam@tis.nhs.uk"), any(), any());
   }
 
   @Test
@@ -153,8 +155,8 @@ class FormListenerTest {
 
     listener.handleFormUpdate(event);
 
-    verify(emailService).sendMessage(any(), eq("Your Form R has been updated"), any(),
-        any());
+    verify(emailService).sendMessageToExistingUser(any(),
+        eq("Your Form R has been updated"), any());
   }
 
   @Test
@@ -164,7 +166,8 @@ class FormListenerTest {
 
     listener.handleFormUpdate(event);
 
-    verify(emailService).sendMessage(any(), any(), eq("email/form-updated"), any());
+    verify(emailService)
+        .sendMessageToExistingUser(any(), eq("email/form-updated"), any());
   }
 
   @Test
@@ -175,7 +178,7 @@ class FormListenerTest {
     listener.handleFormUpdate(event);
 
     ArgumentCaptor<Map<String, Object>> templateVarsCaptor = ArgumentCaptor.forClass(Map.class);
-    verify(emailService).sendMessage(any(), any(), any(), templateVarsCaptor.capture());
+    verify(emailService).sendMessageToExistingUser(any(), any(), templateVarsCaptor.capture());
 
     Map<String, Object> templateVariables = templateVarsCaptor.getValue();
     assertThat("Unexpected domain.", templateVariables.get("domain"), is(APP_DOMAIN));
@@ -189,7 +192,7 @@ class FormListenerTest {
     listener.handleFormUpdate(event);
 
     ArgumentCaptor<Map<String, Object>> templateVarsCaptor = ArgumentCaptor.forClass(Map.class);
-    verify(emailService).sendMessage(any(), any(), any(), templateVarsCaptor.capture());
+    verify(emailService).sendMessageToExistingUser(any(), any(), templateVarsCaptor.capture());
 
     Map<String, Object> templateVariables = templateVarsCaptor.getValue();
     assertThat("Unexpected form name.", templateVariables.get("formName"),
@@ -204,7 +207,7 @@ class FormListenerTest {
     listener.handleFormUpdate(event);
 
     ArgumentCaptor<Map<String, Object>> templateVarsCaptor = ArgumentCaptor.forClass(Map.class);
-    verify(emailService).sendMessage(any(), any(), any(), templateVarsCaptor.capture());
+    verify(emailService).sendMessageToExistingUser( any(), any(), templateVarsCaptor.capture());
 
     Map<String, Object> templateVariables = templateVarsCaptor.getValue();
     assertThat("Unexpected lifecycle state.", templateVariables.get("lifecycleState"),
@@ -219,7 +222,7 @@ class FormListenerTest {
     listener.handleFormUpdate(event);
 
     ArgumentCaptor<Map<String, Object>> templateVarsCaptor = ArgumentCaptor.forClass(Map.class);
-    verify(emailService).sendMessage(any(), any(), any(), templateVarsCaptor.capture());
+    verify(emailService).sendMessageToExistingUser(any(), any(), templateVarsCaptor.capture());
 
     Map<String, Object> templateVariables = templateVarsCaptor.getValue();
     assertThat("Unexpected form type.", templateVariables.get("formType"),
@@ -234,7 +237,7 @@ class FormListenerTest {
     listener.handleFormUpdate(event);
 
     ArgumentCaptor<Map<String, Object>> templateVarsCaptor = ArgumentCaptor.forClass(Map.class);
-    verify(emailService).sendMessage(any(), any(), any(), templateVarsCaptor.capture());
+    verify(emailService).sendMessageToExistingUser(any(), any(), templateVarsCaptor.capture());
 
     Map<String, Object> templateVariables = templateVarsCaptor.getValue();
     ZonedDateTime eventDate = (ZonedDateTime) templateVariables.get("eventDate");
@@ -253,7 +256,7 @@ class FormListenerTest {
     listener.handleFormUpdate(event);
 
     ArgumentCaptor<Map<String, Object>> templateVarsCaptor = ArgumentCaptor.forClass(Map.class);
-    verify(emailService).sendMessage(any(), any(), any(), templateVarsCaptor.capture());
+    verify(emailService).sendMessageToExistingUser(any(), any(), templateVarsCaptor.capture());
 
     Map<String, Object> templateVariables = templateVarsCaptor.getValue();
     ZonedDateTime eventDate = (ZonedDateTime) templateVariables.get("eventDate");
@@ -272,7 +275,7 @@ class FormListenerTest {
     listener.handleFormUpdate(event);
 
     ArgumentCaptor<Map<String, Object>> templateVarsCaptor = ArgumentCaptor.forClass(Map.class);
-    verify(emailService).sendMessage(any(), any(), any(), templateVarsCaptor.capture());
+    verify(emailService).sendMessageToExistingUser(any(), any(), templateVarsCaptor.capture());
 
     Map<String, Object> templateVariables = templateVarsCaptor.getValue();
     assertThat("Unexpected event date.", templateVariables.get("eventDate"), nullValue());
@@ -289,7 +292,7 @@ class FormListenerTest {
     listener.handleFormUpdate(event);
 
     ArgumentCaptor<Map<String, Object>> templateVarsCaptor = ArgumentCaptor.forClass(Map.class);
-    verify(emailService).sendMessage(any(), any(), any(), templateVarsCaptor.capture());
+    verify(emailService).sendMessageToExistingUser(any(), any(), templateVarsCaptor.capture());
 
     Map<String, Object> templateVariables = templateVarsCaptor.getValue();
     assertThat("Unexpected name.", templateVariables.get("name"), is("Gilliam"));
@@ -303,7 +306,7 @@ class FormListenerTest {
     listener.handleFormUpdate(event);
 
     ArgumentCaptor<Map<String, Object>> templateVarsCaptor = ArgumentCaptor.forClass(Map.class);
-    verify(emailService).sendMessage(any(), any(), any(), templateVarsCaptor.capture());
+    verify(emailService).sendMessageToExistingUser(any(), any(), templateVarsCaptor.capture());
 
     Map<String, Object> templateVariables = templateVarsCaptor.getValue();
     assertThat("Unexpected name.", templateVariables.get("name"), nullValue());

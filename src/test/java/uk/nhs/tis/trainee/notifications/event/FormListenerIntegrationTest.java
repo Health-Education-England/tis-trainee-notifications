@@ -113,8 +113,7 @@ class FormListenerIntegrationTest {
 
     // Create a new instance of the listener to allow overriding the domain.
     URI missingDomain = missingValue == null ? null : URI.create(missingValue);
-    FormListener listener = new FormListener(userAccountService,
-        emailService, missingDomain, "Europe/London");
+    FormListener listener = new FormListener(emailService);
     listener.handleFormUpdate(event);
 
     ArgumentCaptor<MimeMessage> messageCaptor = ArgumentCaptor.forClass(MimeMessage.class);

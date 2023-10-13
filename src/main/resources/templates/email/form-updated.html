@@ -4,12 +4,9 @@
   <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
 </head>
 <body>
-<p>
-  Dear
-  <span th:text="${not #strings.isEmpty(name)} ? |Dr ${name}| : _"
-  >Doctor</span
-  >,
-</p>
+<th:block th:fragment="subject">Your FormR has been updated</th:block>
+<th:block th:fragment="content">
+  <div th:replace="fragments/greeting :: body"></div>
 <span th:switch="${lifecycleState}">
 
   <span th:case="'SUBMITTED'" id="SUBMITTED">
@@ -50,5 +47,6 @@
     </p>
   </span>
 </span>
+</th:block>
 </body>
 </html>
