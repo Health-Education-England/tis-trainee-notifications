@@ -23,6 +23,9 @@ package uk.nhs.tis.trainee.notifications.event;
 
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -30,6 +33,7 @@ import jakarta.mail.Session;
 import jakarta.mail.internet.MimeMessage;
 import java.net.URI;
 import java.time.Instant;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import org.jsoup.Jsoup;
@@ -100,10 +104,15 @@ class ConditionsOfJoiningListenerIntegrationTest {
     when(userAccountService.getUserDetails(USER_ID)).thenReturn(
         new UserAccountDetails(EMAIL, missingValue));
 
-    // Create a new instance of the listener to allow overriding the domain.
-    URI missingDomain = missingValue == null ? null : URI.create(missingValue);
-    ConditionsOfJoiningListener listener = new ConditionsOfJoiningListener(userAccountService,
-        emailService, missingDomain, "Europe/London");
+    // Spy on the email service and inject a missing domain.
+    EmailService emailService = spy(this.emailService);
+    doAnswer(inv -> {
+      inv.getArgument(2, Map.class).put("domain", URI.create(""));
+      return inv.callRealMethod();
+    }).when(emailService).sendMessageToExistingUser(any(), any(), any());
+
+    // Create a new listener instance to inject the spy.
+    ConditionsOfJoiningListener listener = new ConditionsOfJoiningListener(emailService);
     listener.handleConditionsOfJoiningReceived(event);
 
     ArgumentCaptor<MimeMessage> messageCaptor = ArgumentCaptor.forClass(MimeMessage.class);
