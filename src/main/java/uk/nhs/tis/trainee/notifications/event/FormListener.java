@@ -30,7 +30,6 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.logging.log4j.util.Strings;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import uk.nhs.tis.trainee.notifications.dto.FormUpdateEvent;
@@ -103,9 +102,7 @@ public class FormListener {
         case 1 -> {
           UserAccountDetails userDetails = userAccountService.getUserDetails(
               userAccountIds.iterator().next());
-          String familyName = userDetails.familyName();
-          String name = Strings.isBlank(familyName) ? "Doctor" : "Dr " + familyName;
-          templateVariables.put("name", name);
+          templateVariables.put("name", userDetails.familyName());
           destination = userDetails.email();
         }
         default ->

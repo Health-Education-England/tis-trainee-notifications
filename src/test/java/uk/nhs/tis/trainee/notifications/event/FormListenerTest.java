@@ -22,8 +22,8 @@
 package uk.nhs.tis.trainee.notifications.event;
 
 import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -73,7 +73,7 @@ class FormListenerTest {
   void setUp() {
     userAccountService = mock(UserAccountService.class);
     when(userAccountService.getUserAccountIds(PERSON_ID)).thenReturn(Set.of(USER_ID));
-    when(userAccountService.getUserDetails(USER_ID)).thenReturn(new UserAccountDetails("", ""));
+    when(userAccountService.getUserDetails(USER_ID)).thenReturn(new UserAccountDetails("", null));
 
     emailService = mock(EmailService.class);
     listener = new FormListener(userAccountService, emailService, APP_DOMAIN, TIMEZONE);
@@ -275,7 +275,7 @@ class FormListenerTest {
     verify(emailService).sendMessage(any(), any(), any(), templateVarsCaptor.capture());
 
     Map<String, Object> templateVariables = templateVarsCaptor.getValue();
-    assertNull(templateVariables.get("eventDate"), "Unexpected event date.");
+    assertThat("Unexpected event date.", templateVariables.get("eventDate"), nullValue());
   }
 
   @Test
@@ -292,11 +292,11 @@ class FormListenerTest {
     verify(emailService).sendMessage(any(), any(), any(), templateVarsCaptor.capture());
 
     Map<String, Object> templateVariables = templateVarsCaptor.getValue();
-    assertThat("Unexpected name.", templateVariables.get("name"), is("Dr Gilliam"));
+    assertThat("Unexpected name.", templateVariables.get("name"), is("Gilliam"));
   }
 
   @Test
-  void shouldAddressDoctorWhenFormUpdatedAndNameNotAvailable() throws MessagingException {
+  void shouldNotIncludeNameWhenFormUpdatedAndNameNotAvailable() throws MessagingException {
     FormUpdateEvent event = new FormUpdateEvent(FORM_NAME, FORM_LIFECYCLE_STATE, PERSON_ID,
         FORM_TYPE, FORM_UPDATED_AT, FORM_CONTENT);
 
@@ -306,6 +306,6 @@ class FormListenerTest {
     verify(emailService).sendMessage(any(), any(), any(), templateVarsCaptor.capture());
 
     Map<String, Object> templateVariables = templateVarsCaptor.getValue();
-    assertThat("Unexpected name.", templateVariables.get("name"), is("Doctor"));
+    assertThat("Unexpected name.", templateVariables.get("name"), nullValue());
   }
 }
