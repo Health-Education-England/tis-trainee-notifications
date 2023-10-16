@@ -14,8 +14,8 @@
   th:text="${eventDate}? | on ${#temporals.format(eventDate, 'dd MMMM yyyy')}| : _"></span>.
     </p>
     <p>
-      You can access your PDF signed Form R by visiting
-      <a th:href="${not #strings.isEmpty(domain)}? @{{domain}/{formType}/{formName}(domain=${domain},formType=${formType},formName=${formName})} : _">TIS
+      You can access your PDF signed FormR by visiting
+      <a th:href="${not #strings.isEmpty(domain)}? @{{domain}/{formType}(domain=${domain},formType=${formType})} : _">TIS
       Self-Service</a>.
     </p>
   </span>
@@ -24,8 +24,8 @@
     <p>We want to inform you that your local NHS England office has returned your FormR for modification<span
       th:text="${eventDate}? | on ${#temporals.format(eventDate, 'dd MMMM yyyy')}| : _"></span>.
     </p>
-    <p>You can update and re-submit your Form R by visiting
-      <a th:href="${not #strings.isEmpty(domain)}? @{{domain}/{formType}/{formName}(domain=${domain},formType=${formType},formName=${formName})} : _">TIS
+    <p>You can update and re-submit your FormR by visiting
+      <a th:href="${not #strings.isEmpty(domain)}? @{{domain}/{formType}(domain=${domain},formType=${formType})} : _">TIS
       Self-Service</a>.
     </p>
   </span>
@@ -39,7 +39,7 @@
   </span>
 
   <span th:case="*" id="OTHER">
-    <p>We want to inform you that your Form R has been updated<span
+    <p>We want to inform you that your FormR has been updated<span
   th:text="${eventDate}? | on ${#temporals.format(eventDate, 'dd MMMM yyyy')}| : _"></span>.
     </p>
     <p>

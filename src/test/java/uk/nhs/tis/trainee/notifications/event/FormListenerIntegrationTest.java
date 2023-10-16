@@ -24,6 +24,9 @@ package uk.nhs.tis.trainee.notifications.event;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -67,8 +70,7 @@ class FormListenerIntegrationTest {
   private static final String FAMILY_NAME = "Gilliam";
 
   private static final Instant FORM_UPDATED_AT = Instant.parse("2023-08-01T00:00:00Z");
-  private static final String NEXT_STEPS_LINK
-      = "https://local.notifications.com/form-type/123.json";
+  private static final String NEXT_STEPS_LINK = "https://local.notifications.com/form-type";
 
   private static final String FORM_NAME = "123.json";
   private static final String FORM_SUBMITTED = "SUBMITTED";
@@ -78,7 +80,7 @@ class FormListenerIntegrationTest {
   private static final Map<String, Object> FORM_CONTENT = new HashMap<>();
 
   private static final String DEFAULT_GREETING = "Dear Doctor,";
-  private static final String DEFAULT_DETAIL = "We want to inform you that your Form R has been "
+  private static final String DEFAULT_DETAIL = "We want to inform you that your FormR has been "
       + "updated.";
   private static final String DEFAULT_NEXT_STEPS = "If this is unexpected then please contact your "
       + "local NHS England office for further details.";
@@ -111,8 +113,13 @@ class FormListenerIntegrationTest {
     when(userAccountService.getUserDetails(USER_ID)).thenReturn(
         new UserAccountDetails(EMAIL, missingValue));
 
-    // Create a new instance of the listener to allow overriding the domain.
-    URI missingDomain = missingValue == null ? null : URI.create(missingValue);
+    // Spy on the email service and inject a missing domain.
+    EmailService emailService = spy(this.emailService);
+    doAnswer(inv -> {
+      inv.getArgument(2, Map.class).put("domain", URI.create(""));
+      return inv.callRealMethod();
+    }).when(emailService).sendMessageToExistingUser(any(), any(), any());
+
     FormListener listener = new FormListener(emailService);
     listener.handleFormUpdate(event);
 
@@ -179,7 +186,7 @@ class FormListenerIntegrationTest {
     Element nextSteps = content.getElementById(FORM_SUBMITTED).children().get(1);
     assertThat("Unexpected element tag.", nextSteps.tagName(), is("p"));
     assertThat("Unexpected next steps.", nextSteps.text(),
-        is("You can access your PDF signed Form R by visiting TIS Self-Service."));
+        is("You can access your PDF signed FormR by visiting TIS Self-Service."));
 
     Elements nextStepsLinks = nextSteps.getElementsByTag("a");
     assertThat("Unexpected next steps link count.", nextStepsLinks.size(), is(1));
@@ -223,7 +230,7 @@ class FormListenerIntegrationTest {
     Element nextSteps = content.getElementById(FORM_UNSUBMITTED).children().get(1);
     assertThat("Unexpected element tag.", nextSteps.tagName(), is("p"));
     assertThat("Unexpected next steps.", nextSteps.text(),
-        is("You can update and re-submit your Form R by visiting TIS Self-Service."));
+        is("You can update and re-submit your FormR by visiting TIS Self-Service."));
 
     Elements nextStepsLinks = nextSteps.getElementsByTag("a");
     assertThat("Unexpected next steps link count.", nextStepsLinks.size(), is(1));

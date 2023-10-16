@@ -22,7 +22,6 @@
 package uk.nhs.tis.trainee.notifications.event;
 
 import static org.hamcrest.CoreMatchers.is;
-import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
@@ -30,31 +29,19 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
 
 import jakarta.mail.MessagingException;
-import java.net.URI;
 import java.time.Instant;
-import java.time.Month;
-import java.time.ZoneId;
-import java.time.ZonedDateTime;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
-import software.amazon.awssdk.services.cognitoidentityprovider.model.UserNotFoundException;
 import uk.nhs.tis.trainee.notifications.dto.FormUpdateEvent;
-import uk.nhs.tis.trainee.notifications.dto.UserAccountDetails;
 import uk.nhs.tis.trainee.notifications.service.EmailService;
-import uk.nhs.tis.trainee.notifications.service.UserAccountService;
 
 class FormListenerTest {
-
-  private static final URI APP_DOMAIN = URI.create("https://local.notifications.com");
-  private static final String TIMEZONE = "Europe/London";
 
   private static final String PERSON_ID = "40";
   private static final String USER_ID = UUID.randomUUID().toString();
@@ -66,66 +53,18 @@ class FormListenerTest {
   private static final Map<String, Object> FORM_CONTENT = new HashMap<>();
 
   private FormListener listener;
-  private UserAccountService userAccountService;
   private EmailService emailService;
 
   @BeforeEach
   void setUp() {
-    userAccountService = mock(UserAccountService.class);
-    when(userAccountService.getUserAccountIds(PERSON_ID)).thenReturn(Set.of(USER_ID));
-    when(userAccountService.getUserDetails(USER_ID)).thenReturn(new UserAccountDetails("", null));
-
     emailService = mock(EmailService.class);
     listener = new FormListener(emailService);
   }
 
   @Test
-  void shouldThrowExceptionWhenFormReceivedWithoutPersonId() {
-    FormUpdateEvent event = new FormUpdateEvent(FORM_NAME, FORM_LIFECYCLE_STATE, null,
-        FORM_TYPE, FORM_UPDATED_AT, FORM_CONTENT);
-
-    assertThrows(IllegalArgumentException.class,
-        () -> listener.handleFormUpdate(event));
-  }
-
-  @Test
-  void shouldThrowExceptionWhenFormUpdatedAndPersonIdNotFound() {
-    when(userAccountService.getUserAccountIds(PERSON_ID)).thenReturn(Set.of());
-
-    FormUpdateEvent event = new FormUpdateEvent(FORM_NAME, FORM_LIFECYCLE_STATE, PERSON_ID,
-        FORM_TYPE, FORM_UPDATED_AT, FORM_CONTENT);
-
-    assertThrows(IllegalArgumentException.class,
-        () -> listener.handleFormUpdate(event));
-  }
-
-  @Test
-  void shouldThrowExceptionWhenFormUpdatedAndMultiplePersonIdResults() {
-    when(userAccountService.getUserAccountIds(PERSON_ID)).thenReturn(
-        Set.of(USER_ID, UUID.randomUUID().toString()));
-
-    FormUpdateEvent event = new FormUpdateEvent(FORM_NAME, FORM_LIFECYCLE_STATE, PERSON_ID,
-        FORM_TYPE, FORM_UPDATED_AT, FORM_CONTENT);
-
-    assertThrows(IllegalArgumentException.class,
-        () -> listener.handleFormUpdate(event));
-  }
-
-  @Test
-  void shouldThrowExceptionWhenFormUpdatedAndUserDetailsNotFound() {
-    when(userAccountService.getUserDetails(USER_ID)).thenThrow(UserNotFoundException.class);
-
-    FormUpdateEvent event = new FormUpdateEvent(FORM_NAME, FORM_LIFECYCLE_STATE, PERSON_ID,
-        FORM_TYPE, FORM_UPDATED_AT, FORM_CONTENT);
-
-    assertThrows(UserNotFoundException.class,
-        () -> listener.handleFormUpdate(event));
-  }
-
-  @Test
   void shouldThrowExceptionWhenFormUpdatedAndSendingFails() throws MessagingException {
-    doThrow(MessagingException.class)
-        .when(emailService).sendMessageToExistingUser(any(), any(), any());
+    doThrow(MessagingException.class).when(emailService)
+        .sendMessageToExistingUser(any(), any(), any());
 
     FormUpdateEvent event = new FormUpdateEvent(FORM_NAME, FORM_LIFECYCLE_STATE, PERSON_ID,
         FORM_TYPE, FORM_UPDATED_AT, FORM_CONTENT);
@@ -133,30 +72,14 @@ class FormListenerTest {
     assertThrows(MessagingException.class, () -> listener.handleFormUpdate(event));
   }
 
-
   @Test
-  void shouldSetDestinationWhenFormUpdated() throws MessagingException {
-    when(userAccountService.getUserDetails(USER_ID)).thenReturn(
-        new UserAccountDetails("anthony.gilliam@tis.nhs.uk", ""));
-
+  void shouldSetTraineeIdWhenFormUpdated() throws MessagingException {
     FormUpdateEvent event = new FormUpdateEvent(FORM_NAME, FORM_LIFECYCLE_STATE, PERSON_ID,
         FORM_TYPE, FORM_UPDATED_AT, FORM_CONTENT);
 
     listener.handleFormUpdate(event);
 
-    verify(emailService).sendMessageToExistingUser(
-        eq("anthony.gilliam@tis.nhs.uk"), any(), any());
-  }
-
-  @Test
-  void shouldSetSubjectWhenFormUpdated() throws MessagingException {
-    FormUpdateEvent event = new FormUpdateEvent(FORM_NAME, FORM_LIFECYCLE_STATE, PERSON_ID,
-        FORM_TYPE, FORM_UPDATED_AT, FORM_CONTENT);
-
-    listener.handleFormUpdate(event);
-
-    verify(emailService).sendMessageToExistingUser(any(),
-        eq("Your Form R has been updated"), any());
+    verify(emailService).sendMessageToExistingUser(eq(PERSON_ID), any(), any());
   }
 
   @Test
@@ -168,20 +91,6 @@ class FormListenerTest {
 
     verify(emailService)
         .sendMessageToExistingUser(any(), eq("email/form-updated"), any());
-  }
-
-  @Test
-  void shouldIncludeDomainWhenFormUpdated() throws MessagingException {
-    FormUpdateEvent event = new FormUpdateEvent(FORM_NAME, FORM_LIFECYCLE_STATE, PERSON_ID,
-        FORM_TYPE, FORM_UPDATED_AT, FORM_CONTENT);
-
-    listener.handleFormUpdate(event);
-
-    ArgumentCaptor<Map<String, Object>> templateVarsCaptor = ArgumentCaptor.forClass(Map.class);
-    verify(emailService).sendMessageToExistingUser(any(), any(), templateVarsCaptor.capture());
-
-    Map<String, Object> templateVariables = templateVarsCaptor.getValue();
-    assertThat("Unexpected domain.", templateVariables.get("domain"), is(APP_DOMAIN));
   }
 
   @Test
@@ -230,62 +139,7 @@ class FormListenerTest {
   }
 
   @Test
-  void shouldIncludeGmtEventDateWhenFormUpdated() throws MessagingException {
-    FormUpdateEvent event = new FormUpdateEvent(FORM_NAME, FORM_LIFECYCLE_STATE, PERSON_ID,
-        FORM_TYPE, Instant.parse("2021-02-03T04:05:06Z"), FORM_CONTENT);
-
-    listener.handleFormUpdate(event);
-
-    ArgumentCaptor<Map<String, Object>> templateVarsCaptor = ArgumentCaptor.forClass(Map.class);
-    verify(emailService).sendMessageToExistingUser(any(), any(), templateVarsCaptor.capture());
-
-    Map<String, Object> templateVariables = templateVarsCaptor.getValue();
-    ZonedDateTime eventDate = (ZonedDateTime) templateVariables.get("eventDate");
-
-    assertThat("Unexpected event date day.", eventDate.getDayOfMonth(), is(3));
-    assertThat("Unexpected event date month.", eventDate.getMonth(), is(Month.FEBRUARY));
-    assertThat("Unexpected event date year.", eventDate.getYear(), is(2021));
-    assertThat("Unexpected event date zone.", eventDate.getZone(), is(ZoneId.of(TIMEZONE)));
-  }
-
-  @Test
-  void shouldIncludeBstEventDateWhenFormUpdated() throws MessagingException {
-    FormUpdateEvent event = new FormUpdateEvent(FORM_NAME, FORM_LIFECYCLE_STATE, PERSON_ID,
-        FORM_TYPE, Instant.parse("2021-08-03T23:05:06Z"), FORM_CONTENT);
-
-    listener.handleFormUpdate(event);
-
-    ArgumentCaptor<Map<String, Object>> templateVarsCaptor = ArgumentCaptor.forClass(Map.class);
-    verify(emailService).sendMessageToExistingUser(any(), any(), templateVarsCaptor.capture());
-
-    Map<String, Object> templateVariables = templateVarsCaptor.getValue();
-    ZonedDateTime eventDate = (ZonedDateTime) templateVariables.get("eventDate");
-
-    assertThat("Unexpected event date day.", eventDate.getDayOfMonth(), is(4));
-    assertThat("Unexpected event date month.", eventDate.getMonth(), is(Month.AUGUST));
-    assertThat("Unexpected event date year.", eventDate.getYear(), is(2021));
-    assertThat("Unexpected event date zone.", eventDate.getZone(), is(ZoneId.of(TIMEZONE)));
-  }
-
-  @Test
-  void shouldNotIncludeEventDateIfNotIncludedWhenFormUpdated() throws MessagingException {
-    FormUpdateEvent event = new FormUpdateEvent(FORM_NAME, FORM_LIFECYCLE_STATE, PERSON_ID,
-        FORM_TYPE, null, FORM_CONTENT);
-
-    listener.handleFormUpdate(event);
-
-    ArgumentCaptor<Map<String, Object>> templateVarsCaptor = ArgumentCaptor.forClass(Map.class);
-    verify(emailService).sendMessageToExistingUser(any(), any(), templateVarsCaptor.capture());
-
-    Map<String, Object> templateVariables = templateVarsCaptor.getValue();
-    assertThat("Unexpected event date.", templateVariables.get("eventDate"), nullValue());
-  }
-
-  @Test
-  void shouldIncludeNameWhenFormUpdatedAndNameAvailable() throws MessagingException {
-    when(userAccountService.getUserDetails(USER_ID)).thenReturn(
-        new UserAccountDetails("", "Gilliam"));
-
+  void shouldIncludeUpdateDateWhenFormUpdated() throws MessagingException {
     FormUpdateEvent event = new FormUpdateEvent(FORM_NAME, FORM_LIFECYCLE_STATE, PERSON_ID,
         FORM_TYPE, FORM_UPDATED_AT, FORM_CONTENT);
 
@@ -295,20 +149,7 @@ class FormListenerTest {
     verify(emailService).sendMessageToExistingUser(any(), any(), templateVarsCaptor.capture());
 
     Map<String, Object> templateVariables = templateVarsCaptor.getValue();
-    assertThat("Unexpected name.", templateVariables.get("name"), is("Gilliam"));
-  }
-
-  @Test
-  void shouldNotIncludeNameWhenFormUpdatedAndNameNotAvailable() throws MessagingException {
-    FormUpdateEvent event = new FormUpdateEvent(FORM_NAME, FORM_LIFECYCLE_STATE, PERSON_ID,
-        FORM_TYPE, FORM_UPDATED_AT, FORM_CONTENT);
-
-    listener.handleFormUpdate(event);
-
-    ArgumentCaptor<Map<String, Object>> templateVarsCaptor = ArgumentCaptor.forClass(Map.class);
-    verify(emailService).sendMessageToExistingUser(any(), any(), templateVarsCaptor.capture());
-
-    Map<String, Object> templateVariables = templateVarsCaptor.getValue();
-    assertThat("Unexpected name.", templateVariables.get("name"), nullValue());
+    assertThat("Unexpected form updated at.", templateVariables.get("eventDate"),
+        is(FORM_UPDATED_AT));
   }
 }

@@ -23,19 +23,12 @@ package uk.nhs.tis.trainee.notifications.event;
 
 import io.awspring.cloud.sqs.annotation.SqsListener;
 import jakarta.mail.MessagingException;
-import java.net.URI;
-import java.time.ZoneId;
-import java.time.ZonedDateTime;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import uk.nhs.tis.trainee.notifications.dto.FormUpdateEvent;
-import uk.nhs.tis.trainee.notifications.dto.UserAccountDetails;
 import uk.nhs.tis.trainee.notifications.service.EmailService;
-import uk.nhs.tis.trainee.notifications.service.UserAccountService;
 
 /**
  * A listener for Form update events.
@@ -67,16 +60,13 @@ public class FormListener {
   public void handleFormUpdate(FormUpdateEvent event) throws MessagingException {
     log.info("Handling form update event {}.", event);
 
-    String traineeId = event.traineeId();
-    if (traineeId == null) {
-      throw new IllegalArgumentException("Unable to send notification as no trainee ID available");
-    }
-
     Map<String, Object> templateVariables = new HashMap<>();
     templateVariables.put("formName", event.formName());
     templateVariables.put("formType", event.formType());
     templateVariables.put("lifecycleState", event.lifecycleState());
+    templateVariables.put("eventDate", event.eventDate());
 
+    String traineeId = event.traineeId();
     emailService.sendMessageToExistingUser(traineeId, FORM_UPDATE_TEMPLATE, templateVariables);
     log.info("Form updated notification sent for trainee {}.", traineeId);
   }
