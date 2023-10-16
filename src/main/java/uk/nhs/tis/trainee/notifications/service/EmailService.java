@@ -78,8 +78,11 @@ public class EmailService {
    * @throws MessagingException When the message could not be sent.
    */
   public void sendMessageToExistingUser(String traineeId, String templateName,
-      Map<String, Object> templateVariables)
-      throws MessagingException {
+      Map<String, Object> templateVariables) throws MessagingException {
+    if (traineeId == null) {
+      throw new IllegalArgumentException("Unable to send notification as no trainee ID available");
+    }
+
     UserAccountDetails userDetails = getRecipientAccount(traineeId);
 
     if (Strings.isBlank(userDetails.email())) {

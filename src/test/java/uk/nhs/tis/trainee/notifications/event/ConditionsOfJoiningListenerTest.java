@@ -57,15 +57,6 @@ class ConditionsOfJoiningListenerTest {
   }
 
   @Test
-  void shouldThrowExceptionWhenCojReceivedWithoutPersonId() {
-    ProgrammeMembershipEvent event = new ProgrammeMembershipEvent(null, MANAGING_DEANERY,
-        new ConditionsOfJoining(SYNCED_AT));
-
-    assertThrows(IllegalArgumentException.class,
-        () -> listener.handleConditionsOfJoiningReceived(event));
-  }
-
-  @Test
   void shouldThrowExceptionWhenCojReceivedAndSendingFails() throws MessagingException {
     doThrow(MessagingException.class).when(emailService)
         .sendMessageToExistingUser(any(), any(), any());

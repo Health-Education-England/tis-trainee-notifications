@@ -31,6 +31,7 @@ import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import jakarta.activation.DataHandler;
@@ -92,7 +93,15 @@ class EmailServiceTest {
   }
 
   @Test
-  void shouldThrowExceptionWhenSendingToExistingUserAndPersonIdNotFound() {
+  void shouldThrowExceptionWhenCojReceivedWithoutTraineeId() {
+    assertThrows(IllegalArgumentException.class,
+        () -> service.sendMessageToExistingUser(null, null, null));
+
+    verifyNoInteractions(userAccountService);
+  }
+
+  @Test
+  void shouldThrowExceptionWhenSendingToExistingUserAndTraineeIdNotFound() {
     when(userAccountService.getUserAccountIds(TRAINEE_ID)).thenReturn(Set.of());
 
     assertThrows(IllegalArgumentException.class,
@@ -100,7 +109,7 @@ class EmailServiceTest {
   }
 
   @Test
-  void shouldThrowExceptionWhenSendingToExistingUserAndAndMultiplePersonIdResults() {
+  void shouldThrowExceptionWhenSendingToExistingUserAndAndMultipleTraineeIdResults() {
     when(userAccountService.getUserAccountIds(TRAINEE_ID)).thenReturn(
         Set.of(USER_ID, UUID.randomUUID().toString()));
 

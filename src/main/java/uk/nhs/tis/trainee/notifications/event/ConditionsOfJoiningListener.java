@@ -60,11 +60,6 @@ public class ConditionsOfJoiningListener {
   public void handleConditionsOfJoiningReceived(ProgrammeMembershipEvent event)
       throws MessagingException {
     log.info("Handling COJ received event {}.", event);
-    String traineeId = event.personId();
-
-    if (traineeId == null) {
-      throw new IllegalArgumentException("Unable to send notification as no trainee ID available");
-    }
 
     Map<String, Object> templateVariables = new HashMap<>();
     templateVariables.put("managingDeanery", event.managingDeanery());
@@ -73,6 +68,7 @@ public class ConditionsOfJoiningListener {
       templateVariables.put("syncedAt", event.conditionsOfJoining().syncedAt());
     }
 
+    String traineeId = event.personId();
     emailService.sendMessageToExistingUser(traineeId, CONFIRMATION_TEMPLATE, templateVariables);
     log.info("COJ received notification sent for trainee {}.", traineeId);
   }
