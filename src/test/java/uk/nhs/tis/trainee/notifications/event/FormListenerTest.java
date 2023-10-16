@@ -116,7 +116,7 @@ class FormListenerTest {
     listener.handleFormUpdate(event);
 
     ArgumentCaptor<Map<String, Object>> templateVarsCaptor = ArgumentCaptor.forClass(Map.class);
-    verify(emailService).sendMessageToExistingUser( any(), any(), templateVarsCaptor.capture());
+    verify(emailService).sendMessageToExistingUser(any(), any(), templateVarsCaptor.capture());
 
     Map<String, Object> templateVariables = templateVarsCaptor.getValue();
     assertThat("Unexpected lifecycle state.", templateVariables.get("lifecycleState"),
