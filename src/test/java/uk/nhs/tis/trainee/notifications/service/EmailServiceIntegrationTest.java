@@ -34,6 +34,8 @@ import java.io.FileNotFoundException;
 import java.util.Arrays;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Stream;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
@@ -49,16 +51,21 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.util.ResourceUtils;
+import uk.nhs.tis.trainee.notifications.dto.UserAccountDetails;
 
 @SpringBootTest(classes = EmailService.class)
 @ImportAutoConfiguration(ThymeleafAutoConfiguration.class)
 class EmailServiceIntegrationTest {
 
+  private static final String PERSON_ID = "40";
+  private static final String USER_ID = UUID.randomUUID().toString();
   private static final String RECIPIENT = "test@tis.nhs.uk";
-  private static final String SUBJECT = "Test Email";
 
   @MockBean
   private JavaMailSender mailSender;
+
+  @MockBean
+  private UserAccountService userAccountService;
 
   @Autowired
   private EmailService service;
@@ -66,6 +73,7 @@ class EmailServiceIntegrationTest {
   @BeforeEach
   void setUp() {
     when(mailSender.createMimeMessage()).thenReturn(new MimeMessage((Session) null));
+    when(userAccountService.getUserAccountIds(PERSON_ID)).thenReturn(Set.of(USER_ID));
   }
 
   private static Stream<String> getEmailTemplates() throws FileNotFoundException {
@@ -76,8 +84,11 @@ class EmailServiceIntegrationTest {
 
   @ParameterizedTest
   @MethodSource("getEmailTemplates")
-  void shouldGreetDoctorsConsistentlyWhenNameNotAvailable(String template) throws Exception {
-    service.sendMessage(RECIPIENT, SUBJECT, template, Map.of());
+  void shouldGreetExistingUsersConsistentlyWhenNameNotAvailable(String template) throws Exception {
+    when(userAccountService.getUserDetails(USER_ID)).thenReturn(
+        new UserAccountDetails(RECIPIENT, null));
+
+    service.sendMessageToExistingUser(PERSON_ID, template, Map.of());
 
     ArgumentCaptor<MimeMessage> messageCaptor = ArgumentCaptor.forClass(MimeMessage.class);
     verify(mailSender).send(messageCaptor.capture());
@@ -93,8 +104,11 @@ class EmailServiceIntegrationTest {
 
   @ParameterizedTest
   @MethodSource("getEmailTemplates")
-  void shouldGreetDoctorsConsistentlyWhenNameAvailable(String template) throws Exception {
-    service.sendMessage(RECIPIENT, SUBJECT, template, Map.of("name", "Gilliam"));
+  void shouldGreetExistingUsersConsistentlyWhenNameAvailable(String template) throws Exception {
+    when(userAccountService.getUserDetails(USER_ID)).thenReturn(
+        new UserAccountDetails(RECIPIENT, "Gilliam"));
+
+    service.sendMessageToExistingUser(PERSON_ID, template, Map.of());
 
     ArgumentCaptor<MimeMessage> messageCaptor = ArgumentCaptor.forClass(MimeMessage.class);
     verify(mailSender).send(messageCaptor.capture());
@@ -106,5 +120,25 @@ class EmailServiceIntegrationTest {
     Element greeting = body.children().get(0);
     assertThat("Unexpected element tag.", greeting.tagName(), is("p"));
     assertThat("Unexpected greeting.", greeting.text(), is("Dear Dr Gilliam,"));
+  }
+
+  @ParameterizedTest
+  @MethodSource("getEmailTemplates")
+  void shouldGreetExistingUsersConsistentlyWhenNameProvided(String template) throws Exception {
+    when(userAccountService.getUserDetails(USER_ID)).thenReturn(
+        new UserAccountDetails(RECIPIENT, "Gilliam"));
+
+    service.sendMessageToExistingUser(PERSON_ID, template, Map.of("name", "Milliag"));
+
+    ArgumentCaptor<MimeMessage> messageCaptor = ArgumentCaptor.forClass(MimeMessage.class);
+    verify(mailSender).send(messageCaptor.capture());
+
+    MimeMessage message = messageCaptor.getValue();
+    Document content = Jsoup.parse((String) message.getContent());
+    Element body = content.body();
+
+    Element greeting = body.children().get(0);
+    assertThat("Unexpected element tag.", greeting.tagName(), is("p"));
+    assertThat("Unexpected greeting.", greeting.text(), is("Dear Dr Milliag,"));
   }
 }
