@@ -22,7 +22,9 @@
 package uk.nhs.tis.trainee.notifications.service;
 
 import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.CoreMatchers.not;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.emptyOrNullString;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.util.ResourceUtils.CLASSPATH_URL_PREFIX;
@@ -80,6 +82,36 @@ class EmailServiceIntegrationTest {
     File emailTemplateFolder = ResourceUtils.getFile(CLASSPATH_URL_PREFIX + "templates/email/");
     return Arrays.stream(Objects.requireNonNull(emailTemplateFolder.listFiles()))
         .map(file -> "email/" + file.getName().replace(".html", ""));
+  }
+
+  @ParameterizedTest
+  @MethodSource("getEmailTemplates")
+  void shouldIncludeSubjectInTemplates(String template) throws Exception {
+    when(userAccountService.getUserDetails(USER_ID)).thenReturn(
+        new UserAccountDetails(RECIPIENT, null));
+
+    service.sendMessageToExistingUser(PERSON_ID, template, Map.of());
+
+    ArgumentCaptor<MimeMessage> messageCaptor = ArgumentCaptor.forClass(MimeMessage.class);
+    verify(mailSender).send(messageCaptor.capture());
+
+    MimeMessage message = messageCaptor.getValue();
+    assertThat("Unexpected subject.", message.getSubject(), not(emptyOrNullString()));
+  }
+
+  @ParameterizedTest
+  @MethodSource("getEmailTemplates")
+  void shouldIncludeContentInTemplates(String template) throws Exception {
+    when(userAccountService.getUserDetails(USER_ID)).thenReturn(
+        new UserAccountDetails(RECIPIENT, null));
+
+    service.sendMessageToExistingUser(PERSON_ID, template, Map.of());
+
+    ArgumentCaptor<MimeMessage> messageCaptor = ArgumentCaptor.forClass(MimeMessage.class);
+    verify(mailSender).send(messageCaptor.capture());
+
+    MimeMessage message = messageCaptor.getValue();
+    assertThat("Unexpected content.", (String) message.getContent(), not(emptyOrNullString()));
   }
 
   @ParameterizedTest

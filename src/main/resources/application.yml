@@ -15,6 +15,7 @@ application:
   environment: ${ENVIRONMENT:local}
   queues:
       coj-received: ${COJ_RECEIVED_QUEUE}
+      credential-revoked: ${CREDENTIAL_REVOKED_QUEUE}
       form-updated: ${FORM_UPDATED_QUEUE}
   timezone: Europe/London
 
