@@ -70,6 +70,7 @@ class ConditionsOfJoiningListenerIntegrationTest {
   private static final String MANAGING_DEANERY = "Mars LO";
   private static final Instant SYNCED_AT = Instant.parse("2023-08-01T00:00:00Z");
   private static final String NEXT_STEPS_LINK = "https://local.notifications.com/programmes";
+  private static final String SURVEY_LINK = "https://forms.gle/P2cdQUgTDWqjUodJA";
 
   private static final String DEFAULT_GREETING = "Dear Doctor,";
   private static final String DEFAULT_DETAIL = "We want to inform you that your local deanery"
@@ -122,7 +123,7 @@ class ConditionsOfJoiningListenerIntegrationTest {
     Document content = Jsoup.parse((String) message.getContent());
 
     Elements bodyChildren = content.body().children();
-    assertThat("Unexpected body children count.", bodyChildren.size(), is(3));
+    assertThat("Unexpected body children count.", bodyChildren.size(), is(5));
 
     Element greeting = bodyChildren.get(0);
     assertThat("Unexpected element tag.", greeting.tagName(), is("p"));
@@ -140,6 +141,13 @@ class ConditionsOfJoiningListenerIntegrationTest {
     assertThat("Unexpected next steps link count.", nextStepsLinks.size(), is(1));
     Element tssLink = nextStepsLinks.get(0);
     assertThat("Unexpected next steps link.", tssLink.attr("href"), is(""));
+
+    Element surveyPara = content.getElementById("SURVEY_LINK");
+    Elements surveyLinks = surveyPara.getElementsByTag("a");
+    assertThat("Unexpected survey link count.", surveyLinks.size(), is(1));
+    Element surveyLink = surveyLinks.get(0);
+    assertThat("Unexpected survey link.", surveyLink.attr("href"),
+        is(SURVEY_LINK));
   }
 
   @Test
@@ -158,7 +166,7 @@ class ConditionsOfJoiningListenerIntegrationTest {
     Document content = Jsoup.parse((String) message.getContent());
 
     Elements bodyChildren = content.body().children();
-    assertThat("Unexpected body children count.", bodyChildren.size(), is(3));
+    assertThat("Unexpected body children count.", bodyChildren.size(), is(5));
 
     Element greeting = bodyChildren.get(0);
     assertThat("Unexpected element tag.", greeting.tagName(), is("p"));
@@ -180,6 +188,13 @@ class ConditionsOfJoiningListenerIntegrationTest {
     assertThat("Unexpected next steps link count.", nextStepsLinks.size(), is(1));
     Element tssLink = nextStepsLinks.get(0);
     assertThat("Unexpected next steps link.", tssLink.attr("href"), is(NEXT_STEPS_LINK));
+
+    Element surveyPara = content.getElementById("SURVEY_LINK");
+    Elements surveyLinks = surveyPara.getElementsByTag("a");
+    assertThat("Unexpected survey link count.", surveyLinks.size(), is(1));
+    Element surveyLink = surveyLinks.get(0);
+    assertThat("Unexpected survey link.", surveyLink.attr("href"),
+        is(SURVEY_LINK));
   }
 
   @Test
@@ -198,7 +213,7 @@ class ConditionsOfJoiningListenerIntegrationTest {
     Document content = Jsoup.parse((String) message.getContent());
 
     Elements bodyChildren = content.body().children();
-    assertThat("Unexpected body children count.", bodyChildren.size(), is(3));
+    assertThat("Unexpected body children count.", bodyChildren.size(), is(5));
 
     Element greeting = bodyChildren.get(0);
     assertThat("Unexpected element tag.", greeting.tagName(), is("p"));
@@ -216,6 +231,13 @@ class ConditionsOfJoiningListenerIntegrationTest {
     assertThat("Unexpected next steps link count.", nextStepsLinks.size(), is(1));
     Element tssLink = nextStepsLinks.get(0);
     assertThat("Unexpected next steps link.", tssLink.attr("href"), is(NEXT_STEPS_LINK));
+
+    Element surveyPara = content.getElementById("SURVEY_LINK");
+    Elements surveyLinks = surveyPara.getElementsByTag("a");
+    assertThat("Unexpected survey link count.", surveyLinks.size(), is(1));
+    Element surveyLink = surveyLinks.get(0);
+    assertThat("Unexpected survey link.", surveyLink.attr("href"),
+        is(SURVEY_LINK));
   }
 
   @Test
@@ -234,7 +256,7 @@ class ConditionsOfJoiningListenerIntegrationTest {
     Document content = Jsoup.parse((String) message.getContent());
 
     Elements bodyChildren = content.body().children();
-    assertThat("Unexpected body children count.", bodyChildren.size(), is(3));
+    assertThat("Unexpected body children count.", bodyChildren.size(), is(5));
 
     Element greeting = bodyChildren.get(0);
     assertThat("Unexpected element tag.", greeting.tagName(), is("p"));
@@ -254,6 +276,13 @@ class ConditionsOfJoiningListenerIntegrationTest {
     assertThat("Unexpected next steps link count.", nextStepsLinks.size(), is(1));
     Element tssLink = nextStepsLinks.get(0);
     assertThat("Unexpected next steps link.", tssLink.attr("href"), is(NEXT_STEPS_LINK));
+
+    Element surveyPara = content.getElementById("SURVEY_LINK");
+    Elements surveyLinks = surveyPara.getElementsByTag("a");
+    assertThat("Unexpected survey link count.", surveyLinks.size(), is(1));
+    Element surveyLink = surveyLinks.get(0);
+    assertThat("Unexpected survey link.", surveyLink.attr("href"),
+        is(SURVEY_LINK));
   }
 
   @Test
@@ -272,7 +301,7 @@ class ConditionsOfJoiningListenerIntegrationTest {
     Document content = Jsoup.parse((String) message.getContent());
 
     Elements bodyChildren = content.body().children();
-    assertThat("Unexpected body children count.", bodyChildren.size(), is(3));
+    assertThat("Unexpected body children count.", bodyChildren.size(), is(5));
 
     Element greeting = bodyChildren.get(0);
     assertThat("Unexpected element tag.", greeting.tagName(), is("p"));
@@ -292,6 +321,13 @@ class ConditionsOfJoiningListenerIntegrationTest {
     assertThat("Unexpected next steps link count.", nextStepsLinks.size(), is(1));
     Element tssLink = nextStepsLinks.get(0);
     assertThat("Unexpected next steps link.", tssLink.attr("href"), is(NEXT_STEPS_LINK));
+
+    Element surveyPara = content.getElementById("SURVEY_LINK");
+    Elements surveyLinks = surveyPara.getElementsByTag("a");
+    assertThat("Unexpected survey link count.", surveyLinks.size(), is(1));
+    Element surveyLink = surveyLinks.get(0);
+    assertThat("Unexpected survey link.", surveyLink.attr("href"),
+        is(SURVEY_LINK));
   }
 
   @Test
@@ -310,7 +346,7 @@ class ConditionsOfJoiningListenerIntegrationTest {
     Document content = Jsoup.parse((String) message.getContent());
 
     Elements bodyChildren = content.body().children();
-    assertThat("Unexpected body children count.", bodyChildren.size(), is(3));
+    assertThat("Unexpected body children count.", bodyChildren.size(), is(5));
 
     Element greeting = bodyChildren.get(0);
     assertThat("Unexpected element tag.", greeting.tagName(), is("p"));
@@ -328,5 +364,12 @@ class ConditionsOfJoiningListenerIntegrationTest {
     assertThat("Unexpected next steps link count.", nextStepsLinks.size(), is(1));
     Element tssLink = nextStepsLinks.get(0);
     assertThat("Unexpected next steps link.", tssLink.attr("href"), is(NEXT_STEPS_LINK));
+
+    Element surveyPara = content.getElementById("SURVEY_LINK");
+    Elements surveyLinks = surveyPara.getElementsByTag("a");
+    assertThat("Unexpected survey link count.", surveyLinks.size(), is(1));
+    Element surveyLink = surveyLinks.get(0);
+    assertThat("Unexpected survey link.", surveyLink.attr("href"),
+        is(SURVEY_LINK));
   }
 }
