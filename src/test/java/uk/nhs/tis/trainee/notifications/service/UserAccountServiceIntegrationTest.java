@@ -87,14 +87,14 @@ class UserAccountServiceIntegrationTest {
   }
 
   @Test
-  void shouldBuildUserAccountIdCacheWhenPersonIdNotFound() {
+  void shouldBuildUserAccountIdCacheWhenPersonNotInCache() {
     // The response is mocked instead of constructed due to embedded pagination handling.
     when(cognitoClient.listUsersPaginator(any(ListUsersRequest.class))).thenReturn(responses);
     when(responses.users()).thenReturn(users);
 
     UserType user = UserType.builder().attributes(
         AttributeType.builder().name(ATTRIBUTE_PERSON_ID).value(PERSON_ID).build(),
-        AttributeType.builder().name(ATTRIBUTE_USER_ID).value(USER_ID.toString()).build()
+        AttributeType.builder().name(ATTRIBUTE_USER_ID).value(USER_ID).build()
     ).build();
     when(users.stream()).thenReturn(Stream.of(user));
 
@@ -110,7 +110,24 @@ class UserAccountServiceIntegrationTest {
   }
 
   @Test
-  void shouldReturnCachedUserAccountIdWhenPersonIdFound() {
+  void shouldReturnEmptyWhenPersonNotFoundAfterBuildingCache() {
+    // The response is mocked instead of constructed due to embedded pagination handling.
+    when(cognitoClient.listUsersPaginator(any(ListUsersRequest.class))).thenReturn(responses);
+    when(responses.users()).thenReturn(users);
+
+    UserType user = UserType.builder().attributes(
+        AttributeType.builder().name(ATTRIBUTE_PERSON_ID).value(PERSON_ID).build(),
+        AttributeType.builder().name(ATTRIBUTE_USER_ID).value(USER_ID).build()
+    ).build();
+    when(users.stream()).thenReturn(Stream.of(user));
+
+    Set<String> returnedUserIds = service.getUserAccountIds("notFound");
+
+    assertThat("Unexpected user IDs count.", returnedUserIds.size(), is(0));
+  }
+
+  @Test
+  void shouldReturnCachedUserAccountIdWhenPersonInCache() {
     userIdCache.put(PERSON_ID, Set.of(USER_ID));
 
     Set<String> returnedUserIds = service.getUserAccountIds(PERSON_ID);

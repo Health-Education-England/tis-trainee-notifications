@@ -167,6 +167,22 @@ class UserAccountServiceTest {
   }
 
   @Test
+  void shouldGetEmptyUserAccountIdsWhenAccountNotFoundAfterBuildingCache() {
+    // The response is mocked instead of constructed due to embedded pagination handling.
+    ListUsersIterable responses = mock(ListUsersIterable.class);
+    when(cognitoClient.listUsersPaginator(any(ListUsersRequest.class))).thenReturn(responses);
+
+    SdkIterable<UserType> users = mock(SdkIterable.class);
+    when(responses.users()).thenReturn(users);
+
+    when(cache.get(PERSON_ID_1, Set.class)).thenReturn(null);
+
+    Set<String> userAccountIds = service.getUserAccountIds(PERSON_ID_1);
+
+    assertThat("Unexpected user IDs count.", userAccountIds.size(), is(0));
+  }
+
+  @Test
   void shouldGetUserDetailsWhenUserFound() {
     AdminGetUserResponse response = AdminGetUserResponse.builder()
         .userAttributes(

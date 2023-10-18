@@ -68,13 +68,15 @@ public class UserAccountService {
    * Get all user account IDs associated with the given person ID.
    *
    * @param personId The person ID to get the user IDs for.
-   * @return The found user IDs.
+   * @return The found user IDs, or empty if not found.
    */
   @Cacheable(USER_ID_CACHE)
   public Set<String> getUserAccountIds(String personId) {
     log.info("User account not found in the cache.");
     cacheAllUserAccountIds();
-    return cache.get(personId, Set.class);
+
+    Set<String> userAccountIds = cache.get(personId, Set.class);
+    return userAccountIds != null ? userAccountIds : Set.of();
   }
 
   /**
