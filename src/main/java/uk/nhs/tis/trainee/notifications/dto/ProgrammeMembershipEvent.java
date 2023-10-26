@@ -27,11 +27,9 @@ import java.time.Instant;
  * A Programme Membership event.
  *
  * @param personId            The person associated with the Programme membership.
- * @param managingDeanery     The programme owner.
  * @param conditionsOfJoining The Programme Membership's Conditions of Joining.
  */
-public record ProgrammeMembershipEvent(String personId, String managingDeanery,
-                                       ConditionsOfJoining conditionsOfJoining) {
+public record ProgrammeMembershipEvent(String personId, ConditionsOfJoining conditionsOfJoining) {
 
   /**
    * A Programme Membership's Conditions of Joining details.

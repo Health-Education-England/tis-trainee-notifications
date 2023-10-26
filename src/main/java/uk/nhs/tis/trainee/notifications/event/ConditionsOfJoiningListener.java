@@ -62,7 +62,6 @@ public class ConditionsOfJoiningListener {
     log.info("Handling COJ received event {}.", event);
 
     Map<String, Object> templateVariables = new HashMap<>();
-    templateVariables.put("managingDeanery", event.managingDeanery());
 
     if (event.conditionsOfJoining() != null) {
       templateVariables.put("syncedAt", event.conditionsOfJoining().syncedAt());

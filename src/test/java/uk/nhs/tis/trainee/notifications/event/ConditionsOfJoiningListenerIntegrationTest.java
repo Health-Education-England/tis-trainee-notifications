@@ -67,7 +67,6 @@ class ConditionsOfJoiningListenerIntegrationTest {
   private static final String USER_ID = UUID.randomUUID().toString();
   private static final String EMAIL = "anthony.gilliam@tis.nhs.uk";
   private static final String FAMILY_NAME = "Gilliam";
-  private static final String MANAGING_DEANERY = "Mars LO";
   private static final Instant SYNCED_AT = Instant.parse("2023-08-01T00:00:00Z");
   private static final String NEXT_STEPS_LINK = "https://local.notifications.com/programmes";
   private static final String SURVEY_LINK = "https://forms.gle/P2cdQUgTDWqjUodJA";
@@ -100,7 +99,7 @@ class ConditionsOfJoiningListenerIntegrationTest {
   @NullAndEmptySource
   void shouldSendDefaultCojConfirmationWhenTemplateVariablesNotAvailable(String missingValue)
       throws Exception {
-    ProgrammeMembershipEvent event = new ProgrammeMembershipEvent(PERSON_ID, missingValue,
+    ProgrammeMembershipEvent event = new ProgrammeMembershipEvent(PERSON_ID,
         new ConditionsOfJoining(null));
     when(userAccountService.getUserDetails(USER_ID)).thenReturn(
         new UserAccountDetails(EMAIL, missingValue));
@@ -152,7 +151,7 @@ class ConditionsOfJoiningListenerIntegrationTest {
 
   @Test
   void shouldSendFullyTailoredCojConfirmationWhenAllTemplateVariablesAvailable() throws Exception {
-    ProgrammeMembershipEvent event = new ProgrammeMembershipEvent(PERSON_ID, MANAGING_DEANERY,
+    ProgrammeMembershipEvent event = new ProgrammeMembershipEvent(PERSON_ID,
         new ConditionsOfJoining(SYNCED_AT));
     when(userAccountService.getUserDetails(USER_ID)).thenReturn(
         new UserAccountDetails(EMAIL, FAMILY_NAME));
@@ -199,7 +198,7 @@ class ConditionsOfJoiningListenerIntegrationTest {
 
   @Test
   void shouldSendCojConfirmationWithTailoredNameWhenAvailable() throws Exception {
-    ProgrammeMembershipEvent event = new ProgrammeMembershipEvent(PERSON_ID, null,
+    ProgrammeMembershipEvent event = new ProgrammeMembershipEvent(PERSON_ID,
         new ConditionsOfJoining(null));
     when(userAccountService.getUserDetails(USER_ID)).thenReturn(
         new UserAccountDetails(EMAIL, FAMILY_NAME));
@@ -242,7 +241,7 @@ class ConditionsOfJoiningListenerIntegrationTest {
 
   @Test
   void shouldSendCojConfirmationWithTailoredLocalOfficeWhenAvailable() throws Exception {
-    ProgrammeMembershipEvent event = new ProgrammeMembershipEvent(PERSON_ID, MANAGING_DEANERY,
+    ProgrammeMembershipEvent event = new ProgrammeMembershipEvent(PERSON_ID,
         new ConditionsOfJoining(null));
     when(userAccountService.getUserDetails(USER_ID)).thenReturn(
         new UserAccountDetails(EMAIL, null));
@@ -287,7 +286,7 @@ class ConditionsOfJoiningListenerIntegrationTest {
 
   @Test
   void shouldSendCojConfirmationWithTailoredSyncedAtWhenAvailable() throws Exception {
-    ProgrammeMembershipEvent event = new ProgrammeMembershipEvent(PERSON_ID, null,
+    ProgrammeMembershipEvent event = new ProgrammeMembershipEvent(PERSON_ID,
         new ConditionsOfJoining(SYNCED_AT));
     when(userAccountService.getUserDetails(USER_ID)).thenReturn(
         new UserAccountDetails(EMAIL, null));
@@ -332,7 +331,7 @@ class ConditionsOfJoiningListenerIntegrationTest {
 
   @Test
   void shouldSendCojConfirmationWithTailoredDomainWhenAvailable() throws Exception {
-    ProgrammeMembershipEvent event = new ProgrammeMembershipEvent(PERSON_ID, null,
+    ProgrammeMembershipEvent event = new ProgrammeMembershipEvent(PERSON_ID,
         new ConditionsOfJoining(null));
     when(userAccountService.getUserDetails(USER_ID)).thenReturn(
         new UserAccountDetails(EMAIL, null));

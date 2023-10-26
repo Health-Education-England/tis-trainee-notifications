@@ -44,7 +44,6 @@ import uk.nhs.tis.trainee.notifications.service.EmailService;
 class ConditionsOfJoiningListenerTest {
 
   private static final String PERSON_ID = "40";
-  private static final String MANAGING_DEANERY = "deanery1";
   private static final Instant SYNCED_AT = Instant.now();
 
   private ConditionsOfJoiningListener listener;
@@ -61,7 +60,7 @@ class ConditionsOfJoiningListenerTest {
     doThrow(MessagingException.class).when(emailService)
         .sendMessageToExistingUser(any(), any(), any());
 
-    ProgrammeMembershipEvent event = new ProgrammeMembershipEvent(PERSON_ID, MANAGING_DEANERY,
+    ProgrammeMembershipEvent event = new ProgrammeMembershipEvent(PERSON_ID,
         new ConditionsOfJoining(SYNCED_AT));
 
     assertThrows(MessagingException.class, () -> listener.handleConditionsOfJoiningReceived(event));
@@ -69,7 +68,7 @@ class ConditionsOfJoiningListenerTest {
 
   @Test
   void shouldSetTraineeIdWhenCojReceived() throws MessagingException {
-    ProgrammeMembershipEvent event = new ProgrammeMembershipEvent(PERSON_ID, MANAGING_DEANERY,
+    ProgrammeMembershipEvent event = new ProgrammeMembershipEvent(PERSON_ID,
         new ConditionsOfJoining(SYNCED_AT));
 
     listener.handleConditionsOfJoiningReceived(event);
@@ -79,7 +78,7 @@ class ConditionsOfJoiningListenerTest {
 
   @Test
   void shouldSetTemplateWhenCojReceived() throws MessagingException {
-    ProgrammeMembershipEvent event = new ProgrammeMembershipEvent(PERSON_ID, MANAGING_DEANERY,
+    ProgrammeMembershipEvent event = new ProgrammeMembershipEvent(PERSON_ID,
         new ConditionsOfJoining(SYNCED_AT));
 
     listener.handleConditionsOfJoiningReceived(event);
@@ -88,23 +87,8 @@ class ConditionsOfJoiningListenerTest {
   }
 
   @Test
-  void shouldIncludeDeaneryWhenCojReceived() throws MessagingException {
-    ProgrammeMembershipEvent event = new ProgrammeMembershipEvent(PERSON_ID, MANAGING_DEANERY,
-        new ConditionsOfJoining(SYNCED_AT));
-
-    listener.handleConditionsOfJoiningReceived(event);
-
-    ArgumentCaptor<Map<String, Object>> templateVarsCaptor = ArgumentCaptor.forClass(Map.class);
-    verify(emailService).sendMessageToExistingUser(any(), any(), templateVarsCaptor.capture());
-
-    Map<String, Object> templateVariables = templateVarsCaptor.getValue();
-    assertThat("Unexpected managing deanery.", templateVariables.get("managingDeanery"),
-        is(MANAGING_DEANERY));
-  }
-
-  @Test
   void shouldNotIncludeSyncedAtWhenNullCojReceived() throws MessagingException {
-    ProgrammeMembershipEvent event = new ProgrammeMembershipEvent(PERSON_ID, MANAGING_DEANERY,
+    ProgrammeMembershipEvent event = new ProgrammeMembershipEvent(PERSON_ID,
         null);
 
     listener.handleConditionsOfJoiningReceived(event);
@@ -118,7 +102,7 @@ class ConditionsOfJoiningListenerTest {
 
   @Test
   void shouldNotIncludeSyncedAtWhenCojReceivedWithNullSyncedAt() throws MessagingException {
-    ProgrammeMembershipEvent event = new ProgrammeMembershipEvent(PERSON_ID, MANAGING_DEANERY,
+    ProgrammeMembershipEvent event = new ProgrammeMembershipEvent(PERSON_ID,
         new ConditionsOfJoining(null));
 
     listener.handleConditionsOfJoiningReceived(event);
@@ -132,7 +116,7 @@ class ConditionsOfJoiningListenerTest {
 
   @Test
   void shouldIncludeSyncedAtWhenCojReceivedWithValidSyncedAt() throws MessagingException {
-    ProgrammeMembershipEvent event = new ProgrammeMembershipEvent(PERSON_ID, MANAGING_DEANERY,
+    ProgrammeMembershipEvent event = new ProgrammeMembershipEvent(PERSON_ID,
         new ConditionsOfJoining(SYNCED_AT));
 
     listener.handleConditionsOfJoiningReceived(event);
