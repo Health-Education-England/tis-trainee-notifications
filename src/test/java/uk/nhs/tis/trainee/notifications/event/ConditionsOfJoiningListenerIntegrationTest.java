@@ -73,7 +73,7 @@ class ConditionsOfJoiningListenerIntegrationTest {
   private static final String SURVEY_LINK = "https://forms.gle/P2cdQUgTDWqjUodJA";
 
   private static final String DEFAULT_GREETING = "Dear Doctor,";
-  private static final String DEFAULT_DETAIL = "We want to inform you that your local deanery"
+  private static final String DEFAULT_DETAIL = "We want to inform you that your local NHS England"
       + " office has received your signed Conditions of Joining.";
   private static final String DEFAULT_NEXT_STEPS = "You can access a PDF of your signed Conditions"
       + " of Joining by visiting TIS Self-Service.";
@@ -175,7 +175,7 @@ class ConditionsOfJoiningListenerIntegrationTest {
     Element eventDetail = bodyChildren.get(1);
     assertThat("Unexpected element tag.", eventDetail.tagName(), is("p"));
     assertThat("Unexpected event detail.", eventDetail.text(),
-        is("We want to inform you that your local deanery office (Mars LO) has received your signed"
+        is("We want to inform you that your local NHS England office has received your signed"
             + " Conditions of Joining on 01 August 2023."));
 
     Element nextSteps = bodyChildren.get(2);
@@ -265,7 +265,7 @@ class ConditionsOfJoiningListenerIntegrationTest {
     Element eventDetail = bodyChildren.get(1);
     assertThat("Unexpected element tag.", eventDetail.tagName(), is("p"));
     assertThat("Unexpected event detail.", eventDetail.text(),
-        is("We want to inform you that your local deanery office (Mars LO) has received your signed"
+        is("We want to inform you that your local NHS England office has received your signed"
             + " Conditions of Joining."));
 
     Element nextSteps = bodyChildren.get(2);
@@ -310,7 +310,7 @@ class ConditionsOfJoiningListenerIntegrationTest {
     Element eventDetail = bodyChildren.get(1);
     assertThat("Unexpected element tag.", eventDetail.tagName(), is("p"));
     assertThat("Unexpected event detail.", eventDetail.text(),
-        is("We want to inform you that your local deanery office has received your signed"
+        is("We want to inform you that your local NHS England office has received your signed"
             + " Conditions of Joining on 01 August 2023."));
 
     Element nextSteps = bodyChildren.get(2);
