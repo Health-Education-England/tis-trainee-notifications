@@ -8,11 +8,7 @@
     <th:block th:fragment="content">
       <div th:replace="fragments/greeting :: body"></div>
       <p>
-        We want to inform you that your local deanery office<span
-          th:text="${not #strings.isEmpty(managingDeanery)} ? | (${managingDeanery}) | : _"
-        >
-        </span
-        >has received your signed Conditions of Joining<span
+        We want to inform you that your local NHS England office has received your signed Conditions of Joining<span
           th:text="${syncedAt} ? | on ${#temporals.format(syncedAt, 'dd MMMM yyyy')}| : _"
         ></span
         >.

@@ -60,7 +60,6 @@ the following structure.
 ```json
 {
   "personId": "47165",
-  "managingDeanery": "Health Education England North West",
   "conditionsOfJoining": {
     "syncedAt": "2022-08-01T22:01:02Z"
   }
