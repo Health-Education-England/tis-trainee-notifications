@@ -14,16 +14,17 @@ application:
     sender: ${EMAIL_SENDER}
   environment: ${ENVIRONMENT:local}
   queues:
-    coj-received: ${COJ_RECEIVED_QUEUE}
-    credential-revoked: ${CREDENTIAL_REVOKED_QUEUE}
-    form-updated: ${FORM_UPDATED_QUEUE}
+      coj-received: ${COJ_RECEIVED_QUEUE}
+      credential-revoked: ${CREDENTIAL_REVOKED_QUEUE:http://localhost:4566/queue/tis-trainee-credentials-local-update-programme-membership}
+      form-updated: ${FORM_UPDATED_QUEUE}
+      programme-membership: ${PROGRAMME_MEMBERSHIP_UPDATED_QUEUE}
   template-versions:
-      coj-confirmation:
-        email: v1.0.0
-      credential-revoked:
-        email: v1.0.0
-      form-updated:
-        email: v1.0.0
+    coj-confirmation:
+      email: v1.0.0
+    credential-revoked:
+      email: v1.0.0
+    form-updated:
+      email: v1.0.0
   timezone: Europe/London
 
 com:
@@ -37,6 +38,9 @@ sentry:
   environment: application.environment
 
 spring:
+  cloud:
+    aws:
+      endpoint: ${AWS_ENDPOINT:}
   data:
     mongodb:
       uri: mongodb://${MONGO_USER:admin}:${MONGO_PASSWORD:pwd}@${MONGO_HOST:localhost}:${MONGO_PORT:27017}/${MONGO_DB:notifications}?authSource=admin
@@ -47,3 +51,25 @@ spring:
         enabled: ${REDIS_SSL:false}
       username: ${REDIS_USERNAME:default}
       password: ${REDIS_PASSWORD:password}
+  datasource:
+    driver: com.mysql.jdbc.Driver
+    url: jdbc:mysql://localhost:3306/tss_quartz
+    username: quartz
+    password: quartz
+    maxConnections: 5
+  quartz:
+    job-store-type: jdbc
+    jdbc:
+      initialize-schema: never
+    dataSource:
+      quartzDS:
+        driver: com.mysql.jdbc.Driver
+        url: jdbc:mysql://localhost:3306/tss_quartz
+        user: quartz
+        password: quartz
+        maxConnections: 5
+    jobStore:
+      class: org.quartz.impl.jdbcjobstore.JobStoreTX
+      driverDelegateClass: org.quartz.impl.jdbcjobstore.StdJDBCDelegate
+      dataSource: quartzDS
+      useProperties: true
