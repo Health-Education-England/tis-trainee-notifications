@@ -46,6 +46,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
 import org.springframework.boot.autoconfigure.thymeleaf.ThymeleafAutoConfiguration;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -89,6 +90,9 @@ class ConditionsOfJoiningListenerIntegrationTest {
   @Autowired
   private ConditionsOfJoiningListener listener;
 
+  @Value("${application.template-versions.coj-confirmation.email}")
+  private String templateVersion;
+
   @BeforeEach
   void setUp() {
     when(mailSender.createMimeMessage()).thenReturn(new MimeMessage((Session) null));
@@ -107,12 +111,13 @@ class ConditionsOfJoiningListenerIntegrationTest {
     // Spy on the email service and inject a missing domain.
     EmailService emailService = spy(this.emailService);
     doAnswer(inv -> {
-      inv.getArgument(2, Map.class).put("domain", URI.create(""));
+      inv.getArgument(3, Map.class).put("domain", URI.create(""));
       return inv.callRealMethod();
-    }).when(emailService).sendMessageToExistingUser(any(), any(), any());
+    }).when(emailService).sendMessageToExistingUser(any(), any(), any(), any());
 
     // Create a new listener instance to inject the spy.
-    ConditionsOfJoiningListener listener = new ConditionsOfJoiningListener(emailService);
+    ConditionsOfJoiningListener listener = new ConditionsOfJoiningListener(emailService,
+        templateVersion);
     listener.handleConditionsOfJoiningReceived(event);
 
     ArgumentCaptor<MimeMessage> messageCaptor = ArgumentCaptor.forClass(MimeMessage.class);

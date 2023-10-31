@@ -11,14 +11,20 @@ application:
     user-pool-id: ${COGNITO_USER_POOL_ID}
   domain: ${APP_DOMAIN:}
   email:
-      sender: ${EMAIL_SENDER}
+    sender: ${EMAIL_SENDER}
   environment: ${ENVIRONMENT:local}
   queues:
-      coj-received: ${COJ_RECEIVED_QUEUE}
-      credential-revoked: ${CREDENTIAL_REVOKED_QUEUE}
-      form-updated: ${FORM_UPDATED_QUEUE}
+    coj-received: ${COJ_RECEIVED_QUEUE}
+    credential-revoked: ${CREDENTIAL_REVOKED_QUEUE}
+    form-updated: ${FORM_UPDATED_QUEUE}
+  template-versions:
+      coj-confirmation:
+        email: v1.0.0
+      credential-revoked:
+        email: v1.0.0
+      form-updated:
+        email: v1.0.0
   timezone: Europe/London
-
 
 com:
   amazonaws:

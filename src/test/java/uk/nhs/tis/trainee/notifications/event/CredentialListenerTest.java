@@ -29,6 +29,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
+import static uk.nhs.tis.trainee.notifications.model.NotificationType.CREDENTIAL_REVOKED;
 
 import jakarta.mail.MessagingException;
 import java.time.Instant;
@@ -42,6 +43,8 @@ import uk.nhs.tis.trainee.notifications.dto.CredentialEvent;
 import uk.nhs.tis.trainee.notifications.service.EmailService;
 
 class CredentialListenerTest {
+
+  private static final String VERSION = "v1.2.3";
 
   private static final String TRAINEE_ID = "40";
 
@@ -57,7 +60,7 @@ class CredentialListenerTest {
   @BeforeEach
   void setUp() {
     emailService = mock(EmailService.class);
-    listener = new CredentialListener(emailService);
+    listener = new CredentialListener(emailService, VERSION);
   }
 
   @ParameterizedTest
@@ -65,7 +68,7 @@ class CredentialListenerTest {
   void shouldThrowExceptionWhenCredentialRevokedAndSendingFails(String credentialType)
       throws MessagingException {
     doThrow(MessagingException.class).when(emailService)
-        .sendMessageToExistingUser(any(), any(), any());
+        .sendMessageToExistingUser(any(), any(), any(), any());
 
     CredentialEvent event = new CredentialEvent(CREDENTIAL_ID, credentialType, ISSUED_AT,
         TRAINEE_ID);
@@ -81,18 +84,31 @@ class CredentialListenerTest {
 
     listener.handleCredentialRevoked(event);
 
-    verify(emailService).sendMessageToExistingUser(eq(TRAINEE_ID), any(), any());
+    verify(emailService).sendMessageToExistingUser(eq(TRAINEE_ID), any(), any(), any());
   }
 
   @ParameterizedTest
   @ValueSource(strings = {TRAINING_PLACEMENT, TRAINING_PROGRAMME})
-  void shouldSetTemplateWhenCredentialRevoked(String credentialType) throws MessagingException {
+  void shouldSetNotificationTypeWhenCredentialRevoked(String credentialType)
+      throws MessagingException {
     CredentialEvent event = new CredentialEvent(CREDENTIAL_ID, credentialType, ISSUED_AT,
         TRAINEE_ID);
 
     listener.handleCredentialRevoked(event);
 
-    verify(emailService).sendMessageToExistingUser(any(), eq("email/credential-revoked"), any());
+    verify(emailService).sendMessageToExistingUser(any(), eq(CREDENTIAL_REVOKED), any(), any());
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {TRAINING_PLACEMENT, TRAINING_PROGRAMME})
+  void shouldSetTemplateVersionWhenCredentialRevoked(String credentialType)
+      throws MessagingException {
+    CredentialEvent event = new CredentialEvent(CREDENTIAL_ID, credentialType, ISSUED_AT,
+        TRAINEE_ID);
+
+    listener.handleCredentialRevoked(event);
+
+    verify(emailService).sendMessageToExistingUser(any(), any(), eq(VERSION), any());
   }
 
   @ParameterizedTest
@@ -105,7 +121,8 @@ class CredentialListenerTest {
     listener.handleCredentialRevoked(event);
 
     ArgumentCaptor<Map<String, Object>> templateVarsCaptor = ArgumentCaptor.forClass(Map.class);
-    verify(emailService).sendMessageToExistingUser(any(), any(), templateVarsCaptor.capture());
+    verify(emailService).sendMessageToExistingUser(any(), any(), any(),
+        templateVarsCaptor.capture());
 
     Map<String, Object> templateVariables = templateVarsCaptor.getValue();
     assertThat("Unexpected credential type.", templateVariables.get("credentialType"),
@@ -121,10 +138,10 @@ class CredentialListenerTest {
     listener.handleCredentialRevoked(event);
 
     ArgumentCaptor<Map<String, Object>> templateVarsCaptor = ArgumentCaptor.forClass(Map.class);
-    verify(emailService).sendMessageToExistingUser(any(), any(), templateVarsCaptor.capture());
+    verify(emailService).sendMessageToExistingUser(any(), any(), any(),
+        templateVarsCaptor.capture());
 
     Map<String, Object> templateVariables = templateVarsCaptor.getValue();
-    assertThat("Unexpected issued at.", templateVariables.get("issuedAt"),
-        is(ISSUED_AT));
+    assertThat("Unexpected issued at.", templateVariables.get("issuedAt"), is(ISSUED_AT));
   }
 }

@@ -21,11 +21,14 @@
 
 package uk.nhs.tis.trainee.notifications.event;
 
+import static uk.nhs.tis.trainee.notifications.model.NotificationType.FORM_UPDATED;
+
 import io.awspring.cloud.sqs.annotation.SqsListener;
 import jakarta.mail.MessagingException;
 import java.util.HashMap;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import uk.nhs.tis.trainee.notifications.dto.FormUpdateEvent;
 import uk.nhs.tis.trainee.notifications.service.EmailService;
@@ -37,17 +40,18 @@ import uk.nhs.tis.trainee.notifications.service.EmailService;
 @Component
 public class FormListener {
 
-  private static final String FORM_UPDATE_TEMPLATE = "email/form-updated";
-
   private final EmailService emailService;
+  private final String templateVersion;
 
   /**
    * Construct a listener for form events.
    *
    * @param emailService The service to use for sending emails.
    */
-  public FormListener(EmailService emailService) {
+  public FormListener(EmailService emailService,
+      @Value("${application.template-versions.form-updated.email}") String templateVersion) {
     this.emailService = emailService;
+    this.templateVersion = templateVersion;
   }
 
   /**
@@ -67,7 +71,8 @@ public class FormListener {
     templateVariables.put("eventDate", event.eventDate());
 
     String traineeId = event.traineeId();
-    emailService.sendMessageToExistingUser(traineeId, FORM_UPDATE_TEMPLATE, templateVariables);
+    emailService.sendMessageToExistingUser(traineeId, FORM_UPDATED, templateVersion,
+        templateVariables);
     log.info("Form updated notification sent for trainee {}.", traineeId);
   }
 }

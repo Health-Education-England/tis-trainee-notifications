@@ -29,12 +29,12 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
+import static uk.nhs.tis.trainee.notifications.model.NotificationType.FORM_UPDATED;
 
 import jakarta.mail.MessagingException;
 import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -43,8 +43,9 @@ import uk.nhs.tis.trainee.notifications.service.EmailService;
 
 class FormListenerTest {
 
+  private static final String VERSION = "v1.2.3";
+
   private static final String PERSON_ID = "40";
-  private static final String USER_ID = UUID.randomUUID().toString();
   private static final Instant FORM_UPDATED_AT = Instant.now();
 
   private static final String FORM_NAME = "123.json";
@@ -58,13 +59,13 @@ class FormListenerTest {
   @BeforeEach
   void setUp() {
     emailService = mock(EmailService.class);
-    listener = new FormListener(emailService);
+    listener = new FormListener(emailService, VERSION);
   }
 
   @Test
   void shouldThrowExceptionWhenFormUpdatedAndSendingFails() throws MessagingException {
     doThrow(MessagingException.class).when(emailService)
-        .sendMessageToExistingUser(any(), any(), any());
+        .sendMessageToExistingUser(any(), any(), any(), any());
 
     FormUpdateEvent event = new FormUpdateEvent(FORM_NAME, FORM_LIFECYCLE_STATE, PERSON_ID,
         FORM_TYPE, FORM_UPDATED_AT, FORM_CONTENT);
@@ -79,18 +80,27 @@ class FormListenerTest {
 
     listener.handleFormUpdate(event);
 
-    verify(emailService).sendMessageToExistingUser(eq(PERSON_ID), any(), any());
+    verify(emailService).sendMessageToExistingUser(eq(PERSON_ID), any(), any(), any());
   }
 
   @Test
-  void shouldSetTemplateWhenFormUpdated() throws MessagingException {
+  void shouldSetNotificationTypeWhenFormUpdated() throws MessagingException {
     FormUpdateEvent event = new FormUpdateEvent(FORM_NAME, FORM_LIFECYCLE_STATE, PERSON_ID,
         FORM_TYPE, FORM_UPDATED_AT, FORM_CONTENT);
 
     listener.handleFormUpdate(event);
 
-    verify(emailService)
-        .sendMessageToExistingUser(any(), eq("email/form-updated"), any());
+    verify(emailService).sendMessageToExistingUser(any(), eq(FORM_UPDATED), any(), any());
+  }
+
+  @Test
+  void shouldSetTemplateVersionWhenFormUpdated() throws MessagingException {
+    FormUpdateEvent event = new FormUpdateEvent(FORM_NAME, FORM_LIFECYCLE_STATE, PERSON_ID,
+        FORM_TYPE, FORM_UPDATED_AT, FORM_CONTENT);
+
+    listener.handleFormUpdate(event);
+
+    verify(emailService).sendMessageToExistingUser(any(), any(), eq(VERSION), any());
   }
 
   @Test
@@ -101,11 +111,11 @@ class FormListenerTest {
     listener.handleFormUpdate(event);
 
     ArgumentCaptor<Map<String, Object>> templateVarsCaptor = ArgumentCaptor.forClass(Map.class);
-    verify(emailService).sendMessageToExistingUser(any(), any(), templateVarsCaptor.capture());
+    verify(emailService).sendMessageToExistingUser(any(), any(), any(),
+        templateVarsCaptor.capture());
 
     Map<String, Object> templateVariables = templateVarsCaptor.getValue();
-    assertThat("Unexpected form name.", templateVariables.get("formName"),
-        is(FORM_NAME));
+    assertThat("Unexpected form name.", templateVariables.get("formName"), is(FORM_NAME));
   }
 
   @Test
@@ -116,7 +126,8 @@ class FormListenerTest {
     listener.handleFormUpdate(event);
 
     ArgumentCaptor<Map<String, Object>> templateVarsCaptor = ArgumentCaptor.forClass(Map.class);
-    verify(emailService).sendMessageToExistingUser(any(), any(), templateVarsCaptor.capture());
+    verify(emailService).sendMessageToExistingUser(any(), any(), any(),
+        templateVarsCaptor.capture());
 
     Map<String, Object> templateVariables = templateVarsCaptor.getValue();
     assertThat("Unexpected lifecycle state.", templateVariables.get("lifecycleState"),
@@ -131,11 +142,11 @@ class FormListenerTest {
     listener.handleFormUpdate(event);
 
     ArgumentCaptor<Map<String, Object>> templateVarsCaptor = ArgumentCaptor.forClass(Map.class);
-    verify(emailService).sendMessageToExistingUser(any(), any(), templateVarsCaptor.capture());
+    verify(emailService).sendMessageToExistingUser(any(), any(), any(),
+        templateVarsCaptor.capture());
 
     Map<String, Object> templateVariables = templateVarsCaptor.getValue();
-    assertThat("Unexpected form type.", templateVariables.get("formType"),
-        is(FORM_TYPE));
+    assertThat("Unexpected form type.", templateVariables.get("formType"), is(FORM_TYPE));
   }
 
   @Test
@@ -146,7 +157,8 @@ class FormListenerTest {
     listener.handleFormUpdate(event);
 
     ArgumentCaptor<Map<String, Object>> templateVarsCaptor = ArgumentCaptor.forClass(Map.class);
-    verify(emailService).sendMessageToExistingUser(any(), any(), templateVarsCaptor.capture());
+    verify(emailService).sendMessageToExistingUser(any(), any(), any(),
+        templateVarsCaptor.capture());
 
     Map<String, Object> templateVariables = templateVarsCaptor.getValue();
     assertThat("Unexpected form updated at.", templateVariables.get("eventDate"),

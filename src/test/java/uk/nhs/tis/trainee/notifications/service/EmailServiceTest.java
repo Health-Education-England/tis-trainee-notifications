@@ -53,6 +53,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.mockito.ArgumentCaptor;
 import org.springframework.mail.javamail.JavaMailSender;
@@ -60,9 +61,11 @@ import org.thymeleaf.TemplateEngine;
 import org.thymeleaf.context.Context;
 import software.amazon.awssdk.services.cognitoidentityprovider.model.UserNotFoundException;
 import uk.nhs.tis.trainee.notifications.dto.UserAccountDetails;
+import uk.nhs.tis.trainee.notifications.model.NotificationType;
 
 class EmailServiceTest {
 
+  private static final NotificationType NOTIFICATION_TYPE = NotificationType.COJ_CONFIRMATION;
   private static final String RECIPIENT = "anthony.gilliam@tis.nhs.uk";
   private static final String TRAINEE_ID = "40";
   private static final String USER_ID = UUID.randomUUID().toString();
@@ -93,9 +96,9 @@ class EmailServiceTest {
   }
 
   @Test
-  void shouldThrowExceptionWhenCojReceivedWithoutTraineeId() {
+  void shouldThrowExceptionWhenSendingWithoutTraineeId() {
     assertThrows(IllegalArgumentException.class,
-        () -> service.sendMessageToExistingUser(null, null, null));
+        () -> service.sendMessageToExistingUser(null, NOTIFICATION_TYPE, null, null));
 
     verifyNoInteractions(userAccountService);
   }
@@ -105,7 +108,7 @@ class EmailServiceTest {
     when(userAccountService.getUserAccountIds(TRAINEE_ID)).thenReturn(Set.of());
 
     assertThrows(IllegalArgumentException.class,
-        () -> service.sendMessageToExistingUser(TRAINEE_ID, null, null));
+        () -> service.sendMessageToExistingUser(TRAINEE_ID, NOTIFICATION_TYPE, null, null));
   }
 
   @Test
@@ -114,7 +117,7 @@ class EmailServiceTest {
         Set.of(USER_ID, UUID.randomUUID().toString()));
 
     assertThrows(IllegalArgumentException.class,
-        () -> service.sendMessageToExistingUser(TRAINEE_ID, null, null));
+        () -> service.sendMessageToExistingUser(TRAINEE_ID, NOTIFICATION_TYPE, null, null));
   }
 
   @Test
@@ -122,7 +125,7 @@ class EmailServiceTest {
     when(userAccountService.getUserDetails(USER_ID)).thenThrow(UserNotFoundException.class);
 
     assertThrows(UserNotFoundException.class,
-        () -> service.sendMessageToExistingUser(TRAINEE_ID, null, null));
+        () -> service.sendMessageToExistingUser(TRAINEE_ID, NOTIFICATION_TYPE, null, null));
   }
 
   @ParameterizedTest
@@ -132,7 +135,16 @@ class EmailServiceTest {
         new UserAccountDetails(email, "Gilliam"));
 
     assertThrows(IllegalArgumentException.class,
-        () -> service.sendMessageToExistingUser(TRAINEE_ID, null, null));
+        () -> service.sendMessageToExistingUser(TRAINEE_ID, NOTIFICATION_TYPE, null, null));
+  }
+
+  @Test
+  void shouldThrowExceptionWhenSendingWithNoNotificationType() {
+    when(userAccountService.getUserDetails(USER_ID)).thenReturn(
+        new UserAccountDetails(RECIPIENT, "Gilliam"));
+
+    assertThrows(NullPointerException.class,
+        () -> service.sendMessageToExistingUser(TRAINEE_ID, null, "", null));
   }
 
   @Test
@@ -140,7 +152,7 @@ class EmailServiceTest {
     when(userAccountService.getUserDetails(USER_ID)).thenReturn(
         new UserAccountDetails(RECIPIENT, "Gilliam"));
 
-    service.sendMessageToExistingUser(TRAINEE_ID, "", Map.of());
+    service.sendMessageToExistingUser(TRAINEE_ID, NOTIFICATION_TYPE, "", Map.of());
 
     ArgumentCaptor<Context> contextCaptor = ArgumentCaptor.forClass(Context.class);
     verify(templateEngine, atLeastOnce()).process(any(), any(), contextCaptor.capture());
@@ -154,7 +166,7 @@ class EmailServiceTest {
     when(userAccountService.getUserDetails(USER_ID)).thenReturn(
         new UserAccountDetails(RECIPIENT, "Gilliam"));
 
-    service.sendMessageToExistingUser(TRAINEE_ID, "", Map.of("name", "Maillig"));
+    service.sendMessageToExistingUser(TRAINEE_ID, NOTIFICATION_TYPE, "", Map.of("name", "Maillig"));
 
     ArgumentCaptor<Context> contextCaptor = ArgumentCaptor.forClass(Context.class);
     verify(templateEngine, atLeastOnce()).process(any(), any(), contextCaptor.capture());
@@ -165,7 +177,7 @@ class EmailServiceTest {
 
   @Test
   void shouldGetDomainFromPropertiesWhenNoDomainProvided() throws MessagingException {
-    service.sendMessageToExistingUser(TRAINEE_ID, "", Map.of());
+    service.sendMessageToExistingUser(TRAINEE_ID, NOTIFICATION_TYPE, "", Map.of());
 
     ArgumentCaptor<Context> contextCaptor = ArgumentCaptor.forClass(Context.class);
     verify(templateEngine, atLeastOnce()).process(any(), any(), contextCaptor.capture());
@@ -178,7 +190,7 @@ class EmailServiceTest {
   void shouldUseProvidedDomainWhenDomainProvided() throws MessagingException {
     URI domain = URI.create("local.override.com");
 
-    service.sendMessageToExistingUser(TRAINEE_ID, "", Map.of("domain", domain));
+    service.sendMessageToExistingUser(TRAINEE_ID, NOTIFICATION_TYPE, "", Map.of("domain", domain));
 
     ArgumentCaptor<Context> contextCaptor = ArgumentCaptor.forClass(Context.class);
     verify(templateEngine, atLeastOnce()).process(any(), any(), contextCaptor.capture());
@@ -190,7 +202,8 @@ class EmailServiceTest {
   @Test
   void shouldLocalizeTimestampWhenTimezoneGmt() throws MessagingException {
     Instant instant = Instant.parse("2021-02-03T04:05:06Z");
-    service.sendMessageToExistingUser(TRAINEE_ID, "", Map.of("timestamp", instant));
+    service.sendMessageToExistingUser(TRAINEE_ID, NOTIFICATION_TYPE, "",
+        Map.of("timestamp", instant));
 
     ArgumentCaptor<Context> contextCaptor = ArgumentCaptor.forClass(Context.class);
     verify(templateEngine, atLeastOnce()).process(any(), any(), contextCaptor.capture());
@@ -209,7 +222,8 @@ class EmailServiceTest {
   @Test
   void shouldLocalizeTimestampWhenTimezoneBst() throws MessagingException {
     Instant instant = Instant.parse("2021-08-03T23:05:06Z");
-    service.sendMessageToExistingUser(TRAINEE_ID, "", Map.of("timestamp", instant));
+    service.sendMessageToExistingUser(TRAINEE_ID, NOTIFICATION_TYPE, "",
+        Map.of("timestamp", instant));
 
     ArgumentCaptor<Context> contextCaptor = ArgumentCaptor.forClass(Context.class);
     verify(templateEngine, atLeastOnce()).process(any(), any(), contextCaptor.capture());
@@ -230,7 +244,7 @@ class EmailServiceTest {
     when(userAccountService.getUserDetails(USER_ID)).thenReturn(
         new UserAccountDetails("anthony.gilliam@tis.nhs.uk", ""));
 
-    service.sendMessageToExistingUser(TRAINEE_ID, "", Map.of());
+    service.sendMessageToExistingUser(TRAINEE_ID, NOTIFICATION_TYPE, "", Map.of());
 
     ArgumentCaptor<MimeMessage> messageCaptor = ArgumentCaptor.forClass(MimeMessage.class);
     verify(mailSender).send(messageCaptor.capture());
@@ -246,7 +260,7 @@ class EmailServiceTest {
 
   @Test
   void shouldSendMessageFromSender() throws MessagingException {
-    service.sendMessageToExistingUser(TRAINEE_ID, "", Map.of());
+    service.sendMessageToExistingUser(TRAINEE_ID, NOTIFICATION_TYPE, "", Map.of());
 
     ArgumentCaptor<MimeMessage> messageCaptor = ArgumentCaptor.forClass(MimeMessage.class);
     verify(mailSender).send(messageCaptor.capture());
@@ -262,7 +276,7 @@ class EmailServiceTest {
     String template = "Test subject";
     when(templateEngine.process(any(), eq(Set.of("subject")), any())).thenReturn(template);
 
-    service.sendMessageToExistingUser(TRAINEE_ID, "", Map.of());
+    service.sendMessageToExistingUser(TRAINEE_ID, NOTIFICATION_TYPE, "", Map.of());
 
     ArgumentCaptor<MimeMessage> messageCaptor = ArgumentCaptor.forClass(MimeMessage.class);
     verify(mailSender).send(messageCaptor.capture());
@@ -276,7 +290,7 @@ class EmailServiceTest {
     String template = "<div>Test message body</div>";
     when(templateEngine.process(any(), eq(Set.of("content")), any())).thenReturn(template);
 
-    service.sendMessageToExistingUser(TRAINEE_ID, "", Map.of());
+    service.sendMessageToExistingUser(TRAINEE_ID, NOTIFICATION_TYPE, "", Map.of());
 
     ArgumentCaptor<MimeMessage> messageCaptor = ArgumentCaptor.forClass(MimeMessage.class);
     verify(mailSender).send(messageCaptor.capture());
@@ -289,15 +303,19 @@ class EmailServiceTest {
         is("text/html;charset=UTF-8"));
   }
 
-  @Test
-  void shouldProcessTheTemplateWhenSendingMessage() throws MessagingException, IOException {
-    String templateName = "email/test.html";
+  @ParameterizedTest
+  @EnumSource(NotificationType.class)
+  void shouldProcessTheTemplateWhenSendingMessage(NotificationType notificationType)
+      throws MessagingException {
+    String templateVersion = "v1.2.3";
 
-    service.sendMessageToExistingUser(TRAINEE_ID, templateName, Map.of("key1", "value1"));
+    service.sendMessageToExistingUser(TRAINEE_ID, notificationType, templateVersion,
+        Map.of("key1", "value1"));
 
     ArgumentCaptor<Set<String>> selectorCaptor = ArgumentCaptor.forClass(Set.class);
     ArgumentCaptor<Context> contextCaptor = ArgumentCaptor.forClass(Context.class);
-    verify(templateEngine, times(2)).process(eq(templateName), selectorCaptor.capture(),
+    verify(templateEngine, times(2)).process(
+        eq("email/" + notificationType.getTemplateName() + "/v1.2.3"), selectorCaptor.capture(),
         contextCaptor.capture());
 
     List<Set<String>> selectors = selectorCaptor.getAllValues();

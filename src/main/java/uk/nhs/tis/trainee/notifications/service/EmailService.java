@@ -21,6 +21,8 @@
 
 package uk.nhs.tis.trainee.notifications.service;
 
+import static uk.nhs.tis.trainee.notifications.model.MessageType.EMAIL;
+
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
 import java.net.URI;
@@ -41,6 +43,7 @@ import org.springframework.stereotype.Service;
 import org.thymeleaf.TemplateEngine;
 import org.thymeleaf.context.Context;
 import uk.nhs.tis.trainee.notifications.dto.UserAccountDetails;
+import uk.nhs.tis.trainee.notifications.model.NotificationType;
 
 /**
  * A service for sending emails.
@@ -73,12 +76,13 @@ public class EmailService {
    * provided.
    *
    * @param traineeId         The trainee ID of the user.
-   * @param templateName      The email template to use.
+   * @param notificationType  The type of notification, which will determine the template used.
+   * @param templateVersion   The version of the template to be sent.
    * @param templateVariables The variables to pass to the template.
    * @throws MessagingException When the message could not be sent.
    */
-  public void sendMessageToExistingUser(String traineeId, String templateName,
-      Map<String, Object> templateVariables) throws MessagingException {
+  public void sendMessageToExistingUser(String traineeId, NotificationType notificationType,
+      String templateVersion, Map<String, Object> templateVariables) throws MessagingException {
     if (traineeId == null) {
       throw new IllegalArgumentException("Unable to send notification as no trainee ID available");
     }
@@ -92,19 +96,21 @@ public class EmailService {
 
     templateVariables = new HashMap<>(templateVariables);
     templateVariables.putIfAbsent("name", userDetails.familyName());
-    sendMessage(userDetails.email(), templateName, templateVariables);
+    sendMessage(userDetails.email(), notificationType, templateVersion, templateVariables);
   }
 
   /**
    * Send an email message using a given template, the domain variable will be set if not provided.
    *
    * @param recipient         Where the email should be sent.
-   * @param templateName      The email template to use.
+   * @param notificationType  The type of notification, which will determine the template used.
+   * @param templateVersion   The version of the template to be sent.
    * @param templateVariables The variables to pass to the template.
    * @throws MessagingException When the message could not be sent.
    */
-  private void sendMessage(String recipient, String templateName,
-      Map<String, Object> templateVariables) throws MessagingException {
+  private void sendMessage(String recipient, NotificationType notificationType,
+      String templateVersion, Map<String, Object> templateVariables) throws MessagingException {
+    String templateName = getTemplate(notificationType, templateVersion);
     log.info("Sending template {} to {}.", templateName, recipient);
 
     // Add the application domain for any templates with hyperlinks.
@@ -142,6 +148,17 @@ public class EmailService {
         entry.setValue(localised);
       }
     }
+  }
+
+  /**
+   * Get the template for the given notification type and version.
+   *
+   * @param notificationType The notification type.
+   * @param version          The template version.
+   * @return The full template name.
+   */
+  private String getTemplate(NotificationType notificationType, String version) {
+    return EMAIL.getTemplatePath() + "/" + notificationType.getTemplateName() + "/" + version;
   }
 
   /**

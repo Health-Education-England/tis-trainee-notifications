@@ -21,11 +21,14 @@
 
 package uk.nhs.tis.trainee.notifications.event;
 
+import static uk.nhs.tis.trainee.notifications.model.NotificationType.COJ_CONFIRMATION;
+
 import io.awspring.cloud.sqs.annotation.SqsListener;
 import jakarta.mail.MessagingException;
 import java.util.HashMap;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import uk.nhs.tis.trainee.notifications.dto.ProgrammeMembershipEvent;
 import uk.nhs.tis.trainee.notifications.service.EmailService;
@@ -37,17 +40,18 @@ import uk.nhs.tis.trainee.notifications.service.EmailService;
 @Component
 public class ConditionsOfJoiningListener {
 
-  private static final String CONFIRMATION_TEMPLATE = "email/coj-confirmation";
-
   private final EmailService emailService;
+  private final String templateVersion;
 
   /**
    * Construct a listener for conditions of joining events.
    *
    * @param emailService The service to use for sending emails.
    */
-  public ConditionsOfJoiningListener(EmailService emailService) {
+  public ConditionsOfJoiningListener(EmailService emailService,
+      @Value("${application.template-versions.coj-confirmation.email}") String templateVersion) {
     this.emailService = emailService;
+    this.templateVersion = templateVersion;
   }
 
   /**
@@ -68,7 +72,8 @@ public class ConditionsOfJoiningListener {
     }
 
     String traineeId = event.personId();
-    emailService.sendMessageToExistingUser(traineeId, CONFIRMATION_TEMPLATE, templateVariables);
+    emailService.sendMessageToExistingUser(traineeId, COJ_CONFIRMATION, templateVersion,
+        templateVariables);
     log.info("COJ received notification sent for trainee {}.", traineeId);
   }
 }
