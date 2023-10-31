@@ -22,6 +22,8 @@
 package uk.nhs.tis.trainee.notifications.event;
 
 import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.CoreMatchers.notNullValue;
+import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.CoreMatchers.startsWith;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.matchesPattern;
@@ -30,7 +32,9 @@ import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static uk.nhs.tis.trainee.notifications.model.NotificationType.CREDENTIAL_REVOKED;
 
+import jakarta.mail.MessagingException;
 import jakarta.mail.Session;
 import jakarta.mail.internet.MimeMessage;
 import java.net.URI;
@@ -58,7 +62,12 @@ import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.test.context.ActiveProfiles;
 import uk.nhs.tis.trainee.notifications.dto.CredentialEvent;
 import uk.nhs.tis.trainee.notifications.dto.UserAccountDetails;
+import uk.nhs.tis.trainee.notifications.model.History;
+import uk.nhs.tis.trainee.notifications.model.History.RecipientInfo;
+import uk.nhs.tis.trainee.notifications.model.History.TemplateInfo;
+import uk.nhs.tis.trainee.notifications.model.MessageType;
 import uk.nhs.tis.trainee.notifications.service.EmailService;
+import uk.nhs.tis.trainee.notifications.service.HistoryService;
 import uk.nhs.tis.trainee.notifications.service.UserAccountService;
 
 @SpringBootTest(classes = {CredentialListener.class, EmailService.class})
@@ -90,6 +99,9 @@ class CredentialListenerIntegrationTest {
 
   @MockBean
   private UserAccountService userAccountService;
+
+  @MockBean
+  private HistoryService historyService;
 
   @Autowired
   private EmailService emailService;
@@ -400,5 +412,41 @@ class CredentialListenerIntegrationTest {
     assertThat("Unexpected next steps link count.", nextStepsLinks.size(), is(1));
     Element tssLink = nextStepsLinks.get(0);
     assertThat("Unexpected next steps link.", tssLink.attr("href"), is(PROGRAMME_NEXT_STEPS_LINK));
+  }
+
+  @Test
+  void shouldStoreCredentialRevokedNotificationHistoryWhenMessageSent() throws MessagingException {
+    CredentialEvent event = new CredentialEvent(null, CREDENTIAL_TYPE, ISSUED_AT, TRAINEE_ID);
+    when(userAccountService.getUserDetails(USER_ID)).thenReturn(
+        new UserAccountDetails(EMAIL, FAMILY_NAME));
+
+    listener.handleCredentialRevoked(event);
+
+    ArgumentCaptor<History> historyCaptor = ArgumentCaptor.forClass(History.class);
+    verify(historyService).save(historyCaptor.capture());
+
+    History history = historyCaptor.getValue();
+    assertThat("Unexpected notification id.", history.id(), nullValue());
+    assertThat("Unexpected notification type.", history.type(), is(CREDENTIAL_REVOKED));
+    assertThat("Unexpected sent at.", history.sentAt(), notNullValue());
+
+    RecipientInfo recipient = history.recipient();
+    assertThat("Unexpected recipient id.", recipient.id(), is(TRAINEE_ID));
+    assertThat("Unexpected message type.", recipient.type(), is(MessageType.EMAIL));
+    assertThat("Unexpected contact.", recipient.contact(), is(EMAIL));
+
+    TemplateInfo templateInfo = history.template();
+    assertThat("Unexpected template name.", templateInfo.name(),
+        is(CREDENTIAL_REVOKED.getTemplateName()));
+    assertThat("Unexpected template version.", templateInfo.version(), is(templateVersion));
+
+    Map<String, Object> storedVariables = templateInfo.variables();
+    assertThat("Unexpected template variable count.", storedVariables.size(), is(4));
+    assertThat("Unexpected template variable.", storedVariables.get("name"), is(FAMILY_NAME));
+    assertThat("Unexpected template variable.", storedVariables.get("credentialType"),
+        is(CREDENTIAL_TYPE));
+    assertThat("Unexpected template variable.", storedVariables.get("issuedAt"), is(ISSUED_AT));
+    assertThat("Unexpected template variable.", storedVariables.get("domain"),
+        is(URI.create(DEFAULT_NEXT_STEPS_LINK)));
   }
 }

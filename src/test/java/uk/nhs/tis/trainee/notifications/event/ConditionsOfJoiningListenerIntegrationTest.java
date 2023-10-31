@@ -22,13 +22,17 @@
 package uk.nhs.tis.trainee.notifications.event;
 
 import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.CoreMatchers.notNullValue;
+import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static uk.nhs.tis.trainee.notifications.model.NotificationType.COJ_CONFIRMATION;
 
+import jakarta.mail.MessagingException;
 import jakarta.mail.Session;
 import jakarta.mail.internet.MimeMessage;
 import java.net.URI;
@@ -56,7 +60,12 @@ import org.springframework.test.context.ActiveProfiles;
 import uk.nhs.tis.trainee.notifications.dto.ProgrammeMembershipEvent;
 import uk.nhs.tis.trainee.notifications.dto.ProgrammeMembershipEvent.ConditionsOfJoining;
 import uk.nhs.tis.trainee.notifications.dto.UserAccountDetails;
+import uk.nhs.tis.trainee.notifications.model.History;
+import uk.nhs.tis.trainee.notifications.model.History.RecipientInfo;
+import uk.nhs.tis.trainee.notifications.model.History.TemplateInfo;
+import uk.nhs.tis.trainee.notifications.model.MessageType;
 import uk.nhs.tis.trainee.notifications.service.EmailService;
+import uk.nhs.tis.trainee.notifications.service.HistoryService;
 import uk.nhs.tis.trainee.notifications.service.UserAccountService;
 
 @SpringBootTest(classes = {ConditionsOfJoiningListener.class, EmailService.class})
@@ -69,7 +78,8 @@ class ConditionsOfJoiningListenerIntegrationTest {
   private static final String EMAIL = "anthony.gilliam@tis.nhs.uk";
   private static final String FAMILY_NAME = "Gilliam";
   private static final Instant SYNCED_AT = Instant.parse("2023-08-01T00:00:00Z");
-  private static final String NEXT_STEPS_LINK = "https://local.notifications.com/programmes";
+  private static final String APP_DOMAIN = "https://local.notifications.com";
+  private static final String NEXT_STEPS_LINK = APP_DOMAIN + "/programmes";
   private static final String SURVEY_LINK = "https://forms.gle/P2cdQUgTDWqjUodJA";
 
   private static final String DEFAULT_GREETING = "Dear Doctor,";
@@ -83,6 +93,9 @@ class ConditionsOfJoiningListenerIntegrationTest {
 
   @MockBean
   private UserAccountService userAccountService;
+
+  @MockBean
+  private HistoryService historyService;
 
   @Autowired
   private EmailService emailService;
@@ -375,5 +388,40 @@ class ConditionsOfJoiningListenerIntegrationTest {
     Element surveyLink = surveyLinks.get(0);
     assertThat("Unexpected survey link.", surveyLink.attr("href"),
         is(SURVEY_LINK));
+  }
+
+  @Test
+  void shouldStoreCojReceivedNotificationHistoryWhenMessageSent() throws MessagingException {
+    ProgrammeMembershipEvent event = new ProgrammeMembershipEvent(PERSON_ID,
+        new ConditionsOfJoining(SYNCED_AT));
+    when(userAccountService.getUserDetails(USER_ID)).thenReturn(
+        new UserAccountDetails(EMAIL, FAMILY_NAME));
+
+    listener.handleConditionsOfJoiningReceived(event);
+
+    ArgumentCaptor<History> historyCaptor = ArgumentCaptor.forClass(History.class);
+    verify(historyService).save(historyCaptor.capture());
+
+    History history = historyCaptor.getValue();
+    assertThat("Unexpected notification id.", history.id(), nullValue());
+    assertThat("Unexpected notification type.", history.type(), is(COJ_CONFIRMATION));
+    assertThat("Unexpected sent at.", history.sentAt(), notNullValue());
+
+    RecipientInfo recipient = history.recipient();
+    assertThat("Unexpected recipient id.", recipient.id(), is(PERSON_ID));
+    assertThat("Unexpected message type.", recipient.type(), is(MessageType.EMAIL));
+    assertThat("Unexpected contact.", recipient.contact(), is(EMAIL));
+
+    TemplateInfo templateInfo = history.template();
+    assertThat("Unexpected template name.", templateInfo.name(),
+        is(COJ_CONFIRMATION.getTemplateName()));
+    assertThat("Unexpected template version.", templateInfo.version(), is(templateVersion));
+
+    Map<String, Object> storedVariables = templateInfo.variables();
+    assertThat("Unexpected template variable count.", storedVariables.size(), is(3));
+    assertThat("Unexpected template variable.", storedVariables.get("name"), is(FAMILY_NAME));
+    assertThat("Unexpected template variable.", storedVariables.get("syncedAt"), is(SYNCED_AT));
+    assertThat("Unexpected template variable.", storedVariables.get("domain"),
+        is(URI.create(APP_DOMAIN)));
   }
 }

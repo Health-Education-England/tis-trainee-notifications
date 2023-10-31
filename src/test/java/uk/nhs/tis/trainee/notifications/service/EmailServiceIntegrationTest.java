@@ -71,6 +71,9 @@ class EmailServiceIntegrationTest {
   private JavaMailSender mailSender;
 
   @MockBean
+  private HistoryService historyService;
+
+  @MockBean
   private UserAccountService userAccountService;
 
   @Autowired

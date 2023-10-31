@@ -23,6 +23,8 @@ package uk.nhs.tis.trainee.notifications.service;
 
 import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.CoreMatchers.notNullValue;
+import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
@@ -33,6 +35,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
+import static uk.nhs.tis.trainee.notifications.model.MessageType.EMAIL;
 
 import jakarta.activation.DataHandler;
 import jakarta.mail.Address;
@@ -61,6 +64,9 @@ import org.thymeleaf.TemplateEngine;
 import org.thymeleaf.context.Context;
 import software.amazon.awssdk.services.cognitoidentityprovider.model.UserNotFoundException;
 import uk.nhs.tis.trainee.notifications.dto.UserAccountDetails;
+import uk.nhs.tis.trainee.notifications.model.History;
+import uk.nhs.tis.trainee.notifications.model.History.RecipientInfo;
+import uk.nhs.tis.trainee.notifications.model.History.TemplateInfo;
 import uk.nhs.tis.trainee.notifications.model.NotificationType;
 
 class EmailServiceTest {
@@ -75,12 +81,14 @@ class EmailServiceTest {
 
   private EmailService service;
   private UserAccountService userAccountService;
+  private HistoryService historyService;
   private JavaMailSender mailSender;
   private TemplateEngine templateEngine;
 
   @BeforeEach
   void setUp() {
     userAccountService = mock(UserAccountService.class);
+    historyService = mock(HistoryService.class);
     when(userAccountService.getUserAccountIds(TRAINEE_ID)).thenReturn(Set.of(USER_ID));
     when(userAccountService.getUserDetails(USER_ID)).thenReturn(
         new UserAccountDetails(RECIPIENT, null));
@@ -91,8 +99,8 @@ class EmailServiceTest {
     templateEngine = mock(TemplateEngine.class);
     when(templateEngine.process(any(), any(), any(Context.class))).thenReturn("");
 
-    service = new EmailService(userAccountService, mailSender, templateEngine, SENDER, APP_DOMAIN,
-        TIMEZONE);
+    service = new EmailService(userAccountService, historyService, mailSender, templateEngine,
+        SENDER, APP_DOMAIN, TIMEZONE);
   }
 
   @Test
@@ -328,5 +336,41 @@ class EmailServiceTest {
 
     context = contexts.get(1);
     assertThat("Unexpected template variable.", context.getVariable("key1"), is("value1"));
+  }
+
+  @ParameterizedTest
+  @EnumSource(NotificationType.class)
+  void shouldStoreHistoryWhenMessageSent(NotificationType notificationType)
+      throws MessagingException {
+    when(userAccountService.getUserDetails(USER_ID)).thenReturn(
+        new UserAccountDetails(RECIPIENT, "Gilliam"));
+    String templateVersion = "v1.2.3";
+
+    service.sendMessageToExistingUser(TRAINEE_ID, notificationType, templateVersion,
+        Map.of("key1", "value1"));
+
+    ArgumentCaptor<History> historyCaptor = ArgumentCaptor.forClass(History.class);
+    verify(historyService).save(historyCaptor.capture());
+
+    History history = historyCaptor.getValue();
+    assertThat("Unexpected notification id.", history.id(), nullValue());
+    assertThat("Unexpected notification type.", history.type(), is(notificationType));
+    assertThat("Unexpected sent at.", history.sentAt(), notNullValue());
+
+    RecipientInfo recipient = history.recipient();
+    assertThat("Unexpected recipient id.", recipient.id(), is(TRAINEE_ID));
+    assertThat("Unexpected message type.", recipient.type(), is(EMAIL));
+    assertThat("Unexpected contact.", recipient.contact(), is(RECIPIENT));
+
+    TemplateInfo templateInfo = history.template();
+    assertThat("Unexpected template name.", templateInfo.name(),
+        is(notificationType.getTemplateName()));
+    assertThat("Unexpected template version.", templateInfo.version(), is(templateVersion));
+
+    Map<String, Object> storedVariables = templateInfo.variables();
+    assertThat("Unexpected template variable count.", storedVariables.size(), is(3));
+    assertThat("Unexpected template variable.", storedVariables.get("key1"), is("value1"));
+    assertThat("Unexpected template variable.", storedVariables.get("name"), is("Gilliam"));
+    assertThat("Unexpected template variable.", storedVariables.get("domain"), is(APP_DOMAIN));
   }
 }
