@@ -21,11 +21,14 @@
 
 package uk.nhs.tis.trainee.notifications.event;
 
+import static uk.nhs.tis.trainee.notifications.model.NotificationType.CREDENTIAL_REVOKED;
+
 import io.awspring.cloud.sqs.annotation.SqsListener;
 import jakarta.mail.MessagingException;
 import java.util.HashMap;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import uk.nhs.tis.trainee.notifications.dto.CredentialEvent;
 import uk.nhs.tis.trainee.notifications.service.EmailService;
@@ -36,16 +39,19 @@ import uk.nhs.tis.trainee.notifications.service.EmailService;
 @Slf4j
 @Component
 public class CredentialListener {
-  private static final String REVOCATION_TEMPLATE = "email/credential-revoked";
+
   private final EmailService emailService;
+  private final String templateVersion;
 
   /**
    * Construct a listener for credential events.
    *
    * @param emailService The service to use for sending emails.
    */
-  public CredentialListener(EmailService emailService) {
+  public CredentialListener(EmailService emailService,
+      @Value("${application.template-versions.credential-revoked.email}") String templateVersion) {
     this.emailService = emailService;
+    this.templateVersion = templateVersion;
   }
 
   /**
@@ -63,7 +69,8 @@ public class CredentialListener {
     templateVariables.put("issuedAt", event.issuedAt());
 
     String traineeId = event.traineeId();
-    emailService.sendMessageToExistingUser(traineeId, REVOCATION_TEMPLATE, templateVariables);
+    emailService.sendMessageToExistingUser(traineeId, CREDENTIAL_REVOKED, templateVersion,
+        templateVariables);
     log.info("Credential revocation notification sent for trainee {}.", traineeId);
   }
 }

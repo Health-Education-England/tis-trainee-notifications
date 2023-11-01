@@ -21,6 +21,8 @@
 
 package uk.nhs.tis.trainee.notifications.service;
 
+import static uk.nhs.tis.trainee.notifications.model.MessageType.EMAIL;
+
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
 import java.net.URI;
@@ -41,6 +43,10 @@ import org.springframework.stereotype.Service;
 import org.thymeleaf.TemplateEngine;
 import org.thymeleaf.context.Context;
 import uk.nhs.tis.trainee.notifications.dto.UserAccountDetails;
+import uk.nhs.tis.trainee.notifications.model.History;
+import uk.nhs.tis.trainee.notifications.model.History.RecipientInfo;
+import uk.nhs.tis.trainee.notifications.model.History.TemplateInfo;
+import uk.nhs.tis.trainee.notifications.model.NotificationType;
 
 /**
  * A service for sending emails.
@@ -50,17 +56,20 @@ import uk.nhs.tis.trainee.notifications.dto.UserAccountDetails;
 public class EmailService {
 
   private final UserAccountService userAccountService;
+  private final HistoryService historyService;
   private final JavaMailSender mailSender;
   private final TemplateEngine templateEngine;
   private final String sender;
   private final URI appDomain;
   private final String timezone;
 
-  EmailService(UserAccountService userAccountService, JavaMailSender mailSender,
-      TemplateEngine templateEngine, @Value("${application.email.sender}") String sender,
+  EmailService(UserAccountService userAccountService, HistoryService historyService,
+      JavaMailSender mailSender, TemplateEngine templateEngine,
+      @Value("${application.email.sender}") String sender,
       @Value("${application.domain}") URI appDomain,
       @Value("${application.timezone}") String timezone) {
     this.userAccountService = userAccountService;
+    this.historyService = historyService;
     this.mailSender = mailSender;
     this.templateEngine = templateEngine;
     this.sender = sender;
@@ -73,12 +82,13 @@ public class EmailService {
    * provided.
    *
    * @param traineeId         The trainee ID of the user.
-   * @param templateName      The email template to use.
+   * @param notificationType  The type of notification, which will determine the template used.
+   * @param templateVersion   The version of the template to be sent.
    * @param templateVariables The variables to pass to the template.
    * @throws MessagingException When the message could not be sent.
    */
-  public void sendMessageToExistingUser(String traineeId, String templateName,
-      Map<String, Object> templateVariables) throws MessagingException {
+  public void sendMessageToExistingUser(String traineeId, NotificationType notificationType,
+      String templateVersion, Map<String, Object> templateVariables) throws MessagingException {
     if (traineeId == null) {
       throw new IllegalArgumentException("Unable to send notification as no trainee ID available");
     }
@@ -92,28 +102,32 @@ public class EmailService {
 
     templateVariables = new HashMap<>(templateVariables);
     templateVariables.putIfAbsent("name", userDetails.familyName());
-    sendMessage(userDetails.email(), templateName, templateVariables);
+    sendMessage(traineeId, userDetails.email(), notificationType, templateVersion,
+        templateVariables);
   }
 
   /**
    * Send an email message using a given template, the domain variable will be set if not provided.
    *
+   * @param traineeId         The trainee ID of the recipient.
    * @param recipient         Where the email should be sent.
-   * @param templateName      The email template to use.
+   * @param notificationType  The type of notification, which will determine the template used.
+   * @param templateVersion   The version of the template to be sent.
    * @param templateVariables The variables to pass to the template.
    * @throws MessagingException When the message could not be sent.
    */
-  private void sendMessage(String recipient, String templateName,
-      Map<String, Object> templateVariables) throws MessagingException {
+  private void sendMessage(String traineeId, String recipient, NotificationType notificationType,
+      String templateVersion, Map<String, Object> templateVariables) throws MessagingException {
+    String templateName = getTemplate(notificationType, templateVersion);
     log.info("Sending template {} to {}.", templateName, recipient);
 
     // Add the application domain for any templates with hyperlinks.
     templateVariables.putIfAbsent("domain", appDomain);
 
     // Convert UTC timestamps to the Local Office timezone.
-    localizeTimestamps(templateVariables);
+    Map<String, Object> localizedTemplateVariables = localizeTimestamps(templateVariables);
     Context templateContext = new Context();
-    templateContext.setVariables(templateVariables);
+    templateContext.setVariables(localizedTemplateVariables);
 
     String subject = templateEngine.process(templateName, Set.of("subject"), templateContext);
     String content = templateEngine.process(templateName, Set.of("content"), templateContext);
@@ -126,6 +140,15 @@ public class EmailService {
     helper.setText(content, true);
 
     mailSender.send(helper.getMimeMessage());
+
+    // Store the notification history.
+    RecipientInfo recipientInfo = new RecipientInfo(traineeId, EMAIL, recipient);
+    TemplateInfo templateInfo = new TemplateInfo(notificationType.getTemplateName(),
+        templateVersion, templateVariables);
+    History history = new History(null, notificationType, recipientInfo,
+        templateInfo, Instant.now());
+    historyService.save(history);
+
     log.info("Sent template {} to {}.", templateName, recipient);
   }
 
@@ -133,15 +156,31 @@ public class EmailService {
    * Localize any compatible data types.
    *
    * @param templateVariables The template variables to localize.
+   * @return The variables with any timestamps localized.
    */
-  private void localizeTimestamps(Map<String, Object> templateVariables) {
-    for (Entry<String, Object> entry : templateVariables.entrySet()) {
+  private Map<String, Object> localizeTimestamps(Map<String, Object> templateVariables) {
+    Map<String, Object> localizedTemplateVariables = new HashMap<>(templateVariables);
+
+    for (Entry<String, Object> entry : localizedTemplateVariables.entrySet()) {
 
       if (entry.getValue() instanceof Instant timestamp) {
         ZonedDateTime localised = ZonedDateTime.ofInstant(timestamp, ZoneId.of(timezone));
         entry.setValue(localised);
       }
     }
+
+    return localizedTemplateVariables;
+  }
+
+  /**
+   * Get the template for the given notification type and version.
+   *
+   * @param notificationType The notification type.
+   * @param version          The template version.
+   * @return The full template name.
+   */
+  private String getTemplate(NotificationType notificationType, String version) {
+    return EMAIL.getTemplatePath() + "/" + notificationType.getTemplateName() + "/" + version;
   }
 
   /**

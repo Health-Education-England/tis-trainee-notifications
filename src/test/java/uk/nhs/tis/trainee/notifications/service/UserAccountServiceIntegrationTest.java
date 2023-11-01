@@ -50,6 +50,7 @@ import software.amazon.awssdk.services.cognitoidentityprovider.model.AttributeTy
 import software.amazon.awssdk.services.cognitoidentityprovider.model.ListUsersRequest;
 import software.amazon.awssdk.services.cognitoidentityprovider.model.UserType;
 import software.amazon.awssdk.services.cognitoidentityprovider.paginators.ListUsersIterable;
+import uk.nhs.tis.trainee.notifications.config.MongoConfiguration;
 
 @SpringBootTest(properties = "embedded.containers.enabled=true")
 @ActiveProfiles({"redis", "test"})
@@ -62,6 +63,9 @@ class UserAccountServiceIntegrationTest {
 
   private static final String ATTRIBUTE_PERSON_ID = "custom:tisId";
   private static final String ATTRIBUTE_USER_ID = "sub";
+
+  @MockBean
+  private MongoConfiguration mongoConfiguration;
 
   @MockBean
   private CognitoIdentityProviderClient cognitoClient;

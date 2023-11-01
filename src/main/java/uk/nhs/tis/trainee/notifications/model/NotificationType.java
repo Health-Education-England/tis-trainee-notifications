@@ -19,32 +19,34 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package uk.nhs.tis.trainee.notifications;
+package uk.nhs.tis.trainee.notifications.model;
 
-import static org.hamcrest.CoreMatchers.is;
-import static org.hamcrest.MatcherAssert.assertThat;
+/**
+ * An enumeration of possible notification types.
+ */
+public enum NotificationType {
 
-import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
-import org.springframework.context.ApplicationContext;
-import org.springframework.test.context.ActiveProfiles;
-import uk.nhs.tis.trainee.notifications.config.MongoConfiguration;
+  COJ_CONFIRMATION("coj-confirmation"),
+  CREDENTIAL_REVOKED("credential-revoked"),
+  FORM_UPDATED("form-updated");
 
-@SpringBootTest
-@ActiveProfiles("test")
-class TisTraineeNotificationsApplicationTest {
+  private final String templateName;
 
-  @MockBean
-  private MongoConfiguration mongoConfiguration;
+  /**
+   * Create an enumeration of a possible notification type.
+   *
+   * @param templateName The name of the template for this type of notification.
+   */
+  NotificationType(String templateName) {
+    this.templateName = templateName;
+  }
 
-  @Autowired
-  ApplicationContext context;
-
-  @Test
-  void contextLoads() {
-    assertThat("Unexpected bean.", context.getBean(MongoConfiguration.class),
-        is(mongoConfiguration));
+  /**
+   * Get the name for templates of this type.
+   *
+   * @return The template name.
+   */
+  public String getTemplateName() {
+    return templateName;
   }
 }

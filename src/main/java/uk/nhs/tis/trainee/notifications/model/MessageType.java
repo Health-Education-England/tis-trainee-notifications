@@ -19,32 +19,32 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package uk.nhs.tis.trainee.notifications;
+package uk.nhs.tis.trainee.notifications.model;
 
-import static org.hamcrest.CoreMatchers.is;
-import static org.hamcrest.MatcherAssert.assertThat;
+/**
+ * An enumeration of possible message types.
+ */
+public enum MessageType {
 
-import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
-import org.springframework.context.ApplicationContext;
-import org.springframework.test.context.ActiveProfiles;
-import uk.nhs.tis.trainee.notifications.config.MongoConfiguration;
+  EMAIL("email");
 
-@SpringBootTest
-@ActiveProfiles("test")
-class TisTraineeNotificationsApplicationTest {
+  private final String templatePath;
 
-  @MockBean
-  private MongoConfiguration mongoConfiguration;
+  /**
+   * Create an enumeration of a possible message type.
+   *
+   * @param templatePath The resource sub-path for templates of this type.
+   */
+  MessageType(String templatePath) {
+    this.templatePath = templatePath;
+  }
 
-  @Autowired
-  ApplicationContext context;
-
-  @Test
-  void contextLoads() {
-    assertThat("Unexpected bean.", context.getBean(MongoConfiguration.class),
-        is(mongoConfiguration));
+  /**
+   * Get the resource sub-path for templates of this type.
+   *
+   * @return The template sub-path.
+   */
+  public String getTemplatePath() {
+    return templatePath;
   }
 }

@@ -30,6 +30,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
+import static uk.nhs.tis.trainee.notifications.model.NotificationType.COJ_CONFIRMATION;
 
 import jakarta.mail.MessagingException;
 import java.time.Instant;
@@ -43,6 +44,7 @@ import uk.nhs.tis.trainee.notifications.service.EmailService;
 
 class ConditionsOfJoiningListenerTest {
 
+  private static final String VERSION = "v1.2.3";
   private static final String PERSON_ID = "40";
   private static final Instant SYNCED_AT = Instant.now();
 
@@ -52,13 +54,13 @@ class ConditionsOfJoiningListenerTest {
   @BeforeEach
   void setUp() {
     emailService = mock(EmailService.class);
-    listener = new ConditionsOfJoiningListener(emailService);
+    listener = new ConditionsOfJoiningListener(emailService, VERSION);
   }
 
   @Test
   void shouldThrowExceptionWhenCojReceivedAndSendingFails() throws MessagingException {
     doThrow(MessagingException.class).when(emailService)
-        .sendMessageToExistingUser(any(), any(), any());
+        .sendMessageToExistingUser(any(), any(), any(), any());
 
     ProgrammeMembershipEvent event = new ProgrammeMembershipEvent(PERSON_ID,
         new ConditionsOfJoining(SYNCED_AT));
@@ -73,28 +75,38 @@ class ConditionsOfJoiningListenerTest {
 
     listener.handleConditionsOfJoiningReceived(event);
 
-    verify(emailService).sendMessageToExistingUser(eq(PERSON_ID), any(), any());
+    verify(emailService).sendMessageToExistingUser(eq(PERSON_ID), any(), any(), any());
   }
 
   @Test
-  void shouldSetTemplateWhenCojReceived() throws MessagingException {
+  void shouldSetNotificationTypeWhenCojReceived() throws MessagingException {
     ProgrammeMembershipEvent event = new ProgrammeMembershipEvent(PERSON_ID,
         new ConditionsOfJoining(SYNCED_AT));
 
     listener.handleConditionsOfJoiningReceived(event);
 
-    verify(emailService).sendMessageToExistingUser(any(), eq("email/coj-confirmation"), any());
+    verify(emailService).sendMessageToExistingUser(any(), eq(COJ_CONFIRMATION), any(), any());
+  }
+
+  @Test
+  void shouldSetNotificationVersionWhenCojReceived() throws MessagingException {
+    ProgrammeMembershipEvent event = new ProgrammeMembershipEvent(PERSON_ID,
+        new ConditionsOfJoining(SYNCED_AT));
+
+    listener.handleConditionsOfJoiningReceived(event);
+
+    verify(emailService).sendMessageToExistingUser(any(), any(), eq(VERSION), any());
   }
 
   @Test
   void shouldNotIncludeSyncedAtWhenNullCojReceived() throws MessagingException {
-    ProgrammeMembershipEvent event = new ProgrammeMembershipEvent(PERSON_ID,
-        null);
+    ProgrammeMembershipEvent event = new ProgrammeMembershipEvent(PERSON_ID, null);
 
     listener.handleConditionsOfJoiningReceived(event);
 
     ArgumentCaptor<Map<String, Object>> templateVarsCaptor = ArgumentCaptor.forClass(Map.class);
-    verify(emailService).sendMessageToExistingUser(any(), any(), templateVarsCaptor.capture());
+    verify(emailService).sendMessageToExistingUser(any(), any(), any(),
+        templateVarsCaptor.capture());
 
     Map<String, Object> templateVariables = templateVarsCaptor.getValue();
     assertThat("Unexpected synced at.", templateVariables.get("syncedAt"), nullValue());
@@ -108,7 +120,8 @@ class ConditionsOfJoiningListenerTest {
     listener.handleConditionsOfJoiningReceived(event);
 
     ArgumentCaptor<Map<String, Object>> templateVarsCaptor = ArgumentCaptor.forClass(Map.class);
-    verify(emailService).sendMessageToExistingUser(any(), any(), templateVarsCaptor.capture());
+    verify(emailService).sendMessageToExistingUser(any(), any(), any(),
+        templateVarsCaptor.capture());
 
     Map<String, Object> templateVariables = templateVarsCaptor.getValue();
     assertThat("Unexpected synced at.", templateVariables.get("syncedAt"), nullValue());
@@ -122,7 +135,8 @@ class ConditionsOfJoiningListenerTest {
     listener.handleConditionsOfJoiningReceived(event);
 
     ArgumentCaptor<Map<String, Object>> templateVarsCaptor = ArgumentCaptor.forClass(Map.class);
-    verify(emailService).sendMessageToExistingUser(any(), any(), templateVarsCaptor.capture());
+    verify(emailService).sendMessageToExistingUser(any(), any(), any(),
+        templateVarsCaptor.capture());
 
     Map<String, Object> templateVariables = templateVarsCaptor.getValue();
     assertThat("Unexpected synced at.", templateVariables.get("syncedAt"), is(SYNCED_AT));

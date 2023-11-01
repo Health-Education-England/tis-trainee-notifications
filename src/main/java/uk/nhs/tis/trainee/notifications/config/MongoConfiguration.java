@@ -19,32 +19,34 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package uk.nhs.tis.trainee.notifications;
+package uk.nhs.tis.trainee.notifications.config;
 
-import static org.hamcrest.CoreMatchers.is;
-import static org.hamcrest.MatcherAssert.assertThat;
+import jakarta.annotation.PostConstruct;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.data.domain.Sort.Direction;
+import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.index.Index;
+import org.springframework.data.mongodb.core.index.IndexOperations;
+import uk.nhs.tis.trainee.notifications.model.History;
 
-import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
-import org.springframework.context.ApplicationContext;
-import org.springframework.test.context.ActiveProfiles;
-import uk.nhs.tis.trainee.notifications.config.MongoConfiguration;
+/**
+ * Additional configuration for MongoDB.
+ */
+@Configuration
+public class MongoConfiguration {
 
-@SpringBootTest
-@ActiveProfiles("test")
-class TisTraineeNotificationsApplicationTest {
+  private final MongoTemplate template;
 
-  @MockBean
-  private MongoConfiguration mongoConfiguration;
+  MongoConfiguration(MongoTemplate template) {
+    this.template = template;
+  }
 
-  @Autowired
-  ApplicationContext context;
-
-  @Test
-  void contextLoads() {
-    assertThat("Unexpected bean.", context.getBean(MongoConfiguration.class),
-        is(mongoConfiguration));
+  /**
+   * Add custom indexes to the Mongo collections.
+   */
+  @PostConstruct
+  public void initIndexes() {
+    IndexOperations indexOps = template.indexOps(History.class);
+    indexOps.ensureIndex(new Index().on("recipient.id", Direction.ASC));
   }
 }

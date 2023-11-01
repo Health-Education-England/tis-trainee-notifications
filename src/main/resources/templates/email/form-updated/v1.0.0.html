@@ -6,7 +6,7 @@
 <body>
 <th:block th:fragment="subject">Your FormR has been updated</th:block>
 <th:block th:fragment="content">
-  <div th:replace="fragments/greeting :: body"></div>
+  <div th:replace="fragments/greeting/v1.0.0 :: body"></div>
 <span th:switch="${lifecycleState}">
 
   <span th:case="'SUBMITTED'" id="SUBMITTED">

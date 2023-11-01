@@ -19,32 +19,18 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package uk.nhs.tis.trainee.notifications;
+package uk.nhs.tis.trainee.notifications.repository;
 
-import static org.hamcrest.CoreMatchers.is;
-import static org.hamcrest.MatcherAssert.assertThat;
+import org.bson.types.ObjectId;
+import org.springframework.data.mongodb.repository.MongoRepository;
+import org.springframework.stereotype.Repository;
+import uk.nhs.tis.trainee.notifications.model.History;
 
-import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
-import org.springframework.context.ApplicationContext;
-import org.springframework.test.context.ActiveProfiles;
-import uk.nhs.tis.trainee.notifications.config.MongoConfiguration;
+/**
+ * A repository of historical notifications.
+ */
+@Repository
+public interface HistoryRepository extends
+    MongoRepository<History, ObjectId> {
 
-@SpringBootTest
-@ActiveProfiles("test")
-class TisTraineeNotificationsApplicationTest {
-
-  @MockBean
-  private MongoConfiguration mongoConfiguration;
-
-  @Autowired
-  ApplicationContext context;
-
-  @Test
-  void contextLoads() {
-    assertThat("Unexpected bean.", context.getBean(MongoConfiguration.class),
-        is(mongoConfiguration));
-  }
 }

@@ -10,7 +10,7 @@ plugins {
 }
 
 group = "uk.nhs.tis.trainee"
-version = "0.4.3"
+version = "1.0.0"
 
 configurations {
   compileOnly {
@@ -32,6 +32,7 @@ dependencyManagement {
 dependencies {
   // Spring Boot starters
   implementation "org.springframework.boot:spring-boot-starter-actuator"
+  implementation "org.springframework.boot:spring-boot-starter-data-mongodb"
   implementation "org.springframework.boot:spring-boot-starter-data-redis"
   implementation "org.springframework.boot:spring-boot-starter-mail"
   implementation "org.springframework.boot:spring-boot-starter-thymeleaf"

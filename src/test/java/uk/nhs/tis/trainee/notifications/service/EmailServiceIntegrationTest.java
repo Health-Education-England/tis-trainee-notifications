@@ -32,10 +32,12 @@ import static org.springframework.util.ResourceUtils.CLASSPATH_URL_PREFIX;
 import jakarta.mail.Session;
 import jakarta.mail.internet.MimeMessage;
 import java.io.File;
-import java.io.FileNotFoundException;
-import java.util.Arrays;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Stream;
@@ -44,6 +46,7 @@ import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -54,6 +57,7 @@ import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.util.ResourceUtils;
 import uk.nhs.tis.trainee.notifications.dto.UserAccountDetails;
+import uk.nhs.tis.trainee.notifications.model.NotificationType;
 
 @SpringBootTest(classes = EmailService.class)
 @ImportAutoConfiguration(ThymeleafAutoConfiguration.class)
@@ -67,6 +71,9 @@ class EmailServiceIntegrationTest {
   private JavaMailSender mailSender;
 
   @MockBean
+  private HistoryService historyService;
+
+  @MockBean
   private UserAccountService userAccountService;
 
   @Autowired
@@ -78,19 +85,34 @@ class EmailServiceIntegrationTest {
     when(userAccountService.getUserAccountIds(PERSON_ID)).thenReturn(Set.of(USER_ID));
   }
 
-  private static Stream<String> getEmailTemplates() throws FileNotFoundException {
-    File emailTemplateFolder = ResourceUtils.getFile(CLASSPATH_URL_PREFIX + "templates/email/");
-    return Arrays.stream(Objects.requireNonNull(emailTemplateFolder.listFiles()))
-        .map(file -> "email/" + file.getName().replace(".html", ""));
+  private static Stream<Arguments> getEmailTemplates() throws IOException {
+    File emailRoot = ResourceUtils.getFile(CLASSPATH_URL_PREFIX + "templates/email/");
+    List<Arguments> arguments = new ArrayList<>();
+
+    for (NotificationType type : NotificationType.values()) {
+      String name = type.getTemplateName();
+      Path templateRoot = emailRoot.toPath().resolve(name);
+      int parentNameCount = templateRoot.getNameCount();
+      List<Arguments> typeArguments = Files.walk(templateRoot)
+          .filter(Files::isRegularFile)
+          .map(path -> path.subpath(parentNameCount, path.getNameCount()))
+          .map(subPath -> subPath.toString().replace(".html", ""))
+          .map(version -> Arguments.of(type, version))
+          .toList();
+      arguments.addAll(typeArguments);
+    }
+
+    return arguments.stream();
   }
 
   @ParameterizedTest
   @MethodSource("getEmailTemplates")
-  void shouldIncludeSubjectInTemplates(String template) throws Exception {
+  void shouldIncludeSubjectInTemplates(NotificationType notificationType, String templateVersion)
+      throws Exception {
     when(userAccountService.getUserDetails(USER_ID)).thenReturn(
         new UserAccountDetails(RECIPIENT, null));
 
-    service.sendMessageToExistingUser(PERSON_ID, template, Map.of());
+    service.sendMessageToExistingUser(PERSON_ID, notificationType, templateVersion, Map.of());
 
     ArgumentCaptor<MimeMessage> messageCaptor = ArgumentCaptor.forClass(MimeMessage.class);
     verify(mailSender).send(messageCaptor.capture());
@@ -101,11 +123,12 @@ class EmailServiceIntegrationTest {
 
   @ParameterizedTest
   @MethodSource("getEmailTemplates")
-  void shouldIncludeContentInTemplates(String template) throws Exception {
+  void shouldIncludeContentInTemplates(NotificationType notificationType, String templateVersion)
+      throws Exception {
     when(userAccountService.getUserDetails(USER_ID)).thenReturn(
         new UserAccountDetails(RECIPIENT, null));
 
-    service.sendMessageToExistingUser(PERSON_ID, template, Map.of());
+    service.sendMessageToExistingUser(PERSON_ID, notificationType, templateVersion, Map.of());
 
     ArgumentCaptor<MimeMessage> messageCaptor = ArgumentCaptor.forClass(MimeMessage.class);
     verify(mailSender).send(messageCaptor.capture());
@@ -116,11 +139,12 @@ class EmailServiceIntegrationTest {
 
   @ParameterizedTest
   @MethodSource("getEmailTemplates")
-  void shouldGreetExistingUsersConsistentlyWhenNameNotAvailable(String template) throws Exception {
+  void shouldGreetExistingUsersConsistentlyWhenNameNotAvailable(NotificationType notificationType,
+      String templateVersion) throws Exception {
     when(userAccountService.getUserDetails(USER_ID)).thenReturn(
         new UserAccountDetails(RECIPIENT, null));
 
-    service.sendMessageToExistingUser(PERSON_ID, template, Map.of());
+    service.sendMessageToExistingUser(PERSON_ID, notificationType, templateVersion, Map.of());
 
     ArgumentCaptor<MimeMessage> messageCaptor = ArgumentCaptor.forClass(MimeMessage.class);
     verify(mailSender).send(messageCaptor.capture());
@@ -136,11 +160,12 @@ class EmailServiceIntegrationTest {
 
   @ParameterizedTest
   @MethodSource("getEmailTemplates")
-  void shouldGreetExistingUsersConsistentlyWhenNameAvailable(String template) throws Exception {
+  void shouldGreetExistingUsersConsistentlyWhenNameAvailable(NotificationType notificationType,
+      String templateVersion) throws Exception {
     when(userAccountService.getUserDetails(USER_ID)).thenReturn(
         new UserAccountDetails(RECIPIENT, "Gilliam"));
 
-    service.sendMessageToExistingUser(PERSON_ID, template, Map.of());
+    service.sendMessageToExistingUser(PERSON_ID, notificationType, templateVersion, Map.of());
 
     ArgumentCaptor<MimeMessage> messageCaptor = ArgumentCaptor.forClass(MimeMessage.class);
     verify(mailSender).send(messageCaptor.capture());
@@ -156,11 +181,13 @@ class EmailServiceIntegrationTest {
 
   @ParameterizedTest
   @MethodSource("getEmailTemplates")
-  void shouldGreetExistingUsersConsistentlyWhenNameProvided(String template) throws Exception {
+  void shouldGreetExistingUsersConsistentlyWhenNameProvided(NotificationType notificationType,
+      String templateVersion) throws Exception {
     when(userAccountService.getUserDetails(USER_ID)).thenReturn(
         new UserAccountDetails(RECIPIENT, "Gilliam"));
 
-    service.sendMessageToExistingUser(PERSON_ID, template, Map.of("name", "Milliag"));
+    service.sendMessageToExistingUser(PERSON_ID, notificationType, templateVersion,
+        Map.of("name", "Milliag"));
 
     ArgumentCaptor<MimeMessage> messageCaptor = ArgumentCaptor.forClass(MimeMessage.class);
     verify(mailSender).send(messageCaptor.capture());
