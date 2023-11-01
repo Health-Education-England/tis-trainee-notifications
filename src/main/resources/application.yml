@@ -15,7 +15,7 @@ application:
   environment: ${ENVIRONMENT:local}
   queues:
       coj-received: ${COJ_RECEIVED_QUEUE}
-      credential-revoked: ${CREDENTIAL_REVOKED_QUEUE:http://localhost:4566/queue/tis-trainee-credentials-local-update-programme-membership}
+      credential-revoked: ${CREDENTIAL_REVOKED_QUEUE}
       form-updated: ${FORM_UPDATED_QUEUE}
       programme-membership: ${PROGRAMME_MEMBERSHIP_UPDATED_QUEUE}
   template-versions:
