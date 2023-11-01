@@ -49,5 +49,9 @@ class TisTraineeNotificationsApplicationTest {
   void contextLoads() {
     assertThat("Unexpected bean.", context.getBean(MongoConfiguration.class),
         is(mongoConfiguration));
+    assertThat("Unexpected flyway bean", context.getBean(FlywayConfiguration.class),
+        notNullValue(FlywayConfiguration.class));
+    assertThat("Unexpected quartz bean", context.getBean(QuartzAutoConfiguration.class),
+        notNullValue(QuartzAutoConfiguration.class));
   }
 }
