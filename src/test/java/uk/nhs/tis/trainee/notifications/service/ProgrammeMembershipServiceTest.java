@@ -23,10 +23,12 @@ package uk.nhs.tis.trainee.notifications.service;
 
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.mockito.Mockito.mock;
 
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.quartz.Scheduler;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -45,9 +47,12 @@ class ProgrammeMembershipServiceTest {
 
   ProgrammeMembershipService service;
 
+  Scheduler scheduler;
+
   @BeforeEach
   void setUp() {
-    service = new ProgrammeMembershipService();
+    scheduler = mock(Scheduler.class);
+    service = new ProgrammeMembershipService(scheduler);
   }
 
   @ParameterizedTest
