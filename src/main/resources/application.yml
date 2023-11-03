@@ -14,10 +14,10 @@ application:
     sender: ${EMAIL_SENDER}
   environment: ${ENVIRONMENT:local}
   queues:
-      coj-received: ${COJ_RECEIVED_QUEUE}
-      credential-revoked: ${CREDENTIAL_REVOKED_QUEUE}
-      form-updated: ${FORM_UPDATED_QUEUE}
-      programme-membership: ${PROGRAMME_MEMBERSHIP_UPDATED_QUEUE}
+    coj-received: ${COJ_RECEIVED_QUEUE}
+    credential-revoked: ${CREDENTIAL_REVOKED_QUEUE}
+    form-updated: ${FORM_UPDATED_QUEUE}
+    programme-membership: ${PROGRAMME_MEMBERSHIP_UPDATED_QUEUE}
   template-versions:
     coj-confirmation:
       email: v1.0.0
