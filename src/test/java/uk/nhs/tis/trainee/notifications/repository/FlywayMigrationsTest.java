@@ -19,35 +19,45 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package uk.nhs.tis.trainee.notifications;
+package uk.nhs.tis.trainee.notifications.repository;
 
-import static org.hamcrest.CoreMatchers.is;
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.notNullValue;
-
+import jakarta.validation.constraints.NotNull;
+import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.autoconfigure.flyway.FlywayAutoConfiguration.FlywayConfiguration;
-import org.springframework.boot.autoconfigure.quartz.QuartzAutoConfiguration;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
-import org.springframework.context.ApplicationContext;
+import org.springframework.core.Ordered;
 import org.springframework.test.context.ActiveProfiles;
-import uk.nhs.tis.trainee.notifications.config.MongoConfiguration;
+import org.springframework.test.context.TestContext;
+import org.springframework.test.context.TestExecutionListener;
+import org.testcontainers.junit.jupiter.Testcontainers;
 
-@SpringBootTest
-@ActiveProfiles("test")
-class TisTraineeNotificationsApplicationTest {
-
-  @MockBean
-  private MongoConfiguration mongoConfiguration;
+@SpringBootTest()
+@ActiveProfiles({"test", "mysql"})
+@Testcontainers(disabledWithoutDocker = true)
+@ExtendWith(MockitoExtension.class)
+class FlywayMigrationsTest implements TestExecutionListener, Ordered {
 
   @Autowired
-  ApplicationContext context;
+  Flyway flyway;
+
+  @Override
+  public void beforeTestMethod(@NotNull TestContext testContext) {
+    flyway.clean();
+    flyway.migrate();
+  }
+
+  @Override
+  public int getOrder() {
+    // Ensures that this TestExecutionListener is run before
+    // SqlScriptExecutionTestListener which handles @Sql.
+    return Ordered.HIGHEST_PRECEDENCE;
+  }
 
   @Test
-  void contextLoads() {
-    assertThat("Unexpected bean.", context.getBean(MongoConfiguration.class),
-        is(mongoConfiguration));
+  void validateFlywayMigrations() {
+    flyway.validate();
   }
 }

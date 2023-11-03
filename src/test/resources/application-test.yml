@@ -16,3 +16,12 @@ spring:
         enabled: false
     compatibility-verifier:
       enabled: false # TODO: For unknown reasons there is currently a flagged incompatibility between Spring Cloud 2022.0.4 and Spring Boot 3.1.x.
+  datasource:
+    type: com.zaxxer.hikari.HikariDataSource
+    url: jdbc:h2:mem:tss_quartz;DB_CLOSE_DELAY=-1;IGNORECASE=TRUE;MODE=MySQL
+    name:
+    username: sa
+    password:
+  quartz:
+    jdbc:
+      initialize-schema: always

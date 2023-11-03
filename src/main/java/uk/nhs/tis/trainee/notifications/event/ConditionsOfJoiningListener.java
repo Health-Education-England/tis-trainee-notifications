@@ -30,7 +30,7 @@ import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
-import uk.nhs.tis.trainee.notifications.dto.ProgrammeMembershipEvent;
+import uk.nhs.tis.trainee.notifications.dto.CojSignedEvent;
 import uk.nhs.tis.trainee.notifications.service.EmailService;
 
 /**
@@ -61,7 +61,7 @@ public class ConditionsOfJoiningListener {
    * @throws MessagingException If the message could not be sent.
    */
   @SqsListener("${application.queues.coj-received}")
-  public void handleConditionsOfJoiningReceived(ProgrammeMembershipEvent event)
+  public void handleConditionsOfJoiningReceived(CojSignedEvent event)
       throws MessagingException {
     log.info("Handling COJ received event {}.", event);
 

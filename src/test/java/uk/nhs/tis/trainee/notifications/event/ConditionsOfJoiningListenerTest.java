@@ -38,8 +38,8 @@ import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
-import uk.nhs.tis.trainee.notifications.dto.ProgrammeMembershipEvent;
-import uk.nhs.tis.trainee.notifications.dto.ProgrammeMembershipEvent.ConditionsOfJoining;
+import uk.nhs.tis.trainee.notifications.dto.CojSignedEvent;
+import uk.nhs.tis.trainee.notifications.dto.CojSignedEvent.ConditionsOfJoining;
 import uk.nhs.tis.trainee.notifications.service.EmailService;
 
 class ConditionsOfJoiningListenerTest {
@@ -62,7 +62,7 @@ class ConditionsOfJoiningListenerTest {
     doThrow(MessagingException.class).when(emailService)
         .sendMessageToExistingUser(any(), any(), any(), any());
 
-    ProgrammeMembershipEvent event = new ProgrammeMembershipEvent(PERSON_ID,
+    CojSignedEvent event = new CojSignedEvent(PERSON_ID,
         new ConditionsOfJoining(SYNCED_AT));
 
     assertThrows(MessagingException.class, () -> listener.handleConditionsOfJoiningReceived(event));
@@ -70,7 +70,7 @@ class ConditionsOfJoiningListenerTest {
 
   @Test
   void shouldSetTraineeIdWhenCojReceived() throws MessagingException {
-    ProgrammeMembershipEvent event = new ProgrammeMembershipEvent(PERSON_ID,
+    CojSignedEvent event = new CojSignedEvent(PERSON_ID,
         new ConditionsOfJoining(SYNCED_AT));
 
     listener.handleConditionsOfJoiningReceived(event);
@@ -80,7 +80,7 @@ class ConditionsOfJoiningListenerTest {
 
   @Test
   void shouldSetNotificationTypeWhenCojReceived() throws MessagingException {
-    ProgrammeMembershipEvent event = new ProgrammeMembershipEvent(PERSON_ID,
+    CojSignedEvent event = new CojSignedEvent(PERSON_ID,
         new ConditionsOfJoining(SYNCED_AT));
 
     listener.handleConditionsOfJoiningReceived(event);
@@ -90,7 +90,7 @@ class ConditionsOfJoiningListenerTest {
 
   @Test
   void shouldSetNotificationVersionWhenCojReceived() throws MessagingException {
-    ProgrammeMembershipEvent event = new ProgrammeMembershipEvent(PERSON_ID,
+    CojSignedEvent event = new CojSignedEvent(PERSON_ID,
         new ConditionsOfJoining(SYNCED_AT));
 
     listener.handleConditionsOfJoiningReceived(event);
@@ -100,7 +100,8 @@ class ConditionsOfJoiningListenerTest {
 
   @Test
   void shouldNotIncludeSyncedAtWhenNullCojReceived() throws MessagingException {
-    ProgrammeMembershipEvent event = new ProgrammeMembershipEvent(PERSON_ID, null);
+    CojSignedEvent event = new CojSignedEvent(PERSON_ID,
+        null);
 
     listener.handleConditionsOfJoiningReceived(event);
 
@@ -114,7 +115,7 @@ class ConditionsOfJoiningListenerTest {
 
   @Test
   void shouldNotIncludeSyncedAtWhenCojReceivedWithNullSyncedAt() throws MessagingException {
-    ProgrammeMembershipEvent event = new ProgrammeMembershipEvent(PERSON_ID,
+    CojSignedEvent event = new CojSignedEvent(PERSON_ID,
         new ConditionsOfJoining(null));
 
     listener.handleConditionsOfJoiningReceived(event);
@@ -129,7 +130,7 @@ class ConditionsOfJoiningListenerTest {
 
   @Test
   void shouldIncludeSyncedAtWhenCojReceivedWithValidSyncedAt() throws MessagingException {
-    ProgrammeMembershipEvent event = new ProgrammeMembershipEvent(PERSON_ID,
+    CojSignedEvent event = new CojSignedEvent(PERSON_ID,
         new ConditionsOfJoining(SYNCED_AT));
 
     listener.handleConditionsOfJoiningReceived(event);
