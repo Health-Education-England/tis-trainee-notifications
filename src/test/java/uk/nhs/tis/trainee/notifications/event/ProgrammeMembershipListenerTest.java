@@ -21,40 +21,40 @@
 
 package uk.nhs.tis.trainee.notifications.event;
 
-import io.awspring.cloud.sqs.annotation.SqsListener;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Component;
-import uk.nhs.tis.trainee.notifications.dto.CojSignedEvent;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+
+import java.time.LocalDate;
+import java.util.List;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import uk.nhs.tis.trainee.notifications.dto.Curriculum;
 import uk.nhs.tis.trainee.notifications.dto.ProgrammeMembershipEvent;
 import uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService;
 
-/**
- * A listener for Programme Membership events.
- */
-@Slf4j
-@Component
-public class ProgrammeMembershipListener {
+class ProgrammeMembershipListenerTest {
 
-  private final ProgrammeMembershipService programmeMembershipService;
+  private static final String TIS_ID = "123";
+  private static final LocalDate START_DATE = LocalDate.MAX;
+  private static final Curriculum MEDICAL_CURRICULUM1
+      = new Curriculum("MEDICAL_CURRICULUM", "some-specialty");
 
-  /**
-   * Construct a listener for programme membership events.
-   *
-   * @param programmeMembershipService The programme membership service.
-   */
-  public ProgrammeMembershipListener(ProgrammeMembershipService programmeMembershipService) {
-    this.programmeMembershipService = programmeMembershipService;
+  private ProgrammeMembershipListener listener;
+  private ProgrammeMembershipService programmeMembershipService;
+
+  @BeforeEach
+  void setUp() {
+    programmeMembershipService = mock(ProgrammeMembershipService.class);
+    listener = new ProgrammeMembershipListener(programmeMembershipService);
   }
 
-  /**
-   * Handle Programme membership received events.
-   *
-   * @param event The program membership event.
-   */
-  @SqsListener("${application.queues.programme-membership}")
-  public void handleProgrammeMembershipUpdate(ProgrammeMembershipEvent event) {
-    log.info("Handling programme membership update event {}.", event);
-    boolean isExcluded = programmeMembershipService.isExcluded(event);
-    log.info("Programme membership {}: excluded {}.", event.tisId(), isExcluded);
+  @Test
+  void shouldCheckIfProgrammeMembershipEventIsExcluded() {
+    ProgrammeMembershipEvent event
+        = new ProgrammeMembershipEvent(TIS_ID, START_DATE, List.of(MEDICAL_CURRICULUM1));
+
+    listener.handleProgrammeMembershipUpdate(event);
+
+    verify(programmeMembershipService).isExcluded(event);
   }
 }
