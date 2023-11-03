@@ -23,17 +23,24 @@ package uk.nhs.tis.trainee.notifications.service;
 
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 
+import java.time.LocalDate;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.quartz.JobKey;
 import org.quartz.Scheduler;
+import org.quartz.SchedulerException;
 import uk.nhs.tis.trainee.notifications.dto.Curriculum;
 import uk.nhs.tis.trainee.notifications.dto.ProgrammeMembershipEvent;
+import uk.nhs.tis.trainee.notifications.model.NotificationMilestoneType;
 
 class ProgrammeMembershipServiceTest {
 
@@ -41,6 +48,11 @@ class ProgrammeMembershipServiceTest {
   private static final String MEDICAL_CURRICULUM_2 = "Medical_spr";
   private static final String EXCLUDE_SPECIALTY_1 = "Public health medicine";
   private static final String EXCLUDE_SPECIALTY_2 = "Foundation";
+
+  private static final String TIS_ID = "123";
+  private static final String PERSON_ID = "abc";
+  private static final String PROGRAMME_NAME = "the programme";
+  private static final LocalDate START_DATE = LocalDate.MAX;
 
   private static final Curriculum IGNORED_CURRICULUM
       = new Curriculum("some-subtype", "some-specialty");
@@ -102,5 +114,33 @@ class ProgrammeMembershipServiceTest {
     boolean isExcluded = service.isExcluded(event);
 
     assertThat("Unexpected excluded value.", isExcluded, is(true));
+  }
+
+  @Test
+  void shouldRemoveStaleNotifications() throws SchedulerException {
+    Curriculum theCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, EXCLUDE_SPECIALTY_1);
+    List<Curriculum> curricula = List.of(theCurriculum);
+    ProgrammeMembershipEvent event
+        = new ProgrammeMembershipEvent(TIS_ID, PERSON_ID, PROGRAMME_NAME, START_DATE, curricula);
+
+    service.scheduleNotifications(event);
+
+    for (NotificationMilestoneType milestone : NotificationMilestoneType.values()) {
+      String jobId = milestone.toString() + "-" + TIS_ID;
+      JobKey jobKey = new JobKey(jobId);
+      verify(scheduler).deleteJob(jobKey);
+    }
+  }
+
+  @Test
+  void shouldNotScheduleNotificationsIfExcluded() throws SchedulerException {
+    Curriculum theCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, EXCLUDE_SPECIALTY_1);
+    List<Curriculum> curricula = List.of(theCurriculum);
+    ProgrammeMembershipEvent event
+        = new ProgrammeMembershipEvent(TIS_ID, PERSON_ID, PROGRAMME_NAME, START_DATE, curricula);
+
+    service.scheduleNotifications(event);
+
+    verify(scheduler, never()).scheduleJob(any(), any());
   }
 }
