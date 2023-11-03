@@ -56,10 +56,6 @@ public class ProgrammeMembershipListener {
   public void handleProgrammeMembershipUpdate(ProgrammeMembershipEvent event)
       throws SchedulerException {
     log.info("Handling programme membership update event {}.", event);
-    boolean isExcluded = programmeMembershipService.isExcluded(event);
-    log.info("Programme membership {}: excluded {}.", event.tisId(), isExcluded);
-    if (!isExcluded) {
-      programmeMembershipService.scheduleNotifications(event);
-    }
+    programmeMembershipService.scheduleNotifications(event);
   }
 }

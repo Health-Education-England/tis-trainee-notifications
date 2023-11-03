@@ -71,7 +71,7 @@ public class ProgrammeMembershipService {
    * @param programmeMembership the Programme membership.
    * @return true if the programme membership is excluded.
    */
-  public boolean isExcluded(ProgrammeMembershipEvent programmeMembership) {
+  private boolean isExcluded(ProgrammeMembershipEvent programmeMembership) {
     List<Curriculum> curricula = programmeMembership.curricula();
     if (curricula == null) {
       return true;
@@ -100,36 +100,41 @@ public class ProgrammeMembershipService {
     //for each notification Milestone (enum? of 8-week, 4-week, 0-week) -
     //  if its not already past, create a notification job and trigger
 
+    boolean isExcluded = isExcluded(programmeMembership);
+    log.info("Programme membership {}: excluded {}.", programmeMembership.tisId(), isExcluded);
+
     //remove existing not-sent notifications TODO
 
-    LocalDate today = LocalDate.now();
-    LocalDate startDate = programmeMembership.startDate();
-    for (NotificationMilestoneType milestone : NotificationMilestoneType.values()) {
-      LocalDate milestoneDate = startDate.minusDays(milestone.getDaysBeforeStart());
-      if (!milestoneDate.isBefore(today)) {
-        Date when = Date.from(milestoneDate
-            .atStartOfDay() //TODO: do we want to send them all at once?
-            .atZone(ZoneId.systemDefault())
-            .toInstant());
-        String jobId = milestone.toString() + "-" + programmeMembership.tisId();
-        JobDataMap jobDataMap = new JobDataMap();
-        jobDataMap.put("tisId", programmeMembership.tisId());
-        jobDataMap.put("personId", programmeMembership.personId());
-        jobDataMap.put("startDate", programmeMembership.startDate());
-        // TODO other details e.g. programme name.
-        // But note the status of the trainee will be retrieved when the job is executed, as will
-        // their name and email address, not now.
-        try {
-          scheduleNotification(jobId, jobDataMap, when);
-        } catch (SchedulerException e) {
-          log.error("Failed to schedule notification {}: {}", jobId, e.toString());
-          throw (e); //to allow message to be requeue-ed
+    if (!isExcluded) {
+
+      LocalDate today = LocalDate.now();
+      LocalDate startDate = programmeMembership.startDate();
+      for (NotificationMilestoneType milestone : NotificationMilestoneType.values()) {
+        LocalDate milestoneDate = startDate.minusDays(milestone.getDaysBeforeStart());
+        if (!milestoneDate.isBefore(today)) {
+          Date when = Date.from(milestoneDate
+              .atStartOfDay() //TODO: do we want to send them all at once?
+              .atZone(ZoneId.systemDefault())
+              .toInstant());
+          String jobId = milestone.toString() + "-" + programmeMembership.tisId();
+          JobDataMap jobDataMap = new JobDataMap();
+          jobDataMap.put("tisId", programmeMembership.tisId());
+          jobDataMap.put("personId", programmeMembership.personId());
+          jobDataMap.put("startDate", programmeMembership.startDate());
+          // TODO other details e.g. programme name.
+          // But note the status of the trainee will be retrieved when the job is executed, as will
+          // their name and email address, not now.
+          try {
+            scheduleNotification(jobId, jobDataMap, when);
+          } catch (SchedulerException e) {
+            log.error("Failed to schedule notification {}: {}", jobId, e.toString());
+            throw (e); //to allow message to be requeue-ed
+          }
+        } else {
+          //too late to schedule this one, do nothing
         }
-      } else {
-        //too late to schedule this one, do nothing
       }
     }
-
   }
 
   /**

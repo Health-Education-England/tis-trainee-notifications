@@ -21,13 +21,17 @@
 
 package uk.nhs.tis.trainee.notifications.event;
 
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
+import static org.mockito.Mockito.when;
 
 import java.time.LocalDate;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.quartz.SchedulerException;
 import uk.nhs.tis.trainee.notifications.dto.Curriculum;
 import uk.nhs.tis.trainee.notifications.dto.ProgrammeMembershipEvent;
 import uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService;
@@ -49,12 +53,13 @@ class ProgrammeMembershipListenerTest {
   }
 
   @Test
-  void shouldCheckIfProgrammeMembershipEventIsExcluded() {
+  void shouldScheduleNotifications() throws SchedulerException {
     ProgrammeMembershipEvent event
         = new ProgrammeMembershipEvent(TIS_ID, START_DATE, List.of(MEDICAL_CURRICULUM1));
 
     listener.handleProgrammeMembershipUpdate(event);
 
-    verify(programmeMembershipService).isExcluded(event);
+    verify(programmeMembershipService).scheduleNotifications(any());
+    verifyNoMoreInteractions(programmeMembershipService);
   }
 }
