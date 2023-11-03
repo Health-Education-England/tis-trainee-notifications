@@ -34,7 +34,8 @@ import org.springframework.test.context.TestContext;
 import org.springframework.test.context.TestExecutionListener;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
-@SpringBootTest(properties = "embedded.containers.mongodb.enabled=false")
+@SpringBootTest(properties = {"embedded.containers.enabled=false",
+    "embedded.containers.mongodb.enabled=false"})
 @ActiveProfiles({"test", "mysql"})
 @Testcontainers(disabledWithoutDocker = true)
 @ExtendWith(MockitoExtension.class)
