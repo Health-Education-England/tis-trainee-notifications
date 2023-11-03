@@ -28,7 +28,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.core.Ordered;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.TestContext;
 import org.springframework.test.context.TestExecutionListener;
@@ -38,7 +37,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 @ActiveProfiles({"test", "mysql"})
 @Testcontainers(disabledWithoutDocker = true)
 @ExtendWith(MockitoExtension.class)
-class FlywayMigrationsTest implements TestExecutionListener, Ordered {
+class FlywayMigrationsTest implements TestExecutionListener {
 
   @Autowired
   Flyway flyway;
@@ -47,13 +46,6 @@ class FlywayMigrationsTest implements TestExecutionListener, Ordered {
   public void beforeTestMethod(@NotNull TestContext testContext) {
     flyway.clean();
     flyway.migrate();
-  }
-
-  @Override
-  public int getOrder() {
-    // Ensures that this TestExecutionListener is run before
-    // SqlScriptExecutionTestListener which handles @Sql.
-    return Ordered.HIGHEST_PRECEDENCE;
   }
 
   @Test
