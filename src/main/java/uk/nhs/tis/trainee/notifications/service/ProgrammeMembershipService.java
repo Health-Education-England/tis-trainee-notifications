@@ -31,6 +31,7 @@ import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.quartz.JobDataMap;
 import org.quartz.JobDetail;
+import org.quartz.JobKey;
 import org.quartz.Scheduler;
 import org.quartz.SchedulerException;
 import org.quartz.Trigger;
@@ -46,6 +47,8 @@ import uk.nhs.tis.trainee.notifications.model.NotificationMilestoneType;
 @Slf4j
 @Service
 public class ProgrammeMembershipService {
+
+  private static final String TRIGGER_ID_PREFIX = "trigger-";
 
   private static final List<String> INCLUDE_CURRICULUM_SUBTYPES
       = List.of("MEDICAL_CURRICULUM", "MEDICAL_SPR");
@@ -71,7 +74,7 @@ public class ProgrammeMembershipService {
    * @param programmeMembership the Programme membership.
    * @return true if the programme membership is excluded.
    */
-  private boolean isExcluded(ProgrammeMembershipEvent programmeMembership) {
+  public boolean isExcluded(ProgrammeMembershipEvent programmeMembership) {
     List<Curriculum> curricula = programmeMembership.curricula();
     if (curricula == null) {
       return true;
@@ -96,30 +99,28 @@ public class ProgrammeMembershipService {
    */
   public void scheduleNotifications(ProgrammeMembershipEvent programmeMembership)
       throws SchedulerException {
-    //remove any existing future notification jobs scheduled
-    //for each notification Milestone (enum? of 8-week, 4-week, 0-week) -
-    //  if its not already past, create a notification job and trigger
 
     boolean isExcluded = isExcluded(programmeMembership);
     log.info("Programme membership {}: excluded {}.", programmeMembership.tisId(), isExcluded);
 
-    //remove existing not-sent notifications TODO
+    LocalDate today = LocalDate.now();
+    LocalDate startDate = programmeMembership.startDate();
+    for (NotificationMilestoneType milestone : NotificationMilestoneType.values()) {
 
-    if (!isExcluded) {
+      String jobId = milestone.toString() + "-" + programmeMembership.tisId();
+      removeNotification(jobId); //remove existing notification if it exists
 
-      LocalDate today = LocalDate.now();
-      LocalDate startDate = programmeMembership.startDate();
-      for (NotificationMilestoneType milestone : NotificationMilestoneType.values()) {
+      if (!isExcluded) {
         LocalDate milestoneDate = startDate.minusDays(milestone.getDaysBeforeStart());
         if (!milestoneDate.isBefore(today)) {
           Date when = Date.from(milestoneDate
               .atStartOfDay() //TODO: do we want to send them all at once?
               .atZone(ZoneId.systemDefault())
               .toInstant());
-          String jobId = milestone.toString() + "-" + programmeMembership.tisId();
           JobDataMap jobDataMap = new JobDataMap();
           jobDataMap.put("tisId", programmeMembership.tisId());
           jobDataMap.put("personId", programmeMembership.personId());
+          jobDataMap.put("programmeName", programmeMembership.programmeName());
           jobDataMap.put("startDate", programmeMembership.startDate());
           // TODO other details e.g. programme name.
           // But note the status of the trainee will be retrieved when the job is executed, as will
@@ -135,6 +136,7 @@ public class ProgrammeMembershipService {
         }
       }
     }
+
   }
 
   /**
@@ -151,12 +153,26 @@ public class ProgrammeMembershipService {
     JobDetail job = newJob(NotificationService.class)
         .withIdentity(jobId)
         .usingJobData(jobDataMap)
+        //.storeDurably() TODO decide if we want to keep a record of triggered notifications
         .build();
     Trigger trigger = newTrigger()
-        .withIdentity("trigger-" + jobId)
+        .withIdentity(TRIGGER_ID_PREFIX + jobId)
         .startAt(when)
         .build();
 
-    scheduler.scheduleJob(job, trigger);
+    Date scheduledDate = scheduler.scheduleJob(job, trigger);
+    log.info("Notification for {} scheduled for {}", jobId, scheduledDate);
+  }
+
+  private void removeNotification(String jobId) throws SchedulerException {
+// scenarios:
+    // 1. no job exists --> do nothing
+    // 2. a job exists and it has been triggered --> not if we don't storeDurable(), so ignore for now
+    // 3. a job exists and it has not been triggered - delete
+    JobKey jobKey = new JobKey(jobId);
+    // Delete the job and unschedule its triggers.
+    // We do not simply remove the trigger, since the job data may be updated
+    scheduler.deleteJob(jobKey);
+    log.info("Removed stale notification scheduled for {}", jobId);
   }
 }

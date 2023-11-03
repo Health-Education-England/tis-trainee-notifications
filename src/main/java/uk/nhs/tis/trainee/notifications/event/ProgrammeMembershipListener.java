@@ -25,7 +25,6 @@ import io.awspring.cloud.sqs.annotation.SqsListener;
 import lombok.extern.slf4j.Slf4j;
 import org.quartz.SchedulerException;
 import org.springframework.stereotype.Component;
-import uk.nhs.tis.trainee.notifications.dto.CojSignedEvent;
 import uk.nhs.tis.trainee.notifications.dto.ProgrammeMembershipEvent;
 import uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService;
 

@@ -28,10 +28,10 @@ import static org.mockito.Mockito.mock;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.quartz.Scheduler;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.quartz.Scheduler;
 import uk.nhs.tis.trainee.notifications.dto.Curriculum;
 import uk.nhs.tis.trainee.notifications.dto.ProgrammeMembershipEvent;
 
@@ -61,7 +61,7 @@ class ProgrammeMembershipServiceTest {
     Curriculum theCurriculum = new Curriculum(subtype, "some-specialty");
     List<Curriculum> curricula = List.of(theCurriculum, IGNORED_CURRICULUM);
     ProgrammeMembershipEvent event
-        = new ProgrammeMembershipEvent(null, null, curricula);
+        = new ProgrammeMembershipEvent(null, null, null, null, curricula);
 
     boolean isExcluded = service.isExcluded(event);
 
@@ -72,7 +72,7 @@ class ProgrammeMembershipServiceTest {
   void shouldExcludePmWithNoMedicalSubtype() {
     List<Curriculum> curricula = List.of(IGNORED_CURRICULUM);
     ProgrammeMembershipEvent event
-        = new ProgrammeMembershipEvent(null, null, curricula);
+        = new ProgrammeMembershipEvent(null, null, null, null, curricula);
 
     boolean isExcluded = service.isExcluded(event);
 
@@ -83,7 +83,7 @@ class ProgrammeMembershipServiceTest {
   @NullAndEmptySource
   void shouldExcludePmWithNoCurricula(List<Curriculum> curricula) {
     ProgrammeMembershipEvent event
-        = new ProgrammeMembershipEvent(null, null, curricula);
+        = new ProgrammeMembershipEvent(null, null, null, null, curricula);
 
     boolean isExcluded = service.isExcluded(event);
 
@@ -97,7 +97,7 @@ class ProgrammeMembershipServiceTest {
     Curriculum anotherCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, "some-specialty");
     List<Curriculum> curricula = List.of(theCurriculum, anotherCurriculum);
     ProgrammeMembershipEvent event
-        = new ProgrammeMembershipEvent(null, null, curricula);
+        = new ProgrammeMembershipEvent(null, null, null, null, curricula);
 
     boolean isExcluded = service.isExcluded(event);
 

@@ -27,12 +27,16 @@ import java.util.List;
 /**
  * A Programme Membership event.
  *
- * @param tisId               The TIS ID of the Programme membership.
- * @param startDate           The start date of the Programme membership.
- * @param curricula           The list of curricula for the Programme membership.
+ * @param tisId         The TIS ID of the Programme membership.
+ * @param personId      The TIS ID of the person.
+ * @param programmeName The programme name.
+ * @param startDate     The start date of the Programme membership.
+ * @param curricula     The list of curricula for the Programme membership.
  */
 public record ProgrammeMembershipEvent(
     String tisId,
+    String personId,
+    String programmeName,
     LocalDate startDate,
     List<Curriculum> curricula) {
 

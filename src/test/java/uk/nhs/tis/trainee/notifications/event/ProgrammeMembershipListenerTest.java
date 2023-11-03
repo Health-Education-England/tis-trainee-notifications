@@ -25,7 +25,6 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
-import static org.mockito.Mockito.when;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -39,6 +38,8 @@ import uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService;
 class ProgrammeMembershipListenerTest {
 
   private static final String TIS_ID = "123";
+  private static final String PERSON_ID = "abc";
+  private static final String PROGRAMME_NAME = "the programme";
   private static final LocalDate START_DATE = LocalDate.MAX;
   private static final Curriculum MEDICAL_CURRICULUM1
       = new Curriculum("MEDICAL_CURRICULUM", "some-specialty");
@@ -54,8 +55,8 @@ class ProgrammeMembershipListenerTest {
 
   @Test
   void shouldScheduleNotifications() throws SchedulerException {
-    ProgrammeMembershipEvent event
-        = new ProgrammeMembershipEvent(TIS_ID, START_DATE, List.of(MEDICAL_CURRICULUM1));
+    ProgrammeMembershipEvent event = new ProgrammeMembershipEvent(
+        TIS_ID, PERSON_ID, PROGRAMME_NAME, START_DATE, List.of(MEDICAL_CURRICULUM1));
 
     listener.handleProgrammeMembershipUpdate(event);
 
