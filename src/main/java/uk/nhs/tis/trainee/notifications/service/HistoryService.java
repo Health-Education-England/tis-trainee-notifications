@@ -21,7 +21,10 @@
 
 package uk.nhs.tis.trainee.notifications.service;
 
+import java.util.List;
 import org.springframework.stereotype.Service;
+import uk.nhs.tis.trainee.notifications.dto.HistoryDto;
+import uk.nhs.tis.trainee.notifications.mapper.HistoryMapper;
 import uk.nhs.tis.trainee.notifications.model.History;
 import uk.nhs.tis.trainee.notifications.repository.HistoryRepository;
 
@@ -32,12 +35,31 @@ import uk.nhs.tis.trainee.notifications.repository.HistoryRepository;
 public class HistoryService {
 
   private final HistoryRepository repository;
+  private final HistoryMapper mapper;
 
-  public HistoryService(HistoryRepository repository) {
+  public HistoryService(HistoryRepository repository, HistoryMapper mapper) {
     this.repository = repository;
+    this.mapper = mapper;
   }
 
+  /**
+   * Save a notification history.
+   *
+   * @param history The notification to save in history.
+   * @return The saved notification history.
+   */
   public History save(History history) {
     return repository.save(history);
+  }
+
+  /**
+   * Find all historic notifications for the given Trainee.
+   *
+   * @param traineeId The ID of the trainee to get notifications for.
+   * @return The found notifications, empty if none found.
+   */
+  public List<HistoryDto> findAllForTrainee(String traineeId) {
+    List<History> history = repository.findAllByRecipient_IdOrderBySentAtDesc(traineeId);
+    return mapper.toDtos(history);
   }
 }

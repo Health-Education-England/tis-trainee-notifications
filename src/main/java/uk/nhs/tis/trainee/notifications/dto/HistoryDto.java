@@ -19,26 +19,22 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package uk.nhs.tis.trainee.notifications.repository;
+package uk.nhs.tis.trainee.notifications.dto;
 
-import java.util.List;
-import org.bson.types.ObjectId;
-import org.springframework.data.mongodb.repository.MongoRepository;
-import org.springframework.stereotype.Repository;
-import uk.nhs.tis.trainee.notifications.model.History;
+import java.time.Instant;
+import uk.nhs.tis.trainee.notifications.model.MessageType;
+import uk.nhs.tis.trainee.notifications.model.NotificationType;
 
 /**
- * A repository of historical notifications.
+ * A DTO for historical notification data.
+ *
+ * @param id      The ID of the notification.
+ * @param type    The type of notification e.g. EMAIL
+ * @param subject The subject of the notification e.g. COJ_CONFIRMATION
+ * @param contact The contact details used to send the notifiation.
+ * @param sentAt  The timestamp the notification was sent at.
  */
-@Repository
-public interface HistoryRepository extends
-    MongoRepository<History, ObjectId> {
+public record HistoryDto(String id, MessageType type, NotificationType subject, String contact,
+                         Instant sentAt) {
 
-  /**
-   * Find all history for the given recipient ID.
-   *
-   * @param recipientId The ID of the recipient to get the history for.
-   * @return The found history, empty if none found.
-   */
-  List<History> findAllByRecipient_IdOrderBySentAtDesc(String recipientId);
 }

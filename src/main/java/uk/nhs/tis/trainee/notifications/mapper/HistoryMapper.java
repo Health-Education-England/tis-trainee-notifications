@@ -19,26 +19,39 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package uk.nhs.tis.trainee.notifications.repository;
+package uk.nhs.tis.trainee.notifications.mapper;
 
 import java.util.List;
-import org.bson.types.ObjectId;
-import org.springframework.data.mongodb.repository.MongoRepository;
-import org.springframework.stereotype.Repository;
+import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
+import org.mapstruct.MappingConstants.ComponentModel;
+import uk.nhs.tis.trainee.notifications.dto.HistoryDto;
 import uk.nhs.tis.trainee.notifications.model.History;
 
 /**
- * A repository of historical notifications.
+ * A mapper to convert between notification history data types.
  */
-@Repository
-public interface HistoryRepository extends
-    MongoRepository<History, ObjectId> {
+@Mapper(componentModel = ComponentModel.SPRING)
+public interface HistoryMapper {
 
   /**
-   * Find all history for the given recipient ID.
+   * Convert history entities to history DTOs.
    *
-   * @param recipientId The ID of the recipient to get the history for.
-   * @return The found history, empty if none found.
+   * @param entities The history entities to convert.
+   * @return The converted history DTOs.
    */
-  List<History> findAllByRecipient_IdOrderBySentAtDesc(String recipientId);
+  List<HistoryDto> toDtos(List<History> entities);
+
+  /**
+   * Convert a history entity to a history DTO.
+   *
+   * @param entity The history entity to convert.
+   * @return The converted history DTOs.
+   */
+  @Mapping(target = "id", expression = "java(entity.id().toString())")
+  @Mapping(target = "type", source = "recipient.type")
+  @Mapping(target = "subject", source = "type")
+  @Mapping(target = "contact", source = "recipient.contact")
+  @Mapping(target = "sentAt")
+  HistoryDto toDto(History entity);
 }
