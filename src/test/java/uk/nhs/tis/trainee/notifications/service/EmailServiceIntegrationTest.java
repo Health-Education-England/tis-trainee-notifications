@@ -59,7 +59,7 @@ import org.springframework.util.ResourceUtils;
 import uk.nhs.tis.trainee.notifications.dto.UserAccountDetails;
 import uk.nhs.tis.trainee.notifications.model.NotificationType;
 
-@SpringBootTest(classes = EmailService.class)
+@SpringBootTest(classes = {EmailService.class, TemplateService.class})
 @ImportAutoConfiguration(ThymeleafAutoConfiguration.class)
 class EmailServiceIntegrationTest {
 

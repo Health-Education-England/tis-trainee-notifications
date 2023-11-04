@@ -28,11 +28,8 @@ import jakarta.mail.internet.MimeMessage;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
-import java.time.ZoneId;
-import java.time.ZonedDateTime;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.logging.log4j.util.Strings;
@@ -40,7 +37,6 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
-import org.thymeleaf.TemplateEngine;
 import org.thymeleaf.context.Context;
 import uk.nhs.tis.trainee.notifications.dto.UserAccountDetails;
 import uk.nhs.tis.trainee.notifications.model.History;
@@ -58,23 +54,20 @@ public class EmailService {
   private final UserAccountService userAccountService;
   private final HistoryService historyService;
   private final JavaMailSender mailSender;
-  private final TemplateEngine templateEngine;
+  private final TemplateService templateService;
   private final String sender;
   private final URI appDomain;
-  private final String timezone;
 
   EmailService(UserAccountService userAccountService, HistoryService historyService,
-      JavaMailSender mailSender, TemplateEngine templateEngine,
+      JavaMailSender mailSender, TemplateService templateService,
       @Value("${application.email.sender}") String sender,
-      @Value("${application.domain}") URI appDomain,
-      @Value("${application.timezone}") String timezone) {
+      @Value("${application.domain}") URI appDomain) {
     this.userAccountService = userAccountService;
     this.historyService = historyService;
     this.mailSender = mailSender;
-    this.templateEngine = templateEngine;
+    this.templateService = templateService;
     this.sender = sender;
     this.appDomain = appDomain;
-    this.timezone = timezone;
   }
 
   /**
@@ -118,19 +111,15 @@ public class EmailService {
    */
   private void sendMessage(String traineeId, String recipient, NotificationType notificationType,
       String templateVersion, Map<String, Object> templateVariables) throws MessagingException {
-    String templateName = getTemplate(notificationType, templateVersion);
+    String templateName = templateService.getTemplatePath(EMAIL, notificationType, templateVersion);
     log.info("Sending template {} to {}.", templateName, recipient);
 
     // Add the application domain for any templates with hyperlinks.
     templateVariables.putIfAbsent("domain", appDomain);
 
-    // Convert UTC timestamps to the Local Office timezone.
-    Map<String, Object> localizedTemplateVariables = localizeTimestamps(templateVariables);
-    Context templateContext = new Context();
-    templateContext.setVariables(localizedTemplateVariables);
-
-    String subject = templateEngine.process(templateName, Set.of("subject"), templateContext);
-    String content = templateEngine.process(templateName, Set.of("content"), templateContext);
+    Context templateContext = templateService.buildContext(templateVariables);
+    String subject = templateService.process(templateName, Set.of("subject"), templateContext);
+    String content = templateService.process(templateName, Set.of("content"), templateContext);
 
     MimeMessage mimeMessage = mailSender.createMimeMessage();
     MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, StandardCharsets.UTF_8.name());
@@ -150,37 +139,6 @@ public class EmailService {
     historyService.save(history);
 
     log.info("Sent template {} to {}.", templateName, recipient);
-  }
-
-  /**
-   * Localize any compatible data types.
-   *
-   * @param templateVariables The template variables to localize.
-   * @return The variables with any timestamps localized.
-   */
-  private Map<String, Object> localizeTimestamps(Map<String, Object> templateVariables) {
-    Map<String, Object> localizedTemplateVariables = new HashMap<>(templateVariables);
-
-    for (Entry<String, Object> entry : localizedTemplateVariables.entrySet()) {
-
-      if (entry.getValue() instanceof Instant timestamp) {
-        ZonedDateTime localised = ZonedDateTime.ofInstant(timestamp, ZoneId.of(timezone));
-        entry.setValue(localised);
-      }
-    }
-
-    return localizedTemplateVariables;
-  }
-
-  /**
-   * Get the template for the given notification type and version.
-   *
-   * @param notificationType The notification type.
-   * @param version          The template version.
-   * @return The full template name.
-   */
-  private String getTemplate(NotificationType notificationType, String version) {
-    return EMAIL.getTemplatePath() + "/" + notificationType.getTemplateName() + "/" + version;
   }
 
   /**

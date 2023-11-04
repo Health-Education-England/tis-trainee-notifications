@@ -66,9 +66,10 @@ import uk.nhs.tis.trainee.notifications.model.History.TemplateInfo;
 import uk.nhs.tis.trainee.notifications.model.MessageType;
 import uk.nhs.tis.trainee.notifications.service.EmailService;
 import uk.nhs.tis.trainee.notifications.service.HistoryService;
+import uk.nhs.tis.trainee.notifications.service.TemplateService;
 import uk.nhs.tis.trainee.notifications.service.UserAccountService;
 
-@SpringBootTest(classes = {FormListener.class, EmailService.class})
+@SpringBootTest(classes = {FormListener.class, EmailService.class, TemplateService.class})
 @ActiveProfiles("test")
 @ImportAutoConfiguration(ThymeleafAutoConfiguration.class)
 class FormListenerIntegrationTest {
