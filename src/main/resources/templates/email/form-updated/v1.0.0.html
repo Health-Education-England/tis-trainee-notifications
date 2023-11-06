@@ -2,11 +2,15 @@
 <html lang="en" xmlns:th="http://www.thymeleaf.org">
 <head>
   <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+  <title>Form Updated</title>
 </head>
 <body>
+<h1>Email Message</h1>
+<h2>Subject</h2>
 <th:block th:fragment="subject">Your FormR has been updated</th:block>
+<h2>Content</h2>
 <th:block th:fragment="content">
-  <div th:replace="fragments/greeting/v1.0.0 :: body"></div>
+  <p th:replace="~{fragments/greeting/v1.0.0 :: p}"></p>
 <span th:switch="${lifecycleState}">
 
   <span th:case="'SUBMITTED'" id="SUBMITTED">

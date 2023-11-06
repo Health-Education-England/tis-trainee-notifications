@@ -24,6 +24,7 @@ package uk.nhs.tis.trainee.notifications.service;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -66,7 +67,7 @@ public class TemplateService {
   }
 
   /**
-   * Localize any compatible date types.
+   * Localize any compatible data types.
    *
    * @param variables The template variables to localize.
    * @return The variables with any timestamps localized.
@@ -75,9 +76,13 @@ public class TemplateService {
     Map<String, Object> localizedTemplateVariables = new HashMap<>(variables);
 
     for (Entry<String, Object> entry : localizedTemplateVariables.entrySet()) {
+      ZonedDateTime localized = switch (entry.getValue()) {
+        case Instant instant -> ZonedDateTime.ofInstant(instant, ZoneId.of(timezone));
+        case Date date -> ZonedDateTime.ofInstant(date.toInstant(), ZoneId.of(timezone));
+        case null, default -> null;
+      };
 
-      if (entry.getValue() instanceof Instant timestamp) {
-        ZonedDateTime localized = ZonedDateTime.ofInstant(timestamp, ZoneId.of(timezone));
+      if (localized != null) {
         entry.setValue(localized);
       }
     }
@@ -95,7 +100,31 @@ public class TemplateService {
    */
   public String getTemplatePath(MessageType messageType, NotificationType notificationType,
       String version) {
-    return messageType.getTemplatePath() + "/" + notificationType.getTemplateName() + "/" + version;
+    return getTemplatePath(messageType, notificationType.getTemplateName(), version);
+  }
+
+  /**
+   * Get the template for the given message type, notification type and version.
+   *
+   * @param messageType      The message type.
+   * @param notificationType The notification type.
+   * @param version          The template version.
+   * @return The full template name.
+   */
+  public String getTemplatePath(MessageType messageType, String notificationType, String version) {
+    return messageType.getTemplatePath() + "/" + notificationType + "/" + version;
+  }
+
+  /**
+   * Process the given template, applying the selector and variables provided.
+   *
+   * @param template  The name of the template to use.
+   * @param selectors The selectors within the template.
+   * @param variables The variables for placeholder replacement.
+   * @return The processed template.
+   */
+  public String process(String template, Set<String> selectors, Map<String, Object> variables) {
+    return process(template, selectors, buildContext(variables));
   }
 
   /**

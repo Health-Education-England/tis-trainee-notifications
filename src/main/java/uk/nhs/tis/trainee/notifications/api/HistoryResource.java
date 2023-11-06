@@ -22,7 +22,9 @@
 package uk.nhs.tis.trainee.notifications.api;
 
 import java.util.List;
+import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -56,11 +58,26 @@ public class HistoryResource {
    * @param traineeId The ID of the trainee to get the history for.
    * @return The found history, may be empty.
    */
-  @GetMapping("/{traineeId}")
+  @GetMapping("/trainee/{traineeId}")
   ResponseEntity<List<HistoryDto>> getTraineeHistory(@PathVariable String traineeId) {
     log.info("Retrieving notification history for trainee {}.", traineeId);
     List<HistoryDto> history = service.findAllForTrainee(traineeId);
     log.info("Found {} notifications for trainee {}.", history.size(), traineeId);
     return ResponseEntity.ok(history);
+  }
+
+  /**
+   * Get the historic notification with the given ID.
+   *
+   * @param notificationId The ID of the notification to get.
+   * @return The found notification.
+   */
+  @GetMapping("/message/{notificationId}")
+  ResponseEntity<String> getHistoricalMessage(@PathVariable String notificationId) {
+    log.info("Rebuilding message for notification {}.", notificationId);
+    Optional<String> message = service.rebuildMessage(notificationId);
+
+    return message.map(msg -> ResponseEntity.ok().contentType(MediaType.TEXT_HTML).body(msg))
+        .orElseGet(() -> ResponseEntity.notFound().build());
   }
 }

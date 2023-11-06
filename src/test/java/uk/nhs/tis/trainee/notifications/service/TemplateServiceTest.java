@@ -25,6 +25,7 @@ import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.sameInstance;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -32,15 +33,14 @@ import java.time.Instant;
 import java.time.Month;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
-import java.util.Arrays;
+import java.util.Date;
 import java.util.Map;
 import java.util.Set;
-import java.util.stream.Stream;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.mockito.ArgumentCaptor;
 import org.thymeleaf.TemplateEngine;
 import org.thymeleaf.context.Context;
 import uk.nhs.tis.trainee.notifications.model.MessageType;
@@ -49,14 +49,11 @@ import uk.nhs.tis.trainee.notifications.model.NotificationType;
 class TemplateServiceTest {
 
   private static final String TIMEZONE = "Europe/London";
+  private static final Instant GMT = Instant.parse("2021-02-03T23:05:06Z");
+  private static final Instant BST = Instant.parse("2021-08-03T23:05:06Z");
 
   private TemplateService service;
   private TemplateEngine templateEngine;
-
-  private static Stream<Arguments> getTemplateCombinations() {
-    return Arrays.stream(MessageType.values())
-        .flatMap(mt -> Arrays.stream(NotificationType.values()).map(nt -> Arguments.of(mt, nt)));
-  }
 
   @BeforeEach
   void setUp() {
@@ -65,10 +62,9 @@ class TemplateServiceTest {
   }
 
   @Test
-  void shouldBuildContextWithLocalizedTimestampWhenInstantIsGmt() {
-    Instant instant = Instant.parse("2021-02-03T23:05:06Z");
-
-    Context context = service.buildContext(Map.of("timestamp", instant));
+  void shouldBuildContextWithLocalizedDateWhenTimestampIsGmt() {
+    Date date = Date.from(GMT);
+    Context context = service.buildContext(Map.of("timestamp", date));
 
     Object timestamp = context.getVariable("timestamp");
     assertThat("Unexpected timestamp type.", timestamp, instanceOf(ZonedDateTime.class));
@@ -84,10 +80,43 @@ class TemplateServiceTest {
   }
 
   @Test
-  void shouldBuildContextWithLocalizedTimestampWhenInstantIsBst() {
-    Instant instant = Instant.parse("2021-08-03T23:05:06Z");
+  void shouldBuildContextWithLocalizedDateWhenTimestampIsBst() {
+    Date date = Date.from(BST);
+    Context context = service.buildContext(Map.of("timestamp", date));
 
-    Context context = service.buildContext(Map.of("timestamp", instant));
+    Object timestamp = context.getVariable("timestamp");
+    assertThat("Unexpected timestamp type.", timestamp, instanceOf(ZonedDateTime.class));
+
+    ZonedDateTime zonedDateTime = (ZonedDateTime) timestamp;
+    assertThat("Unexpected timestamp year.", zonedDateTime.getYear(), is(2021));
+    assertThat("Unexpected timestamp month.", zonedDateTime.getMonth(), is(Month.AUGUST));
+    assertThat("Unexpected timestamp day.", zonedDateTime.getDayOfMonth(), is(4));
+    assertThat("Unexpected timestamp hour.", zonedDateTime.getHour(), is(0));
+    assertThat("Unexpected timestamp hour.", zonedDateTime.getMinute(), is(5));
+    assertThat("Unexpected timestamp hour.", zonedDateTime.getSecond(), is(6));
+    assertThat("Unexpected timestamp zone.", zonedDateTime.getZone(), is(ZoneId.of(TIMEZONE)));
+  }
+
+  @Test
+  void shouldBuildContextWithLocalizedInstantWhenTimestampIsGmt() {
+    Context context = service.buildContext(Map.of("timestamp", GMT));
+
+    Object timestamp = context.getVariable("timestamp");
+    assertThat("Unexpected timestamp type.", timestamp, instanceOf(ZonedDateTime.class));
+
+    ZonedDateTime zonedDateTime = (ZonedDateTime) timestamp;
+    assertThat("Unexpected timestamp year.", zonedDateTime.getYear(), is(2021));
+    assertThat("Unexpected timestamp month.", zonedDateTime.getMonth(), is(Month.FEBRUARY));
+    assertThat("Unexpected timestamp day.", zonedDateTime.getDayOfMonth(), is(3));
+    assertThat("Unexpected timestamp hour.", zonedDateTime.getHour(), is(23));
+    assertThat("Unexpected timestamp hour.", zonedDateTime.getMinute(), is(5));
+    assertThat("Unexpected timestamp hour.", zonedDateTime.getSecond(), is(6));
+    assertThat("Unexpected timestamp zone.", zonedDateTime.getZone(), is(ZoneId.of(TIMEZONE)));
+  }
+
+  @Test
+  void shouldBuildContextWithLocalizedInstantWhenTimestampIsBst() {
+    Context context = service.buildContext(Map.of("timestamp", BST));
 
     Object timestamp = context.getVariable("timestamp");
     assertThat("Unexpected timestamp type.", timestamp, instanceOf(ZonedDateTime.class));
@@ -112,8 +141,8 @@ class TemplateServiceTest {
   }
 
   @ParameterizedTest
-  @MethodSource("getTemplateCombinations")
-  void shouldGetTemplatePath(MessageType messageType, NotificationType notificationType) {
+  @MethodSource("uk.nhs.tis.trainee.notifications.MethodArgumentUtil#getTemplateCombinations")
+  void shouldGetTemplatePathFromEnum(MessageType messageType, NotificationType notificationType) {
     String templatePath = service.getTemplatePath(messageType, notificationType, "v1.2.3");
 
     String[] templatePathParts = templatePath.split("/");
@@ -124,8 +153,40 @@ class TemplateServiceTest {
     assertThat("Unexpected template version.", templatePathParts[2], is("v1.2.3"));
   }
 
+  @ParameterizedTest
+  @MethodSource("uk.nhs.tis.trainee.notifications.MethodArgumentUtil#getTemplateCombinations")
+  void shouldGetTemplatePathFromString(MessageType messageType, NotificationType notificationType) {
+    String templatePath = service.getTemplatePath(messageType, notificationType.getTemplateName(),
+        "v1.2.3");
+
+    String[] templatePathParts = templatePath.split("/");
+    assertThat("Unexpected template sub-path.", templatePathParts[0],
+        is(messageType.getTemplatePath()));
+    assertThat("Unexpected template name.", templatePathParts[1],
+        is(notificationType.getTemplateName()));
+    assertThat("Unexpected template version.", templatePathParts[2], is("v1.2.3"));
+  }
+
   @Test
-  void shouldProcessTemplate() {
+  void shouldProcessTemplateWhenVariableMapProvided() {
+    String template = "templatePath";
+    Set<String> selectors = Set.of("selector1", "selector2");
+    Map<String, Object> templateVariables = Map.of("key1", "value1");
+
+    ArgumentCaptor<Context> contextCaptor = ArgumentCaptor.forClass(Context.class);
+    when(templateEngine.process(eq(template), eq(selectors), contextCaptor.capture())).thenReturn(
+        "processedTemplate");
+
+    String processed = service.process(template, selectors, templateVariables);
+
+    assertThat("Unexpected processed template.", processed, is("processedTemplate"));
+
+    Context context = contextCaptor.getValue();
+    assertThat("Unexpected context variable.", context.getVariable("key1"), is("value1"));
+  }
+
+  @Test
+  void shouldProcessTemplateWhenContextProvided() {
     String template = "templatePath";
     Set<String> selectors = Set.of("selector1", "selector2");
     Context context = new Context();

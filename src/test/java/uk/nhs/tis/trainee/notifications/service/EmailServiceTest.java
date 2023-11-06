@@ -92,7 +92,7 @@ class EmailServiceTest {
     templateService = mock(TemplateService.class);
     when(templateService.buildContext(any())).thenAnswer(
         inv -> new Context(null, (Map<String, Object>) inv.getArguments()[0]));
-    when(templateService.process(any(), any(), any())).thenReturn("");
+    when(templateService.process(any(), any(), (Context) any())).thenReturn("");
 
     service = new EmailService(userAccountService, historyService, mailSender, templateService,
         SENDER, APP_DOMAIN);
@@ -237,7 +237,7 @@ class EmailServiceTest {
   @Test
   void shouldSendMessageWithSubject() throws MessagingException {
     String template = "Test subject";
-    when(templateService.process(any(), eq(Set.of("subject")), any())).thenReturn(
+    when(templateService.process(any(), eq(Set.of("subject")), (Context) any())).thenReturn(
         template);
 
     service.sendMessageToExistingUser(TRAINEE_ID, NOTIFICATION_TYPE, "", Map.of());
@@ -252,7 +252,7 @@ class EmailServiceTest {
   @Test
   void shouldSendMessageWithContent() throws MessagingException, IOException {
     String template = "<div>Test message body</div>";
-    when(templateService.process(any(), eq(Set.of("content")), any())).thenReturn(
+    when(templateService.process(any(), eq(Set.of("content")), (Context) any())).thenReturn(
         template);
 
     service.sendMessageToExistingUser(TRAINEE_ID, NOTIFICATION_TYPE, "", Map.of());
@@ -278,7 +278,7 @@ class EmailServiceTest {
     service.sendMessageToExistingUser(TRAINEE_ID, notificationType, "v1.2.3",
         Map.of("key1", "value1"));
 
-    verify(templateService, times(2)).process(eq("template/path"), any(), any());
+    verify(templateService, times(2)).process(eq("template/path"), any(), (Context) any());
 
     ArgumentCaptor<Set<String>> selectorCaptor = ArgumentCaptor.forClass(Set.class);
     ArgumentCaptor<Context> contextCaptor = ArgumentCaptor.forClass(Context.class);

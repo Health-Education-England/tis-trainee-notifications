@@ -25,22 +25,28 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.CoreMatchers.sameInstance;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
-import static uk.nhs.tis.trainee.notifications.model.MessageType.EMAIL;
 
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
 import org.bson.types.ObjectId;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.params.provider.MethodSource;
 import uk.nhs.tis.trainee.notifications.dto.HistoryDto;
 import uk.nhs.tis.trainee.notifications.mapper.HistoryMapperImpl;
 import uk.nhs.tis.trainee.notifications.model.History;
 import uk.nhs.tis.trainee.notifications.model.History.RecipientInfo;
 import uk.nhs.tis.trainee.notifications.model.History.TemplateInfo;
+import uk.nhs.tis.trainee.notifications.model.MessageType;
 import uk.nhs.tis.trainee.notifications.model.NotificationType;
 import uk.nhs.tis.trainee.notifications.repository.HistoryRepository;
 
@@ -49,13 +55,21 @@ class HistoryServiceTest {
   private static final String TRAINEE_ID = "40";
   private static final String TRAINEE_CONTACT = "test@tis.nhs.uk";
 
+  private static final String NOTIFICATION_ID = ObjectId.get().toString();
+
+  private static final String TEMPLATE_NAME = "test/template";
+  private static final String TEMPLATE_VERSION = "v1.2.3";
+  private static final Map<String, Object> TEMPLATE_VARIABLES = Map.of("key1", "value1");
+
   private HistoryService service;
   private HistoryRepository repository;
+  private TemplateService templateService;
 
   @BeforeEach
   void setUp() {
     repository = mock(HistoryRepository.class);
-    service = new HistoryService(repository, new HistoryMapperImpl());
+    templateService = mock(TemplateService.class);
+    service = new HistoryService(repository, templateService, new HistoryMapperImpl());
   }
 
   @ParameterizedTest
@@ -84,9 +98,8 @@ class HistoryServiceTest {
     assertThat("Unexpected sent at.", savedHistory.sentAt(), is(now));
   }
 
-  @ParameterizedTest
-  @EnumSource(NotificationType.class)
-  void shouldFindNoneForTraineeWhenNotificationsNotExist(NotificationType notificationType) {
+  @Test
+  void shouldFindNoHistoryForTraineeWhenNotificationsNotExist() {
     when(repository.findAllByRecipient_IdOrderBySentAtDesc(TRAINEE_ID)).thenReturn(List.of());
 
     List<HistoryDto> historyDtos = service.findAllForTrainee(TRAINEE_ID);
@@ -95,10 +108,12 @@ class HistoryServiceTest {
   }
 
   @ParameterizedTest
-  @EnumSource(NotificationType.class)
-  void shouldFindAllForTraineeWhenNotificationsExist(NotificationType notificationType) {
-    RecipientInfo recipientInfo = new RecipientInfo(TRAINEE_ID, EMAIL, TRAINEE_CONTACT);
-    TemplateInfo templateInfo = new TemplateInfo("test/template/", "v1.2.3", Map.of());
+  @MethodSource("uk.nhs.tis.trainee.notifications.MethodArgumentUtil#getTemplateCombinations")
+  void shouldFindHistoryForTraineeWhenNotificationsExist(MessageType messageType,
+      NotificationType notificationType) {
+    RecipientInfo recipientInfo = new RecipientInfo(TRAINEE_ID, messageType, TRAINEE_CONTACT);
+    TemplateInfo templateInfo = new TemplateInfo(TEMPLATE_NAME, TEMPLATE_VERSION,
+        TEMPLATE_VARIABLES);
 
     ObjectId id1 = ObjectId.get();
     History history1 = new History(id1, notificationType, recipientInfo, templateInfo, Instant.MIN);
@@ -115,16 +130,55 @@ class HistoryServiceTest {
 
     HistoryDto historyDto1 = historyDtos.get(0);
     assertThat("Unexpected history id.", historyDto1.id(), is(id1.toString()));
-    assertThat("Unexpected history type.", historyDto1.type(), is(EMAIL));
+    assertThat("Unexpected history type.", historyDto1.type(), is(messageType));
     assertThat("Unexpected history subject.", historyDto1.subject(), is(notificationType));
     assertThat("Unexpected history contact.", historyDto1.contact(), is(TRAINEE_CONTACT));
     assertThat("Unexpected history sent at.", historyDto1.sentAt(), is(Instant.MIN));
 
     HistoryDto historyDto2 = historyDtos.get(1);
     assertThat("Unexpected history id.", historyDto2.id(), is(id2.toString()));
-    assertThat("Unexpected history type.", historyDto2.type(), is(EMAIL));
+    assertThat("Unexpected history type.", historyDto2.type(), is(messageType));
     assertThat("Unexpected history subject.", historyDto2.subject(), is(notificationType));
     assertThat("Unexpected history contact.", historyDto2.contact(), is(TRAINEE_CONTACT));
     assertThat("Unexpected history sent at.", historyDto2.sentAt(), is(Instant.MAX));
+  }
+
+  @Test
+  void shouldNotRebuildMessageWhenNotificationNotFound() {
+    when(repository.findById(any())).thenReturn(Optional.empty());
+
+    Optional<String> message = service.rebuildMessage(NOTIFICATION_ID);
+
+    assertThat("Unexpected message.", message, is(Optional.empty()));
+
+    verifyNoInteractions(templateService);
+  }
+
+  @ParameterizedTest
+  @MethodSource("uk.nhs.tis.trainee.notifications.MethodArgumentUtil#getTemplateCombinations")
+  void shouldRebuildMessageWhenNotificationFound(MessageType messageType,
+      NotificationType notificationType) {
+    ObjectId notificationId = new ObjectId(NOTIFICATION_ID);
+    RecipientInfo recipientInfo = new RecipientInfo(TRAINEE_ID, messageType, TRAINEE_CONTACT);
+    TemplateInfo templateInfo = new TemplateInfo(TEMPLATE_NAME, TEMPLATE_VERSION,
+        TEMPLATE_VARIABLES);
+    History history = new History(notificationId, notificationType, recipientInfo, templateInfo,
+        Instant.now());
+    when(repository.findById(any())).thenReturn(Optional.of(history));
+
+    String templatePath = "type/test/template/v1.2.3";
+    when(templateService.getTemplatePath(messageType, TEMPLATE_NAME, TEMPLATE_VERSION)).thenReturn(
+        templatePath);
+
+    String message = """
+        <html>
+          <p>Rebuilt message</p>
+        </html>""";
+    when(templateService.process(templatePath, Set.of(), TEMPLATE_VARIABLES)).thenReturn(message);
+
+    Optional<String> rebuiltMessage = service.rebuildMessage(NOTIFICATION_ID);
+
+    assertThat("Unexpected message presence.", rebuiltMessage.isPresent(), is(true));
+    assertThat("Unexpected message.", rebuiltMessage.get(), is(message));
   }
 }
