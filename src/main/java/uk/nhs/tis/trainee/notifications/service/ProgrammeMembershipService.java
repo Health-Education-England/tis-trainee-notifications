@@ -103,7 +103,6 @@ public class ProgrammeMembershipService {
     boolean isExcluded = isExcluded(programmeMembership);
     log.info("Programme membership {}: excluded {}.", programmeMembership.tisId(), isExcluded);
 
-    LocalDate today = LocalDate.now();
     LocalDate startDate = programmeMembership.startDate();
     for (NotificationMilestoneType milestone : NotificationMilestoneType.values()) {
 
@@ -111,12 +110,8 @@ public class ProgrammeMembershipService {
       removeNotification(jobId); //remove existing notification if it exists
 
       if (!isExcluded) {
-        LocalDate milestoneDate = startDate.minusDays(milestone.getDaysBeforeStart());
-        if (!milestoneDate.isBefore(today)) {
-          Date when = Date.from(milestoneDate
-              .atStartOfDay() //TODO: do we want to send them all at once?
-              .atZone(ZoneId.systemDefault())
-              .toInstant());
+        Date when = getMilestoneDate(startDate, milestone.getDaysBeforeStart());
+        if (when != null) { //only future notifications are scheduled
           JobDataMap jobDataMap = new JobDataMap();
           jobDataMap.put("tisId", programmeMembership.tisId());
           jobDataMap.put("personId", programmeMembership.personId());
@@ -131,8 +126,6 @@ public class ProgrammeMembershipService {
             log.error("Failed to schedule notification {}: {}", jobId, e.toString());
             throw (e); //to allow message to be requeue-ed
           }
-        } else {
-          //too late to schedule this one, do nothing
         }
       }
     }
@@ -153,7 +146,8 @@ public class ProgrammeMembershipService {
     JobDetail job = newJob(NotificationService.class)
         .withIdentity(jobId)
         .usingJobData(jobDataMap)
-        //.storeDurably() TODO decide if we want to keep a record of triggered notifications
+        //.storeDurably() TODO decide if we want to keep a record of triggered notifications:
+        // if so, may be better to write explicitly to another table when the job is triggered
         .build();
     Trigger trigger = newTrigger()
         .withIdentity(TRIGGER_ID_PREFIX + jobId)
@@ -164,6 +158,12 @@ public class ProgrammeMembershipService {
     log.info("Notification for {} scheduled for {}", jobId, scheduledDate);
   }
 
+  /**
+   * Remove a scheduled notification.
+   *
+   * @param jobId The job id key to remove.
+   * @throws SchedulerException if the scheduler failed in its duties.
+   */
   private void removeNotification(String jobId) throws SchedulerException {
 // scenarios:
     // 1. no job exists --> do nothing
@@ -174,5 +174,24 @@ public class ProgrammeMembershipService {
     // We do not simply remove the trigger, since the job data may be updated
     scheduler.deleteJob(jobKey);
     log.info("Removed stale notification scheduled for {}", jobId);
+  }
+
+  /**
+   * Get a future date for a milestone from the programme start date and day offset.
+   *
+   * @param programmeStartDate The programme starting date.
+   * @param daysBeforeStart    The number of days prior to the programme start date.
+   * @return The milestone date and time, or null if it would be in the past.
+   */
+  private Date getMilestoneDate(LocalDate programmeStartDate, int daysBeforeStart) {
+    Date milestone = null;
+    LocalDate milestoneDate = programmeStartDate.minusDays(daysBeforeStart);
+    if (!milestoneDate.isBefore(LocalDate.now())) {
+      milestone = Date.from(milestoneDate
+          .atStartOfDay() //TODO: do we want to send them all at once?
+          .atZone(ZoneId.systemDefault())
+          .toInstant());
+    }
+    return milestone;
   }
 }
