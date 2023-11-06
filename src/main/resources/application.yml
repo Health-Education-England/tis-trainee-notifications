@@ -53,7 +53,7 @@ spring:
       password: ${REDIS_PASSWORD:password}
   datasource:
     driver: com.mysql.jdbc.Driver
-    url: jdbc:mysql://${MYSQL_HOST:localhost}:${MYSQL_PORT:3306}/${MYSQL_DB:test}?useUnicode=true&characterEncoding=utf8&useSSL=${MYSQL_SSL:false}
+    url: jdbc:mysql://${MYSQL_HOST:localhost}:${MYSQL_PORT:3306}/notifications?useUnicode=true&characterEncoding=utf8&useSSL=${MYSQL_SSL:false}
     username: ${MYSQL_USER:root}
     password: ${MYSQL_PASSWORD:}
   flyway:
@@ -66,7 +66,7 @@ spring:
     locations: classpath:db/migration
     out-of-order: true
     password: ${spring.datasource.password}
-    schemas: ${MYSQL_DB:test}
+    schemas: notifications
     sql-migration-prefix: V
     url: ${spring.datasource.url}
     user: ${spring.datasource.username}
