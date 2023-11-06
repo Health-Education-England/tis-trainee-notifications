@@ -37,7 +37,9 @@ import java.util.UUID;
 import org.bson.types.ObjectId;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.quartz.QuartzAutoConfiguration;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.ActiveProfiles;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -63,6 +65,9 @@ class HistoryServiceIntegrationTest {
       "key2", "value2");
 
   private static final Instant SENT_AT = Instant.now().truncatedTo(ChronoUnit.MILLIS);
+
+  @MockBean
+  private QuartzAutoConfiguration quartzConfiguration;
 
   @Autowired
   private HistoryService service;
