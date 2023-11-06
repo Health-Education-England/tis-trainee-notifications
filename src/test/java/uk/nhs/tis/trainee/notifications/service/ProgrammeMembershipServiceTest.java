@@ -23,21 +23,31 @@ package uk.nhs.tis.trainee.notifications.service;
 
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import java.time.LocalDate;
+import java.time.ZoneId;
+import java.util.Date;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.mockito.ArgumentCaptor;
+import org.quartz.JobDataMap;
+import org.quartz.JobDetail;
 import org.quartz.JobKey;
 import org.quartz.Scheduler;
 import org.quartz.SchedulerException;
+import org.quartz.Trigger;
+import org.quartz.TriggerKey;
 import uk.nhs.tis.trainee.notifications.dto.Curriculum;
 import uk.nhs.tis.trainee.notifications.dto.ProgrammeMembershipEvent;
 import uk.nhs.tis.trainee.notifications.model.NotificationMilestoneType;
@@ -52,7 +62,8 @@ class ProgrammeMembershipServiceTest {
   private static final String TIS_ID = "123";
   private static final String PERSON_ID = "abc";
   private static final String PROGRAMME_NAME = "the programme";
-  private static final LocalDate START_DATE = LocalDate.MAX;
+  private static final LocalDate START_DATE = LocalDate.now().plusYears(1);
+  //set a year in the future to allow all notifications to be scheduled
 
   private static final Curriculum IGNORED_CURRICULUM
       = new Curriculum("some-subtype", "some-specialty");
@@ -142,5 +153,73 @@ class ProgrammeMembershipServiceTest {
     service.scheduleNotifications(event);
 
     verify(scheduler, never()).scheduleJob(any(), any());
+  }
+
+  @Test
+  void shouldScheduleNotificationsIfNotExcluded() throws SchedulerException {
+    Curriculum theCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, "any specialty");
+    List<Curriculum> curricula = List.of(theCurriculum);
+    ProgrammeMembershipEvent event
+        = new ProgrammeMembershipEvent(TIS_ID, PERSON_ID, PROGRAMME_NAME, START_DATE, curricula);
+
+    service.scheduleNotifications(event);
+
+    ArgumentCaptor<JobDetail> jobDetailCaptor = ArgumentCaptor.forClass(JobDetail.class);
+    ArgumentCaptor<Trigger> triggerCaptor = ArgumentCaptor.forClass(Trigger.class);
+
+    int jobsToSchedule = NotificationMilestoneType.values().length;
+    verify(scheduler, times(jobsToSchedule))
+        .scheduleJob(jobDetailCaptor.capture(), triggerCaptor.capture());
+
+    //verify the details of the last job scheduled
+    NotificationMilestoneType milestone = NotificationMilestoneType.values()[jobsToSchedule - 1];
+    String expectedJobId = milestone.toString() + "-" + TIS_ID;
+    JobKey expectedJobKey = new JobKey(expectedJobId);
+
+    JobDetail jobDetail = jobDetailCaptor.getValue();
+    assertThat("Unexpected job id key.", jobDetail.getKey(), is(expectedJobKey));
+    JobDataMap jobDataMap = jobDetail.getJobDataMap();
+    assertThat("Unexpected tisId.", jobDataMap.get("tisId"), is(TIS_ID));
+    assertThat("Unexpected personId.", jobDataMap.get("personId"), is(PERSON_ID));
+    assertThat("Unexpected programme.", jobDataMap.get("programmeName"),
+        is(PROGRAMME_NAME));
+    assertThat("Unexpected start date.", jobDataMap.get("startDate"), is(START_DATE));
+
+    Trigger trigger = triggerCaptor.getValue();
+    TriggerKey expectedTriggerKey = TriggerKey.triggerKey("trigger-" + expectedJobId);
+    assertThat("Unexpected trigger id", trigger.getKey(), is(expectedTriggerKey));
+    LocalDate expectedDate = START_DATE.minusDays(milestone.getDaysBeforeStart());
+    Date expectedWhen = Date.from(expectedDate
+        .atStartOfDay()
+        .atZone(ZoneId.systemDefault())
+        .toInstant());
+    assertThat("Unexpected trigger start time", trigger.getStartTime(), is(expectedWhen));
+  }
+
+  @Test
+  void shouldNotScheduleNotificationsInThePast() throws SchedulerException {
+    LocalDate dateYesterday = LocalDate.now().minusDays(1);
+
+    Curriculum theCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, "any specialty");
+    List<Curriculum> curricula = List.of(theCurriculum);
+    ProgrammeMembershipEvent event
+        = new ProgrammeMembershipEvent(TIS_ID, PERSON_ID, PROGRAMME_NAME, dateYesterday, curricula);
+
+    service.scheduleNotifications(event);
+
+    verify(scheduler, never()).scheduleJob(any(), any());
+  }
+
+  @Test
+  void shouldRethrowSchedulerExceptions() throws SchedulerException {
+    Curriculum theCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, "any specialty");
+    List<Curriculum> curricula = List.of(theCurriculum);
+    ProgrammeMembershipEvent event
+        = new ProgrammeMembershipEvent(TIS_ID, PERSON_ID, PROGRAMME_NAME, START_DATE, curricula);
+
+    when(scheduler.scheduleJob(any(), any())).thenThrow(new SchedulerException("error"));
+
+    assertThrows(SchedulerException.class,
+        () -> service.scheduleNotifications(event));
   }
 }
