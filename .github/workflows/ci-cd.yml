@@ -11,9 +11,6 @@ jobs:
     uses: health-education-england/.github/.github/workflows/ci-cd-gradle.yml@main
     with:
       cluster-prefix: trainee
-      java-version: |
-        21
-        17
     secrets:
       sonar-token: ${{ secrets.SONAR_TOKEN }}
       reject-pat: ${{ secrets.PAT_REJECT_APPROVALS }}
