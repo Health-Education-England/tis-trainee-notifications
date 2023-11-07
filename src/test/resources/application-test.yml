@@ -22,3 +22,5 @@ spring:
     name:
     username: sa
     password:
+  flyway:
+    url: ${spring.datasource.url}

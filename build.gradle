@@ -67,11 +67,11 @@ dependencies {
 
   testImplementation "org.springframework.cloud:spring-cloud-starter-bootstrap"
   ext.playtikaTestcontainersVersion = "3.0.5"
-  testImplementation "com.playtika.testcontainers:embedded-redis:$playtikaTestcontainersVersion"
   testImplementation "com.playtika.testcontainers:embedded-mongodb:$playtikaTestcontainersVersion"
+  testImplementation "com.playtika.testcontainers:embedded-mysql:$playtikaTestcontainersVersion"
+  testImplementation "com.playtika.testcontainers:embedded-redis:$playtikaTestcontainersVersion"
   testImplementation "com.h2database:h2"
   testImplementation "org.testcontainers:junit-jupiter:1.19.1"
-  testImplementation "org.testcontainers:mysql:1.18.3"
 
   testImplementation "org.jsoup:jsoup:1.16.2"
 }

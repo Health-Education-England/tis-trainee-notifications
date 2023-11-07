@@ -53,8 +53,7 @@ import software.amazon.awssdk.services.cognitoidentityprovider.model.UserType;
 import software.amazon.awssdk.services.cognitoidentityprovider.paginators.ListUsersIterable;
 import uk.nhs.tis.trainee.notifications.config.MongoConfiguration;
 
-@SpringBootTest(
-    properties = {"embedded.containers.enabled=true", "embedded.containers.redis.enabled=true"})
+@SpringBootTest(properties = {"embedded.containers.enabled=true", "embedded.redis.enabled=true"})
 @ActiveProfiles({"redis", "test"})
 @Testcontainers(disabledWithoutDocker = true)
 @ExtendWith(MockitoExtension.class)
