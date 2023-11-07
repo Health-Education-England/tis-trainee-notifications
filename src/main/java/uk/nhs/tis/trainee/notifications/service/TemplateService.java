@@ -76,11 +76,14 @@ public class TemplateService {
     Map<String, Object> localizedTemplateVariables = new HashMap<>(variables);
 
     for (Entry<String, Object> entry : localizedTemplateVariables.entrySet()) {
-      ZonedDateTime localized = switch (entry.getValue()) {
-        case Instant instant -> ZonedDateTime.ofInstant(instant, ZoneId.of(timezone));
-        case Date date -> ZonedDateTime.ofInstant(date.toInstant(), ZoneId.of(timezone));
-        case null, default -> null;
-      };
+      Object value = entry.getValue();
+      ZonedDateTime localized = null;
+
+      if (value instanceof Instant instant) {
+        localized = ZonedDateTime.ofInstant(instant, ZoneId.of(timezone));
+      } else if (value instanceof Date date) {
+        localized = ZonedDateTime.ofInstant(date.toInstant(), ZoneId.of(timezone));
+      }
 
       if (localized != null) {
         entry.setValue(localized);
