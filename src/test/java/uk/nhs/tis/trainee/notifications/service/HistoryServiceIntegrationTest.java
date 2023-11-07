@@ -43,7 +43,9 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.quartz.QuartzAutoConfiguration;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.ActiveProfiles;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -53,8 +55,7 @@ import uk.nhs.tis.trainee.notifications.model.History.RecipientInfo;
 import uk.nhs.tis.trainee.notifications.model.History.TemplateInfo;
 import uk.nhs.tis.trainee.notifications.model.NotificationType;
 
-@SpringBootTest(
-    properties = {"embedded.containers.enabled=true", "embedded.containers.mongodb.enabled=true"})
+@SpringBootTest(properties = {"embedded.containers.enabled=true", "embedded.mongodb.enabled=true"})
 @ActiveProfiles({"mongodb", "test"})
 @Testcontainers(disabledWithoutDocker = true)
 @DirtiesContext(classMode = AFTER_EACH_TEST_METHOD)
@@ -72,6 +73,9 @@ class HistoryServiceIntegrationTest {
       "key2", "value2");
 
   private static final Instant SENT_AT = Instant.now().truncatedTo(ChronoUnit.MILLIS);
+
+  @MockBean
+  private QuartzAutoConfiguration quartzConfiguration;
 
   @Autowired
   private HistoryService service;

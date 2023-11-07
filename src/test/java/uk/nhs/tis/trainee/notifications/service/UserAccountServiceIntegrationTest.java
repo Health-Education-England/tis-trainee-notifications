@@ -38,12 +38,11 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.quartz.QuartzAutoConfiguration;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
-import org.springframework.context.annotation.Bean;
-import org.springframework.data.mongodb.MongoTransactionManager;
 import org.springframework.test.context.ActiveProfiles;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import software.amazon.awssdk.core.pagination.sync.SdkIterable;
@@ -54,8 +53,7 @@ import software.amazon.awssdk.services.cognitoidentityprovider.model.UserType;
 import software.amazon.awssdk.services.cognitoidentityprovider.paginators.ListUsersIterable;
 import uk.nhs.tis.trainee.notifications.config.MongoConfiguration;
 
-@SpringBootTest(
-    properties = {"embedded.containers.enabled=true", "embedded.containers.redis.enabled=true"})
+@SpringBootTest(properties = {"embedded.containers.enabled=true", "embedded.redis.enabled=true"})
 @ActiveProfiles({"redis", "test"})
 @Testcontainers(disabledWithoutDocker = true)
 @ExtendWith(MockitoExtension.class)
@@ -69,6 +67,9 @@ class UserAccountServiceIntegrationTest {
 
   @MockBean
   private MongoConfiguration mongoConfiguration;
+
+  @MockBean
+  private QuartzAutoConfiguration quartzConfiguration;
 
   @MockBean
   private CognitoIdentityProviderClient cognitoClient;

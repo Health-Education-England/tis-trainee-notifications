@@ -36,7 +36,9 @@ dependencies {
   implementation "org.springframework.boot:spring-boot-starter-actuator"
   implementation "org.springframework.boot:spring-boot-starter-data-mongodb"
   implementation "org.springframework.boot:spring-boot-starter-data-redis"
+  implementation "org.springframework.boot:spring-boot-starter-data-jpa"
   implementation "org.springframework.boot:spring-boot-starter-mail"
+  implementation "org.springframework.boot:spring-boot-starter-quartz"
   implementation "org.springframework.boot:spring-boot-starter-thymeleaf"
   implementation "org.springframework.boot:spring-boot-starter-web"
   testImplementation "org.springframework.boot:spring-boot-starter-test"
@@ -45,6 +47,10 @@ dependencies {
   implementation "io.awspring.cloud:spring-cloud-aws-starter-sqs"
   implementation "software.amazon.awssdk:cognitoidentityprovider"
   implementation "com.amazonaws:aws-xray-recorder-sdk-spring:2.14.0"
+
+  implementation "com.mysql:mysql-connector-j"
+  implementation "org.flywaydb:flyway-core"
+  implementation "org.flywaydb:flyway-mysql"
 
   // Lombok
   compileOnly "org.projectlombok:lombok"
@@ -63,8 +69,10 @@ dependencies {
 
   testImplementation "org.springframework.cloud:spring-cloud-starter-bootstrap"
   ext.playtikaTestcontainersVersion = "3.0.5"
-  testImplementation "com.playtika.testcontainers:embedded-redis:${playtikaTestcontainersVersion}"
-  testImplementation "com.playtika.testcontainers:embedded-mongodb:${playtikaTestcontainersVersion}"
+  testImplementation "com.playtika.testcontainers:embedded-mongodb:$playtikaTestcontainersVersion"
+  testImplementation "com.playtika.testcontainers:embedded-mysql:$playtikaTestcontainersVersion"
+  testImplementation "com.playtika.testcontainers:embedded-redis:$playtikaTestcontainersVersion"
+  testImplementation "com.h2database:h2"
   testImplementation "org.testcontainers:junit-jupiter:1.19.1"
 
   testImplementation "org.jsoup:jsoup:1.16.2"

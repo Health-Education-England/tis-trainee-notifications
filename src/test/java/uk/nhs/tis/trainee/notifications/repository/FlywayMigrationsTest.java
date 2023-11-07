@@ -19,36 +19,39 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package uk.nhs.tis.trainee.notifications;
+package uk.nhs.tis.trainee.notifications.repository;
 
-import static org.hamcrest.CoreMatchers.is;
-import static org.hamcrest.MatcherAssert.assertThat;
-
+import jakarta.validation.constraints.NotNull;
+import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.autoconfigure.quartz.QuartzAutoConfiguration;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
-import org.springframework.context.ApplicationContext;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.TestContext;
+import org.springframework.test.context.TestExecutionListener;
+import org.testcontainers.junit.jupiter.Testcontainers;
 import uk.nhs.tis.trainee.notifications.config.MongoConfiguration;
 
-@SpringBootTest
-@ActiveProfiles("test")
-class TisTraineeNotificationsApplicationTest {
+@SpringBootTest(properties = {"embedded.containers.enabled=true", "embedded.mysql.enabled=true"})
+@ActiveProfiles({"test", "mysql"})
+@Testcontainers(disabledWithoutDocker = true)
+class FlywayMigrationsTest implements TestExecutionListener {
 
   @MockBean
   private MongoConfiguration mongoConfiguration;
 
-  @MockBean
-  private QuartzAutoConfiguration quartzConfiguration;
-
   @Autowired
-  ApplicationContext context;
+  Flyway flyway;
+
+  @Override
+  public void beforeTestMethod(@NotNull TestContext testContext) {
+    flyway.clean();
+    flyway.migrate();
+  }
 
   @Test
-  void contextLoads() {
-    assertThat("Unexpected bean.", context.getBean(MongoConfiguration.class),
-        is(mongoConfiguration));
+  void validateFlywayMigrations() {
+    flyway.validate();
   }
 }

@@ -21,19 +21,24 @@
 
 package uk.nhs.tis.trainee.notifications.dto;
 
-import java.time.LocalDate;
-import java.util.List;
+import java.time.Instant;
 
 /**
- * A Programme Membership event.
+ * A Conditions of Joining signed event.
  *
- * @param tisId               The TIS ID of the Programme membership.
- * @param startDate           The start date of the Programme membership.
- * @param curricula           The list of curricula for the Programme membership.
+ * @param personId            The person associated with the Conditions of joining.
+ * @param conditionsOfJoining The Conditions of Joining.
  */
-public record ProgrammeMembershipEvent(
-    String tisId,
-    LocalDate startDate,
-    List<Curriculum> curricula) {
+public record CojSignedEvent(
+    String personId,
+    ConditionsOfJoining conditionsOfJoining) {
 
+  /**
+   * Conditions of Joining details.
+   *
+   * @param syncedAt The timestamp for the signed Conditions of Joining being received.
+   */
+  public record ConditionsOfJoining(Instant syncedAt) {
+
+  }
 }

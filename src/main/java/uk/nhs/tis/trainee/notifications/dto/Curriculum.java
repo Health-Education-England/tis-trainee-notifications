@@ -21,19 +21,15 @@
 
 package uk.nhs.tis.trainee.notifications.dto;
 
-import java.time.LocalDate;
-import java.util.List;
-
 /**
- * A Programme Membership event.
+ * A Programme membership's Curriculum.
  *
- * @param tisId               The TIS ID of the Programme membership.
- * @param startDate           The start date of the Programme membership.
- * @param curricula           The list of curricula for the Programme membership.
+ * @param curriculumSubType   The Curriculum subtype.
+ * @param curriculumSpecialty The Curriculum specialty.
  */
-public record ProgrammeMembershipEvent(
-    String tisId,
-    LocalDate startDate,
-    List<Curriculum> curricula) {
+public record Curriculum(
+    String curriculumSubType,
+    String curriculumSpecialty
+) {
 
 }

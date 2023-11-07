@@ -57,8 +57,8 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.test.context.ActiveProfiles;
-import uk.nhs.tis.trainee.notifications.dto.ProgrammeMembershipEvent;
-import uk.nhs.tis.trainee.notifications.dto.ProgrammeMembershipEvent.ConditionsOfJoining;
+import uk.nhs.tis.trainee.notifications.dto.CojSignedEvent;
+import uk.nhs.tis.trainee.notifications.dto.CojSignedEvent.ConditionsOfJoining;
 import uk.nhs.tis.trainee.notifications.dto.UserAccountDetails;
 import uk.nhs.tis.trainee.notifications.model.History;
 import uk.nhs.tis.trainee.notifications.model.History.RecipientInfo;
@@ -118,7 +118,7 @@ class ConditionsOfJoiningListenerIntegrationTest {
   @NullAndEmptySource
   void shouldSendDefaultCojConfirmationWhenTemplateVariablesNotAvailable(String missingValue)
       throws Exception {
-    ProgrammeMembershipEvent event = new ProgrammeMembershipEvent(PERSON_ID,
+    CojSignedEvent event = new CojSignedEvent(PERSON_ID,
         new ConditionsOfJoining(null));
     when(userAccountService.getUserDetails(USER_ID)).thenReturn(
         new UserAccountDetails(EMAIL, missingValue));
@@ -171,7 +171,7 @@ class ConditionsOfJoiningListenerIntegrationTest {
 
   @Test
   void shouldSendFullyTailoredCojConfirmationWhenAllTemplateVariablesAvailable() throws Exception {
-    ProgrammeMembershipEvent event = new ProgrammeMembershipEvent(PERSON_ID,
+    CojSignedEvent event = new CojSignedEvent(PERSON_ID,
         new ConditionsOfJoining(SYNCED_AT));
     when(userAccountService.getUserDetails(USER_ID)).thenReturn(
         new UserAccountDetails(EMAIL, FAMILY_NAME));
@@ -218,7 +218,7 @@ class ConditionsOfJoiningListenerIntegrationTest {
 
   @Test
   void shouldSendCojConfirmationWithTailoredNameWhenAvailable() throws Exception {
-    ProgrammeMembershipEvent event = new ProgrammeMembershipEvent(PERSON_ID,
+    CojSignedEvent event = new CojSignedEvent(PERSON_ID,
         new ConditionsOfJoining(null));
     when(userAccountService.getUserDetails(USER_ID)).thenReturn(
         new UserAccountDetails(EMAIL, FAMILY_NAME));
@@ -261,7 +261,7 @@ class ConditionsOfJoiningListenerIntegrationTest {
 
   @Test
   void shouldSendCojConfirmationWithTailoredLocalOfficeWhenAvailable() throws Exception {
-    ProgrammeMembershipEvent event = new ProgrammeMembershipEvent(PERSON_ID,
+    CojSignedEvent event = new CojSignedEvent(PERSON_ID,
         new ConditionsOfJoining(null));
     when(userAccountService.getUserDetails(USER_ID)).thenReturn(
         new UserAccountDetails(EMAIL, null));
@@ -306,7 +306,7 @@ class ConditionsOfJoiningListenerIntegrationTest {
 
   @Test
   void shouldSendCojConfirmationWithTailoredSyncedAtWhenAvailable() throws Exception {
-    ProgrammeMembershipEvent event = new ProgrammeMembershipEvent(PERSON_ID,
+    CojSignedEvent event = new CojSignedEvent(PERSON_ID,
         new ConditionsOfJoining(SYNCED_AT));
     when(userAccountService.getUserDetails(USER_ID)).thenReturn(
         new UserAccountDetails(EMAIL, null));
@@ -351,7 +351,7 @@ class ConditionsOfJoiningListenerIntegrationTest {
 
   @Test
   void shouldSendCojConfirmationWithTailoredDomainWhenAvailable() throws Exception {
-    ProgrammeMembershipEvent event = new ProgrammeMembershipEvent(PERSON_ID,
+    CojSignedEvent event = new CojSignedEvent(PERSON_ID,
         new ConditionsOfJoining(null));
     when(userAccountService.getUserDetails(USER_ID)).thenReturn(
         new UserAccountDetails(EMAIL, null));
@@ -394,7 +394,7 @@ class ConditionsOfJoiningListenerIntegrationTest {
 
   @Test
   void shouldStoreCojReceivedNotificationHistoryWhenMessageSent() throws MessagingException {
-    ProgrammeMembershipEvent event = new ProgrammeMembershipEvent(PERSON_ID,
+    CojSignedEvent event = new CojSignedEvent(PERSON_ID,
         new ConditionsOfJoining(SYNCED_AT));
     when(userAccountService.getUserDetails(USER_ID)).thenReturn(
         new UserAccountDetails(EMAIL, FAMILY_NAME));
