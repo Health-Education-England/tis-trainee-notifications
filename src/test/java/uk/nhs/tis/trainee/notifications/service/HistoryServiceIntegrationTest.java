@@ -48,8 +48,7 @@ import uk.nhs.tis.trainee.notifications.model.History;
 import uk.nhs.tis.trainee.notifications.model.History.RecipientInfo;
 import uk.nhs.tis.trainee.notifications.model.History.TemplateInfo;
 
-@SpringBootTest(
-    properties = {"embedded.containers.enabled=true", "embedded.containers.mongodb.enabled=true"})
+@SpringBootTest(properties = {"embedded.containers.enabled=true", "embedded.mongodb.enabled=true"})
 @ActiveProfiles({"mongodb", "test"})
 @Testcontainers(disabledWithoutDocker = true)
 @DirtiesContext(classMode = AFTER_EACH_TEST_METHOD)

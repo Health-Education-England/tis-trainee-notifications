@@ -24,8 +24,6 @@ package uk.nhs.tis.trainee.notifications.repository;
 import jakarta.validation.constraints.NotNull;
 import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
@@ -35,10 +33,9 @@ import org.springframework.test.context.TestExecutionListener;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import uk.nhs.tis.trainee.notifications.config.MongoConfiguration;
 
-@SpringBootTest()
+@SpringBootTest(properties = {"embedded.containers.enabled=true", "embedded.mysql.enabled=true"})
 @ActiveProfiles({"test", "mysql"})
 @Testcontainers(disabledWithoutDocker = true)
-@ExtendWith(MockitoExtension.class)
 class FlywayMigrationsTest implements TestExecutionListener {
 
   @MockBean

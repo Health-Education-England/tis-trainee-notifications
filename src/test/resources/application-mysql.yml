@@ -1,13 +1,14 @@
 spring:
   datasource:
-    driver-class-name: org.testcontainers.jdbc.ContainerDatabaseDriver
-    url: jdbc:tc:mysql:8.2.0:///test?user=root&password=password&TC_DAEMON=true
-    username: root
-    password: password
+    url: jdbc:mysql://${embedded.mysql.host}:${embedded.mysql.port}/${embedded.mysql.schema}
+    username: ${embedded.mysql.user}
+    password: ${embedded.mysql.password}
   flyway:
     locations: classpath:db/migration
-    url: jdbc:tc:mysql:8.2.0:///test?user=root&password=password&TC_DAEMON=true
-    schemas: test
+    url: jdbc:mysql://${embedded.mysql.host}:${embedded.mysql.port}
+    schemas: ${embedded.mysql.schema}
+    user: ${embedded.mysql.user}
+    password: ${embedded.mysql.password}
   quartz:
     jdbc:
       initialize-schema: never
