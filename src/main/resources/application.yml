@@ -68,7 +68,7 @@ spring:
     password: ${spring.datasource.password}
     schemas: notifications
     sql-migration-prefix: V
-    url: ${spring.datasource.url}
+    url: jdbc:mysql://${MYSQL_HOST:localhost}:${MYSQL_PORT:3306}?useUnicode=true&characterEncoding=utf8&useSSL=${MYSQL_SSL:false}
     user: ${spring.datasource.username}
     enabled: true
   quartz:
