@@ -2,11 +2,15 @@
 <html lang="en" xmlns:th="http://www.thymeleaf.org">
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <title>Conditions of Joining Confirmation</title>
   </head>
   <body>
+    <h1>Email Message</h1>
+    <h2>Subject</h2>
     <th:block th:fragment="subject">We've received your Conditions of Joining</th:block>
+    <h2>Content</h2>
     <th:block th:fragment="content">
-      <div th:replace="fragments/greeting/v1.0.0 :: body"></div>
+      <p th:replace="~{fragments/greeting/v1.0.0 :: p}"></p>
       <p>
         We want to inform you that your local NHS England office has received your signed Conditions of Joining<span
           th:text="${syncedAt} ? | on ${#temporals.format(syncedAt, 'dd MMMM yyyy')}| : _"

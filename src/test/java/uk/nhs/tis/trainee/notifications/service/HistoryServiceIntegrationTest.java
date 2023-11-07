@@ -33,9 +33,15 @@ import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import org.bson.types.ObjectId;
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.quartz.QuartzAutoConfiguration;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -47,6 +53,7 @@ import uk.nhs.tis.trainee.notifications.dto.HistoryDto;
 import uk.nhs.tis.trainee.notifications.model.History;
 import uk.nhs.tis.trainee.notifications.model.History.RecipientInfo;
 import uk.nhs.tis.trainee.notifications.model.History.TemplateInfo;
+import uk.nhs.tis.trainee.notifications.model.NotificationType;
 
 @SpringBootTest(properties = {"embedded.containers.enabled=true", "embedded.mongodb.enabled=true"})
 @ActiveProfiles({"mongodb", "test"})
@@ -56,6 +63,8 @@ class HistoryServiceIntegrationTest {
 
   private static final String TRAINEE_ID = UUID.randomUUID().toString();
   private static final String TRAINEE_CONTACT = "test@tis.nhs.uk";
+
+  private static final ObjectId NOTIFICATION_ID = ObjectId.get();
 
   private static final String TEMPLATE_NAME = "email/test-template";
   private static final String TEMPLATE_VERSION = "v1.2.3";
@@ -158,5 +167,44 @@ class HistoryServiceIntegrationTest {
 
     HistoryDto history3 = foundHistory.get(2);
     assertThat("Unexpected history sent at.", history3.sentAt(), is(before));
+  }
+
+  @Test
+  void shouldNotRebuildMessageWhenNotificationNotFound() {
+    Optional<String> message = service.rebuildMessage(ObjectId.get().toString());
+
+    assertThat("Unexpected message.", message, is(Optional.empty()));
+  }
+
+  @ParameterizedTest
+  @MethodSource(
+      "uk.nhs.tis.trainee.notifications.MethodArgumentUtil#getEmailTemplateTypeAndVersions")
+  void shouldRebuildEmailMessageWhenNotificationFound(NotificationType notificationType,
+      String version) {
+    RecipientInfo recipientInfo = new RecipientInfo(TRAINEE_ID, EMAIL, TRAINEE_CONTACT);
+    TemplateInfo templateInfo = new TemplateInfo(notificationType.getTemplateName(), version,
+        TEMPLATE_VARIABLES);
+    History history = new History(NOTIFICATION_ID, notificationType, recipientInfo, templateInfo,
+        Instant.now());
+    service.save(history);
+
+    Optional<String> message = service.rebuildMessage(NOTIFICATION_ID.toString());
+
+    assertThat("Unexpected message presence.", message.isPresent(), is(true));
+
+    Document content = Jsoup.parse(message.get());
+    Element body = content.body();
+
+    Element emailHeader = body.children().get(0);
+    assertThat("Unexpected element tag.", emailHeader.tagName(), is("h1"));
+    assertThat("Unexpected email header.", emailHeader.text(), is("Email Message"));
+
+    Element subjectHeader = body.children().get(1);
+    assertThat("Unexpected element tag.", subjectHeader.tagName(), is("h2"));
+    assertThat("Unexpected subject header.", subjectHeader.text(), is("Subject"));
+
+    Element bodyHeader = body.children().get(2);
+    assertThat("Unexpected element tag.", bodyHeader.tagName(), is("h2"));
+    assertThat("Unexpected body header.", bodyHeader.text(), is("Content"));
   }
 }

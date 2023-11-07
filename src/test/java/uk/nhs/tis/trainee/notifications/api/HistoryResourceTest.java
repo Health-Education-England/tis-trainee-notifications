@@ -24,6 +24,7 @@ package uk.nhs.tis.trainee.notifications.api;
 import static org.hamcrest.Matchers.hasSize;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static uk.nhs.tis.trainee.notifications.model.MessageType.EMAIL;
@@ -33,6 +34,8 @@ import static uk.nhs.tis.trainee.notifications.model.NotificationType.FORM_UPDAT
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
+import org.bson.types.ObjectId;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -52,26 +55,27 @@ class HistoryResourceTest {
   private static final String TRAINEE_CONTACT_2 = "test2@tis.nhs.uk";
   private static final String TRAINEE_CONTACT_3 = "test3@tis.nhs.uk";
 
+  private static final String NOTIFICATION_ID = ObjectId.get().toString();
+
   @Autowired
   private MockMvc mockMvc;
 
   @MockBean
   private HistoryService service;
 
-
   @Test
-  void shouldReturnEmptyArrayWhenNoHistoryFound() throws Exception {
+  void shouldReturnEmptyArrayWhenNoTraineeHistoryFound() throws Exception {
     when(service.findAllForTrainee(TRAINEE_ID)).thenReturn(List.of());
 
-    mockMvc.perform(get("/api/history/{traineeId}", TRAINEE_ID)
-            .contentType(MediaType.APPLICATION_JSON))
+    mockMvc.perform(get("/api/history/trainee/{traineeId}", TRAINEE_ID))
         .andExpect(status().isOk())
+        .andExpect(content().contentType(MediaType.APPLICATION_JSON))
         .andExpect(jsonPath("$").isArray())
         .andExpect(jsonPath("$").isEmpty());
   }
 
   @Test
-  void shouldReturnHistoryArrayWhenHistoryFound() throws Exception {
+  void shouldReturnTraineeHistoryArrayWhenHistoryFound() throws Exception {
     HistoryDto history1 = new HistoryDto("1", EMAIL, COJ_CONFIRMATION, TRAINEE_CONTACT_1,
         Instant.MIN);
     HistoryDto history2 = new HistoryDto("2", EMAIL, CREDENTIAL_REVOKED, TRAINEE_CONTACT_2,
@@ -80,9 +84,9 @@ class HistoryResourceTest {
 
     when(service.findAllForTrainee(TRAINEE_ID)).thenReturn(List.of(history1, history2, history3));
 
-    mockMvc.perform(get("/api/history/{traineeId}", TRAINEE_ID)
-            .contentType(MediaType.APPLICATION_JSON))
+    mockMvc.perform(get("/api/history/trainee/{traineeId}", TRAINEE_ID))
         .andExpect(status().isOk())
+        .andExpect(content().contentType(MediaType.APPLICATION_JSON))
         .andExpect(jsonPath("$").isArray())
         .andExpect(jsonPath("$", hasSize(3)))
         .andExpect(jsonPath("$[0].id").value("1"))
@@ -100,5 +104,27 @@ class HistoryResourceTest {
         .andExpect(jsonPath("$[2].subject").value(FORM_UPDATED.toString()))
         .andExpect(jsonPath("$[2].contact").value(TRAINEE_CONTACT_3))
         .andExpect(jsonPath("$[2].sentAt").value(Instant.MAX.toString()));
+  }
+
+  @Test
+  void shouldReturnNotFoundWhenNoNotificationMessageFound() throws Exception {
+    when(service.rebuildMessage(NOTIFICATION_ID)).thenReturn(Optional.empty());
+
+    mockMvc.perform(get("/api/history/message/{notificationId}", NOTIFICATION_ID))
+        .andExpect(status().isNotFound());
+  }
+
+  @Test
+  void shouldReturnRebuiltMessageWhenNotificationFound() throws Exception {
+    String message = """
+        <html>
+          <p>Rebuilt message</p>
+        </html>""";
+    when(service.rebuildMessage(NOTIFICATION_ID)).thenReturn(Optional.of(message));
+
+    mockMvc.perform(get("/api/history/message/{notificationId}", NOTIFICATION_ID))
+        .andExpect(status().isOk())
+        .andExpect(content().contentType(MediaType.TEXT_HTML))
+        .andExpect(content().string(message));
   }
 }

@@ -21,7 +21,6 @@
 
 package uk.nhs.tis.trainee.notifications.service;
 
-import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.CoreMatchers.nullValue;
@@ -45,10 +44,6 @@ import jakarta.mail.internet.MimeMessage;
 import jakarta.mail.internet.MimeMessage.RecipientType;
 import java.io.IOException;
 import java.net.URI;
-import java.time.Instant;
-import java.time.Month;
-import java.time.ZoneId;
-import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -60,7 +55,6 @@ import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.mockito.ArgumentCaptor;
 import org.springframework.mail.javamail.JavaMailSender;
-import org.thymeleaf.TemplateEngine;
 import org.thymeleaf.context.Context;
 import software.amazon.awssdk.services.cognitoidentityprovider.model.UserNotFoundException;
 import uk.nhs.tis.trainee.notifications.dto.UserAccountDetails;
@@ -77,13 +71,12 @@ class EmailServiceTest {
   private static final String USER_ID = UUID.randomUUID().toString();
   private static final String SENDER = "sender@test.email";
   private static final URI APP_DOMAIN = URI.create("local.notifications.com");
-  private static final String TIMEZONE = "Europe/London";
 
   private EmailService service;
   private UserAccountService userAccountService;
   private HistoryService historyService;
   private JavaMailSender mailSender;
-  private TemplateEngine templateEngine;
+  private TemplateService templateService;
 
   @BeforeEach
   void setUp() {
@@ -96,11 +89,13 @@ class EmailServiceTest {
     mailSender = mock(JavaMailSender.class);
     when(mailSender.createMimeMessage()).thenReturn(new MimeMessage((Session) null));
 
-    templateEngine = mock(TemplateEngine.class);
-    when(templateEngine.process(any(), any(), any(Context.class))).thenReturn("");
+    templateService = mock(TemplateService.class);
+    when(templateService.buildContext(any())).thenAnswer(
+        inv -> new Context(null, (Map<String, Object>) inv.getArguments()[0]));
+    when(templateService.process(any(), any(), (Context) any())).thenReturn("");
 
-    service = new EmailService(userAccountService, historyService, mailSender, templateEngine,
-        SENDER, APP_DOMAIN, TIMEZONE);
+    service = new EmailService(userAccountService, historyService, mailSender, templateService,
+        SENDER, APP_DOMAIN);
   }
 
   @Test
@@ -163,7 +158,7 @@ class EmailServiceTest {
     service.sendMessageToExistingUser(TRAINEE_ID, NOTIFICATION_TYPE, "", Map.of());
 
     ArgumentCaptor<Context> contextCaptor = ArgumentCaptor.forClass(Context.class);
-    verify(templateEngine, atLeastOnce()).process(any(), any(), contextCaptor.capture());
+    verify(templateService, atLeastOnce()).process(any(), any(), contextCaptor.capture());
 
     Context context = contextCaptor.getValue();
     assertThat("Unexpected name variable.", context.getVariable("name"), is("Gilliam"));
@@ -177,7 +172,7 @@ class EmailServiceTest {
     service.sendMessageToExistingUser(TRAINEE_ID, NOTIFICATION_TYPE, "", Map.of("name", "Maillig"));
 
     ArgumentCaptor<Context> contextCaptor = ArgumentCaptor.forClass(Context.class);
-    verify(templateEngine, atLeastOnce()).process(any(), any(), contextCaptor.capture());
+    verify(templateService, atLeastOnce()).process(any(), any(), contextCaptor.capture());
 
     Context context = contextCaptor.getValue();
     assertThat("Unexpected name variable.", context.getVariable("name"), is("Maillig"));
@@ -188,7 +183,7 @@ class EmailServiceTest {
     service.sendMessageToExistingUser(TRAINEE_ID, NOTIFICATION_TYPE, "", Map.of());
 
     ArgumentCaptor<Context> contextCaptor = ArgumentCaptor.forClass(Context.class);
-    verify(templateEngine, atLeastOnce()).process(any(), any(), contextCaptor.capture());
+    verify(templateService, atLeastOnce()).process(any(), any(), contextCaptor.capture());
 
     Context context = contextCaptor.getValue();
     assertThat("Unexpected domain variable.", context.getVariable("domain"), is(APP_DOMAIN));
@@ -201,50 +196,10 @@ class EmailServiceTest {
     service.sendMessageToExistingUser(TRAINEE_ID, NOTIFICATION_TYPE, "", Map.of("domain", domain));
 
     ArgumentCaptor<Context> contextCaptor = ArgumentCaptor.forClass(Context.class);
-    verify(templateEngine, atLeastOnce()).process(any(), any(), contextCaptor.capture());
+    verify(templateService, atLeastOnce()).process(any(), any(), contextCaptor.capture());
 
     Context context = contextCaptor.getValue();
     assertThat("Unexpected domain variable.", context.getVariable("domain"), is(domain));
-  }
-
-  @Test
-  void shouldLocalizeTimestampWhenTimezoneGmt() throws MessagingException {
-    Instant instant = Instant.parse("2021-02-03T04:05:06Z");
-    service.sendMessageToExistingUser(TRAINEE_ID, NOTIFICATION_TYPE, "",
-        Map.of("timestamp", instant));
-
-    ArgumentCaptor<Context> contextCaptor = ArgumentCaptor.forClass(Context.class);
-    verify(templateEngine, atLeastOnce()).process(any(), any(), contextCaptor.capture());
-
-    Context context = contextCaptor.getValue();
-    Object timestamp = context.getVariable("timestamp");
-    assertThat("Unexpected timestamp type.", timestamp, instanceOf(ZonedDateTime.class));
-
-    ZonedDateTime zonedDateTime = (ZonedDateTime) timestamp;
-    assertThat("Unexpected synced at day.", zonedDateTime.getDayOfMonth(), is(3));
-    assertThat("Unexpected synced at month.", zonedDateTime.getMonth(), is(Month.FEBRUARY));
-    assertThat("Unexpected synced at year.", zonedDateTime.getYear(), is(2021));
-    assertThat("Unexpected synced at zone.", zonedDateTime.getZone(), is(ZoneId.of(TIMEZONE)));
-  }
-
-  @Test
-  void shouldLocalizeTimestampWhenTimezoneBst() throws MessagingException {
-    Instant instant = Instant.parse("2021-08-03T23:05:06Z");
-    service.sendMessageToExistingUser(TRAINEE_ID, NOTIFICATION_TYPE, "",
-        Map.of("timestamp", instant));
-
-    ArgumentCaptor<Context> contextCaptor = ArgumentCaptor.forClass(Context.class);
-    verify(templateEngine, atLeastOnce()).process(any(), any(), contextCaptor.capture());
-
-    Context context = contextCaptor.getValue();
-    Object timestamp = context.getVariable("timestamp");
-    assertThat("Unexpected timestamp type.", timestamp, instanceOf(ZonedDateTime.class));
-
-    ZonedDateTime zonedDateTime = (ZonedDateTime) timestamp;
-    assertThat("Unexpected synced at day.", zonedDateTime.getDayOfMonth(), is(4));
-    assertThat("Unexpected synced at month.", zonedDateTime.getMonth(), is(Month.AUGUST));
-    assertThat("Unexpected synced at year.", zonedDateTime.getYear(), is(2021));
-    assertThat("Unexpected synced at zone.", zonedDateTime.getZone(), is(ZoneId.of(TIMEZONE)));
   }
 
   @Test
@@ -282,7 +237,8 @@ class EmailServiceTest {
   @Test
   void shouldSendMessageWithSubject() throws MessagingException {
     String template = "Test subject";
-    when(templateEngine.process(any(), eq(Set.of("subject")), any())).thenReturn(template);
+    when(templateService.process(any(), eq(Set.of("subject")), (Context) any())).thenReturn(
+        template);
 
     service.sendMessageToExistingUser(TRAINEE_ID, NOTIFICATION_TYPE, "", Map.of());
 
@@ -296,7 +252,8 @@ class EmailServiceTest {
   @Test
   void shouldSendMessageWithContent() throws MessagingException, IOException {
     String template = "<div>Test message body</div>";
-    when(templateEngine.process(any(), eq(Set.of("content")), any())).thenReturn(template);
+    when(templateService.process(any(), eq(Set.of("content")), (Context) any())).thenReturn(
+        template);
 
     service.sendMessageToExistingUser(TRAINEE_ID, NOTIFICATION_TYPE, "", Map.of());
 
@@ -315,15 +272,17 @@ class EmailServiceTest {
   @EnumSource(NotificationType.class)
   void shouldProcessTheTemplateWhenSendingMessage(NotificationType notificationType)
       throws MessagingException {
-    String templateVersion = "v1.2.3";
+    when(templateService.getTemplatePath(EMAIL, notificationType, "v1.2.3")).thenReturn(
+        "template/path");
 
-    service.sendMessageToExistingUser(TRAINEE_ID, notificationType, templateVersion,
+    service.sendMessageToExistingUser(TRAINEE_ID, notificationType, "v1.2.3",
         Map.of("key1", "value1"));
+
+    verify(templateService, times(2)).process(eq("template/path"), any(), (Context) any());
 
     ArgumentCaptor<Set<String>> selectorCaptor = ArgumentCaptor.forClass(Set.class);
     ArgumentCaptor<Context> contextCaptor = ArgumentCaptor.forClass(Context.class);
-    verify(templateEngine, times(2)).process(
-        eq("email/" + notificationType.getTemplateName() + "/v1.2.3"), selectorCaptor.capture(),
+    verify(templateService, times(2)).process(any(), selectorCaptor.capture(),
         contextCaptor.capture());
 
     List<Set<String>> selectors = selectorCaptor.getAllValues();
