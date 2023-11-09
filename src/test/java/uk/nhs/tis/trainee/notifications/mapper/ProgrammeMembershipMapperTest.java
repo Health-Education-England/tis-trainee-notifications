@@ -74,9 +74,11 @@ class ProgrammeMembershipMapperTest {
     Map<String, String> dataMap = new HashMap<>();
     dataMap.put("tisId", TIS_ID);
     dataMap.put("startDate", START_DATE.toString());
+    dataMap.put("another-pm-property", "some value");
     dataMap.put("curricula",
         "[{\"curriculumSubType\": \"" + CURRICULUM_SUB_TYPE + "\", "
-            + "\"curriculumSpecialty\": \"" + CURRICULUM_SPECIALTY + "\"}]");
+            + "\"curriculumSpecialty\": \"" + CURRICULUM_SPECIALTY + "\", "
+            + "\"another-curriculum-property\": \"some value\"}]");
     RecordDto data = new RecordDto();
     data.setData(dataMap);
     return new ProgrammeMembershipEvent(TIS_ID, data);
