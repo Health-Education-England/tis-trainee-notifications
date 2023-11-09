@@ -24,8 +24,8 @@ package uk.nhs.tis.trainee.notifications.service;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import uk.nhs.tis.trainee.notifications.dto.Curriculum;
-import uk.nhs.tis.trainee.notifications.dto.ProgrammeMembershipEvent;
+import uk.nhs.tis.trainee.notifications.model.Curriculum;
+import uk.nhs.tis.trainee.notifications.model.ProgrammeMembership;
 
 /**
  * A service for Programme memberships.
@@ -47,15 +47,14 @@ public class ProgrammeMembershipService {
    * programme membership.
    *
    * <p>This will be TRUE if any of the following are true in relation to the curricula:
-   * 1. None have curriculumSubType = MEDICAL_CURRICULUM or MEDICAL_SPR
-   * 2. Any have specialtyName = 'Public health medicine'
-   * 3. Any have specialtyName = 'Foundation'.
+   * 1. None have curriculumSubType = MEDICAL_CURRICULUM or MEDICAL_SPR. 2. Any have specialtyName =
+   * 'Public health medicine' or 'Foundation'.
    *
    * @param programmeMembership the Programme membership.
    * @return true if the programme membership is excluded.
    */
-  public boolean isExcluded(ProgrammeMembershipEvent programmeMembership) {
-    List<Curriculum> curricula = programmeMembership.curricula();
+  public boolean isExcluded(ProgrammeMembership programmeMembership) {
+    List<Curriculum> curricula = programmeMembership.getCurricula();
     if (curricula == null) {
       return true;
     }

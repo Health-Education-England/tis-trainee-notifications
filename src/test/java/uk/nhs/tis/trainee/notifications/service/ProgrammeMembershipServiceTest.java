@@ -30,8 +30,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.ValueSource;
-import uk.nhs.tis.trainee.notifications.dto.Curriculum;
-import uk.nhs.tis.trainee.notifications.dto.ProgrammeMembershipEvent;
+import uk.nhs.tis.trainee.notifications.model.Curriculum;
+import uk.nhs.tis.trainee.notifications.model.ProgrammeMembership;
 
 class ProgrammeMembershipServiceTest {
 
@@ -54,11 +54,10 @@ class ProgrammeMembershipServiceTest {
   @ValueSource(strings = {MEDICAL_CURRICULUM_1, MEDICAL_CURRICULUM_2})
   void shouldNotExcludePmWithMedicalSubtypeAndNoExcludedSpecialties(String subtype) {
     Curriculum theCurriculum = new Curriculum(subtype, "some-specialty");
-    List<Curriculum> curricula = List.of(theCurriculum, IGNORED_CURRICULUM);
-    ProgrammeMembershipEvent event
-        = new ProgrammeMembershipEvent(null, null, curricula);
+    ProgrammeMembership programmeMembership = new ProgrammeMembership();
+    programmeMembership.setCurricula(List.of(theCurriculum, IGNORED_CURRICULUM));
 
-    boolean isExcluded = service.isExcluded(event);
+    boolean isExcluded = service.isExcluded(programmeMembership);
 
     assertThat("Unexpected excluded value.", isExcluded, is(false));
   }
@@ -66,10 +65,10 @@ class ProgrammeMembershipServiceTest {
   @Test
   void shouldExcludePmWithNoMedicalSubtype() {
     List<Curriculum> curricula = List.of(IGNORED_CURRICULUM);
-    ProgrammeMembershipEvent event
-        = new ProgrammeMembershipEvent(null, null, curricula);
+    ProgrammeMembership programmeMembership = new ProgrammeMembership();
+    programmeMembership.setCurricula(curricula);
 
-    boolean isExcluded = service.isExcluded(event);
+    boolean isExcluded = service.isExcluded(programmeMembership);
 
     assertThat("Unexpected excluded value.", isExcluded, is(true));
   }
@@ -77,10 +76,10 @@ class ProgrammeMembershipServiceTest {
   @ParameterizedTest
   @NullAndEmptySource
   void shouldExcludePmWithNoCurricula(List<Curriculum> curricula) {
-    ProgrammeMembershipEvent event
-        = new ProgrammeMembershipEvent(null, null, curricula);
+    ProgrammeMembership programmeMembership = new ProgrammeMembership();
+    programmeMembership.setCurricula(curricula);
 
-    boolean isExcluded = service.isExcluded(event);
+    boolean isExcluded = service.isExcluded(programmeMembership);
 
     assertThat("Unexpected excluded value.", isExcluded, is(true));
   }
@@ -90,11 +89,10 @@ class ProgrammeMembershipServiceTest {
   void shouldExcludePmWithExcludedSpecialty(String specialty) {
     Curriculum theCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, specialty);
     Curriculum anotherCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, "some-specialty");
-    List<Curriculum> curricula = List.of(theCurriculum, anotherCurriculum);
-    ProgrammeMembershipEvent event
-        = new ProgrammeMembershipEvent(null, null, curricula);
+    ProgrammeMembership programmeMembership = new ProgrammeMembership();
+    programmeMembership.setCurricula(List.of(theCurriculum, anotherCurriculum));
 
-    boolean isExcluded = service.isExcluded(event);
+    boolean isExcluded = service.isExcluded(programmeMembership);
 
     assertThat("Unexpected excluded value.", isExcluded, is(true));
   }

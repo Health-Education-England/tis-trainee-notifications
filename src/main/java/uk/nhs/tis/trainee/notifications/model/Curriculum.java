@@ -19,7 +19,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package uk.nhs.tis.trainee.notifications.dto;
+package uk.nhs.tis.trainee.notifications.model;
 
 /**
  * A Programme membership's Curriculum.

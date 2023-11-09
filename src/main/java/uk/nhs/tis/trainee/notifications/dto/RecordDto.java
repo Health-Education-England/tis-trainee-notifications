@@ -21,17 +21,16 @@
 
 package uk.nhs.tis.trainee.notifications.dto;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
-import java.io.Serializable;
+import java.util.Map;
+import lombok.Data;
 
 /**
- * A Programme Membership event.
- *
- * @param tisId The TIS ID of the Programme membership.
- * @param recrd The record DTO map.
+ * A DTO representing data records, as they are received and passed-on by tis-trainee-sync.
  */
-public record ProgrammeMembershipEvent(
-    String tisId,
-    @JsonProperty("record") RecordDto recrd) implements Serializable {
+@Data
+public class RecordDto {
 
+  private Map<String, String> data;
+
+  private Map<String, String> metadata;
 }
