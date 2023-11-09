@@ -26,10 +26,10 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
-import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
 import org.mapstruct.MappingConstants.ComponentModel;
 import org.mapstruct.ReportingPolicy;
 import uk.nhs.tis.trainee.notifications.model.Curriculum;
@@ -47,22 +47,25 @@ public interface ProgrammeMembershipMapper {
    * @param recordData The map to convert.
    * @return The mapped ProgrammeMembership.
    */
-  default ProgrammeMembership toEntity(Map<String, String> recordData)
-      throws JsonProcessingException {
+  @Mapping(target = "curricula", source = "recordData.curricula")
+  @Mapping(target = "tisId", source = "recordData.tisId")
+  @Mapping(target = "startDate", source = "recordData.startDate")
+  ProgrammeMembership toEntity(Map<String, String> recordData);
+
+  /**
+   * Map a serialized list of curricula.
+   *
+   * @param curriculumString The serialized curricula.
+   * @return The list of Curriculum records.
+   * @throws JsonProcessingException if curricula are malformed.
+   */
+  default List<Curriculum> toCurricula(String curriculumString) throws JsonProcessingException {
     ObjectMapper objectMapper = new ObjectMapper()
         .registerModule(new JavaTimeModule())
         .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
-
-    ProgrammeMembership programmeMembership = new ProgrammeMembership();
-    programmeMembership.setTisId(recordData.get("tisId"));
-    programmeMembership.setStartDate(LocalDate.parse(recordData.get("startDate")));
-
-    List<Curriculum> curricula = objectMapper.readValue(recordData.get("curricula"),
+    return objectMapper.readValue(curriculumString,
         new TypeReference<>() {
         });
-    programmeMembership.setCurricula(curricula);
-
-    return programmeMembership;
   }
 }
 

@@ -24,7 +24,6 @@ package uk.nhs.tis.trainee.notifications.mapper;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.List;
@@ -51,7 +50,7 @@ class ProgrammeMembershipMapperTest {
   }
 
   @Test
-  void shouldMapProgrammeMembershipEventToProgrammeMembership() throws JsonProcessingException {
+  void shouldMapProgrammeMembershipEventToProgrammeMembership() {
     ProgrammeMembershipEvent event = buildPmEvent();
     ProgrammeMembership programmeMembership = new ProgrammeMembership();
     programmeMembership.setTisId(TIS_ID);
@@ -65,7 +64,6 @@ class ProgrammeMembershipMapperTest {
     assertThat("Unexpected start date.", returnedPm.getStartDate(), is(START_DATE));
     assertThat("Unexpected curricula.", returnedPm.getCurricula(), is(List.of(curriculum)));
   }
-
 
   /**
    * Helper function to construct a programme membership event.

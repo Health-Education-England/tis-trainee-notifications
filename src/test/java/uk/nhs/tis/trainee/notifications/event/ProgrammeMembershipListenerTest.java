@@ -23,11 +23,9 @@ package uk.nhs.tis.trainee.notifications.event;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.Map;
@@ -67,18 +65,6 @@ class ProgrammeMembershipListenerTest {
     //ensure events without record data are ignored, and not requeued
     RecordDto recordDto = new RecordDto();
     ProgrammeMembershipEvent event = new ProgrammeMembershipEvent(TIS_ID, recordDto);
-
-    assertDoesNotThrow(() -> listener.handleProgrammeMembershipUpdate(event));
-  }
-
-  @Test
-  void shouldNotThrowAnExceptionOnEventProcessingException() throws JsonProcessingException {
-    //ensure otherwise mangled events are not requeued
-    RecordDto recordDto = new RecordDto();
-    recordDto.setData(new HashMap<>());
-    ProgrammeMembershipEvent event = new ProgrammeMembershipEvent(TIS_ID, recordDto);
-
-    doThrow(JsonProcessingException.class).when(mapper).toEntity(any());
 
     assertDoesNotThrow(() -> listener.handleProgrammeMembershipUpdate(event));
   }
