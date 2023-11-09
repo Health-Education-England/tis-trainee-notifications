@@ -27,7 +27,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import uk.nhs.tis.trainee.notifications.dto.ProgrammeMembershipEvent;
 import uk.nhs.tis.trainee.notifications.mapper.ProgrammeMembershipMapper;
-import uk.nhs.tis.trainee.notifications.mapper.ProgrammeMembershipMapperImpl;
 import uk.nhs.tis.trainee.notifications.model.ProgrammeMembership;
 import uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService;
 
@@ -39,14 +38,17 @@ import uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService;
 public class ProgrammeMembershipListener {
 
   private final ProgrammeMembershipService programmeMembershipService;
+  private final ProgrammeMembershipMapper mapper;
 
   /**
    * Construct a listener for programme membership events.
    *
    * @param programmeMembershipService The programme membership service.
    */
-  public ProgrammeMembershipListener(ProgrammeMembershipService programmeMembershipService) {
+  public ProgrammeMembershipListener(ProgrammeMembershipService programmeMembershipService,
+      ProgrammeMembershipMapper mapper) {
     this.programmeMembershipService = programmeMembershipService;
+    this.mapper = mapper;
   }
 
   /**
@@ -57,7 +59,6 @@ public class ProgrammeMembershipListener {
   @SqsListener("${application.queues.programme-membership}")
   public void handleProgrammeMembershipUpdate(ProgrammeMembershipEvent event) {
     log.info("Handling programme membership update event {}.", event);
-    ProgrammeMembershipMapper mapper = new ProgrammeMembershipMapperImpl();
     if (event.recrd() != null && event.recrd().getData() != null) {
       try {
         ProgrammeMembership programmeMembership = mapper.toEntity(event.recrd().getData());
