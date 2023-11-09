@@ -41,7 +41,6 @@ import uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService;
 class ProgrammeMembershipListenerTest {
 
   private static final String TIS_ID = "123";
-  private static final String PERSON_ID = "abc";
   private static final LocalDate START_DATE = LocalDate.now();
 
   private ProgrammeMembershipListener listener;
@@ -101,7 +100,6 @@ class ProgrammeMembershipListenerTest {
   ProgrammeMembershipEvent buildPmEvent() {
     Map<String, String> dataMap = new HashMap<>();
     dataMap.put("tisId", TIS_ID);
-    dataMap.put("personId", PERSON_ID);
     dataMap.put("startDate", START_DATE.toString());
     dataMap.put("curricula",
         "[{\"curriculumSubType\": \"some type\", \"curriculumSpecialty\": \"some specialty\"}]");
