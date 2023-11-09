@@ -21,12 +21,15 @@
 
 package uk.nhs.tis.trainee.notifications.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+
 /**
  * A Programme membership's Curriculum.
  *
  * @param curriculumSubType   The Curriculum subtype.
  * @param curriculumSpecialty The Curriculum specialty.
  */
+@JsonIgnoreProperties(ignoreUnknown = true)
 public record Curriculum(
     String curriculumSubType,
     String curriculumSpecialty
