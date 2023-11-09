@@ -21,11 +21,14 @@
 
 package uk.nhs.tis.trainee.notifications.event;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import io.awspring.cloud.sqs.annotation.SqsListener;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
-import uk.nhs.tis.trainee.notifications.dto.CojSignedEvent;
 import uk.nhs.tis.trainee.notifications.dto.ProgrammeMembershipEvent;
+import uk.nhs.tis.trainee.notifications.mapper.ProgrammeMembershipMapper;
+import uk.nhs.tis.trainee.notifications.mapper.ProgrammeMembershipMapperImpl;
+import uk.nhs.tis.trainee.notifications.model.ProgrammeMembership;
 import uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService;
 
 /**
@@ -54,7 +57,17 @@ public class ProgrammeMembershipListener {
   @SqsListener("${application.queues.programme-membership}")
   public void handleProgrammeMembershipUpdate(ProgrammeMembershipEvent event) {
     log.info("Handling programme membership update event {}.", event);
-    boolean isExcluded = programmeMembershipService.isExcluded(event);
-    log.info("Programme membership {}: excluded {}.", event.tisId(), isExcluded);
+    ProgrammeMembershipMapper mapper = new ProgrammeMembershipMapperImpl();
+    if (event.recrd() != null && event.recrd().getData() != null) {
+      try {
+        ProgrammeMembership programmeMembership = mapper.toEntity(event.recrd().getData());
+        boolean isExcluded = programmeMembershipService.isExcluded(programmeMembership);
+        log.info("Programme membership {}: excluded {}.", event.tisId(), isExcluded);
+      } catch (JsonProcessingException e) {
+        log.error("Invalid programme membership event: {}", event);
+      }
+    } else {
+      log.info("Ignoring non programme membership update event: {}", event);
+    }
   }
 }
