@@ -11,9 +11,7 @@ import lombok.Data;
 @Data
 public class ProgrammeMembership {
 
-  //String personId,
   private String tisId;
-  //String programmeName,
   private LocalDate startDate;
   private List<Curriculum> curricula = new ArrayList<>();
 }

@@ -47,7 +47,7 @@ public class ProgrammeMembershipService {
    * programme membership.
    *
    * <p>This will be TRUE if any of the following are true in relation to the curricula:
-   * 1. None have curriculumSubType = MEDICAL_CURRICULUM or MEDICAL_SPR 2. Any have specialtyName =
+   * 1. None have curriculumSubType = MEDICAL_CURRICULUM or MEDICAL_SPR. 2. Any have specialtyName =
    * 'Public health medicine' or 'Foundation'.
    *
    * @param programmeMembership the Programme membership.
