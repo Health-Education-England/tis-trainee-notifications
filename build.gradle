@@ -68,7 +68,7 @@ dependencies {
   implementation "io.sentry:sentry-logback:${sentryVersion}"
 
   testImplementation "org.springframework.cloud:spring-cloud-starter-bootstrap"
-  ext.playtikaTestcontainersVersion = "3.0.5"
+  ext.playtikaTestcontainersVersion = "3.0.6"
   testImplementation "com.playtika.testcontainers:embedded-mongodb:$playtikaTestcontainersVersion"
   testImplementation "com.playtika.testcontainers:embedded-mysql:$playtikaTestcontainersVersion"
   testImplementation "com.playtika.testcontainers:embedded-redis:$playtikaTestcontainersVersion"
