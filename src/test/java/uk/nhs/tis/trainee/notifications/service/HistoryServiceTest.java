@@ -64,8 +64,8 @@ class HistoryServiceTest {
   private static final String TEMPLATE_VERSION = "v1.2.3";
   private static final Map<String, Object> TEMPLATE_VARIABLES = Map.of("key1", "value1");
 
-  private static TisReferenceType TIS_REFERENCE_TYPE = TisReferenceType.PLACEMENT;
-  private static String TIS_REFERENCE_ID = UUID.randomUUID().toString();
+  private static final TisReferenceType TIS_REFERENCE_TYPE = TisReferenceType.PLACEMENT;
+  private static final String TIS_REFERENCE_ID = UUID.randomUUID().toString();
 
   private HistoryService service;
   private HistoryRepository repository;
@@ -142,9 +142,10 @@ class HistoryServiceTest {
 
     HistoryDto historyDto1 = historyDtos.get(0);
     assertThat("Unexpected history id.", historyDto1.id(), is(id1.toString()));
-    assertThat("Unexpected history TIS reference type.", historyDto1.tisReferenceType(),
+    TisReferenceInfo referenceInfo = historyDtos.get(0).tisReference();
+    assertThat("Unexpected history TIS reference type.", referenceInfo.type(),
         is(TIS_REFERENCE_TYPE));
-    assertThat("Unexpected history TIS reference id.", historyDto1.tisReferenceId(),
+    assertThat("Unexpected history TIS reference id.", referenceInfo.id(),
         is(TIS_REFERENCE_ID));
     assertThat("Unexpected history type.", historyDto1.type(), is(messageType));
     assertThat("Unexpected history subject.", historyDto1.subject(), is(notificationType));
@@ -153,9 +154,10 @@ class HistoryServiceTest {
 
     HistoryDto historyDto2 = historyDtos.get(1);
     assertThat("Unexpected history id.", historyDto2.id(), is(id2.toString()));
-    assertThat("Unexpected history TIS reference type.", historyDto2.tisReferenceType(),
+    TisReferenceInfo referenceInfo2 = historyDtos.get(0).tisReference();
+    assertThat("Unexpected history TIS reference type.", referenceInfo2.type(),
         is(TIS_REFERENCE_TYPE));
-    assertThat("Unexpected history TIS reference id.", historyDto2.tisReferenceId(),
+    assertThat("Unexpected history TIS reference id.", referenceInfo2.id(),
         is(TIS_REFERENCE_ID));
     assertThat("Unexpected history type.", historyDto2.type(), is(messageType));
     assertThat("Unexpected history subject.", historyDto2.subject(), is(notificationType));

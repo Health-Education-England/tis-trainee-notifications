@@ -73,8 +73,8 @@ class HistoryServiceIntegrationTest {
   private static final Map<String, Object> TEMPLATE_VARIABLES = Map.of(
       "key1", "value1",
       "key2", "value2");
-  private static TisReferenceType TIS_REFERENCE_TYPE = TisReferenceType.PLACEMENT;
-  private static String TIS_REFERENCE_ID = UUID.randomUUID().toString();
+  private static final TisReferenceType TIS_REFERENCE_TYPE = TisReferenceType.PLACEMENT;
+  private static final String TIS_REFERENCE_ID = UUID.randomUUID().toString();
 
   private static final Instant SENT_AT = Instant.now().truncatedTo(ChronoUnit.MILLIS);
 

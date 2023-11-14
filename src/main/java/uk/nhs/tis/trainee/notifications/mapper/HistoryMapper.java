@@ -50,8 +50,7 @@ public interface HistoryMapper {
    */
   @Mapping(target = "id", expression = "java(entity.id().toString())")
   @Mapping(target = "type", source = "recipient.type")
-  @Mapping(target = "tisReferenceType", source = "tisReference.type")
-  @Mapping(target = "tisReferenceId", source = "tisReference.id")
+  @Mapping(target = "tisReference")
   @Mapping(target = "subject", source = "type")
   @Mapping(target = "contact", source = "recipient.contact")
   @Mapping(target = "sentAt")
