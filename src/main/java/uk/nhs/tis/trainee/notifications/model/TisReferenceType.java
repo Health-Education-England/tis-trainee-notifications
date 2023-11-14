@@ -19,26 +19,16 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package uk.nhs.tis.trainee.notifications.dto;
-
-import java.time.Instant;
-import uk.nhs.tis.trainee.notifications.model.MessageType;
-import uk.nhs.tis.trainee.notifications.model.NotificationType;
-import uk.nhs.tis.trainee.notifications.model.TisReferenceType;
+package uk.nhs.tis.trainee.notifications.model;
 
 /**
- * A DTO for historical notification data.
- *
- * @param id               The ID of the notification.
- * @param tisReferenceType The TIS reference type for the entity that prompted the notification.
- * @param tisReferenceId   The TIS ID of the entity that prompted the notification.
- * @param type             The type of notification e.g. EMAIL
- * @param subject          The subject of the notification e.g. COJ_CONFIRMATION
- * @param contact          The contact details used to send the notification.
- * @param sentAt           The timestamp the notification was sent at.
+ * An enumeration of possible TIS reference (core entity) types.
  */
-public record HistoryDto(String id, TisReferenceType tisReferenceType, String tisReferenceId,
-                         MessageType type, NotificationType subject, String contact,
-                         Instant sentAt) {
+public enum TisReferenceType {
+
+  PLACEMENT,
+  PROGRAMME_MEMBERSHIP,
+  FORMR_PARTA,
+  FORMR_PARTB
 
 }

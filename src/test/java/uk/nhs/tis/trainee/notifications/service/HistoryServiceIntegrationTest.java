@@ -53,7 +53,9 @@ import uk.nhs.tis.trainee.notifications.dto.HistoryDto;
 import uk.nhs.tis.trainee.notifications.model.History;
 import uk.nhs.tis.trainee.notifications.model.History.RecipientInfo;
 import uk.nhs.tis.trainee.notifications.model.History.TemplateInfo;
+import uk.nhs.tis.trainee.notifications.model.History.TisReferenceInfo;
 import uk.nhs.tis.trainee.notifications.model.NotificationType;
+import uk.nhs.tis.trainee.notifications.model.TisReferenceType;
 
 @SpringBootTest(properties = {"embedded.containers.enabled=true", "embedded.mongodb.enabled=true"})
 @ActiveProfiles({"mongodb", "test"})
@@ -71,6 +73,8 @@ class HistoryServiceIntegrationTest {
   private static final Map<String, Object> TEMPLATE_VARIABLES = Map.of(
       "key1", "value1",
       "key2", "value2");
+  private static TisReferenceType TIS_REFERENCE_TYPE = TisReferenceType.PLACEMENT;
+  private static String TIS_REFERENCE_ID = UUID.randomUUID().toString();
 
   private static final Instant SENT_AT = Instant.now().truncatedTo(ChronoUnit.MILLIS);
 
@@ -85,8 +89,10 @@ class HistoryServiceIntegrationTest {
     RecipientInfo recipientInfo = new RecipientInfo(TRAINEE_ID, EMAIL, TRAINEE_CONTACT);
     TemplateInfo templateInfo = new TemplateInfo(TEMPLATE_NAME, TEMPLATE_VERSION,
         TEMPLATE_VARIABLES);
+    TisReferenceInfo tisReferenceInfo = new TisReferenceInfo(TIS_REFERENCE_TYPE, TIS_REFERENCE_ID);
 
-    History history = new History(null, FORM_UPDATED, recipientInfo, templateInfo, SENT_AT);
+    History history = new History(null, tisReferenceInfo, FORM_UPDATED, recipientInfo,
+        templateInfo, SENT_AT);
     History savedHistory = service.save(history);
 
     assertThat("Unexpected ID.", savedHistory.id(), instanceOf(ObjectId.class));
@@ -103,6 +109,12 @@ class HistoryServiceIntegrationTest {
     assertThat("Unexpected template version.", savedTemplateInfo.version(), is(TEMPLATE_VERSION));
     assertThat("Unexpected template variables.", savedTemplateInfo.variables(),
         is(TEMPLATE_VARIABLES));
+
+    TisReferenceInfo savedReferenceInfo = savedHistory.tisReference();
+    assertThat("Unexpected TIS reference type.", savedReferenceInfo.type(),
+        is(TIS_REFERENCE_TYPE));
+    assertThat("Unexpected TIS reference id.", savedReferenceInfo.id(),
+        is(TIS_REFERENCE_ID));
   }
 
   @Test
@@ -110,8 +122,10 @@ class HistoryServiceIntegrationTest {
     RecipientInfo recipientInfo = new RecipientInfo(TRAINEE_ID, EMAIL, TRAINEE_CONTACT);
     TemplateInfo templateInfo = new TemplateInfo(TEMPLATE_NAME, TEMPLATE_VERSION,
         TEMPLATE_VARIABLES);
+    TisReferenceInfo tisReferenceInfo = new TisReferenceInfo(TIS_REFERENCE_TYPE, TIS_REFERENCE_ID);
 
-    History history = new History(null, FORM_UPDATED, recipientInfo, templateInfo, SENT_AT);
+    History history = new History(null, tisReferenceInfo, FORM_UPDATED, recipientInfo,
+        templateInfo, SENT_AT);
     service.save(history);
 
     List<HistoryDto> foundHistory = service.findAllForTrainee("notFound");
@@ -124,8 +138,10 @@ class HistoryServiceIntegrationTest {
     RecipientInfo recipientInfo = new RecipientInfo(TRAINEE_ID, EMAIL, TRAINEE_CONTACT);
     TemplateInfo templateInfo = new TemplateInfo(TEMPLATE_NAME, TEMPLATE_VERSION,
         TEMPLATE_VARIABLES);
+    TisReferenceInfo tisReferenceInfo = new TisReferenceInfo(TIS_REFERENCE_TYPE, TIS_REFERENCE_ID);
 
-    History history = new History(null, FORM_UPDATED, recipientInfo, templateInfo, SENT_AT);
+    History history = new History(null, tisReferenceInfo, FORM_UPDATED, recipientInfo,
+        templateInfo, SENT_AT);
     History savedHistory = service.save(history);
 
     List<HistoryDto> foundHistory = service.findAllForTrainee(TRAINEE_ID);
@@ -145,15 +161,19 @@ class HistoryServiceIntegrationTest {
     RecipientInfo recipientInfo = new RecipientInfo(TRAINEE_ID, EMAIL, TRAINEE_CONTACT);
     TemplateInfo templateInfo = new TemplateInfo(TEMPLATE_NAME, TEMPLATE_VERSION,
         TEMPLATE_VARIABLES);
+    TisReferenceInfo tisReferenceInfo = new TisReferenceInfo(TIS_REFERENCE_TYPE, TIS_REFERENCE_ID);
 
     Instant now = Instant.now().truncatedTo(ChronoUnit.MILLIS);
-    service.save(new History(null, FORM_UPDATED, recipientInfo, templateInfo, now));
+    service.save(new History(null, tisReferenceInfo, FORM_UPDATED, recipientInfo, templateInfo,
+        now));
 
     Instant before = SENT_AT.minus(Duration.ofDays(1));
-    service.save(new History(null, FORM_UPDATED, recipientInfo, templateInfo, before));
+    service.save(new History(null, tisReferenceInfo, FORM_UPDATED, recipientInfo, templateInfo,
+        before));
 
     Instant after = SENT_AT.plus(Duration.ofDays(1));
-    service.save(new History(null, FORM_UPDATED, recipientInfo, templateInfo, after));
+    service.save(new History(null, tisReferenceInfo, FORM_UPDATED, recipientInfo, templateInfo,
+        after));
 
     List<HistoryDto> foundHistory = service.findAllForTrainee(TRAINEE_ID);
 
@@ -184,8 +204,10 @@ class HistoryServiceIntegrationTest {
     RecipientInfo recipientInfo = new RecipientInfo(TRAINEE_ID, EMAIL, TRAINEE_CONTACT);
     TemplateInfo templateInfo = new TemplateInfo(notificationType.getTemplateName(), version,
         TEMPLATE_VARIABLES);
-    History history = new History(NOTIFICATION_ID, notificationType, recipientInfo, templateInfo,
-        Instant.now());
+    TisReferenceInfo tisReferenceInfo = new TisReferenceInfo(TIS_REFERENCE_TYPE, TIS_REFERENCE_ID);
+
+    History history = new History(NOTIFICATION_ID, tisReferenceInfo, notificationType,
+        recipientInfo, templateInfo, Instant.now());
     service.save(history);
 
     Optional<String> message = service.rebuildMessage(NOTIFICATION_ID.toString());
