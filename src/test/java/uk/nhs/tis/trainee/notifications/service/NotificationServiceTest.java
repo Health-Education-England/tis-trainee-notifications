@@ -100,8 +100,8 @@ class NotificationServiceTest {
     TemplateInfo expectedTemplate
         = new TemplateInfo(NOTIFICATION_TYPE.getTemplateName(), "v1.0.0",
         jobDetails.getJobDataMap().getWrappedMap());
-    TisReferenceInfo expectedTisReference = new TisReferenceInfo(TisReferenceType.PROGRAMME_MEMBERSHIP,
-        TIS_ID_VALUE);
+    TisReferenceInfo expectedTisReference
+        = new TisReferenceInfo(TisReferenceType.PROGRAMME_MEMBERSHIP, TIS_ID_VALUE);
 
     assertThat("Unexpected recipientInfo.", savedHistory.recipient(), is(expectedRecipient));
     assertThat("Unexpected templateInfo.", savedHistory.template(), is(expectedTemplate));
