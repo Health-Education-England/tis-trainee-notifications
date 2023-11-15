@@ -17,7 +17,8 @@ application:
     coj-received: ${COJ_RECEIVED_QUEUE}
     credential-revoked: ${CREDENTIAL_REVOKED_QUEUE}
     form-updated: ${FORM_UPDATED_QUEUE}
-    programme-membership: ${PROGRAMME_MEMBERSHIP_UPDATED_QUEUE}
+    programme-membership-updated: ${PROGRAMME_MEMBERSHIP_UPDATED_QUEUE}
+    programme-membership-deleted: ${PROGRAMME_MEMBERSHIP_DELETED_QUEUE}
   template-versions:
     coj-confirmation:
       email: v1.0.0

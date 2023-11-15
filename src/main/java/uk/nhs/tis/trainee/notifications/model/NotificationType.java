@@ -21,6 +21,9 @@
 
 package uk.nhs.tis.trainee.notifications.model;
 
+import java.util.EnumSet;
+import java.util.Set;
+
 /**
  * An enumeration of possible notification types.
  */
@@ -28,7 +31,11 @@ public enum NotificationType {
 
   COJ_CONFIRMATION("coj-confirmation"),
   CREDENTIAL_REVOKED("credential-revoked"),
-  FORM_UPDATED("form-updated");
+  FORM_UPDATED("form-updated"),
+  PROGRAMME_UPDATED_WEEK_8("programme-updated-week-8"),
+  PROGRAMME_UPDATED_WEEK_4("programme-updated-week-4"),
+  PROGRAMME_UPDATED_WEEK_1("programme-updated-week-1"),
+  PROGRAMME_UPDATED_WEEK_0("programme-updated-week-0");
 
   private final String templateName;
 
@@ -48,5 +55,18 @@ public enum NotificationType {
    */
   public String getTemplateName() {
     return templateName;
+  }
+
+  /**
+   * The set of Programme Updated notification types.
+   */
+  static final Set<NotificationType> programmeUpdateNotificationTypes = EnumSet.of(
+      PROGRAMME_UPDATED_WEEK_8,
+      PROGRAMME_UPDATED_WEEK_4,
+      PROGRAMME_UPDATED_WEEK_1,
+      PROGRAMME_UPDATED_WEEK_0);
+
+  public static Set<NotificationType> getProgrammeUpdateNotificationTypes() {
+    return programmeUpdateNotificationTypes;
   }
 }

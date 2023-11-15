@@ -76,4 +76,15 @@ public class MethodArgumentUtil {
     return Arrays.stream(MessageType.values())
         .flatMap(mt -> Arrays.stream(NotificationType.values()).map(nt -> Arguments.of(mt, nt)));
   }
+
+  /**
+   * Get all non-ProgrammeMembershipUpdate Notification Types.
+   *
+   * @return A stream of NotificationType.
+   */
+  public static Stream<Arguments> getNonProgrammeUpdateNotificationTypes() {
+    return Arrays.stream(NotificationType.values())
+        .filter(n -> !NotificationType.getProgrammeUpdateNotificationTypes().contains(n))
+        .map(Arguments::of);
+  }
 }

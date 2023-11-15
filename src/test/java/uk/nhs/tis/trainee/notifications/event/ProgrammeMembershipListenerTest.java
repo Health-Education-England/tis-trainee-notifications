@@ -31,6 +31,7 @@ import java.util.HashMap;
 import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.quartz.SchedulerException;
 import uk.nhs.tis.trainee.notifications.dto.ProgrammeMembershipEvent;
 import uk.nhs.tis.trainee.notifications.dto.RecordDto;
 import uk.nhs.tis.trainee.notifications.mapper.ProgrammeMembershipMapper;
@@ -58,6 +59,7 @@ class ProgrammeMembershipListenerTest {
     ProgrammeMembershipEvent event = new ProgrammeMembershipEvent(TIS_ID, null);
 
     assertDoesNotThrow(() -> listener.handleProgrammeMembershipUpdate(event));
+    assertDoesNotThrow(() -> listener.handleProgrammeMembershipDelete(event));
   }
 
   @Test
@@ -67,15 +69,25 @@ class ProgrammeMembershipListenerTest {
     ProgrammeMembershipEvent event = new ProgrammeMembershipEvent(TIS_ID, recordDto);
 
     assertDoesNotThrow(() -> listener.handleProgrammeMembershipUpdate(event));
+    assertDoesNotThrow(() -> listener.handleProgrammeMembershipDelete(event));
   }
 
   @Test
-  void shouldCheckIfProgrammeMembershipIsExcluded() {
+  void shouldAddNotifications() throws SchedulerException {
     ProgrammeMembershipEvent event = buildPmEvent();
 
     listener.handleProgrammeMembershipUpdate(event);
 
-    verify(programmeMembershipService).isExcluded(any());
+    verify(programmeMembershipService).addNotifications(any());
+  }
+
+  @Test
+  void shouldDeleteNotifications() throws SchedulerException {
+    ProgrammeMembershipEvent event = buildPmEvent();
+
+    listener.handleProgrammeMembershipDelete(event);
+
+    verify(programmeMembershipService).deleteNotifications(any());
   }
 
   /**
