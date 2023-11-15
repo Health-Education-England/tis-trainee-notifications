@@ -35,6 +35,7 @@ import static uk.nhs.tis.trainee.notifications.model.NotificationType.FORM_UPDAT
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 import org.bson.types.ObjectId;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -44,6 +45,8 @@ import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import uk.nhs.tis.trainee.notifications.dto.HistoryDto;
+import uk.nhs.tis.trainee.notifications.model.History.TisReferenceInfo;
+import uk.nhs.tis.trainee.notifications.model.TisReferenceType;
 import uk.nhs.tis.trainee.notifications.service.HistoryService;
 
 @WebMvcTest(controllers = HistoryResource.class)
@@ -54,6 +57,7 @@ class HistoryResourceTest {
   private static final String TRAINEE_CONTACT_1 = "test1@tis.nhs.uk";
   private static final String TRAINEE_CONTACT_2 = "test2@tis.nhs.uk";
   private static final String TRAINEE_CONTACT_3 = "test3@tis.nhs.uk";
+  private static final String TIS_REFERENCE_ID = UUID.randomUUID().toString();
 
   private static final String NOTIFICATION_ID = ObjectId.get().toString();
 
@@ -76,11 +80,16 @@ class HistoryResourceTest {
 
   @Test
   void shouldReturnTraineeHistoryArrayWhenHistoryFound() throws Exception {
-    HistoryDto history1 = new HistoryDto("1", EMAIL, COJ_CONFIRMATION, TRAINEE_CONTACT_1,
-        Instant.MIN);
-    HistoryDto history2 = new HistoryDto("2", EMAIL, CREDENTIAL_REVOKED, TRAINEE_CONTACT_2,
-        Instant.EPOCH);
-    HistoryDto history3 = new HistoryDto("3", EMAIL, FORM_UPDATED, TRAINEE_CONTACT_3, Instant.MAX);
+    TisReferenceInfo tisReferenceProgramme
+        = new TisReferenceInfo(TisReferenceType.PROGRAMME_MEMBERSHIP, TIS_REFERENCE_ID);
+    TisReferenceInfo tisReferenceForm
+        = new TisReferenceInfo(TisReferenceType.FORMR_PARTA, TIS_REFERENCE_ID);
+    HistoryDto history1 = new HistoryDto("1", tisReferenceProgramme, EMAIL, COJ_CONFIRMATION,
+        TRAINEE_CONTACT_1, Instant.MIN);
+    HistoryDto history2 = new HistoryDto("2", tisReferenceProgramme, EMAIL, CREDENTIAL_REVOKED,
+        TRAINEE_CONTACT_2, Instant.EPOCH);
+    HistoryDto history3 = new HistoryDto("3", tisReferenceForm, EMAIL, FORM_UPDATED,
+        TRAINEE_CONTACT_3, Instant.MAX);
 
     when(service.findAllForTrainee(TRAINEE_ID)).thenReturn(List.of(history1, history2, history3));
 
@@ -90,16 +99,25 @@ class HistoryResourceTest {
         .andExpect(jsonPath("$").isArray())
         .andExpect(jsonPath("$", hasSize(3)))
         .andExpect(jsonPath("$[0].id").value("1"))
+        .andExpect(jsonPath("$[0].tisReference.id").value(TIS_REFERENCE_ID))
+        .andExpect(jsonPath("$[0].tisReference.type")
+            .value(TisReferenceType.PROGRAMME_MEMBERSHIP.toString()))
         .andExpect(jsonPath("$[0].type").value(EMAIL.toString()))
         .andExpect(jsonPath("$[0].subject").value(COJ_CONFIRMATION.toString()))
         .andExpect(jsonPath("$[0].contact").value(TRAINEE_CONTACT_1))
         .andExpect(jsonPath("$[0].sentAt").value(Instant.MIN.toString()))
         .andExpect(jsonPath("$[1].id").value("2"))
+        .andExpect(jsonPath("$[1].tisReference.id").value(TIS_REFERENCE_ID))
+        .andExpect(jsonPath("$[1].tisReference.type")
+            .value(TisReferenceType.PROGRAMME_MEMBERSHIP.toString()))
         .andExpect(jsonPath("$[1].type").value(EMAIL.toString()))
         .andExpect(jsonPath("$[1].subject").value(CREDENTIAL_REVOKED.toString()))
         .andExpect(jsonPath("$[1].contact").value(TRAINEE_CONTACT_2))
         .andExpect(jsonPath("$[1].sentAt").value(Instant.EPOCH.toString()))
         .andExpect(jsonPath("$[2].id").value("3"))
+        .andExpect(jsonPath("$[2].tisReference.id").value(TIS_REFERENCE_ID))
+        .andExpect(jsonPath("$[2].tisReference.type")
+            .value(TisReferenceType.FORMR_PARTA.toString()))
         .andExpect(jsonPath("$[2].type").value(EMAIL.toString()))
         .andExpect(jsonPath("$[2].subject").value(FORM_UPDATED.toString()))
         .andExpect(jsonPath("$[2].contact").value(TRAINEE_CONTACT_3))

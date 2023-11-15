@@ -19,40 +19,16 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package uk.nhs.tis.trainee.notifications.mapper;
-
-import java.util.List;
-import org.mapstruct.Mapper;
-import org.mapstruct.Mapping;
-import org.mapstruct.MappingConstants.ComponentModel;
-import uk.nhs.tis.trainee.notifications.dto.HistoryDto;
-import uk.nhs.tis.trainee.notifications.model.History;
+package uk.nhs.tis.trainee.notifications.model;
 
 /**
- * A mapper to convert between notification history data types.
+ * An enumeration of possible TIS reference (core entity) types.
  */
-@Mapper(componentModel = ComponentModel.SPRING)
-public interface HistoryMapper {
+public enum TisReferenceType {
 
-  /**
-   * Convert history entities to history DTOs.
-   *
-   * @param entities The history entities to convert.
-   * @return The converted history DTOs.
-   */
-  List<HistoryDto> toDtos(List<History> entities);
+  PLACEMENT,
+  PROGRAMME_MEMBERSHIP,
+  FORMR_PARTA,
+  FORMR_PARTB
 
-  /**
-   * Convert a history entity to a history DTO.
-   *
-   * @param entity The history entity to convert.
-   * @return The converted history DTOs.
-   */
-  @Mapping(target = "id", expression = "java(entity.id().toString())")
-  @Mapping(target = "type", source = "recipient.type")
-  @Mapping(target = "tisReference")
-  @Mapping(target = "subject", source = "type")
-  @Mapping(target = "contact", source = "recipient.contact")
-  @Mapping(target = "sentAt")
-  HistoryDto toDto(History entity);
 }

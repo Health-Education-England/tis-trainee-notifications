@@ -22,19 +22,21 @@
 package uk.nhs.tis.trainee.notifications.dto;
 
 import java.time.Instant;
+import uk.nhs.tis.trainee.notifications.model.History.TisReferenceInfo;
 import uk.nhs.tis.trainee.notifications.model.MessageType;
 import uk.nhs.tis.trainee.notifications.model.NotificationType;
 
 /**
  * A DTO for historical notification data.
  *
- * @param id      The ID of the notification.
- * @param type    The type of notification e.g. EMAIL
- * @param subject The subject of the notification e.g. COJ_CONFIRMATION
- * @param contact The contact details used to send the notifiation.
- * @param sentAt  The timestamp the notification was sent at.
+ * @param id           The ID of the notification.
+ * @param tisReference The TIS reference info for the entity that prompted the notification.
+ * @param type         The type of notification e.g. EMAIL
+ * @param subject      The subject of the notification e.g. COJ_CONFIRMATION
+ * @param contact      The contact details used to send the notification.
+ * @param sentAt       The timestamp the notification was sent at.
  */
-public record HistoryDto(String id, MessageType type, NotificationType subject, String contact,
-                         Instant sentAt) {
+public record HistoryDto(String id, TisReferenceInfo tisReference, MessageType type,
+                         NotificationType subject, String contact, Instant sentAt) {
 
 }

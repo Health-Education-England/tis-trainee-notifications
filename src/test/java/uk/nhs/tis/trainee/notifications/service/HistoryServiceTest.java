@@ -35,6 +35,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
 import org.bson.types.ObjectId;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -46,8 +47,10 @@ import uk.nhs.tis.trainee.notifications.mapper.HistoryMapperImpl;
 import uk.nhs.tis.trainee.notifications.model.History;
 import uk.nhs.tis.trainee.notifications.model.History.RecipientInfo;
 import uk.nhs.tis.trainee.notifications.model.History.TemplateInfo;
+import uk.nhs.tis.trainee.notifications.model.History.TisReferenceInfo;
 import uk.nhs.tis.trainee.notifications.model.MessageType;
 import uk.nhs.tis.trainee.notifications.model.NotificationType;
+import uk.nhs.tis.trainee.notifications.model.TisReferenceType;
 import uk.nhs.tis.trainee.notifications.repository.HistoryRepository;
 
 class HistoryServiceTest {
@@ -60,6 +63,9 @@ class HistoryServiceTest {
   private static final String TEMPLATE_NAME = "test/template";
   private static final String TEMPLATE_VERSION = "v1.2.3";
   private static final Map<String, Object> TEMPLATE_VARIABLES = Map.of("key1", "value1");
+
+  private static final TisReferenceType TIS_REFERENCE_TYPE = TisReferenceType.PLACEMENT;
+  private static final String TIS_REFERENCE_ID = UUID.randomUUID().toString();
 
   private HistoryService service;
   private HistoryRepository repository;
@@ -77,21 +83,24 @@ class HistoryServiceTest {
   void shouldSaveHistory(NotificationType notificationType) {
     RecipientInfo recipientInfo = new RecipientInfo(null, null, null);
     TemplateInfo templateInfo = new TemplateInfo(null, null, Map.of());
+    TisReferenceInfo tisReferenceInfo = new TisReferenceInfo(null, null);
     Instant now = Instant.now();
-    History history = new History(null, notificationType, recipientInfo,
+    History history = new History(null, tisReferenceInfo, notificationType, recipientInfo,
         templateInfo, now);
 
     ObjectId id = new ObjectId();
     when(repository.save(history)).then(inv -> {
       History saving = inv.getArgument(0);
       assertThat("Unexpected ID.", saving.id(), nullValue());
-      return new History(id, saving.type(), saving.recipient(), saving.template(),
-          saving.sentAt());
+      return new History(id, saving.tisReference(), saving.type(), saving.recipient(),
+          saving.template(), saving.sentAt());
     });
 
     History savedHistory = service.save(history);
 
     assertThat("Unexpected ID.", savedHistory.id(), is(id));
+    assertThat("Unexpected TIS reference.", savedHistory.tisReference(),
+        is(tisReferenceInfo));
     assertThat("Unexpected type.", savedHistory.type(), is(notificationType));
     assertThat("Unexpected recipient.", savedHistory.recipient(), sameInstance(recipientInfo));
     assertThat("Unexpected template.", savedHistory.template(), sameInstance(templateInfo));
@@ -114,12 +123,15 @@ class HistoryServiceTest {
     RecipientInfo recipientInfo = new RecipientInfo(TRAINEE_ID, messageType, TRAINEE_CONTACT);
     TemplateInfo templateInfo = new TemplateInfo(TEMPLATE_NAME, TEMPLATE_VERSION,
         TEMPLATE_VARIABLES);
+    TisReferenceInfo tisReferenceInfo = new TisReferenceInfo(TIS_REFERENCE_TYPE, TIS_REFERENCE_ID);
 
     ObjectId id1 = ObjectId.get();
-    History history1 = new History(id1, notificationType, recipientInfo, templateInfo, Instant.MIN);
+    History history1 = new History(id1, tisReferenceInfo, notificationType, recipientInfo,
+        templateInfo, Instant.MIN);
 
     ObjectId id2 = ObjectId.get();
-    History history2 = new History(id2, notificationType, recipientInfo, templateInfo, Instant.MAX);
+    History history2 = new History(id2, tisReferenceInfo, notificationType, recipientInfo,
+        templateInfo, Instant.MAX);
 
     when(repository.findAllByRecipient_IdOrderBySentAtDesc(TRAINEE_ID)).thenReturn(
         List.of(history1, history2));
@@ -130,6 +142,11 @@ class HistoryServiceTest {
 
     HistoryDto historyDto1 = historyDtos.get(0);
     assertThat("Unexpected history id.", historyDto1.id(), is(id1.toString()));
+    TisReferenceInfo referenceInfo = historyDtos.get(0).tisReference();
+    assertThat("Unexpected history TIS reference type.", referenceInfo.type(),
+        is(TIS_REFERENCE_TYPE));
+    assertThat("Unexpected history TIS reference id.", referenceInfo.id(),
+        is(TIS_REFERENCE_ID));
     assertThat("Unexpected history type.", historyDto1.type(), is(messageType));
     assertThat("Unexpected history subject.", historyDto1.subject(), is(notificationType));
     assertThat("Unexpected history contact.", historyDto1.contact(), is(TRAINEE_CONTACT));
@@ -137,6 +154,11 @@ class HistoryServiceTest {
 
     HistoryDto historyDto2 = historyDtos.get(1);
     assertThat("Unexpected history id.", historyDto2.id(), is(id2.toString()));
+    TisReferenceInfo referenceInfo2 = historyDtos.get(0).tisReference();
+    assertThat("Unexpected history TIS reference type.", referenceInfo2.type(),
+        is(TIS_REFERENCE_TYPE));
+    assertThat("Unexpected history TIS reference id.", referenceInfo2.id(),
+        is(TIS_REFERENCE_ID));
     assertThat("Unexpected history type.", historyDto2.type(), is(messageType));
     assertThat("Unexpected history subject.", historyDto2.subject(), is(notificationType));
     assertThat("Unexpected history contact.", historyDto2.contact(), is(TRAINEE_CONTACT));
@@ -162,8 +184,10 @@ class HistoryServiceTest {
     RecipientInfo recipientInfo = new RecipientInfo(TRAINEE_ID, messageType, TRAINEE_CONTACT);
     TemplateInfo templateInfo = new TemplateInfo(TEMPLATE_NAME, TEMPLATE_VERSION,
         TEMPLATE_VARIABLES);
-    History history = new History(notificationId, notificationType, recipientInfo, templateInfo,
-        Instant.now());
+    TisReferenceInfo tisReferenceInfo = new TisReferenceInfo(TIS_REFERENCE_TYPE, TIS_REFERENCE_ID);
+
+    History history = new History(notificationId, tisReferenceInfo, notificationType, recipientInfo,
+        templateInfo, Instant.now());
     when(repository.findById(any())).thenReturn(Optional.of(history));
 
     String templatePath = "type/test/template/v1.2.3";

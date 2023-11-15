@@ -41,6 +41,7 @@ import org.springframework.data.mongodb.core.mapping.Field;
 public record History(
     @Id
     ObjectId id,
+    TisReferenceInfo tisReference,
     NotificationType type,
     RecipientInfo recipient,
     TemplateInfo template,
@@ -65,6 +66,16 @@ public record History(
    * @param variables The variables to process with the template.
    */
   public record TemplateInfo(String name, String version, Map<String, Object> variables) {
+
+  }
+
+  /**
+   * A representation of the TIS record that prompted the notification.
+   *
+   * @param type The TIS reference type for the entity that prompted the notification.
+   * @param id   The TIS ID of the entity that prompted the notification.
+   */
+  public record TisReferenceInfo(TisReferenceType type, String id) {
 
   }
 }

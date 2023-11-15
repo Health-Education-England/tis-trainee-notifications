@@ -134,7 +134,7 @@ public class EmailService {
     RecipientInfo recipientInfo = new RecipientInfo(traineeId, EMAIL, recipient);
     TemplateInfo templateInfo = new TemplateInfo(notificationType.getTemplateName(),
         templateVersion, templateVariables);
-    History history = new History(null, notificationType, recipientInfo,
+    History history = new History(null, null, notificationType, recipientInfo,
         templateInfo, Instant.now());
     historyService.save(history);
 
