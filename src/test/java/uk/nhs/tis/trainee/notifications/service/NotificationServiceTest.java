@@ -21,6 +21,8 @@
 
 package uk.nhs.tis.trainee.notifications.service;
 
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.is;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -29,11 +31,18 @@ import static org.quartz.JobBuilder.newJob;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.quartz.JobDataMap;
 import org.quartz.JobDetail;
 import org.quartz.JobExecutionContext;
 import org.quartz.JobKey;
+import uk.nhs.tis.trainee.notifications.model.History;
+import uk.nhs.tis.trainee.notifications.model.History.RecipientInfo;
+import uk.nhs.tis.trainee.notifications.model.History.TemplateInfo;
+import uk.nhs.tis.trainee.notifications.model.History.TisReferenceInfo;
+import uk.nhs.tis.trainee.notifications.model.MessageType;
 import uk.nhs.tis.trainee.notifications.model.NotificationType;
+import uk.nhs.tis.trainee.notifications.model.TisReferenceType;
 
 class NotificationServiceTest {
 
@@ -43,7 +52,7 @@ class NotificationServiceTest {
   private static final String TIS_ID_VALUE = "tis-id";
   private static final NotificationType NOTIFICATION_TYPE
       = NotificationType.PROGRAMME_UPDATED_WEEK_8;
-  private JobDetail jobDetail;
+  private JobDetail jobDetails;
 
   private NotificationService service;
   private HistoryService historyService;
@@ -57,7 +66,7 @@ class NotificationServiceTest {
     JobDataMap jobDataMap = new JobDataMap();
     jobDataMap.put(TIS_ID_KEY, TIS_ID_VALUE);
     jobDataMap.put("notificationType", NOTIFICATION_TYPE.toString());
-    jobDetail = newJob(NotificationService.class)
+    jobDetails = newJob(NotificationService.class)
         .withIdentity(JOB_KEY)
         .usingJobData(jobDataMap)
         .build();
@@ -67,10 +76,36 @@ class NotificationServiceTest {
 
   @Test
   void shouldSetNotificationResultWhenExecuted() {
-    when(jobExecutionContext.getJobDetail()).thenReturn(jobDetail);
+    when(jobExecutionContext.getJobDetail()).thenReturn(jobDetails);
 
     service.execute(jobExecutionContext);
 
     verify(jobExecutionContext).setResult(any());
+  }
+
+  @Test
+  void shouldSaveNotificationHistoryWhenExecuted() {
+    when(jobExecutionContext.getJobDetail()).thenReturn(jobDetails);
+
+    service.execute(jobExecutionContext);
+
+    ArgumentCaptor<History> historyCaptor = ArgumentCaptor.forClass(History.class);
+
+    verify(historyService).save(historyCaptor.capture());
+
+    History savedHistory = historyCaptor.getValue();
+
+    RecipientInfo expectedRecipient
+        = new RecipientInfo(TIS_ID_VALUE, MessageType.EMAIL, NotificationService.DUMMY_EMAIL);
+    TemplateInfo expectedTemplate
+        = new TemplateInfo(NOTIFICATION_TYPE.getTemplateName(), "v1.0.0",
+        jobDetails.getJobDataMap().getWrappedMap());
+    TisReferenceInfo expectedTisReference = new TisReferenceInfo(TisReferenceType.PROGRAMME_MEMBERSHIP,
+        TIS_ID_VALUE);
+
+    assertThat("Unexpected recipientInfo.", savedHistory.recipient(), is(expectedRecipient));
+    assertThat("Unexpected templateInfo.", savedHistory.template(), is(expectedTemplate));
+    assertThat("Unexpected tisReference.", savedHistory.tisReference(),
+        is(expectedTisReference));
   }
 }

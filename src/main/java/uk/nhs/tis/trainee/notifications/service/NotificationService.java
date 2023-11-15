@@ -45,6 +45,8 @@ import uk.nhs.tis.trainee.notifications.model.TisReferenceType;
 @Component
 public class NotificationService implements Job {
 
+  public static final String DUMMY_EMAIL = "TODO get email";
+
   private static final String TIS_ID = "tisId";
 
   private final HistoryService historyService;
@@ -70,7 +72,7 @@ public class NotificationService implements Job {
     result.put("status", "sent " + processedOn.toString());
     jobExecutionContext.setResult(result);
 
-    saveNotificationSent(jobDetails, "TODO get email", processedOn);
+    saveNotificationSent(jobDetails, DUMMY_EMAIL, processedOn);
 
     //MVP:
     //get trainee name and job details (ProgrammeMembershipEvent, NotificationType)
