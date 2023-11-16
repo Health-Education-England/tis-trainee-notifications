@@ -6,14 +6,14 @@
 <body>
 <h1>Email Message</h1>
 <h2>Subject</h2>
-<th:block th:fragment="subject">Programme checklist: 8 weeks to go</th:block>
+<th:block th:fragment="subject">Programme checklist: programme has started</th:block>
 <h2>Content</h2>
 <th:block th:fragment="content">
   <div th:replace="fragments/greeting/v1.0.0 :: body"></div>
   <p>
-    We look forward to welcoming you as you start <b><span
-    th:text="${not #strings.isEmpty(programmeName)} ? ${programmeName} : 'your programme'"></span></b> in <b
-    >8</b> weeks. Please ensure you have completed the following task(s) before the start of your programme:<br><br
+    We welcome you as you start <b><span
+    th:text="${not #strings.isEmpty(programmeName)} ? ${programmeName} : 'your programme'"></span></b
+    >. Please ensure you have now completed the following task(s):<br><br
     ><ul>
       <li>Register an account on <a th:href="${not #strings.isEmpty(domain)} ? @{{domain}/(domain=${domain})} : _"
       >TIS Self-Service</a></li>
