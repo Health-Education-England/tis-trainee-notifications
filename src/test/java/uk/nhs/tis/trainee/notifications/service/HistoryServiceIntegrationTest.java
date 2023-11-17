@@ -42,6 +42,7 @@ import org.jsoup.nodes.Element;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.quartz.Scheduler;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.quartz.QuartzAutoConfiguration;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -80,6 +81,9 @@ class HistoryServiceIntegrationTest {
 
   @MockBean
   private QuartzAutoConfiguration quartzConfiguration;
+
+  @MockBean
+  private Scheduler scheduler;
 
   @Autowired
   private HistoryService service;

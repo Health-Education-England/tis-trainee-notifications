@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+</head>
+<body>
+<h1>Email Message</h1>
+<h2>Subject</h2>
+<th:block th:fragment="subject">Programme checklist: 4 weeks to go</th:block>
+<h2>Content</h2>
+<th:block th:fragment="content">
+  <div th:replace="fragments/greeting/v1.0.0 :: body"></div>
+  <p>
+    We look forward to welcoming you as you start <b><span
+    th:text="${not #strings.isEmpty(programmeName)} ? ${programmeName} : 'your programme'"></span></b> in <b
+    >4</b> weeks. Please ensure you have completed the following task(s) before the start of your programme:<br><br
+    ><ul>
+      <li>Register an account on <a th:href="${not #strings.isEmpty(domain)} ? @{{domain}/(domain=${domain})} : _"
+      >TIS Self-Service</a></li>
+      <li>Read and sign your programme <a th:href="${not #strings.isEmpty(domain)} ? @{{domain}/programmes(domain=${domain})} : _"
+      >Conditions of Joining</a></li>
+      <li>Complete and submit FormR <a th:href="${not #strings.isEmpty(domain)}? @{{domain}/formr-a(domain=${domain})} : _"
+      >Part A</a> and <a th:href="${not #strings.isEmpty(domain)}? @{{domain}/formr-b(domain=${domain})} : _"
+      >Part B</a></li>
+    </ul>
+  </p>
+
+  <hr>
+  <p id="SURVEY_LINK">
+    Was this email useful? Let us know what you think in a <a
+    href="https://forms.gle/GvMMCtkH4SKQdkSK7">two-question survey</a>.
+  </p>
+</th:block>
+</body>
+</html>

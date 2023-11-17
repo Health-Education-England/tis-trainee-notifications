@@ -25,6 +25,7 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 
 import org.junit.jupiter.api.Test;
+import org.quartz.Scheduler;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.quartz.QuartzAutoConfiguration;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -42,6 +43,9 @@ class TisTraineeNotificationsApplicationTest {
 
   @MockBean
   private QuartzAutoConfiguration quartzConfiguration;
+
+  @MockBean
+  private Scheduler scheduler;
 
   @Autowired
   ApplicationContext context;
