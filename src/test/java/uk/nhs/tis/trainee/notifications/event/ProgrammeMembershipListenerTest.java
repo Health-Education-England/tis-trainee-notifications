@@ -35,6 +35,7 @@ import org.quartz.SchedulerException;
 import uk.nhs.tis.trainee.notifications.dto.ProgrammeMembershipEvent;
 import uk.nhs.tis.trainee.notifications.dto.RecordDto;
 import uk.nhs.tis.trainee.notifications.mapper.ProgrammeMembershipMapper;
+import uk.nhs.tis.trainee.notifications.model.ProgrammeMembership;
 import uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService;
 
 class ProgrammeMembershipListenerTest {
@@ -83,11 +84,17 @@ class ProgrammeMembershipListenerTest {
 
   @Test
   void shouldDeleteNotifications() throws SchedulerException {
-    ProgrammeMembershipEvent event = buildPmEvent();
+    Map<String, String> dataMap = new HashMap<>();
+    RecordDto data = new RecordDto();
+    data.setData(dataMap);
+    ProgrammeMembershipEvent event = new ProgrammeMembershipEvent(TIS_ID, data);
+
+    ProgrammeMembership expectedProgrammeMembership = new ProgrammeMembership();
+    expectedProgrammeMembership.setTisId(TIS_ID);
 
     listener.handleProgrammeMembershipDelete(event);
 
-    verify(programmeMembershipService).deleteNotifications(any());
+    verify(programmeMembershipService).deleteNotifications(expectedProgrammeMembership);
   }
 
   /**
