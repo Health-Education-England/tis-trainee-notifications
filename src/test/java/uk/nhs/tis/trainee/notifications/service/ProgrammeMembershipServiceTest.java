@@ -24,6 +24,7 @@ package uk.nhs.tis.trainee.notifications.service;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
@@ -427,6 +428,58 @@ class ProgrammeMembershipServiceTest {
 
     verify(scheduler, never()).scheduleJob(any(), any());
     //since the 0-week notification has already been sent
+  }
+
+  @Test
+  void shouldNotFailOnHistoryWithoutTisReferenceInfo()
+      throws SchedulerException {
+    Curriculum theCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, "any specialty");
+    ProgrammeMembership programmeMembership = new ProgrammeMembership();
+    programmeMembership.setTisId(TIS_ID);
+    programmeMembership.setPersonId(PERSON_ID);
+    programmeMembership.setStartDate(START_DATE);
+    programmeMembership.setCurricula(List.of(theCurriculum));
+
+    List<HistoryDto> sentNotifications = new ArrayList<>();
+    sentNotifications.add(new HistoryDto("id",
+        null,
+        MessageType.EMAIL,
+        NotificationType.PROGRAMME_UPDATED_WEEK_0,
+        "email address",
+        Instant.MIN));
+
+    when(historyService.findAllForTrainee(PERSON_ID)).thenReturn(sentNotifications);
+
+    service.addNotifications(programmeMembership);
+
+    assertDoesNotThrow(() -> service.addNotifications(programmeMembership),
+        "Unexpected addNotifications failure");
+  }
+
+  @Test
+  void shouldIgnoreHistoryWithoutTisReferenceInfo() throws SchedulerException {
+    Curriculum theCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, "any specialty");
+    ProgrammeMembership programmeMembership = new ProgrammeMembership();
+    programmeMembership.setTisId(TIS_ID);
+    programmeMembership.setPersonId(PERSON_ID);
+    programmeMembership.setProgrammeName(PROGRAMME_NAME);
+    programmeMembership.setStartDate(START_DATE);
+    programmeMembership.setCurricula(List.of(theCurriculum));
+
+    List<HistoryDto> sentNotifications = new ArrayList<>();
+    sentNotifications.add(new HistoryDto("id",
+        null,
+        MessageType.EMAIL,
+        NotificationType.PROGRAMME_UPDATED_WEEK_8,
+        "email address",
+        Instant.MIN));
+
+    when(historyService.findAllForTrainee(PERSON_ID)).thenReturn(sentNotifications);
+
+    service.addNotifications(programmeMembership);
+
+    verify(scheduler, times(NotificationType.getProgrammeUpdateNotificationTypes().size()))
+        .scheduleJob(any(), any());
   }
 
   @Test

@@ -115,6 +115,7 @@ public class ProgrammeMembershipService {
     List<HistoryDto> correspondence = historyService.findAllForTrainee(traineeId);
     for (NotificationType milestone : NotificationType.getProgrammeUpdateNotificationTypes()) {
       Optional<HistoryDto> sentItem = correspondence.stream()
+          .filter(c -> c.tisReference() != null)
           .filter(c ->
               c.tisReference().type().equals(TisReferenceType.PROGRAMME_MEMBERSHIP)
                   && c.subject().equals(milestone)
