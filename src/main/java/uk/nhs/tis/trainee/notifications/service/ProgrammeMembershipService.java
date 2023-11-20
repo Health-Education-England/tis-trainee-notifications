@@ -247,7 +247,7 @@ public class ProgrammeMembershipService {
       // 'Missed' milestones: schedule to be sent soon, but not immediately
       // in case of human editing 'jitter'.
       milestone = Date.from(Instant.now()
-          .plus(PAST_MILESTONE_SCHEDULE_DELAY_HOURS, ChronoUnit.HOURS));
+          .plus(PAST_MILESTONE_SCHEDULE_DELAY_HOURS*20, ChronoUnit.SECONDS));
 
     } else {
       // Future milestone.

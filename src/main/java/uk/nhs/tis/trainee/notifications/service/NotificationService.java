@@ -29,7 +29,11 @@ import org.bson.types.ObjectId;
 import org.quartz.Job;
 import org.quartz.JobDataMap;
 import org.quartz.JobExecutionContext;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
+import org.springframework.web.client.RestClientException;
+import org.springframework.web.client.RestTemplate;
+import uk.nhs.tis.trainee.notifications.dto.UserAccountDetails;
 import uk.nhs.tis.trainee.notifications.model.History;
 import uk.nhs.tis.trainee.notifications.model.History.RecipientInfo;
 import uk.nhs.tis.trainee.notifications.model.History.TemplateInfo;
@@ -46,13 +50,23 @@ import uk.nhs.tis.trainee.notifications.model.TisReferenceType;
 public class NotificationService implements Job {
 
   public static final String DUMMY_EMAIL = "TODO get email";
+  public static final String API_GET_EMAIL = "/api/trainee-profile/trainee-email/{tisId}";
 
   private static final String TIS_ID = "tisId";
+  private static final String PERSON_ID = "personId";
 
   private final HistoryService historyService;
+  private final EmailService emailService;
+  private final RestTemplate restTemplate;
 
-  public NotificationService(HistoryService historyService) {
+  @Value("${service.trainee.url}")
+  private String serviceUrl;
+
+  public NotificationService(HistoryService historyService, EmailService emailService,
+      RestTemplate restTemplate) {
     this.historyService = historyService;
+    this.emailService = emailService;
+    this.restTemplate = restTemplate;
   }
 
   /**
@@ -67,12 +81,33 @@ public class NotificationService implements Job {
     Map<String, String> result = new HashMap<>();
     JobDataMap jobDetails = jobExecutionContext.getJobDetail().getJobDataMap();
 
-    log.info("Sent {} notification for {}", jobKey, jobDetails.getString(TIS_ID));
-    Instant processedOn = Instant.now();
-    result.put("status", "sent " + processedOn.toString());
-    jobExecutionContext.setResult(result);
+    //get email
+    //get signed-up
 
-    saveNotificationSent(jobDetails, DUMMY_EMAIL, processedOn);
+    String personId = jobDetails.getString(PERSON_ID);
+    UserAccountDetails userAccountDetails = null; //getCognitoAccountDetails(personId);
+    boolean hasSignedUpToTss = (userAccountDetails != null);
+    if (userAccountDetails == null) {
+      //get from trainee-details API. Problem is, it just gives email address, not family name
+      userAccountDetails = getTraineeDetailsAccountDetails(personId);
+      if (userAccountDetails == null) {
+        //give up, they dont have TSS details at all
+        log.info("No TSS details found for tisId {}", personId);
+      }
+    }
+
+    //get signed COJ
+    //get completed FormR A+B
+
+    if (userAccountDetails != null) {
+      log.info("Sent {} notification for {} to {}", jobKey, jobDetails.getString(TIS_ID),
+          userAccountDetails.email());
+      Instant processedOn = Instant.now();
+      result.put("status", "sent " + processedOn.toString());
+      jobExecutionContext.setResult(result);
+
+      saveNotificationSent(jobDetails, userAccountDetails.email(), processedOn);
+    }
 
     //MVP:
     //get trainee name and job details (ProgrammeMembershipEvent, NotificationType)
@@ -110,5 +145,25 @@ public class NotificationService implements Job {
         templateInfo, sentAt);
 
     return historyService.save(history);
+  }
+
+  private UserAccountDetails getCognitoAccountDetails(String personId) {
+    try {
+       return emailService.getRecipientAccount(personId);
+    } catch (IllegalArgumentException e) {
+      //no TSS account (or a duplicate account)
+      return null;
+    }
+  }
+
+  private UserAccountDetails getTraineeDetailsAccountDetails(String personId) {
+    try {
+      return new UserAccountDetails(
+        restTemplate.getForObject(serviceUrl + API_GET_EMAIL, String.class, Map.of(TIS_ID, personId)),
+          "Family name TODO"); //TODO
+    } catch (RestClientException e) {
+      //no trainee details
+      return null;
+    }
   }
 }
