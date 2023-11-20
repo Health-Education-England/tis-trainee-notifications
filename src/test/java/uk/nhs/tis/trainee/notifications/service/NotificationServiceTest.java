@@ -36,6 +36,7 @@ import org.quartz.JobDataMap;
 import org.quartz.JobDetail;
 import org.quartz.JobExecutionContext;
 import org.quartz.JobKey;
+import org.springframework.web.client.RestTemplate;
 import uk.nhs.tis.trainee.notifications.model.History;
 import uk.nhs.tis.trainee.notifications.model.History.RecipientInfo;
 import uk.nhs.tis.trainee.notifications.model.History.TemplateInfo;
@@ -56,12 +57,16 @@ class NotificationServiceTest {
 
   private NotificationService service;
   private HistoryService historyService;
+  private EmailService emailService;
+  private RestTemplate restTemplate;
   private JobExecutionContext jobExecutionContext;
 
   @BeforeEach
   void setUp() {
     jobExecutionContext = mock(JobExecutionContext.class);
     historyService = mock(HistoryService.class);
+    emailService = mock(EmailService.class);
+    restTemplate = mock(RestTemplate.class);
 
     JobDataMap jobDataMap = new JobDataMap();
     jobDataMap.put(TIS_ID_KEY, TIS_ID_VALUE);
@@ -71,7 +76,7 @@ class NotificationServiceTest {
         .usingJobData(jobDataMap)
         .build();
 
-    service = new NotificationService(historyService);
+    service = new NotificationService(historyService, emailService, restTemplate);
   }
 
   @Test
