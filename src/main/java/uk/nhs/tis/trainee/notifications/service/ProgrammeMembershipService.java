@@ -62,7 +62,7 @@ public class ProgrammeMembershipService {
   public static final String NOTIFICATION_TYPE_FIELD = "notificationType";
 
   private static final String TRIGGER_ID_PREFIX = "trigger-";
-  private static final Long PAST_MILESTONE_SCHEDULE_DELAY_HOURS = 1L;
+  private static final Long HOURS_DELAY_PAST_MILESTONE_SCHEDULING = 1L;
 
   protected static final Integer WEEKS_AFTER_PROGRAMME_START_MUTE_NOTIFICATIONS = 13;
   protected static LocalDate notificationServiceLaunchDate = LocalDate.of(2023, 11, 30);
@@ -256,7 +256,7 @@ public class ProgrammeMembershipService {
       // 'Missed' milestones: schedule to be sent soon, but not immediately
       // in case of human editing 'jitter'.
       milestone = Date.from(Instant.now()
-          .plus(PAST_MILESTONE_SCHEDULE_DELAY_HOURS, ChronoUnit.SECONDS));
+          .plus(HOURS_DELAY_PAST_MILESTONE_SCHEDULING, ChronoUnit.HOURS));
 
     } else {
       // Future milestone.
