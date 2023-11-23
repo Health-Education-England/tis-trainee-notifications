@@ -24,3 +24,6 @@ spring:
     password:
   flyway:
     url: ${spring.datasource.url}
+
+mongock:
+  enabled: false

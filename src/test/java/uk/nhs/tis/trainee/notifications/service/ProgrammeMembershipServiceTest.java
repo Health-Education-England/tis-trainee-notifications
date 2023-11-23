@@ -33,6 +33,10 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
+import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.PERSON_ID_FIELD;
+import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.PROGRAMME_NAME_FIELD;
+import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.START_DATE_FIELD;
+import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.TIS_ID_FIELD;
 
 import java.time.Instant;
 import java.time.LocalDate;
@@ -87,6 +91,9 @@ class ProgrammeMembershipServiceTest {
     scheduler = mock(Scheduler.class);
     historyService = mock(HistoryService.class);
     service = new ProgrammeMembershipService(scheduler, historyService);
+
+    ProgrammeMembershipService.notificationServiceLaunchDate = LocalDate.MIN;
+    //to avoid this affecting the scheduling logic unless explicitly needed
   }
 
   @ParameterizedTest
@@ -191,11 +198,11 @@ class ProgrammeMembershipServiceTest {
     JobDetail jobDetail = jobDetailCaptor.getValue();
     assertThat("Unexpected job id key.", jobDetail.getKey(), is(expectedJobKey));
     JobDataMap jobDataMap = jobDetail.getJobDataMap();
-    assertThat("Unexpected tisId.", jobDataMap.get("tisId"), is(TIS_ID));
-    assertThat("Unexpected personId.", jobDataMap.get("personId"), is(PERSON_ID));
-    assertThat("Unexpected programme.", jobDataMap.get("programmeName"),
+    assertThat("Unexpected tisId.", jobDataMap.get(TIS_ID_FIELD), is(TIS_ID));
+    assertThat("Unexpected personId.", jobDataMap.get(PERSON_ID_FIELD), is(PERSON_ID));
+    assertThat("Unexpected programme.", jobDataMap.get(PROGRAMME_NAME_FIELD),
         is(PROGRAMME_NAME));
-    assertThat("Unexpected start date.", jobDataMap.get("startDate"), is(START_DATE));
+    assertThat("Unexpected start date.", jobDataMap.get(START_DATE_FIELD), is(START_DATE));
 
     Trigger trigger = triggerCaptor.getValue();
     TriggerKey expectedTriggerKey = TriggerKey.triggerKey("trigger-" + expectedJobId);
@@ -358,7 +365,6 @@ class ProgrammeMembershipServiceTest {
     verify(scheduler).scheduleJob(any(), triggerCaptor.capture());
 
     Trigger trigger = triggerCaptor.getValue();
-    LocalDate expectedDate = dateToday;
     Date expectedLaterThan = Date.from(Instant.now());
 
     assertThat("Unexpected trigger start time",
@@ -366,7 +372,7 @@ class ProgrammeMembershipServiceTest {
     LocalDate scheduledDate = trigger.getStartTime().toInstant()
         .atZone(ZoneId.systemDefault())
         .toLocalDate();
-    assertThat("Unexpected trigger start time", scheduledDate, is(expectedDate));
+    assertThat("Unexpected trigger start time", scheduledDate, is(dateToday));
   }
 
   @Test
@@ -428,6 +434,47 @@ class ProgrammeMembershipServiceTest {
 
     verify(scheduler, never()).scheduleJob(any(), any());
     //since the 0-week notification has already been sent
+  }
+
+  @Test
+  void shouldNotScheduleNotificationsIfProgrammeStartedBeforeCutoffTimePeriod()
+      throws SchedulerException {
+    Curriculum theCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, "any specialty");
+    ProgrammeMembership programmeMembership = new ProgrammeMembership();
+    programmeMembership.setTisId(TIS_ID);
+    programmeMembership.setPersonId(PERSON_ID);
+    programmeMembership.setStartDate(
+        LocalDate.now().minusWeeks(
+            ProgrammeMembershipService.WEEKS_AFTER_PROGRAMME_START_MUTE_NOTIFICATIONS + 1));
+    programmeMembership.setCurricula(List.of(theCurriculum));
+
+    when(historyService.findAllForTrainee(PERSON_ID)).thenReturn(new ArrayList<>());
+
+    service.addNotifications(programmeMembership);
+
+    verify(scheduler, never()).scheduleJob(any(), any());
+    //since the programme started too far in the past
+  }
+
+  @Test
+  void shouldNotScheduleNotificationsIfScheduledBeforeServiceFirstLaunched()
+      throws SchedulerException {
+    ProgrammeMembershipService.notificationServiceLaunchDate = LocalDate.MAX;
+    //artificially set service not yet initiated
+
+    Curriculum theCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, "any specialty");
+    ProgrammeMembership programmeMembership = new ProgrammeMembership();
+    programmeMembership.setTisId(TIS_ID);
+    programmeMembership.setPersonId(PERSON_ID);
+    programmeMembership.setStartDate(START_DATE);
+    programmeMembership.setCurricula(List.of(theCurriculum));
+
+    when(historyService.findAllForTrainee(PERSON_ID)).thenReturn(new ArrayList<>());
+
+    service.addNotifications(programmeMembership);
+
+    verify(scheduler, never()).scheduleJob(any(), any());
+    //since all notifications would be before the service launch
   }
 
   @Test

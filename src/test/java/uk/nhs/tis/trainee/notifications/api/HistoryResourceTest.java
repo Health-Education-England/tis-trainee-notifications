@@ -43,6 +43,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
+import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 import uk.nhs.tis.trainee.notifications.dto.HistoryDto;
 import uk.nhs.tis.trainee.notifications.model.History.TisReferenceInfo;
@@ -51,6 +52,7 @@ import uk.nhs.tis.trainee.notifications.service.HistoryService;
 
 @WebMvcTest(controllers = HistoryResource.class)
 @AutoConfigureMockMvc
+@TestPropertySource(properties = "mongock.enabled=false")
 class HistoryResourceTest {
 
   private static final String TRAINEE_ID = "40";

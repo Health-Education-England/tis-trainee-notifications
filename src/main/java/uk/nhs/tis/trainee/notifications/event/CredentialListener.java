@@ -70,7 +70,7 @@ public class CredentialListener {
 
     String traineeId = event.traineeId();
     emailService.sendMessageToExistingUser(traineeId, CREDENTIAL_REVOKED, templateVersion,
-        templateVariables);
+        templateVariables, null);
     log.info("Credential revocation notification sent for trainee {}.", traineeId);
   }
 }

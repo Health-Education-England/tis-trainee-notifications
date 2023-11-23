@@ -25,7 +25,6 @@ package uk.nhs.tis.trainee.notifications.model;
  * An enumeration of possible TIS reference (core entity) types.
  */
 public enum TisReferenceType {
-
   PLACEMENT,
   PROGRAMME_MEMBERSHIP,
   FORMR_PARTA,

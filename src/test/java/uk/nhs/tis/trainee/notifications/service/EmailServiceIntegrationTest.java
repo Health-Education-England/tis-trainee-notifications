@@ -83,7 +83,7 @@ class EmailServiceIntegrationTest {
     when(userAccountService.getUserDetails(USER_ID)).thenReturn(
         new UserAccountDetails(RECIPIENT, null));
 
-    service.sendMessageToExistingUser(PERSON_ID, notificationType, templateVersion, Map.of());
+    service.sendMessageToExistingUser(PERSON_ID, notificationType, templateVersion, Map.of(), null);
 
     ArgumentCaptor<MimeMessage> messageCaptor = ArgumentCaptor.forClass(MimeMessage.class);
     verify(mailSender).send(messageCaptor.capture());
@@ -100,7 +100,7 @@ class EmailServiceIntegrationTest {
     when(userAccountService.getUserDetails(USER_ID)).thenReturn(
         new UserAccountDetails(RECIPIENT, null));
 
-    service.sendMessageToExistingUser(PERSON_ID, notificationType, templateVersion, Map.of());
+    service.sendMessageToExistingUser(PERSON_ID, notificationType, templateVersion, Map.of(), null);
 
     ArgumentCaptor<MimeMessage> messageCaptor = ArgumentCaptor.forClass(MimeMessage.class);
     verify(mailSender).send(messageCaptor.capture());
@@ -117,7 +117,7 @@ class EmailServiceIntegrationTest {
     when(userAccountService.getUserDetails(USER_ID)).thenReturn(
         new UserAccountDetails(RECIPIENT, null));
 
-    service.sendMessageToExistingUser(PERSON_ID, notificationType, templateVersion, Map.of());
+    service.sendMessageToExistingUser(PERSON_ID, notificationType, templateVersion, Map.of(), null);
 
     ArgumentCaptor<MimeMessage> messageCaptor = ArgumentCaptor.forClass(MimeMessage.class);
     verify(mailSender).send(messageCaptor.capture());
@@ -139,7 +139,7 @@ class EmailServiceIntegrationTest {
     when(userAccountService.getUserDetails(USER_ID)).thenReturn(
         new UserAccountDetails(RECIPIENT, "Gilliam"));
 
-    service.sendMessageToExistingUser(PERSON_ID, notificationType, templateVersion, Map.of());
+    service.sendMessageToExistingUser(PERSON_ID, notificationType, templateVersion, Map.of(), null);
 
     ArgumentCaptor<MimeMessage> messageCaptor = ArgumentCaptor.forClass(MimeMessage.class);
     verify(mailSender).send(messageCaptor.capture());
@@ -162,7 +162,7 @@ class EmailServiceIntegrationTest {
         new UserAccountDetails(RECIPIENT, "Gilliam"));
 
     service.sendMessageToExistingUser(PERSON_ID, notificationType, templateVersion,
-        Map.of("name", "Maillig"));
+        Map.of("name", "Maillig"), null);
 
     ArgumentCaptor<MimeMessage> messageCaptor = ArgumentCaptor.forClass(MimeMessage.class);
     verify(mailSender).send(messageCaptor.capture());
