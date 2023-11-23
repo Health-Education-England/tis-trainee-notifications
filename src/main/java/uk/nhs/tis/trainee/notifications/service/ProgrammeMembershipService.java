@@ -55,8 +55,17 @@ import uk.nhs.tis.trainee.notifications.model.TisReferenceType;
 @Service
 public class ProgrammeMembershipService {
 
+  public static final String TIS_ID_FIELD = "tisId";
+  public static final String PERSON_ID_FIELD = "personId";
+  public static final String PROGRAMME_NAME_FIELD = "programmeName";
+  public static final String START_DATE_FIELD = "startDate";
+  public static final String NOTIFICATION_TYPE_FIELD = "notificationType";
+
   private static final String TRIGGER_ID_PREFIX = "trigger-";
-  private static final Integer PAST_MILESTONE_SCHEDULE_DELAY_HOURS = 1;
+  private static final Long PAST_MILESTONE_SCHEDULE_DELAY_HOURS = 1L;
+
+  protected static final Integer WEEKS_AFTER_PROGRAMME_START_MUTE_NOTIFICATIONS = 13;
+  protected static LocalDate notificationServiceLaunchDate = LocalDate.of(2023, 11, 30);
 
   private static final List<String> INCLUDE_CURRICULUM_SUBTYPES
       = List.of("MEDICAL_CURRICULUM", "MEDICAL_SPR");
@@ -155,11 +164,11 @@ public class ProgrammeMembershipService {
           Date when = getScheduleDate(startDate, daysBeforeStart);
 
           JobDataMap jobDataMap = new JobDataMap();
-          jobDataMap.put("tisId", programmeMembership.getTisId());
-          jobDataMap.put("personId", programmeMembership.getPersonId());
-          jobDataMap.put("programmeName", programmeMembership.getProgrammeName());
-          jobDataMap.put("startDate", programmeMembership.getStartDate());
-          jobDataMap.put("notificationType", milestone);
+          jobDataMap.put(TIS_ID_FIELD, programmeMembership.getTisId());
+          jobDataMap.put(PERSON_ID_FIELD, programmeMembership.getPersonId());
+          jobDataMap.put(PROGRAMME_NAME_FIELD, programmeMembership.getProgrammeName());
+          jobDataMap.put(START_DATE_FIELD, programmeMembership.getStartDate());
+          jobDataMap.put(NOTIFICATION_TYPE_FIELD, milestone);
           // Note the status of the trainee will be retrieved when the job is executed, as will
           // their name and email address, not now.
 
@@ -247,7 +256,7 @@ public class ProgrammeMembershipService {
       // 'Missed' milestones: schedule to be sent soon, but not immediately
       // in case of human editing 'jitter'.
       milestone = Date.from(Instant.now()
-          .plus(PAST_MILESTONE_SCHEDULE_DELAY_HOURS*20, ChronoUnit.SECONDS));
+          .plus(PAST_MILESTONE_SCHEDULE_DELAY_HOURS, ChronoUnit.SECONDS));
 
     } else {
       // Future milestone.
@@ -267,17 +276,28 @@ public class ProgrammeMembershipService {
   private boolean shouldScheduleNotification(LocalDate programmeStartDate,
       NotificationType milestone, Map<NotificationType, Instant> notificationsAlreadySent) {
 
-    //do not resend any notification
+    // Do not resend any notification.
     if (notificationsAlreadySent.containsKey(milestone)) {
+      return false;
+    }
+
+    // Do not schedule if we are now some weeks after the programme start.
+    if (LocalDate.now()
+        .isAfter(programmeStartDate.plusWeeks(WEEKS_AFTER_PROGRAMME_START_MUTE_NOTIFICATIONS))) {
       return false;
     }
 
     Integer daysBeforeStart = getNotificationDaysBeforeStart(milestone);
     LocalDate milestoneDate = programmeStartDate.minusDays(daysBeforeStart);
 
+    // Do not schedule if notification due before the notification service was first launched.
+    if (milestoneDate.isBefore(notificationServiceLaunchDate)) {
+      return false;
+    }
+
     if (milestoneDate.isAfter(LocalDate.now())) {
       // A future notification, to be scheduled at the appropriate time
-      // unless a more recent notification has already been sent
+      // unless a more recent notification has already been sent.
       return (notificationsAlreadySent.keySet().stream()
           .noneMatch(t -> getNotificationDaysBeforeStart(t) < daysBeforeStart));
     } else {
@@ -295,7 +315,7 @@ public class ProgrammeMembershipService {
    *
    * @param notificationType The notification type.
    * @return The number of days before the programme start for the notification, or null if not a
-   *         programme update notification type.
+   *     programme update notification type.
    */
   public Integer getNotificationDaysBeforeStart(NotificationType notificationType) {
     switch (notificationType) {

@@ -34,6 +34,9 @@ com:
       emitters:
         daemon-address: ${AWS_XRAY_DAEMON_ADDRESS:}
 
+mongock:
+  migration-scan-package: uk.nhs.tis.trainee.notifications.migration
+
 sentry:
   dsn: ${SENTRY_DSN:}
   environment: application.environment

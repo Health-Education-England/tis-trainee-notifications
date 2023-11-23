@@ -42,6 +42,7 @@ import uk.nhs.tis.trainee.notifications.dto.UserAccountDetails;
 import uk.nhs.tis.trainee.notifications.model.History;
 import uk.nhs.tis.trainee.notifications.model.History.RecipientInfo;
 import uk.nhs.tis.trainee.notifications.model.History.TemplateInfo;
+import uk.nhs.tis.trainee.notifications.model.History.TisReferenceInfo;
 import uk.nhs.tis.trainee.notifications.model.NotificationType;
 
 /**
@@ -78,10 +79,12 @@ public class EmailService {
    * @param notificationType  The type of notification, which will determine the template used.
    * @param templateVersion   The version of the template to be sent.
    * @param templateVariables The variables to pass to the template.
+   * @param tisReferenceInfo  The TIS reference information (table and key).
    * @throws MessagingException When the message could not be sent.
    */
   public void sendMessageToExistingUser(String traineeId, NotificationType notificationType,
-      String templateVersion, Map<String, Object> templateVariables) throws MessagingException {
+      String templateVersion, Map<String, Object> templateVariables,
+      TisReferenceInfo tisReferenceInfo) throws MessagingException {
     if (traineeId == null) {
       throw new IllegalArgumentException("Unable to send notification as no trainee ID available");
     }
@@ -96,7 +99,7 @@ public class EmailService {
     templateVariables = new HashMap<>(templateVariables);
     templateVariables.putIfAbsent("name", userDetails.familyName());
     sendMessage(traineeId, userDetails.email(), notificationType, templateVersion,
-        templateVariables);
+        templateVariables, tisReferenceInfo);
   }
 
   /**
@@ -107,10 +110,12 @@ public class EmailService {
    * @param notificationType  The type of notification, which will determine the template used.
    * @param templateVersion   The version of the template to be sent.
    * @param templateVariables The variables to pass to the template.
+   * @param tisReferenceInfo  The TIS reference information (table and key).
    * @throws MessagingException When the message could not be sent.
    */
-  private void sendMessage(String traineeId, String recipient, NotificationType notificationType,
-      String templateVersion, Map<String, Object> templateVariables) throws MessagingException {
+  public void sendMessage(String traineeId, String recipient, NotificationType notificationType,
+      String templateVersion, Map<String, Object> templateVariables,
+      TisReferenceInfo tisReferenceInfo) throws MessagingException {
     String templateName = templateService.getTemplatePath(EMAIL, notificationType, templateVersion);
     log.info("Sending template {} to {}.", templateName, recipient);
 
@@ -134,7 +139,7 @@ public class EmailService {
     RecipientInfo recipientInfo = new RecipientInfo(traineeId, EMAIL, recipient);
     TemplateInfo templateInfo = new TemplateInfo(notificationType.getTemplateName(),
         templateVersion, templateVariables);
-    History history = new History(null, null, notificationType, recipientInfo,
+    History history = new History(null, tisReferenceInfo, notificationType, recipientInfo,
         templateInfo, Instant.now());
     historyService.save(history);
 
