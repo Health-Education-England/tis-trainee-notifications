@@ -133,7 +133,7 @@ class NotificationServiceTest {
   void shouldHandleRestClientExceptions() {
     when(jobExecutionContext.getJobDetail()).thenReturn(jobDetails);
 
-    when(emailService.getRecipientAccount(any())).thenReturn(null);
+    when(emailService.getRecipientAccount(any())).thenThrow(new IllegalArgumentException("error"));
     when(restTemplate.getForObject(any(), any(), anyMap()))
         .thenThrow(new RestClientException("error"));
 
