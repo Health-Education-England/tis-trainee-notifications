@@ -24,12 +24,14 @@ package uk.nhs.tis.trainee.notifications.mapper;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import uk.nhs.tis.trainee.notifications.dto.CojSignedEvent.ConditionsOfJoining;
 import uk.nhs.tis.trainee.notifications.dto.ProgrammeMembershipEvent;
 import uk.nhs.tis.trainee.notifications.dto.RecordDto;
 import uk.nhs.tis.trainee.notifications.model.Curriculum;
@@ -57,12 +59,16 @@ class ProgrammeMembershipMapperTest {
     programmeMembership.setStartDate(START_DATE);
     Curriculum curriculum = new Curriculum(CURRICULUM_SUB_TYPE, CURRICULUM_SPECIALTY);
     programmeMembership.setCurricula(List.of(curriculum));
+    ConditionsOfJoining coj = new ConditionsOfJoining(Instant.MIN);
+    programmeMembership.setConditionsOfJoining(coj);
 
     ProgrammeMembership returnedPm = mapper.toEntity(event.recrd().getData());
 
     assertThat("Unexpected Tis Id.", returnedPm.getTisId(), is(TIS_ID));
     assertThat("Unexpected start date.", returnedPm.getStartDate(), is(START_DATE));
     assertThat("Unexpected curricula.", returnedPm.getCurricula(), is(List.of(curriculum)));
+    assertThat("Unexpected Conditions of joining.", returnedPm.getConditionsOfJoining(),
+        is(coj));
   }
 
   /**

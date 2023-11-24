@@ -60,6 +60,7 @@ public class ProgrammeMembershipService {
   public static final String PROGRAMME_NAME_FIELD = "programmeName";
   public static final String START_DATE_FIELD = "startDate";
   public static final String NOTIFICATION_TYPE_FIELD = "notificationType";
+  public static final String COJ_SYNCED_FIELD = "conditionsOfJoiningSyncedAt";
 
   private static final String TRIGGER_ID_PREFIX = "trigger-";
   private static final Long HOURS_DELAY_PAST_MILESTONE_SCHEDULING = 1L;
@@ -169,6 +170,10 @@ public class ProgrammeMembershipService {
           jobDataMap.put(PROGRAMME_NAME_FIELD, programmeMembership.getProgrammeName());
           jobDataMap.put(START_DATE_FIELD, programmeMembership.getStartDate());
           jobDataMap.put(NOTIFICATION_TYPE_FIELD, milestone);
+          if (programmeMembership.getConditionsOfJoining() != null) {
+            jobDataMap.put(COJ_SYNCED_FIELD,
+                programmeMembership.getConditionsOfJoining().syncedAt());
+          }
           // Note the status of the trainee will be retrieved when the job is executed, as will
           // their name and email address, not now.
 
