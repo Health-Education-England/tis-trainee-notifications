@@ -21,6 +21,7 @@
 
 package uk.nhs.tis.trainee.notifications.dto;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import java.time.Instant;
 
 /**
@@ -38,6 +39,7 @@ public record CojSignedEvent(
    *
    * @param syncedAt The timestamp for the signed Conditions of Joining being received.
    */
+  @JsonIgnoreProperties(ignoreUnknown = true)
   public record ConditionsOfJoining(Instant syncedAt) {
 
   }

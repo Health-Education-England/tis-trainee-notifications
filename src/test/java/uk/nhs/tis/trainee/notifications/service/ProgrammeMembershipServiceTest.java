@@ -33,6 +33,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
+import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.COJ_SYNCED_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.PERSON_ID_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.PROGRAMME_NAME_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.START_DATE_FIELD;
@@ -58,6 +59,7 @@ import org.quartz.Scheduler;
 import org.quartz.SchedulerException;
 import org.quartz.Trigger;
 import org.quartz.TriggerKey;
+import uk.nhs.tis.trainee.notifications.dto.CojSignedEvent.ConditionsOfJoining;
 import uk.nhs.tis.trainee.notifications.dto.HistoryDto;
 import uk.nhs.tis.trainee.notifications.model.Curriculum;
 import uk.nhs.tis.trainee.notifications.model.History.TisReferenceInfo;
@@ -180,6 +182,7 @@ class ProgrammeMembershipServiceTest {
     programmeMembership.setProgrammeName(PROGRAMME_NAME);
     programmeMembership.setStartDate(START_DATE);
     programmeMembership.setCurricula(List.of(theCurriculum));
+    programmeMembership.setConditionsOfJoining(new ConditionsOfJoining(Instant.MIN));
 
     service.addNotifications(programmeMembership);
 
@@ -203,6 +206,8 @@ class ProgrammeMembershipServiceTest {
     assertThat("Unexpected programme.", jobDataMap.get(PROGRAMME_NAME_FIELD),
         is(PROGRAMME_NAME));
     assertThat("Unexpected start date.", jobDataMap.get(START_DATE_FIELD), is(START_DATE));
+    assertThat("Unexpected CoJ synced at.", jobDataMap.get(COJ_SYNCED_FIELD),
+        is(Instant.MIN));
 
     Trigger trigger = triggerCaptor.getValue();
     TriggerKey expectedTriggerKey = TriggerKey.triggerKey("trigger-" + expectedJobId);
@@ -527,6 +532,30 @@ class ProgrammeMembershipServiceTest {
 
     verify(scheduler, times(NotificationType.getProgrammeUpdateNotificationTypes().size()))
         .scheduleJob(any(), any());
+  }
+
+  @Test
+  void shouldIgnoreMissingConditionsOfJoining() throws SchedulerException {
+    Curriculum theCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, "any specialty");
+    ProgrammeMembership programmeMembership = new ProgrammeMembership();
+    programmeMembership.setTisId(TIS_ID);
+    programmeMembership.setPersonId(PERSON_ID);
+    programmeMembership.setProgrammeName(PROGRAMME_NAME);
+    programmeMembership.setStartDate(START_DATE);
+    programmeMembership.setCurricula(List.of(theCurriculum));
+
+    service.addNotifications(programmeMembership);
+
+    ArgumentCaptor<JobDetail> jobDetailCaptor = ArgumentCaptor.forClass(JobDetail.class);
+
+    int jobsToSchedule = NotificationType.getProgrammeUpdateNotificationTypes().size();
+    verify(scheduler, times(jobsToSchedule))
+        .scheduleJob(jobDetailCaptor.capture(), any());
+
+    //verify the details of the last job scheduled
+    JobDataMap jobDataMap = jobDetailCaptor.getValue().getJobDataMap();
+    assertThat("Unexpected CoJ synced at.", jobDataMap.get(COJ_SYNCED_FIELD),
+        is(nullValue()));
   }
 
   @Test
