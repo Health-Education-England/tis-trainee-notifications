@@ -60,7 +60,6 @@ class ProgrammeMembershipMapperTest {
     programmeMembership.setStartDate(START_DATE);
     Curriculum curriculum = new Curriculum(CURRICULUM_SUB_TYPE, CURRICULUM_SPECIALTY);
     programmeMembership.setCurricula(List.of(curriculum));
-    ConditionsOfJoining coj = new ConditionsOfJoining(COJ_SYNCED_AT);
 
     ProgrammeMembership returnedPm = mapper.toEntity(event.recrd().getData());
 
@@ -68,7 +67,7 @@ class ProgrammeMembershipMapperTest {
     assertThat("Unexpected start date.", returnedPm.getStartDate(), is(START_DATE));
     assertThat("Unexpected curricula.", returnedPm.getCurricula(), is(List.of(curriculum)));
     assertThat("Unexpected Conditions of joining.", returnedPm.getConditionsOfJoining(),
-        is(coj));
+        is(new ConditionsOfJoining(COJ_SYNCED_AT)));
   }
 
   /**
