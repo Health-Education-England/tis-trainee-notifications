@@ -43,6 +43,7 @@ class ProgrammeMembershipMapperTest {
   private static final LocalDate START_DATE = LocalDate.now();
   private static final String CURRICULUM_SUB_TYPE = "sub-type";
   private static final String CURRICULUM_SPECIALTY = "specialty";
+  private static final Instant COJ_SYNCED_AT = Instant.now();
 
   private ProgrammeMembershipMapper mapper;
 
@@ -59,8 +60,7 @@ class ProgrammeMembershipMapperTest {
     programmeMembership.setStartDate(START_DATE);
     Curriculum curriculum = new Curriculum(CURRICULUM_SUB_TYPE, CURRICULUM_SPECIALTY);
     programmeMembership.setCurricula(List.of(curriculum));
-    ConditionsOfJoining coj = new ConditionsOfJoining(Instant.MIN);
-    programmeMembership.setConditionsOfJoining(coj);
+    ConditionsOfJoining coj = new ConditionsOfJoining(COJ_SYNCED_AT);
 
     ProgrammeMembership returnedPm = mapper.toEntity(event.recrd().getData());
 
@@ -85,6 +85,10 @@ class ProgrammeMembershipMapperTest {
         "[{\"curriculumSubType\": \"" + CURRICULUM_SUB_TYPE + "\", "
             + "\"curriculumSpecialty\": \"" + CURRICULUM_SPECIALTY + "\", "
             + "\"another-curriculum-property\": \"some value\"}]");
+    dataMap.put("conditionsOfJoining",
+        "{\"signedAt\":\"2023-06-05T20:44:29.943Z\","
+            + "\"version\":\"GG9\","
+            + "\"syncedAt\":\"" + COJ_SYNCED_AT + "\"}");
     RecordDto data = new RecordDto();
     data.setData(dataMap);
     return new ProgrammeMembershipEvent(TIS_ID, data);
