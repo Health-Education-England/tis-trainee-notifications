@@ -416,13 +416,14 @@ class ProgrammeMembershipServiceTest {
   }
 
   @Test
-  void shouldNotScheduleFutureNotificationsIfAnyCloserToTheStartDateHaveBeenSent()
+  void shouldNotScheduleNotificationsIfAnyCloserToTheStartDateHaveBeenSent()
       throws SchedulerException {
     Curriculum theCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, "any specialty");
     ProgrammeMembership programmeMembership = new ProgrammeMembership();
     programmeMembership.setTisId(TIS_ID);
     programmeMembership.setPersonId(PERSON_ID);
-    programmeMembership.setStartDate(START_DATE);
+    programmeMembership.setStartDate(LocalDate.now().plusWeeks(5));
+    //to check both past and upcoming notifications
     programmeMembership.setCurricula(List.of(theCurriculum));
 
     List<HistoryDto> sentNotifications = new ArrayList<>();
