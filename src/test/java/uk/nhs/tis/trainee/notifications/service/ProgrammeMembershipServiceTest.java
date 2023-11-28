@@ -423,14 +423,14 @@ class ProgrammeMembershipServiceTest {
     programmeMembership.setTisId(TIS_ID);
     programmeMembership.setPersonId(PERSON_ID);
     programmeMembership.setStartDate(LocalDate.now().plusWeeks(5));
-    //to check both past and upcoming notifications
+    //set 5 weeks in the future to check both past (8-week) and upcoming (4,1,0-week) notifications
     programmeMembership.setCurricula(List.of(theCurriculum));
 
     List<HistoryDto> sentNotifications = new ArrayList<>();
     sentNotifications.add(new HistoryDto("id",
         new TisReferenceInfo(TisReferenceType.PROGRAMME_MEMBERSHIP, TIS_ID),
         MessageType.EMAIL,
-        NotificationType.PROGRAMME_UPDATED_WEEK_0,
+        NotificationType.PROGRAMME_UPDATED_WEEK_1,
         "email address",
         Instant.MIN));
 
@@ -438,8 +438,15 @@ class ProgrammeMembershipServiceTest {
 
     service.addNotifications(programmeMembership);
 
-    verify(scheduler, never()).scheduleJob(any(), any());
-    //since the 0-week notification has already been sent
+    ArgumentCaptor<JobDetail> jobDetailCaptor = ArgumentCaptor.forClass(JobDetail.class);
+
+    //only the 0-week notification should be scheduled.
+    verify(scheduler, times(1)).scheduleJob(jobDetailCaptor.capture(), any());
+
+    JobDetail jobDetail = jobDetailCaptor.getValue();
+
+    JobKey expectedJobKey0 = new JobKey(NotificationType.PROGRAMME_UPDATED_WEEK_0 + "-" + TIS_ID);
+    assertThat("Unexpected job id key.", jobDetail.getKey(), is(expectedJobKey0));
   }
 
   @Test
