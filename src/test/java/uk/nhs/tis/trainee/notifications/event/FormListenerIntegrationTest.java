@@ -82,7 +82,6 @@ class FormListenerIntegrationTest {
   private static final Instant FORM_UPDATED_AT = Instant.parse("2023-08-01T00:00:00Z");
   private static final String APP_DOMAIN = "https://local.notifications.com";
   private static final String NEXT_STEPS_LINK = APP_DOMAIN + "/form-type";
-  private static final String SURVEY_LINK = "https://forms.gle/KJgQzMop2TbLTaZo7";
 
   private static final String FORM_NAME = "123.json";
   private static final String FORM_SUBMITTED = "SUBMITTED";
@@ -148,7 +147,7 @@ class FormListenerIntegrationTest {
     Document content = Jsoup.parse((String) message.getContent());
 
     Elements bodyChildren = content.body().children();
-    assertThat("Unexpected body children count.", bodyChildren.size(), is(4));
+    assertThat("Unexpected body children count.", bodyChildren.size(), is(2));
 
     Element greeting = bodyChildren.get(0);
     assertThat("Unexpected element tag.", greeting.tagName(), is("p"));
@@ -167,13 +166,6 @@ class FormListenerIntegrationTest {
 
     Elements nextStepsLinks = nextSteps.getElementsByTag("a");
     assertThat("Unexpected next steps link count.", nextStepsLinks.size(), is(0));
-
-    Element surveyPara = content.getElementById("SURVEY_LINK");
-    Elements surveyLinks = surveyPara.getElementsByTag("a");
-    assertThat("Unexpected survey link count.", surveyLinks.size(), is(1));
-    Element surveyLink = surveyLinks.get(0);
-    assertThat("Unexpected survey link.", surveyLink.attr("href"),
-        is(SURVEY_LINK));
   }
 
   @Test
@@ -193,7 +185,7 @@ class FormListenerIntegrationTest {
     Document content = Jsoup.parse((String) message.getContent());
 
     Elements bodyChildren = content.body().children();
-    assertThat("Unexpected body children count.", bodyChildren.size(), is(4));
+    assertThat("Unexpected body children count.", bodyChildren.size(), is(2));
 
     Element greeting = bodyChildren.get(0);
     assertThat("Unexpected element tag.", greeting.tagName(), is("p"));
@@ -218,13 +210,6 @@ class FormListenerIntegrationTest {
     Element tssLink = nextStepsLinks.get(0);
     assertThat("Unexpected next steps link.", tssLink.attr("href"),
         is(NEXT_STEPS_LINK));
-
-    Element surveyPara = content.getElementById("SURVEY_LINK");
-    Elements surveyLinks = surveyPara.getElementsByTag("a");
-    assertThat("Unexpected survey link count.", surveyLinks.size(), is(1));
-    Element surveyLink = surveyLinks.get(0);
-    assertThat("Unexpected survey link.", surveyLink.attr("href"),
-        is(SURVEY_LINK));
   }
 
   @Test
@@ -244,7 +229,7 @@ class FormListenerIntegrationTest {
     Document content = Jsoup.parse((String) message.getContent());
 
     Elements bodyChildren = content.body().children();
-    assertThat("Unexpected body children count.", bodyChildren.size(), is(4));
+    assertThat("Unexpected body children count.", bodyChildren.size(), is(2));
 
     Element greeting = bodyChildren.get(0);
     assertThat("Unexpected element tag.", greeting.tagName(), is("p"));
@@ -269,13 +254,6 @@ class FormListenerIntegrationTest {
     Element tssLink = nextStepsLinks.get(0);
     assertThat("Unexpected next steps link.", tssLink.attr("href"),
         is(NEXT_STEPS_LINK));
-
-    Element surveyPara = content.getElementById("SURVEY_LINK");
-    Elements surveyLinks = surveyPara.getElementsByTag("a");
-    assertThat("Unexpected survey link count.", surveyLinks.size(), is(1));
-    Element surveyLink = surveyLinks.get(0);
-    assertThat("Unexpected survey link.", surveyLink.attr("href"),
-        is(SURVEY_LINK));
   }
 
   @Test
@@ -295,7 +273,7 @@ class FormListenerIntegrationTest {
     Document content = Jsoup.parse((String) message.getContent());
 
     Elements bodyChildren = content.body().children();
-    assertThat("Unexpected body children count.", bodyChildren.size(), is(4));
+    assertThat("Unexpected body children count.", bodyChildren.size(), is(2));
 
     Element greeting = bodyChildren.get(0);
     assertThat("Unexpected element tag.", greeting.tagName(), is("p"));
@@ -318,13 +296,6 @@ class FormListenerIntegrationTest {
 
     Elements nextStepsLinks = nextSteps.getElementsByTag("a");
     assertThat("Unexpected next steps link count.", nextStepsLinks.size(), is(0));
-
-    Element surveyPara = content.getElementById("SURVEY_LINK");
-    Elements surveyLinks = surveyPara.getElementsByTag("a");
-    assertThat("Unexpected survey link count.", surveyLinks.size(), is(1));
-    Element surveyLink = surveyLinks.get(0);
-    assertThat("Unexpected survey link.", surveyLink.attr("href"),
-        is(SURVEY_LINK));
   }
 
   @Test
