@@ -70,7 +70,7 @@ public class UserAccountService {
    * @param personId The person ID to get the user IDs for.
    * @return The found user IDs, or empty if not found.
    */
-  @Cacheable(USER_ID_CACHE)
+  @Cacheable(cacheNames = USER_ID_CACHE, unless = "#result.isEmpty()")
   public Set<String> getUserAccountIds(String personId) {
     log.info("User account not found in the cache.");
     cacheAllUserAccountIds();
