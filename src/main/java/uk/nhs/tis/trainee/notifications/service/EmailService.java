@@ -119,8 +119,10 @@ public class EmailService {
     templateVariables.putIfAbsent("domain", appDomain);
 
     Context templateContext = templateService.buildContext(templateVariables);
-    String subject = templateService.process(templateName, Set.of("subject"), templateContext);
-    String content = templateService.process(templateName, Set.of("content"), templateContext);
+    final String subject = templateService.process(templateName, Set.of("subject"),
+        templateContext);
+    final String content = templateService.process(templateName, Set.of("content"),
+        templateContext);
 
     MimeMessage mimeMessage = mailSender.createMimeMessage();
     ObjectId notificationId = ObjectId.get();
