@@ -311,7 +311,7 @@ class FormListenerIntegrationTest {
     verify(historyService).save(historyCaptor.capture());
 
     History history = historyCaptor.getValue();
-    assertThat("Unexpected notification id.", history.id(), nullValue());
+    assertThat("Unexpected notification id.", history.id(), notNullValue());
     assertThat("Unexpected notification type.", history.type(), is(FORM_UPDATED));
     assertThat("Unexpected sent at.", history.sentAt(), notNullValue());
 

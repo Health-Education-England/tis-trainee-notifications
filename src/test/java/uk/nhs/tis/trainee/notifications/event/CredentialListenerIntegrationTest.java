@@ -427,7 +427,7 @@ class CredentialListenerIntegrationTest {
     verify(historyService).save(historyCaptor.capture());
 
     History history = historyCaptor.getValue();
-    assertThat("Unexpected notification id.", history.id(), nullValue());
+    assertThat("Unexpected notification id.", history.id(), notNullValue());
     assertThat("Unexpected notification type.", history.type(), is(CREDENTIAL_REVOKED));
     assertThat("Unexpected sent at.", history.sentAt(), notNullValue());
 

@@ -23,7 +23,6 @@ package uk.nhs.tis.trainee.notifications.service;
 
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.notNullValue;
-import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
@@ -48,6 +47,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import org.bson.types.ObjectId;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -268,6 +268,23 @@ class EmailServiceTest {
         is("text/html;charset=UTF-8"));
   }
 
+  @Test
+  void shouldSendMessageWithNotificationIdHeader() throws MessagingException {
+    String template = "<div>Test message body</div>";
+    when(templateService.process(any(), eq(Set.of("content")), (Context) any())).thenReturn(
+        template);
+
+    service.sendMessageToExistingUser(TRAINEE_ID, NOTIFICATION_TYPE, "", Map.of());
+
+    ArgumentCaptor<MimeMessage> messageCaptor = ArgumentCaptor.forClass(MimeMessage.class);
+    verify(mailSender).send(messageCaptor.capture());
+
+    MimeMessage message = messageCaptor.getValue();
+    String notificationId = message.getHeader("NotificationId", "");
+    assertThat("Unexpected notification ID header.", notificationId, notNullValue());
+    assertThat("Unexpected notification ID validity.", ObjectId.isValid(notificationId), is(true));
+  }
+
   @ParameterizedTest
   @EnumSource(NotificationType.class)
   void shouldProcessTheTemplateWhenSendingMessage(NotificationType notificationType)
@@ -312,7 +329,7 @@ class EmailServiceTest {
     verify(historyService).save(historyCaptor.capture());
 
     History history = historyCaptor.getValue();
-    assertThat("Unexpected notification id.", history.id(), nullValue());
+    assertThat("Unexpected notification id.", history.id(), notNullValue());
     assertThat("Unexpected notification type.", history.type(), is(notificationType));
     assertThat("Unexpected sent at.", history.sentAt(), notNullValue());
 
@@ -331,5 +348,27 @@ class EmailServiceTest {
     assertThat("Unexpected template variable.", storedVariables.get("key1"), is("value1"));
     assertThat("Unexpected template variable.", storedVariables.get("name"), is("Gilliam"));
     assertThat("Unexpected template variable.", storedVariables.get("domain"), is(APP_DOMAIN));
+  }
+
+  @Test
+  void shouldSendNotificationIdHeaderMatchingHistoryId() throws MessagingException {
+    String template = "<div>Test message body</div>";
+    when(templateService.process(any(), eq(Set.of("content")), (Context) any())).thenReturn(
+        template);
+
+    service.sendMessageToExistingUser(TRAINEE_ID, NOTIFICATION_TYPE, "", Map.of());
+
+    ArgumentCaptor<MimeMessage> messageCaptor = ArgumentCaptor.forClass(MimeMessage.class);
+    verify(mailSender).send(messageCaptor.capture());
+
+    MimeMessage message = messageCaptor.getValue();
+    String headerId = message.getHeader("NotificationId", "");
+
+    ArgumentCaptor<History> historyCaptor = ArgumentCaptor.forClass(History.class);
+    verify(historyService).save(historyCaptor.capture());
+
+    History history = historyCaptor.getValue();
+    ObjectId historyId = history.id();
+    assertThat("Unexpected notification id.", headerId, is(historyId.toString()));
   }
 }

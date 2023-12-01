@@ -33,6 +33,7 @@ import java.util.Map;
 import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.logging.log4j.util.Strings;
+import org.bson.types.ObjectId;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
@@ -118,10 +119,15 @@ public class EmailService {
     templateVariables.putIfAbsent("domain", appDomain);
 
     Context templateContext = templateService.buildContext(templateVariables);
-    String subject = templateService.process(templateName, Set.of("subject"), templateContext);
-    String content = templateService.process(templateName, Set.of("content"), templateContext);
+    final String subject = templateService.process(templateName, Set.of("subject"),
+        templateContext);
+    final String content = templateService.process(templateName, Set.of("content"),
+        templateContext);
 
     MimeMessage mimeMessage = mailSender.createMimeMessage();
+    ObjectId notificationId = ObjectId.get();
+    mimeMessage.addHeader("NotificationId", notificationId.toString());
+
     MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, StandardCharsets.UTF_8.name());
     helper.setTo(recipient);
     helper.setFrom(sender);
@@ -134,7 +140,7 @@ public class EmailService {
     RecipientInfo recipientInfo = new RecipientInfo(traineeId, EMAIL, recipient);
     TemplateInfo templateInfo = new TemplateInfo(notificationType.getTemplateName(),
         templateVersion, templateVariables);
-    History history = new History(null, null, notificationType, recipientInfo,
+    History history = new History(notificationId, null, notificationType, recipientInfo,
         templateInfo, Instant.now());
     historyService.save(history);
 
