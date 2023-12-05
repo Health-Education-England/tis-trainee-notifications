@@ -281,7 +281,7 @@ class EmailServiceTest {
     when(templateService.process(any(), eq(Set.of("content")), (Context) any())).thenReturn(
         template);
 
-    service.sendMessageToExistingUser(TRAINEE_ID, NOTIFICATION_TYPE, "", Map.of());
+    service.sendMessageToExistingUser(TRAINEE_ID, NOTIFICATION_TYPE, "", Map.of(), null);
 
     ArgumentCaptor<MimeMessage> messageCaptor = ArgumentCaptor.forClass(MimeMessage.class);
     verify(mailSender).send(messageCaptor.capture());
@@ -368,7 +368,7 @@ class EmailServiceTest {
     when(templateService.process(any(), eq(Set.of("content")), (Context) any())).thenReturn(
         template);
 
-    service.sendMessageToExistingUser(TRAINEE_ID, NOTIFICATION_TYPE, "", Map.of());
+    service.sendMessageToExistingUser(TRAINEE_ID, NOTIFICATION_TYPE, "", Map.of(), null);
 
     ArgumentCaptor<MimeMessage> messageCaptor = ArgumentCaptor.forClass(MimeMessage.class);
     verify(mailSender).send(messageCaptor.capture());
