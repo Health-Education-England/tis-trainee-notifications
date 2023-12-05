@@ -23,6 +23,7 @@ package uk.nhs.tis.trainee.notifications.service;
 
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.notNullValue;
+import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
@@ -34,6 +35,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static uk.nhs.tis.trainee.notifications.model.MessageType.EMAIL;
+import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.SENT;
 
 import jakarta.activation.DataHandler;
 import jakarta.mail.Address;
@@ -332,6 +334,8 @@ class EmailServiceTest {
     assertThat("Unexpected notification id.", history.id(), notNullValue());
     assertThat("Unexpected notification type.", history.type(), is(notificationType));
     assertThat("Unexpected sent at.", history.sentAt(), notNullValue());
+    assertThat("Unexpected status.", history.status(), is(SENT));
+    assertThat("Unexpected status detail.", history.statusDetail(), nullValue());
 
     RecipientInfo recipient = history.recipient();
     assertThat("Unexpected recipient id.", recipient.id(), is(TRAINEE_ID));

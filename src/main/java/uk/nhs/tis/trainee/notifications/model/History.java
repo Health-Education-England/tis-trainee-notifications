@@ -45,7 +45,9 @@ public record History(
     NotificationType type,
     RecipientInfo recipient,
     TemplateInfo template,
-    Instant sentAt) {
+    Instant sentAt,
+    NotificationStatus status,
+    String statusDetail) {
 
   /**
    * A representation of a notified recipient.

@@ -37,9 +37,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.quartz.Scheduler;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.autoconfigure.quartz.QuartzAutoConfiguration;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.cache.Cache;
@@ -68,12 +66,6 @@ class UserAccountServiceIntegrationTest {
 
   @MockBean
   private MongoConfiguration mongoConfiguration;
-
-  @MockBean
-  private QuartzAutoConfiguration quartzConfiguration;
-
-  @MockBean
-  private Scheduler scheduler;
 
   @MockBean
   private CognitoIdentityProviderClient cognitoClient;

@@ -29,6 +29,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
+import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.SENT;
 
 import java.time.Instant;
 import java.util.List;
@@ -49,6 +50,7 @@ import uk.nhs.tis.trainee.notifications.model.History.RecipientInfo;
 import uk.nhs.tis.trainee.notifications.model.History.TemplateInfo;
 import uk.nhs.tis.trainee.notifications.model.History.TisReferenceInfo;
 import uk.nhs.tis.trainee.notifications.model.MessageType;
+import uk.nhs.tis.trainee.notifications.model.NotificationStatus;
 import uk.nhs.tis.trainee.notifications.model.NotificationType;
 import uk.nhs.tis.trainee.notifications.model.TisReferenceType;
 import uk.nhs.tis.trainee.notifications.repository.HistoryRepository;
@@ -86,14 +88,14 @@ class HistoryServiceTest {
     TisReferenceInfo tisReferenceInfo = new TisReferenceInfo(null, null);
     Instant now = Instant.now();
     History history = new History(null, tisReferenceInfo, notificationType, recipientInfo,
-        templateInfo, now);
+        templateInfo, now, SENT, null);
 
     ObjectId id = new ObjectId();
     when(repository.save(history)).then(inv -> {
       History saving = inv.getArgument(0);
       assertThat("Unexpected ID.", saving.id(), nullValue());
       return new History(id, saving.tisReference(), saving.type(), saving.recipient(),
-          saving.template(), saving.sentAt());
+          saving.template(), saving.sentAt(), SENT, null);
     });
 
     History savedHistory = service.save(history);
@@ -105,6 +107,51 @@ class HistoryServiceTest {
     assertThat("Unexpected recipient.", savedHistory.recipient(), sameInstance(recipientInfo));
     assertThat("Unexpected template.", savedHistory.template(), sameInstance(templateInfo));
     assertThat("Unexpected sent at.", savedHistory.sentAt(), is(now));
+    assertThat("Unexpected status.", savedHistory.status(), is(SENT));
+    assertThat("Unexpected status detail.", savedHistory.statusDetail(), nullValue());
+  }
+
+  @ParameterizedTest
+  @EnumSource(NotificationStatus.class)
+  void shouldNotUpdateStatusWhenHistoryNotFound(NotificationStatus status) {
+    when(repository.findById(any())).thenReturn(Optional.empty());
+
+    Optional<History> updatedHistory = service.updateStatus(NOTIFICATION_ID, status,
+        "Status: update");
+
+    assertThat("Unexpected history presence.", updatedHistory.isPresent(), is(false));
+  }
+
+  @ParameterizedTest
+  @EnumSource(NotificationStatus.class)
+  void shouldUpdateStatusWhenHistoryFound(NotificationStatus status) {
+    ObjectId notificationId = new ObjectId(NOTIFICATION_ID);
+    RecipientInfo recipientInfo = new RecipientInfo(TRAINEE_ID, MessageType.EMAIL, TRAINEE_CONTACT);
+    TemplateInfo templateInfo = new TemplateInfo(TEMPLATE_NAME, TEMPLATE_VERSION,
+        TEMPLATE_VARIABLES);
+    TisReferenceInfo tisReferenceInfo = new TisReferenceInfo(TIS_REFERENCE_TYPE, TIS_REFERENCE_ID);
+    History foundHistory = new History(notificationId, tisReferenceInfo,
+        NotificationType.COJ_CONFIRMATION, recipientInfo, templateInfo, Instant.MIN, null, null);
+
+    when(repository.findById(notificationId)).thenReturn(Optional.of(foundHistory));
+    when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+    Optional<History> updatedHistory = service.updateStatus(NOTIFICATION_ID, status,
+        "Status: update");
+
+    assertThat("Unexpected history presence.", updatedHistory.isPresent(), is(true));
+    History history = updatedHistory.get();
+
+    assertThat("Unexpected status.", history.status(), is(status));
+    assertThat("Unexpected status detail.", history.statusDetail(), is("Status: update"));
+
+    // Check other fields are unchanged.
+    assertThat("Unexpected ID.", history.id(), is(notificationId));
+    assertThat("Unexpected TIS reference.", history.tisReference(), is(tisReferenceInfo));
+    assertThat("Unexpected type.", history.type(), is(NotificationType.COJ_CONFIRMATION));
+    assertThat("Unexpected recipient.", history.recipient(), is(recipientInfo));
+    assertThat("Unexpected template.", history.template(), is(templateInfo));
+    assertThat("Unexpected sent at.", history.sentAt(), is(Instant.MIN));
   }
 
   @Test
@@ -127,11 +174,11 @@ class HistoryServiceTest {
 
     ObjectId id1 = ObjectId.get();
     History history1 = new History(id1, tisReferenceInfo, notificationType, recipientInfo,
-        templateInfo, Instant.MIN);
+        templateInfo, Instant.MIN, SENT, null);
 
     ObjectId id2 = ObjectId.get();
     History history2 = new History(id2, tisReferenceInfo, notificationType, recipientInfo,
-        templateInfo, Instant.MAX);
+        templateInfo, Instant.MAX, SENT, null);
 
     when(repository.findAllByRecipient_IdOrderBySentAtDesc(TRAINEE_ID)).thenReturn(
         List.of(history1, history2));
@@ -187,7 +234,7 @@ class HistoryServiceTest {
     TisReferenceInfo tisReferenceInfo = new TisReferenceInfo(TIS_REFERENCE_TYPE, TIS_REFERENCE_ID);
 
     History history = new History(notificationId, tisReferenceInfo, notificationType, recipientInfo,
-        templateInfo, Instant.now());
+        templateInfo, Instant.now(), SENT, null);
     when(repository.findById(any())).thenReturn(Optional.of(history));
 
     String templatePath = "type/test/template/v1.2.3";

@@ -26,6 +26,7 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.springframework.test.annotation.DirtiesContext.ClassMode.AFTER_EACH_TEST_METHOD;
 import static uk.nhs.tis.trainee.notifications.model.MessageType.EMAIL;
+import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.SENT;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.FORM_UPDATED;
 
 import java.time.Duration;
@@ -42,11 +43,8 @@ import org.jsoup.nodes.Element;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
-import org.quartz.Scheduler;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.autoconfigure.quartz.QuartzAutoConfiguration;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.ActiveProfiles;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -79,12 +77,6 @@ class HistoryServiceIntegrationTest {
 
   private static final Instant SENT_AT = Instant.now().truncatedTo(ChronoUnit.MILLIS);
 
-  @MockBean
-  private QuartzAutoConfiguration quartzConfiguration;
-
-  @MockBean
-  private Scheduler scheduler;
-
   @Autowired
   private HistoryService service;
 
@@ -96,7 +88,7 @@ class HistoryServiceIntegrationTest {
     TisReferenceInfo tisReferenceInfo = new TisReferenceInfo(TIS_REFERENCE_TYPE, TIS_REFERENCE_ID);
 
     History history = new History(null, tisReferenceInfo, FORM_UPDATED, recipientInfo,
-        templateInfo, SENT_AT);
+        templateInfo, SENT_AT, SENT, null);
     History savedHistory = service.save(history);
 
     assertThat("Unexpected ID.", savedHistory.id(), instanceOf(ObjectId.class));
@@ -129,7 +121,7 @@ class HistoryServiceIntegrationTest {
     TisReferenceInfo tisReferenceInfo = new TisReferenceInfo(TIS_REFERENCE_TYPE, TIS_REFERENCE_ID);
 
     History history = new History(null, tisReferenceInfo, FORM_UPDATED, recipientInfo,
-        templateInfo, SENT_AT);
+        templateInfo, SENT_AT, SENT, null);
     service.save(history);
 
     List<HistoryDto> foundHistory = service.findAllForTrainee("notFound");
@@ -145,7 +137,7 @@ class HistoryServiceIntegrationTest {
     TisReferenceInfo tisReferenceInfo = new TisReferenceInfo(TIS_REFERENCE_TYPE, TIS_REFERENCE_ID);
 
     History history = new History(null, tisReferenceInfo, FORM_UPDATED, recipientInfo,
-        templateInfo, SENT_AT);
+        templateInfo, SENT_AT, SENT, null);
     History savedHistory = service.save(history);
 
     List<HistoryDto> foundHistory = service.findAllForTrainee(TRAINEE_ID);
@@ -169,15 +161,15 @@ class HistoryServiceIntegrationTest {
 
     Instant now = Instant.now().truncatedTo(ChronoUnit.MILLIS);
     service.save(new History(null, tisReferenceInfo, FORM_UPDATED, recipientInfo, templateInfo,
-        now));
+        now, SENT, null));
 
     Instant before = SENT_AT.minus(Duration.ofDays(1));
     service.save(new History(null, tisReferenceInfo, FORM_UPDATED, recipientInfo, templateInfo,
-        before));
+        before, SENT, null));
 
     Instant after = SENT_AT.plus(Duration.ofDays(1));
     service.save(new History(null, tisReferenceInfo, FORM_UPDATED, recipientInfo, templateInfo,
-        after));
+        after, SENT, null));
 
     List<HistoryDto> foundHistory = service.findAllForTrainee(TRAINEE_ID);
 
@@ -211,7 +203,7 @@ class HistoryServiceIntegrationTest {
     TisReferenceInfo tisReferenceInfo = new TisReferenceInfo(TIS_REFERENCE_TYPE, TIS_REFERENCE_ID);
 
     History history = new History(NOTIFICATION_ID, tisReferenceInfo, notificationType,
-        recipientInfo, templateInfo, Instant.now());
+        recipientInfo, templateInfo, Instant.now(), SENT, null);
     service.save(history);
 
     Optional<String> message = service.rebuildMessage(NOTIFICATION_ID.toString());

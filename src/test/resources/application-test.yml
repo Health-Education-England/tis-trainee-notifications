@@ -7,6 +7,9 @@ application:
   queues:
     coj-received: dummy-value
 
+mongock:
+  enabled: false
+
 spring:
   cloud:
     aws:
@@ -24,3 +27,5 @@ spring:
     password:
   flyway:
     url: ${spring.datasource.url}
+  quartz:
+    auto-startup: false

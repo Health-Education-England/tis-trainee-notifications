@@ -32,6 +32,7 @@ import uk.nhs.tis.trainee.notifications.mapper.HistoryMapper;
 import uk.nhs.tis.trainee.notifications.model.History;
 import uk.nhs.tis.trainee.notifications.model.History.TemplateInfo;
 import uk.nhs.tis.trainee.notifications.model.MessageType;
+import uk.nhs.tis.trainee.notifications.model.NotificationStatus;
 import uk.nhs.tis.trainee.notifications.repository.HistoryRepository;
 
 /**
@@ -67,6 +68,28 @@ public class HistoryService {
    */
   public History save(History history) {
     return repository.save(history);
+  }
+
+  /**
+   * Update the status of a notification.
+   *
+   * @param notificationId The notification to update the status of.
+   * @param status         The new status.
+   * @param detail         The detail of the status.
+   * @return The updated notification history, or empty if not found.
+   */
+  public Optional<History> updateStatus(String notificationId, NotificationStatus status,
+      String detail) {
+    Optional<History> optionalHistory = repository.findById(new ObjectId(notificationId));
+
+    if (optionalHistory.isEmpty()) {
+      log.info("Notification {} was not found.", notificationId);
+      return Optional.empty();
+    }
+
+    History history = optionalHistory.get();
+    history = mapper.updateStatus(history, status, detail);
+    return Optional.of(repository.save(history));
   }
 
   /**
