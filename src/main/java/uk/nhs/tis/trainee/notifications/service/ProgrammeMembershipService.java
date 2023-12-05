@@ -300,16 +300,18 @@ public class ProgrammeMembershipService {
       return false;
     }
 
+    //do not schedule if a more recent notification has already been sent
+    if (notificationsAlreadySent.keySet().stream()
+        .anyMatch(t -> getNotificationDaysBeforeStart(t) < daysBeforeStart)) {
+      return false;
+    }
+
     if (milestoneDate.isAfter(LocalDate.now())) {
-      // A future notification, to be scheduled at the appropriate time
-      // unless a more recent notification has already been sent.
-      return (notificationsAlreadySent.keySet().stream()
-          .noneMatch(t -> getNotificationDaysBeforeStart(t) < daysBeforeStart));
+      // A future notification, to be scheduled at the appropriate time.
+      return true;
     } else {
       // A past ('missed') notification, to be scheduled promptly
       // if it is the most recent missed notification.
-      // Do not schedule if it is not the most recent missed notification, regardless of whether
-      // any more recent ones have been sent or not.
       return (getPastNotifications(programmeStartDate).stream()
           .noneMatch(t -> getNotificationDaysBeforeStart(t) < daysBeforeStart));
     }
