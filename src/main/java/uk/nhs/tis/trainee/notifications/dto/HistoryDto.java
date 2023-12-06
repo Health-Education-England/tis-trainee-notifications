@@ -24,6 +24,7 @@ package uk.nhs.tis.trainee.notifications.dto;
 import java.time.Instant;
 import uk.nhs.tis.trainee.notifications.model.History.TisReferenceInfo;
 import uk.nhs.tis.trainee.notifications.model.MessageType;
+import uk.nhs.tis.trainee.notifications.model.NotificationStatus;
 import uk.nhs.tis.trainee.notifications.model.NotificationType;
 
 /**
@@ -35,8 +36,11 @@ import uk.nhs.tis.trainee.notifications.model.NotificationType;
  * @param subject      The subject of the notification e.g. COJ_CONFIRMATION
  * @param contact      The contact details used to send the notification.
  * @param sentAt       The timestamp the notification was sent at.
+ * @param status       The status of the notification history e.g. SENT or FAILED.
+ * @param statusDetail Any additional detail about the status.
  */
 public record HistoryDto(String id, TisReferenceInfo tisReference, MessageType type,
-                         NotificationType subject, String contact, Instant sentAt) {
+                         NotificationType subject, String contact, Instant sentAt,
+                         NotificationStatus status, String statusDetail) {
 
 }

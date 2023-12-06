@@ -28,6 +28,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static uk.nhs.tis.trainee.notifications.model.MessageType.EMAIL;
+import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.FAILED;
+import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.SENT;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.COJ_CONFIRMATION;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.CREDENTIAL_REVOKED;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.FORM_UPDATED;
@@ -87,11 +89,11 @@ class HistoryResourceTest {
     TisReferenceInfo tisReferenceForm
         = new TisReferenceInfo(TisReferenceType.FORMR_PARTA, TIS_REFERENCE_ID);
     HistoryDto history1 = new HistoryDto("1", tisReferenceProgramme, EMAIL, COJ_CONFIRMATION,
-        TRAINEE_CONTACT_1, Instant.MIN);
+        TRAINEE_CONTACT_1, Instant.MIN, SENT, null);
     HistoryDto history2 = new HistoryDto("2", tisReferenceProgramme, EMAIL, CREDENTIAL_REVOKED,
-        TRAINEE_CONTACT_2, Instant.EPOCH);
+        TRAINEE_CONTACT_2, Instant.EPOCH, FAILED, null);
     HistoryDto history3 = new HistoryDto("3", tisReferenceForm, EMAIL, FORM_UPDATED,
-        TRAINEE_CONTACT_3, Instant.MAX);
+        TRAINEE_CONTACT_3, Instant.MAX, FAILED, "Additional detail");
 
     when(service.findAllForTrainee(TRAINEE_ID)).thenReturn(List.of(history1, history2, history3));
 
@@ -108,6 +110,8 @@ class HistoryResourceTest {
         .andExpect(jsonPath("$[0].subject").value(COJ_CONFIRMATION.toString()))
         .andExpect(jsonPath("$[0].contact").value(TRAINEE_CONTACT_1))
         .andExpect(jsonPath("$[0].sentAt").value(Instant.MIN.toString()))
+        .andExpect(jsonPath("$[0].status").value(SENT.toString()))
+        .andExpect(jsonPath("$[0].statusDetail").doesNotExist())
         .andExpect(jsonPath("$[1].id").value("2"))
         .andExpect(jsonPath("$[1].tisReference.id").value(TIS_REFERENCE_ID))
         .andExpect(jsonPath("$[1].tisReference.type")
@@ -116,6 +120,8 @@ class HistoryResourceTest {
         .andExpect(jsonPath("$[1].subject").value(CREDENTIAL_REVOKED.toString()))
         .andExpect(jsonPath("$[1].contact").value(TRAINEE_CONTACT_2))
         .andExpect(jsonPath("$[1].sentAt").value(Instant.EPOCH.toString()))
+        .andExpect(jsonPath("$[1].status").value(FAILED.toString()))
+        .andExpect(jsonPath("$[1].statusDetail").doesNotExist())
         .andExpect(jsonPath("$[2].id").value("3"))
         .andExpect(jsonPath("$[2].tisReference.id").value(TIS_REFERENCE_ID))
         .andExpect(jsonPath("$[2].tisReference.type")
@@ -123,7 +129,9 @@ class HistoryResourceTest {
         .andExpect(jsonPath("$[2].type").value(EMAIL.toString()))
         .andExpect(jsonPath("$[2].subject").value(FORM_UPDATED.toString()))
         .andExpect(jsonPath("$[2].contact").value(TRAINEE_CONTACT_3))
-        .andExpect(jsonPath("$[2].sentAt").value(Instant.MAX.toString()));
+        .andExpect(jsonPath("$[2].sentAt").value(Instant.MAX.toString()))
+        .andExpect(jsonPath("$[2].status").value(FAILED.toString()))
+        .andExpect(jsonPath("$[2].statusDetail").value("Additional detail"));
   }
 
   @Test
