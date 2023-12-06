@@ -21,6 +21,8 @@
 
 package uk.nhs.tis.trainee.notifications.service;
 
+import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.PERSON_ID_FIELD;
+
 import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
@@ -95,9 +97,9 @@ public class NotificationService implements Job {
    * @return The saved notification history.
    */
   private History saveNotificationSent(JobDataMap jobDetails, String email, Instant sentAt) {
-    ObjectId objectId = ObjectId.get(); //TODO let DB generate this?
+    ObjectId objectId = ObjectId.get();
     RecipientInfo recipientInfo
-        = new RecipientInfo(jobDetails.getString(TIS_ID), MessageType.EMAIL, email);
+        = new RecipientInfo(jobDetails.getString(PERSON_ID_FIELD), MessageType.EMAIL, email);
     NotificationType notificationType = NotificationType.valueOf(
         jobDetails.get("notificationType").toString());
 
