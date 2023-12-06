@@ -56,6 +56,10 @@ import uk.nhs.tis.trainee.notifications.model.TisReferenceType;
 public class ProgrammeMembershipService {
   public static final String TIS_ID_FIELD = "tisId";
   public static final String PERSON_ID_FIELD = "personId";
+  public static final String PROGRAMME_NAME_FIELD = "programmeName";
+  public static final String START_DATE_FIELD = "startDate";
+  public static final String NOTIFICATION_TYPE_FIELD = "notificationType";
+  public static final String COJ_SYNCED_FIELD = "conditionsOfJoiningSyncedAt";
 
   private static final String TRIGGER_ID_PREFIX = "trigger-";
   private static final Integer PAST_MILESTONE_SCHEDULE_DELAY_HOURS = 1;
@@ -153,15 +157,20 @@ public class ProgrammeMembershipService {
             notificationsAlreadySent);
 
         if (shouldSchedule) {
+          log.info("Scheduling notification {} for {}.", milestone,programmeMembership.getTisId());
           Integer daysBeforeStart = getNotificationDaysBeforeStart(milestone);
           Date when = getScheduleDate(startDate, daysBeforeStart);
 
           JobDataMap jobDataMap = new JobDataMap();
           jobDataMap.put(TIS_ID_FIELD, programmeMembership.getTisId());
           jobDataMap.put(PERSON_ID_FIELD, programmeMembership.getPersonId());
-          jobDataMap.put("programmeName", programmeMembership.getProgrammeName());
-          jobDataMap.put("startDate", programmeMembership.getStartDate());
-          jobDataMap.put("notificationType", milestone);
+          jobDataMap.put(PROGRAMME_NAME_FIELD, programmeMembership.getProgrammeName());
+          jobDataMap.put(START_DATE_FIELD, programmeMembership.getStartDate());
+          jobDataMap.put(NOTIFICATION_TYPE_FIELD, milestone);
+          if (programmeMembership.getConditionsOfJoining() != null) {
+            jobDataMap.put(COJ_SYNCED_FIELD,
+                programmeMembership.getConditionsOfJoining().syncedAt());
+          }
           // Note the status of the trainee will be retrieved when the job is executed, as will
           // their name and email address, not now.
 

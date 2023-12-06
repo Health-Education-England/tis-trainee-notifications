@@ -33,6 +33,11 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
+import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.COJ_SYNCED_FIELD;
+import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.PERSON_ID_FIELD;
+import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.PROGRAMME_NAME_FIELD;
+import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.START_DATE_FIELD;
+import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.TIS_ID_FIELD;
 import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.SENT;
 
 import java.time.Instant;
@@ -55,6 +60,7 @@ import org.quartz.Scheduler;
 import org.quartz.SchedulerException;
 import org.quartz.Trigger;
 import org.quartz.TriggerKey;
+import uk.nhs.tis.trainee.notifications.dto.CojSignedEvent.ConditionsOfJoining;
 import uk.nhs.tis.trainee.notifications.dto.HistoryDto;
 import uk.nhs.tis.trainee.notifications.model.Curriculum;
 import uk.nhs.tis.trainee.notifications.model.History.TisReferenceInfo;
@@ -174,6 +180,7 @@ class ProgrammeMembershipServiceTest {
     programmeMembership.setProgrammeName(PROGRAMME_NAME);
     programmeMembership.setStartDate(START_DATE);
     programmeMembership.setCurricula(List.of(theCurriculum));
+    programmeMembership.setConditionsOfJoining(new ConditionsOfJoining(Instant.MIN));
 
     service.addNotifications(programmeMembership);
 
@@ -192,11 +199,13 @@ class ProgrammeMembershipServiceTest {
     JobDetail jobDetail = jobDetailCaptor.getValue();
     assertThat("Unexpected job id key.", jobDetail.getKey(), is(expectedJobKey));
     JobDataMap jobDataMap = jobDetail.getJobDataMap();
-    assertThat("Unexpected tisId.", jobDataMap.get("tisId"), is(TIS_ID));
-    assertThat("Unexpected personId.", jobDataMap.get("personId"), is(PERSON_ID));
-    assertThat("Unexpected programme.", jobDataMap.get("programmeName"),
+    assertThat("Unexpected tisId.", jobDataMap.get(TIS_ID_FIELD), is(TIS_ID));
+    assertThat("Unexpected personId.", jobDataMap.get(PERSON_ID_FIELD), is(PERSON_ID));
+    assertThat("Unexpected programme.", jobDataMap.get(PROGRAMME_NAME_FIELD),
         is(PROGRAMME_NAME));
-    assertThat("Unexpected start date.", jobDataMap.get("startDate"), is(START_DATE));
+    assertThat("Unexpected start date.", jobDataMap.get(START_DATE_FIELD), is(START_DATE));
+    assertThat("Unexpected CoJ synced at.", jobDataMap.get(COJ_SYNCED_FIELD),
+        is(Instant.MIN));
 
     Trigger trigger = triggerCaptor.getValue();
     TriggerKey expectedTriggerKey = TriggerKey.triggerKey("trigger-" + expectedJobId);
@@ -359,7 +368,6 @@ class ProgrammeMembershipServiceTest {
     verify(scheduler).scheduleJob(any(), triggerCaptor.capture());
 
     Trigger trigger = triggerCaptor.getValue();
-    LocalDate expectedDate = dateToday;
     Date expectedLaterThan = Date.from(Instant.now());
 
     assertThat("Unexpected trigger start time",
@@ -367,7 +375,7 @@ class ProgrammeMembershipServiceTest {
     LocalDate scheduledDate = trigger.getStartTime().toInstant()
         .atZone(ZoneId.systemDefault())
         .toLocalDate();
-    assertThat("Unexpected trigger start time", scheduledDate, is(expectedDate));
+    assertThat("Unexpected trigger start time", scheduledDate, is(dateToday));
   }
 
   @Test
@@ -517,5 +525,29 @@ class ProgrammeMembershipServiceTest {
   void shouldHandleUnknownNotificationTypesForNotificationDays() {
     assertThat("Unexpected days before start.",
         service.getNotificationDaysBeforeStart(NotificationType.COJ_CONFIRMATION), nullValue());
+  }
+
+  @Test
+  void shouldIgnoreMissingConditionsOfJoining() throws SchedulerException {
+    Curriculum theCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, "any specialty");
+    ProgrammeMembership programmeMembership = new ProgrammeMembership();
+    programmeMembership.setTisId(TIS_ID);
+    programmeMembership.setPersonId(PERSON_ID);
+    programmeMembership.setProgrammeName(PROGRAMME_NAME);
+    programmeMembership.setStartDate(START_DATE);
+    programmeMembership.setCurricula(List.of(theCurriculum));
+
+    service.addNotifications(programmeMembership);
+
+    ArgumentCaptor<JobDetail> jobDetailCaptor = ArgumentCaptor.forClass(JobDetail.class);
+
+    int jobsToSchedule = NotificationType.getProgrammeUpdateNotificationTypes().size();
+    verify(scheduler, times(jobsToSchedule))
+        .scheduleJob(jobDetailCaptor.capture(), any());
+
+    //verify the details of the last job scheduled
+    JobDataMap jobDataMap = jobDetailCaptor.getValue().getJobDataMap();
+    assertThat("Unexpected CoJ synced at.", jobDataMap.get(COJ_SYNCED_FIELD),
+        is(nullValue()));
   }
 }

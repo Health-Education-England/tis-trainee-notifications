@@ -154,7 +154,7 @@ public class EmailService {
    * @param traineeId The trainee ID to get the account for.
    * @return The found account.
    */
-  private UserAccountDetails getRecipientAccount(String traineeId) {
+  public UserAccountDetails getRecipientAccount(String traineeId) {
     Set<String> userAccountIds = userAccountService.getUserAccountIds(traineeId);
 
     return switch (userAccountIds.size()) {
