@@ -67,7 +67,7 @@ dependencies {
   implementation("io.mongock:mongodb-springdata-v4-driver:${mongockVersion}")
 
   // Sentry reporting
-  ext.sentryVersion = "6.34.0"
+  ext.sentryVersion = "7.0.0"
   implementation "io.sentry:sentry-spring-boot-starter:${sentryVersion}"
   implementation "io.sentry:sentry-logback:${sentryVersion}"
 
