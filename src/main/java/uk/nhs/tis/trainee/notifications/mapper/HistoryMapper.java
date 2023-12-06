@@ -55,6 +55,8 @@ public interface HistoryMapper {
   @Mapping(target = "subject", source = "type")
   @Mapping(target = "contact", source = "recipient.contact")
   @Mapping(target = "sentAt")
+  @Mapping(target = "status")
+  @Mapping(target = "statusDetail")
   HistoryDto toDto(History entity);
 
   @Mapping(target = "status", source = "status")

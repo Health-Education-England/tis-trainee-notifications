@@ -33,6 +33,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
+import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.SENT;
 
 import java.time.Instant;
 import java.time.LocalDate;
@@ -225,7 +226,7 @@ class ProgrammeMembershipServiceTest {
         MessageType.EMAIL,
         NotificationType.PROGRAMME_UPDATED_WEEK_8,
         "email address",
-        Instant.MIN));
+        Instant.MIN, SENT, null));
 
     when(historyService.findAllForTrainee(PERSON_ID)).thenReturn(sentNotifications);
 
@@ -277,7 +278,7 @@ class ProgrammeMembershipServiceTest {
         MessageType.EMAIL,
         notificationType,
         "email address",
-        Instant.MIN));
+        Instant.MIN, SENT, null));
 
     when(historyService.findAllForTrainee(PERSON_ID)).thenReturn(sentNotifications);
 
@@ -303,7 +304,7 @@ class ProgrammeMembershipServiceTest {
         MessageType.EMAIL,
         NotificationType.PROGRAMME_UPDATED_WEEK_8, //to avoid masking the test condition
         "email address",
-        Instant.MIN));
+        Instant.MIN, SENT, null));
 
     when(historyService.findAllForTrainee(PERSON_ID)).thenReturn(sentNotifications);
 
@@ -329,7 +330,7 @@ class ProgrammeMembershipServiceTest {
         MessageType.EMAIL,
         NotificationType.PROGRAMME_UPDATED_WEEK_8,
         "email address",
-        Instant.MIN));
+        Instant.MIN, SENT, null));
 
     when(historyService.findAllForTrainee(PERSON_ID)).thenReturn(sentNotifications);
 
@@ -420,7 +421,7 @@ class ProgrammeMembershipServiceTest {
         MessageType.EMAIL,
         NotificationType.PROGRAMME_UPDATED_WEEK_0,
         "email address",
-        Instant.MIN));
+        Instant.MIN, SENT, null));
 
     when(historyService.findAllForTrainee(PERSON_ID)).thenReturn(sentNotifications);
 
@@ -446,7 +447,7 @@ class ProgrammeMembershipServiceTest {
         MessageType.EMAIL,
         NotificationType.PROGRAMME_UPDATED_WEEK_0,
         "email address",
-        Instant.MIN));
+        Instant.MIN, SENT, null));
 
     when(historyService.findAllForTrainee(PERSON_ID)).thenReturn(sentNotifications);
 
@@ -472,7 +473,7 @@ class ProgrammeMembershipServiceTest {
         MessageType.EMAIL,
         NotificationType.PROGRAMME_UPDATED_WEEK_8,
         "email address",
-        Instant.MIN));
+        Instant.MIN, SENT, null));
 
     when(historyService.findAllForTrainee(PERSON_ID)).thenReturn(sentNotifications);
 
