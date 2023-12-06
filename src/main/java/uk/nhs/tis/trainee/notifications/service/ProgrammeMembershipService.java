@@ -157,8 +157,8 @@ public class ProgrammeMembershipService {
           Date when = getScheduleDate(startDate, daysBeforeStart);
 
           JobDataMap jobDataMap = new JobDataMap();
-          jobDataMap.put("tisId", programmeMembership.getTisId());
-          jobDataMap.put("personId", programmeMembership.getPersonId());
+          jobDataMap.put(TIS_ID_FIELD, programmeMembership.getTisId());
+          jobDataMap.put(PERSON_ID_FIELD, programmeMembership.getPersonId());
           jobDataMap.put("programmeName", programmeMembership.getProgrammeName());
           jobDataMap.put("startDate", programmeMembership.getStartDate());
           jobDataMap.put("notificationType", milestone);
