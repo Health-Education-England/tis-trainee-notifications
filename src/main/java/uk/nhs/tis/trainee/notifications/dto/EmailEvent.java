@@ -21,6 +21,8 @@
 
 package uk.nhs.tis.trainee.notifications.dto;
 
+import java.util.List;
+
 /**
  * A representation of the Amazon SES email notification event.
  *
@@ -56,7 +58,7 @@ public record EmailEvent(String notificationType, Mail mail, Bounce bounce, Comp
    *
    * @param headers The headers sent with the email.
    */
-  public record Mail(MailHeader[] headers) {
+  public record Mail(List<MailHeader> headers) {
 
     /**
      * An email header.

@@ -27,6 +27,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.FAILED;
 
+import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -53,7 +54,7 @@ class EmailListenerTest {
 
   @Test
   void shouldThrowExceptionHandlingFailureWhenNoNotificationId() {
-    Mail mail = new Mail(new MailHeader[]{});
+    Mail mail = new Mail(List.of());
     EmailEvent event = new EmailEvent("bounce", mail, null, null);
 
     assertThrows(IllegalArgumentException.class, () -> listener.handleFailure(event));
@@ -61,7 +62,7 @@ class EmailListenerTest {
 
   @Test
   void shouldHandleFailureWhenBounceEvent() {
-    Mail mail = new Mail(new MailHeader[]{new MailHeader("NotificationId", NOTIFICATION_ID)});
+    Mail mail = new Mail(List.of(new MailHeader("NotificationId", NOTIFICATION_ID)));
     Bounce bounce = new Bounce("type1", "type2");
     EmailEvent event = new EmailEvent("Bounce", mail, bounce, null);
 
@@ -77,7 +78,7 @@ class EmailListenerTest {
       null  | null  | Complaint: Undetermined
       """)
   void shouldHandleFailureWhenComplaintEvent(String subType, String feedbackType, String message) {
-    Mail mail = new Mail(new MailHeader[]{new MailHeader("NotificationId", NOTIFICATION_ID)});
+    Mail mail = new Mail(List.of(new MailHeader("NotificationId", NOTIFICATION_ID)));
     Complaint complaint = new Complaint(subType, feedbackType);
     EmailEvent event = new EmailEvent("Complaint", mail, null, complaint);
 
@@ -88,7 +89,7 @@ class EmailListenerTest {
 
   @Test
   void shouldNotHandleFailureWhenDeliveryEvent() {
-    Mail mail = new Mail(new MailHeader[]{new MailHeader("NotificationId", NOTIFICATION_ID)});
+    Mail mail = new Mail(List.of(new MailHeader("NotificationId", NOTIFICATION_ID)));
     EmailEvent event = new EmailEvent("Delivery", mail, null, null);
 
     listener.handleFailure(event);

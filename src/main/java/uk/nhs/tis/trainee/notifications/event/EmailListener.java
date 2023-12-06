@@ -73,7 +73,7 @@ public class EmailListener {
    * @return The notification ID from the email event headers.
    */
   private String getNotificationId(EmailEvent event) {
-    return Arrays.stream(event.mail().headers())
+    return event.mail().headers().stream()
         .filter(header -> header.name().equals("NotificationId"))
         .findFirst()
         .orElseThrow(() -> new IllegalArgumentException("No notification ID found."))
