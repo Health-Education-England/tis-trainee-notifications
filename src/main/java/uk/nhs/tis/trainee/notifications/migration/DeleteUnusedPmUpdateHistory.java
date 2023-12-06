@@ -38,7 +38,7 @@ import uk.nhs.tis.trainee.notifications.model.NotificationType;
  * Delete unused programme-membership-update history records.
  */
 @Slf4j
-@ChangeUnit(id = "deleteUnusedPmUpdateHistory", order = "1")
+@ChangeUnit(id = "deleteUnusedPmUpdateHistory", order = "2")
 public class DeleteUnusedPmUpdateHistory {
 
   private final MongoTemplate mongoTemplate;
