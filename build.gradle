@@ -10,7 +10,7 @@ plugins {
 }
 
 group = "uk.nhs.tis.trainee"
-version = "1.6.0"
+version = "1.7.0"
 
 configurations {
   checkstyleConfig
@@ -61,6 +61,10 @@ dependencies {
   implementation "org.mapstruct:mapstruct:${mapstructVersion}"
   annotationProcessor "org.mapstruct:mapstruct-processor:${mapstructVersion}"
   testAnnotationProcessor "org.mapstruct:mapstruct-processor:${mapstructVersion}"
+
+  ext.mongockVersion = "5.3.6"
+  implementation("io.mongock:mongock-springboot-v3:${mongockVersion}")
+  implementation("io.mongock:mongodb-springdata-v4-driver:${mongockVersion}")
 
   // Sentry reporting
   ext.sentryVersion = "6.34.0"

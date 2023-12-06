@@ -35,6 +35,7 @@ import uk.nhs.tis.trainee.notifications.model.History.RecipientInfo;
 import uk.nhs.tis.trainee.notifications.model.History.TemplateInfo;
 import uk.nhs.tis.trainee.notifications.model.History.TisReferenceInfo;
 import uk.nhs.tis.trainee.notifications.model.MessageType;
+import uk.nhs.tis.trainee.notifications.model.NotificationStatus;
 import uk.nhs.tis.trainee.notifications.model.NotificationType;
 import uk.nhs.tis.trainee.notifications.model.TisReferenceType;
 
@@ -107,7 +108,7 @@ public class NotificationService implements Job {
         jobDetails.get(TIS_ID).toString());
 
     History history = new History(objectId, tisReference, notificationType, recipientInfo,
-        templateInfo, sentAt);
+        templateInfo, sentAt, NotificationStatus.SENT, null);
 
     return historyService.save(history);
   }

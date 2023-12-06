@@ -43,6 +43,7 @@ import uk.nhs.tis.trainee.notifications.dto.UserAccountDetails;
 import uk.nhs.tis.trainee.notifications.model.History;
 import uk.nhs.tis.trainee.notifications.model.History.RecipientInfo;
 import uk.nhs.tis.trainee.notifications.model.History.TemplateInfo;
+import uk.nhs.tis.trainee.notifications.model.NotificationStatus;
 import uk.nhs.tis.trainee.notifications.model.NotificationType;
 
 /**
@@ -141,7 +142,7 @@ public class EmailService {
     TemplateInfo templateInfo = new TemplateInfo(notificationType.getTemplateName(),
         templateVersion, templateVariables);
     History history = new History(notificationId, null, notificationType, recipientInfo,
-        templateInfo, Instant.now());
+        templateInfo, Instant.now(), NotificationStatus.SENT, null);
     historyService.save(history);
 
     log.info("Sent template {} to {}.", templateName, recipient);

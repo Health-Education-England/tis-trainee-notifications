@@ -19,20 +19,11 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package uk.nhs.tis.trainee.notifications;
-
-import io.mongock.runner.springboot.EnableMongock;
-import org.springframework.boot.SpringApplication;
-import org.springframework.boot.autoconfigure.SpringBootApplication;
+package uk.nhs.tis.trainee.notifications.model;
 
 /**
- * An application for the management and sending of trainee notifications.
+ * An enumeration of possible notification statuses.
  */
-@EnableMongock
-@SpringBootApplication
-public class TisTraineeNotificationsApplication {
-
-  public static void main(String[] args) {
-    SpringApplication.run(TisTraineeNotificationsApplication.class);
-  }
+public enum NotificationStatus {
+  FAILED, SENT
 }

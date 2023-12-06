@@ -27,6 +27,7 @@ import org.mapstruct.Mapping;
 import org.mapstruct.MappingConstants.ComponentModel;
 import uk.nhs.tis.trainee.notifications.dto.HistoryDto;
 import uk.nhs.tis.trainee.notifications.model.History;
+import uk.nhs.tis.trainee.notifications.model.NotificationStatus;
 
 /**
  * A mapper to convert between notification history data types.
@@ -55,4 +56,8 @@ public interface HistoryMapper {
   @Mapping(target = "contact", source = "recipient.contact")
   @Mapping(target = "sentAt")
   HistoryDto toDto(History entity);
+
+  @Mapping(target = "status", source = "status")
+  @Mapping(target = "statusDetail", source = "detail")
+  History updateStatus(History entity, NotificationStatus status, String detail);
 }

@@ -16,6 +16,7 @@ application:
   queues:
     coj-received: ${COJ_RECEIVED_QUEUE}
     credential-revoked: ${CREDENTIAL_REVOKED_QUEUE}
+    email-failure: ${EMAIL_FAILURE_QUEUE}
     form-updated: ${FORM_UPDATED_QUEUE}
     programme-membership-updated: ${PROGRAMME_MEMBERSHIP_UPDATED_QUEUE}
     programme-membership-deleted: ${PROGRAMME_MEMBERSHIP_DELETED_QUEUE}
@@ -33,6 +34,9 @@ com:
     xray:
       emitters:
         daemon-address: ${AWS_XRAY_DAEMON_ADDRESS:}
+
+mongock:
+  migration-scan-package: uk.nhs.tis.trainee.notifications.migration
 
 sentry:
   dsn: ${SENTRY_DSN:}
