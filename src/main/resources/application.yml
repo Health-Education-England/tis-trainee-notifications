@@ -37,6 +37,7 @@ com:
 
 mongock:
   migration-scan-package: uk.nhs.tis.trainee.notifications.migration
+  transaction-enabled: false
 
 sentry:
   dsn: ${SENTRY_DSN:}
