@@ -54,6 +54,8 @@ import uk.nhs.tis.trainee.notifications.model.TisReferenceType;
 @Slf4j
 @Service
 public class ProgrammeMembershipService {
+  public static final String TIS_ID_FIELD = "tisId";
+  public static final String PERSON_ID_FIELD = "personId";
 
   private static final String TRIGGER_ID_PREFIX = "trigger-";
   private static final Integer PAST_MILESTONE_SCHEDULE_DELAY_HOURS = 1;
@@ -155,8 +157,8 @@ public class ProgrammeMembershipService {
           Date when = getScheduleDate(startDate, daysBeforeStart);
 
           JobDataMap jobDataMap = new JobDataMap();
-          jobDataMap.put("tisId", programmeMembership.getTisId());
-          jobDataMap.put("personId", programmeMembership.getPersonId());
+          jobDataMap.put(TIS_ID_FIELD, programmeMembership.getTisId());
+          jobDataMap.put(PERSON_ID_FIELD, programmeMembership.getPersonId());
           jobDataMap.put("programmeName", programmeMembership.getProgrammeName());
           jobDataMap.put("startDate", programmeMembership.getStartDate());
           jobDataMap.put("notificationType", milestone);
