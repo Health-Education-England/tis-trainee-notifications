@@ -60,7 +60,7 @@ class ConditionsOfJoiningListenerTest {
   @Test
   void shouldThrowExceptionWhenCojReceivedAndSendingFails() throws MessagingException {
     doThrow(MessagingException.class).when(emailService)
-        .sendMessageToExistingUser(any(), any(), any(), any());
+        .sendMessageToExistingUser(any(), any(), any(), any(), any());
 
     CojSignedEvent event = new CojSignedEvent(PERSON_ID,
         new ConditionsOfJoining(SYNCED_AT));
@@ -75,7 +75,7 @@ class ConditionsOfJoiningListenerTest {
 
     listener.handleConditionsOfJoiningReceived(event);
 
-    verify(emailService).sendMessageToExistingUser(eq(PERSON_ID), any(), any(), any());
+    verify(emailService).sendMessageToExistingUser(eq(PERSON_ID), any(), any(), any(), any());
   }
 
   @Test
@@ -85,7 +85,8 @@ class ConditionsOfJoiningListenerTest {
 
     listener.handleConditionsOfJoiningReceived(event);
 
-    verify(emailService).sendMessageToExistingUser(any(), eq(COJ_CONFIRMATION), any(), any());
+    verify(emailService).sendMessageToExistingUser(any(), eq(COJ_CONFIRMATION), any(), any(),
+        any());
   }
 
   @Test
@@ -95,7 +96,7 @@ class ConditionsOfJoiningListenerTest {
 
     listener.handleConditionsOfJoiningReceived(event);
 
-    verify(emailService).sendMessageToExistingUser(any(), any(), eq(VERSION), any());
+    verify(emailService).sendMessageToExistingUser(any(), any(), eq(VERSION), any(), any());
   }
 
   @Test
@@ -107,7 +108,7 @@ class ConditionsOfJoiningListenerTest {
 
     ArgumentCaptor<Map<String, Object>> templateVarsCaptor = ArgumentCaptor.forClass(Map.class);
     verify(emailService).sendMessageToExistingUser(any(), any(), any(),
-        templateVarsCaptor.capture());
+        templateVarsCaptor.capture(), any());
 
     Map<String, Object> templateVariables = templateVarsCaptor.getValue();
     assertThat("Unexpected synced at.", templateVariables.get("syncedAt"), nullValue());
@@ -122,7 +123,7 @@ class ConditionsOfJoiningListenerTest {
 
     ArgumentCaptor<Map<String, Object>> templateVarsCaptor = ArgumentCaptor.forClass(Map.class);
     verify(emailService).sendMessageToExistingUser(any(), any(), any(),
-        templateVarsCaptor.capture());
+        templateVarsCaptor.capture(), any());
 
     Map<String, Object> templateVariables = templateVarsCaptor.getValue();
     assertThat("Unexpected synced at.", templateVariables.get("syncedAt"), nullValue());
@@ -137,7 +138,7 @@ class ConditionsOfJoiningListenerTest {
 
     ArgumentCaptor<Map<String, Object>> templateVarsCaptor = ArgumentCaptor.forClass(Map.class);
     verify(emailService).sendMessageToExistingUser(any(), any(), any(),
-        templateVarsCaptor.capture());
+        templateVarsCaptor.capture(), any());
 
     Map<String, Object> templateVariables = templateVarsCaptor.getValue();
     assertThat("Unexpected synced at.", templateVariables.get("syncedAt"), is(SYNCED_AT));

@@ -73,7 +73,7 @@ public class ConditionsOfJoiningListener {
 
     String traineeId = event.personId();
     emailService.sendMessageToExistingUser(traineeId, COJ_CONFIRMATION, templateVersion,
-        templateVariables);
+        templateVariables, null);
     log.info("COJ received notification sent for trainee {}.", traineeId);
   }
 }

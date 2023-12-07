@@ -132,7 +132,7 @@ class CredentialListenerIntegrationTest {
     doAnswer(inv -> {
       inv.getArgument(3, Map.class).put("domain", URI.create(""));
       return inv.callRealMethod();
-    }).when(emailService).sendMessageToExistingUser(any(), any(), any(), any());
+    }).when(emailService).sendMessageToExistingUser(any(), any(), any(), any(), any());
 
     // Create a new listener instance to inject the spy.
     CredentialListener listener = new CredentialListener(emailService, templateVersion);

@@ -72,7 +72,7 @@ public class FormListener {
 
     String traineeId = event.traineeId();
     emailService.sendMessageToExistingUser(traineeId, FORM_UPDATED, templateVersion,
-        templateVariables);
+        templateVariables, null);
     log.info("Form updated notification sent for trainee {}.", traineeId);
   }
 }
