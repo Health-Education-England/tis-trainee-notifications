@@ -157,7 +157,7 @@ public class ProgrammeMembershipService {
             notificationsAlreadySent);
 
         if (shouldSchedule) {
-          log.info("Scheduling notification {} for {}.", milestone,programmeMembership.getTisId());
+          log.info("Scheduling notification {} for {}.", milestone, programmeMembership.getTisId());
           Integer daysBeforeStart = getNotificationDaysBeforeStart(milestone);
           Date when = getScheduleDate(startDate, daysBeforeStart);
 

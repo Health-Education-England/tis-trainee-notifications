@@ -66,6 +66,16 @@ public class NotificationService implements Job {
   private final String templateVersion;
   private final String serviceUrl;
 
+  /**
+   * Initialise the Notification Service.
+   *
+   * @param historyService  The History Service to use.
+   * @param emailService    The Email Service to use.
+   * @param restTemplate    The REST template.
+   * @param templateVersion The email template version.
+   * @param serviceUrl      The URL for the tis-trainee-details service to use for profile
+   *                        information.
+   */
   public NotificationService(HistoryService historyService, EmailService emailService,
       RestTemplate restTemplate,
       @Value("${application.template-versions.form-updated.email}") String templateVersion,
