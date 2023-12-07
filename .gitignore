@@ -45,6 +45,4 @@ gradle-app.setting
 ### Gradle Patch ###
 **/build/
 
-src/main/generated/*
-
 # End of https://www.gitignore.io/api/java,gradle
