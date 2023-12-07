@@ -24,12 +24,14 @@ package uk.nhs.tis.trainee.notifications.mapper;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import uk.nhs.tis.trainee.notifications.dto.CojSignedEvent.ConditionsOfJoining;
 import uk.nhs.tis.trainee.notifications.dto.ProgrammeMembershipEvent;
 import uk.nhs.tis.trainee.notifications.dto.RecordDto;
 import uk.nhs.tis.trainee.notifications.model.Curriculum;
@@ -41,6 +43,7 @@ class ProgrammeMembershipMapperTest {
   private static final LocalDate START_DATE = LocalDate.now();
   private static final String CURRICULUM_SUB_TYPE = "sub-type";
   private static final String CURRICULUM_SPECIALTY = "specialty";
+  private static final Instant COJ_SYNCED_AT = Instant.now();
 
   private ProgrammeMembershipMapper mapper;
 
@@ -63,6 +66,8 @@ class ProgrammeMembershipMapperTest {
     assertThat("Unexpected Tis Id.", returnedPm.getTisId(), is(TIS_ID));
     assertThat("Unexpected start date.", returnedPm.getStartDate(), is(START_DATE));
     assertThat("Unexpected curricula.", returnedPm.getCurricula(), is(List.of(curriculum)));
+    assertThat("Unexpected Conditions of joining.", returnedPm.getConditionsOfJoining(),
+        is(new ConditionsOfJoining(COJ_SYNCED_AT)));
   }
 
   /**
@@ -79,6 +84,10 @@ class ProgrammeMembershipMapperTest {
         "[{\"curriculumSubType\": \"" + CURRICULUM_SUB_TYPE + "\", "
             + "\"curriculumSpecialty\": \"" + CURRICULUM_SPECIALTY + "\", "
             + "\"another-curriculum-property\": \"some value\"}]");
+    dataMap.put("conditionsOfJoining",
+        "{\"signedAt\":\"2023-06-05T20:44:29.943Z\","
+            + "\"version\":\"GG9\","
+            + "\"syncedAt\":\"" + COJ_SYNCED_AT + "\"}");
     RecordDto data = new RecordDto();
     data.setData(dataMap);
     return new ProgrammeMembershipEvent(TIS_ID, data);

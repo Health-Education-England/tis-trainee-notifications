@@ -25,6 +25,7 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import lombok.Data;
+import uk.nhs.tis.trainee.notifications.dto.CojSignedEvent.ConditionsOfJoining;
 
 /**
  * A programme membership.
@@ -37,4 +38,5 @@ public class ProgrammeMembership {
   private String programmeName;
   private LocalDate startDate;
   private List<Curriculum> curricula = new ArrayList<>();
+  private ConditionsOfJoining conditionsOfJoining;
 }

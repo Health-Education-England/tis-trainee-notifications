@@ -32,6 +32,7 @@ import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.MappingConstants.ComponentModel;
 import org.mapstruct.ReportingPolicy;
+import uk.nhs.tis.trainee.notifications.dto.CojSignedEvent.ConditionsOfJoining;
 import uk.nhs.tis.trainee.notifications.model.Curriculum;
 import uk.nhs.tis.trainee.notifications.model.ProgrammeMembership;
 
@@ -64,6 +65,23 @@ public interface ProgrammeMembershipMapper {
         .registerModule(new JavaTimeModule())
         .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
     return objectMapper.readValue(curriculumString,
+        new TypeReference<>() {
+        });
+  }
+
+  /**
+   * Map a serialized Conditions of Joining.
+   *
+   * @param cojString The serialized Conditions of Joining.
+   * @return The Conditions of Joining record.
+   * @throws JsonProcessingException if the CoJ is malformed.
+   */
+  default ConditionsOfJoining toConditionsOfJoining(String cojString)
+      throws JsonProcessingException {
+    ObjectMapper objectMapper = new ObjectMapper()
+        .registerModule(new JavaTimeModule())
+        .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+    return objectMapper.readValue(cojString,
         new TypeReference<>() {
         });
   }

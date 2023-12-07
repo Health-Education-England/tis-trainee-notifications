@@ -21,9 +21,14 @@
 
 package uk.nhs.tis.trainee.notifications.service;
 
+import static uk.nhs.tis.trainee.notifications.model.TisReferenceType.PROGRAMME_MEMBERSHIP;
 import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.PERSON_ID_FIELD;
+import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.PROGRAMME_NAME_FIELD;
+import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.START_DATE_FIELD;
+import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.TIS_ID_FIELD;
 
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
@@ -31,7 +36,11 @@ import org.bson.types.ObjectId;
 import org.quartz.Job;
 import org.quartz.JobDataMap;
 import org.quartz.JobExecutionContext;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
+import org.springframework.web.client.RestClientException;
+import org.springframework.web.client.RestTemplate;
+import uk.nhs.tis.trainee.notifications.dto.UserAccountDetails;
 import uk.nhs.tis.trainee.notifications.model.History;
 import uk.nhs.tis.trainee.notifications.model.History.RecipientInfo;
 import uk.nhs.tis.trainee.notifications.model.History.TemplateInfo;
@@ -39,7 +48,6 @@ import uk.nhs.tis.trainee.notifications.model.History.TisReferenceInfo;
 import uk.nhs.tis.trainee.notifications.model.MessageType;
 import uk.nhs.tis.trainee.notifications.model.NotificationStatus;
 import uk.nhs.tis.trainee.notifications.model.NotificationType;
-import uk.nhs.tis.trainee.notifications.model.TisReferenceType;
 
 /**
  * A service for executing notification scheduling jobs.
@@ -48,14 +56,35 @@ import uk.nhs.tis.trainee.notifications.model.TisReferenceType;
 @Component
 public class NotificationService implements Job {
 
-  public static final String DUMMY_EMAIL = "TODO get email";
+  public static final String API_GET_EMAIL = "/api/trainee-profile/account-details/{tisId}";
 
   private static final String TIS_ID = "tisId";
 
   private final HistoryService historyService;
+  private final EmailService emailService;
+  private final RestTemplate restTemplate;
+  private final String templateVersion;
+  private final String serviceUrl;
 
-  public NotificationService(HistoryService historyService) {
+  /**
+   * Initialise the Notification Service.
+   *
+   * @param historyService  The History Service to use.
+   * @param emailService    The Email Service to use.
+   * @param restTemplate    The REST template.
+   * @param templateVersion The email template version.
+   * @param serviceUrl      The URL for the tis-trainee-details service to use for profile
+   *                        information.
+   */
+  public NotificationService(HistoryService historyService, EmailService emailService,
+      RestTemplate restTemplate,
+      @Value("${application.template-versions.form-updated.email}") String templateVersion,
+      @Value("${service.trainee.url}") String serviceUrl) {
     this.historyService = historyService;
+    this.emailService = emailService;
+    this.restTemplate = restTemplate;
+    this.templateVersion = templateVersion;
+    this.serviceUrl = serviceUrl;
   }
 
   /**
@@ -65,27 +94,53 @@ public class NotificationService implements Job {
    */
   @Override
   public void execute(JobExecutionContext jobExecutionContext) {
-    //for now, simply log jobs to demonstrate that scheduling is correct
     String jobKey = jobExecutionContext.getJobDetail().getKey().toString();
     Map<String, String> result = new HashMap<>();
     JobDataMap jobDetails = jobExecutionContext.getJobDetail().getJobDataMap();
 
-    log.info("Sent {} notification for {}", jobKey, jobDetails.getString(TIS_ID));
-    Instant processedOn = Instant.now();
-    result.put("status", "sent " + processedOn.toString());
-    jobExecutionContext.setResult(result);
+    String personId = jobDetails.getString(PERSON_ID_FIELD);
 
-    saveNotificationSent(jobDetails, DUMMY_EMAIL, processedOn);
+    UserAccountDetails userAccountDetails = getAccountDetails(personId);
 
-    //MVP:
-    //get trainee name and job details (ProgrammeMembershipEvent, NotificationType)
-    //inject name, programme name and notification type (8-week, 4-week etc.) into basic template
-    //send email
+    if (userAccountDetails != null) {
+      String programmeName = jobDetails.getString(PROGRAMME_NAME_FIELD);
+      LocalDate startDate = (LocalDate) jobDetails.get(START_DATE_FIELD);
 
-    //MVP +1 iteration:
-    //use job details to check status of trainee (signed-up, submitted coj, submitted formR)
-    //inject these into full template
-    //send email
+      jobDetails.putIfAbsent("name", userAccountDetails.familyName());
+
+      log.info("Mock sent {} notification for {} ({}, starting {}) to {} using template {}", jobKey,
+          jobDetails.getString(TIS_ID_FIELD), programmeName, startDate, userAccountDetails.email(),
+          templateVersion);
+      Instant processedOn = Instant.now();
+      result.put("status", "sent " + processedOn.toString());
+      jobExecutionContext.setResult(result);
+
+      saveNotificationSent(jobDetails, userAccountDetails.email(), processedOn);
+    } else {
+      log.info("No notification could be sent, no TSS details found for tisId {}", personId);
+    }
+  }
+
+  /**
+   * Get the user account details from Cognito (if they have signed-up to TIS Self-Service), or from
+   * the Trainee Details profile if not.
+   *
+   * @param personId The person ID to search for.
+   * @return The user account details, or null if not found.
+   */
+  private UserAccountDetails getAccountDetails(String personId) {
+    try {
+      return emailService.getRecipientAccount(personId);
+    } catch (IllegalArgumentException e) {
+      //no TSS account (or duplicate accounts), so try to get from trainee-details profile.
+      try {
+        return restTemplate.getForObject(serviceUrl + API_GET_EMAIL, UserAccountDetails.class,
+            Map.of(TIS_ID_FIELD, personId));
+      } catch (RestClientException rce) {
+        //no trainee details profile
+        return null;
+      }
+    }
   }
 
   /**
@@ -106,7 +161,7 @@ public class NotificationService implements Job {
     TemplateInfo templateInfo
         = new TemplateInfo(notificationType.getTemplateName(), "v1.0.0",
         jobDetails.getWrappedMap());
-    TisReferenceInfo tisReference = new TisReferenceInfo(TisReferenceType.PROGRAMME_MEMBERSHIP,
+    TisReferenceInfo tisReference = new TisReferenceInfo(PROGRAMME_MEMBERSHIP,
         jobDetails.get(TIS_ID).toString());
 
     History history = new History(objectId, tisReference, notificationType, recipientInfo,
