@@ -68,7 +68,7 @@ class CredentialListenerTest {
   void shouldThrowExceptionWhenCredentialRevokedAndSendingFails(String credentialType)
       throws MessagingException {
     doThrow(MessagingException.class).when(emailService)
-        .sendMessageToExistingUser(any(), any(), any(), any());
+        .sendMessageToExistingUser(any(), any(), any(), any(), any());
 
     CredentialEvent event = new CredentialEvent(CREDENTIAL_ID, credentialType, ISSUED_AT,
         TRAINEE_ID);
@@ -84,7 +84,7 @@ class CredentialListenerTest {
 
     listener.handleCredentialRevoked(event);
 
-    verify(emailService).sendMessageToExistingUser(eq(TRAINEE_ID), any(), any(), any());
+    verify(emailService).sendMessageToExistingUser(eq(TRAINEE_ID), any(), any(), any(), any());
   }
 
   @ParameterizedTest
@@ -96,7 +96,8 @@ class CredentialListenerTest {
 
     listener.handleCredentialRevoked(event);
 
-    verify(emailService).sendMessageToExistingUser(any(), eq(CREDENTIAL_REVOKED), any(), any());
+    verify(emailService).sendMessageToExistingUser(any(), eq(CREDENTIAL_REVOKED), any(), any(),
+        any());
   }
 
   @ParameterizedTest
@@ -108,7 +109,7 @@ class CredentialListenerTest {
 
     listener.handleCredentialRevoked(event);
 
-    verify(emailService).sendMessageToExistingUser(any(), any(), eq(VERSION), any());
+    verify(emailService).sendMessageToExistingUser(any(), any(), eq(VERSION), any(), any());
   }
 
   @ParameterizedTest
@@ -122,7 +123,7 @@ class CredentialListenerTest {
 
     ArgumentCaptor<Map<String, Object>> templateVarsCaptor = ArgumentCaptor.forClass(Map.class);
     verify(emailService).sendMessageToExistingUser(any(), any(), any(),
-        templateVarsCaptor.capture());
+        templateVarsCaptor.capture(), any());
 
     Map<String, Object> templateVariables = templateVarsCaptor.getValue();
     assertThat("Unexpected credential type.", templateVariables.get("credentialType"),
@@ -139,7 +140,7 @@ class CredentialListenerTest {
 
     ArgumentCaptor<Map<String, Object>> templateVarsCaptor = ArgumentCaptor.forClass(Map.class);
     verify(emailService).sendMessageToExistingUser(any(), any(), any(),
-        templateVarsCaptor.capture());
+        templateVarsCaptor.capture(), any());
 
     Map<String, Object> templateVariables = templateVarsCaptor.getValue();
     assertThat("Unexpected issued at.", templateVariables.get("issuedAt"), is(ISSUED_AT));
