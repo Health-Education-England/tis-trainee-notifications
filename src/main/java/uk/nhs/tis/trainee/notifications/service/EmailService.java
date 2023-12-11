@@ -101,7 +101,7 @@ public class EmailService {
     templateVariables = new HashMap<>(templateVariables);
     templateVariables.putIfAbsent("name", userDetails.familyName());
     sendMessage(traineeId, userDetails.email(), notificationType, templateVersion,
-        templateVariables, tisReferenceInfo);
+        templateVariables, tisReferenceInfo, false);
   }
 
   /**
@@ -113,11 +113,12 @@ public class EmailService {
    * @param templateVersion   The version of the template to be sent.
    * @param templateVariables The variables to pass to the template.
    * @param tisReferenceInfo  The TIS reference information (table and key).
+   * @param doNotSendJustLog Do not actually send the mail, simply log the action.
    * @throws MessagingException When the message could not be sent.
    */
-  private void sendMessage(String traineeId, String recipient, NotificationType notificationType,
+  public void sendMessage(String traineeId, String recipient, NotificationType notificationType,
       String templateVersion, Map<String, Object> templateVariables,
-      TisReferenceInfo tisReferenceInfo) throws MessagingException {
+      TisReferenceInfo tisReferenceInfo, boolean doNotSendJustLog) throws MessagingException {
     String templateName = templateService.getTemplatePath(EMAIL, notificationType, templateVersion);
     log.info("Sending template {} to {}.", templateName, recipient);
 
@@ -140,7 +141,12 @@ public class EmailService {
     helper.setSubject(subject);
     helper.setText(content, true);
 
-    mailSender.send(helper.getMimeMessage());
+    if (!doNotSendJustLog) {
+      mailSender.send(helper.getMimeMessage());
+    } else {
+      log.info("For now, just logging mail to '{}' with subject '{}' and content '{}'", recipient,
+          subject, content);
+    }
 
     // Store the notification history.
     RecipientInfo recipientInfo = new RecipientInfo(traineeId, EMAIL, recipient);

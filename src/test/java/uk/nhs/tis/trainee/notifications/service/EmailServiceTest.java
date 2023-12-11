@@ -30,6 +30,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -46,6 +47,7 @@ import jakarta.mail.internet.MimeMessage;
 import jakarta.mail.internet.MimeMessage.RecipientType;
 import java.io.IOException;
 import java.net.URI;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -393,5 +395,27 @@ class EmailServiceTest {
     History history = historyCaptor.getValue();
     ObjectId historyId = history.id();
     assertThat("Unexpected notification id.", headerId, is(historyId.toString()));
+  }
+
+  @Test
+  void shouldNotActuallySendMessageIfFlagged() throws MessagingException {
+    String template = "<div>Test message body</div>";
+    when(templateService.process(any(), eq(Set.of("content")), (Context) any())).thenReturn(
+        template);
+
+    service.sendMessage(TRAINEE_ID, RECIPIENT, NOTIFICATION_TYPE, "", new HashMap<>(), null, true);
+
+    verify(mailSender, never()).send((MimeMessage) any());
+  }
+
+  @Test
+  void shouldSendMessageIfNotFlagged() throws MessagingException {
+    String template = "<div>Test message body</div>";
+    when(templateService.process(any(), eq(Set.of("content")), (Context) any())).thenReturn(
+        template);
+
+    service.sendMessage(TRAINEE_ID, RECIPIENT, NOTIFICATION_TYPE, "", new HashMap<>(), null, false);
+
+    verify(mailSender).send((MimeMessage) any());
   }
 }
