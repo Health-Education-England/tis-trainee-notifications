@@ -21,9 +21,13 @@
 
 package uk.nhs.tis.trainee.notifications.service;
 
+import static org.junit.Assert.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyMap;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -35,6 +39,7 @@ import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipServic
 import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.START_DATE_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.TIS_ID_FIELD;
 
+import jakarta.mail.MessagingException;
 import java.time.LocalDate;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -66,7 +71,6 @@ class NotificationServiceTest {
   private JobDetail jobDetails;
 
   private NotificationService service;
-  private HistoryService historyService;
   private EmailService emailService;
   private RestTemplate restTemplate;
   private JobExecutionContext jobExecutionContext;
@@ -75,7 +79,6 @@ class NotificationServiceTest {
   void setUp() {
     jobExecutionContext = mock(JobExecutionContext.class);
     emailService = mock(EmailService.class);
-    historyService = mock(HistoryService.class);
     restTemplate = mock(RestTemplate.class);
 
     JobDataMap jobDataMap = new JobDataMap();
@@ -89,8 +92,7 @@ class NotificationServiceTest {
         .usingJobData(jobDataMap)
         .build();
 
-    service = new NotificationService(historyService, emailService, restTemplate, TEMPLATE_VERSION,
-        SERVICE_URL);
+    service = new NotificationService(emailService, restTemplate, TEMPLATE_VERSION, SERVICE_URL);
   }
 
   @Test
@@ -147,5 +149,29 @@ class NotificationServiceTest {
     when(emailService.getRecipientAccount(any())).thenThrow(new IllegalArgumentException("error"));
 
     assertDoesNotThrow(() -> service.execute(jobExecutionContext));
+  }
+
+  @Test
+  void shouldRethrowEmailServiceExceptions() throws MessagingException {
+    UserAccountDetails userAccountDetails = new UserAccountDetails(USER_EMAIL, USER_FAMILY_NAME);
+    when(jobExecutionContext.getJobDetail()).thenReturn(jobDetails);
+    when(emailService.getRecipientAccount(PERSON_ID)).thenReturn(userAccountDetails);
+
+    doThrow(new MessagingException("error"))
+        .when(emailService).sendMessage(any(), any(), any(), any(), any(), any(), anyBoolean());
+
+    assertThrows(RuntimeException.class, () -> service.execute(jobExecutionContext));
+  }
+
+  @Test
+  void shouldLogEmailsNotSendThem() throws MessagingException {
+    UserAccountDetails userAccountDetails = new UserAccountDetails(USER_EMAIL, USER_FAMILY_NAME);
+
+    when(jobExecutionContext.getJobDetail()).thenReturn(jobDetails);
+    when(emailService.getRecipientAccount(PERSON_ID)).thenReturn(userAccountDetails);
+
+    service.execute(jobExecutionContext);
+
+    verify(emailService).sendMessage(any(), any(), any(), any(), any(), any(), eq(true));
   }
 }
