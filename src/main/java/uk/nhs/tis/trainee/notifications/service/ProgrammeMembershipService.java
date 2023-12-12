@@ -54,6 +54,7 @@ import uk.nhs.tis.trainee.notifications.model.TisReferenceType;
 @Slf4j
 @Service
 public class ProgrammeMembershipService {
+
   public static final String TIS_ID_FIELD = "tisId";
   public static final String PERSON_ID_FIELD = "personId";
   public static final String PROGRAMME_NAME_FIELD = "programmeName";
@@ -63,6 +64,9 @@ public class ProgrammeMembershipService {
 
   private static final String TRIGGER_ID_PREFIX = "trigger-";
   private static final Integer PAST_MILESTONE_SCHEDULE_DELAY_HOURS = 1;
+
+  protected static final Integer WEEKS_AFTER_PROGRAMME_START_MUTE_NOTIFICATIONS = 13;
+  protected static LocalDate notificationServiceLaunchDate = LocalDate.of(2023, 12, 15);
 
   private static final List<String> INCLUDE_CURRICULUM_SUBTYPES
       = List.of("MEDICAL_CURRICULUM", "MEDICAL_SPR");
@@ -278,13 +282,24 @@ public class ProgrammeMembershipService {
   private boolean shouldScheduleNotification(LocalDate programmeStartDate,
       NotificationType milestone, Map<NotificationType, Instant> notificationsAlreadySent) {
 
-    //do not resend any notification
+    // Do not resend any notification.
     if (notificationsAlreadySent.containsKey(milestone)) {
+      return false;
+    }
+
+    // Do not schedule if we are now some weeks after the programme start.
+    if (LocalDate.now()
+        .isAfter(programmeStartDate.plusWeeks(WEEKS_AFTER_PROGRAMME_START_MUTE_NOTIFICATIONS))) {
       return false;
     }
 
     Integer daysBeforeStart = getNotificationDaysBeforeStart(milestone);
     LocalDate milestoneDate = programmeStartDate.minusDays(daysBeforeStart);
+
+    // Do not schedule if notification due before the notification service was first launched.
+    if (milestoneDate.isBefore(notificationServiceLaunchDate)) {
+      return false;
+    }
 
     if (milestoneDate.isAfter(LocalDate.now())) {
       // A future notification, to be scheduled at the appropriate time
@@ -306,7 +321,7 @@ public class ProgrammeMembershipService {
    *
    * @param notificationType The notification type.
    * @return The number of days before the programme start for the notification, or null if not a
-   *         programme update notification type.
+   *     programme update notification type.
    */
   public Integer getNotificationDaysBeforeStart(NotificationType notificationType) {
     switch (notificationType) {

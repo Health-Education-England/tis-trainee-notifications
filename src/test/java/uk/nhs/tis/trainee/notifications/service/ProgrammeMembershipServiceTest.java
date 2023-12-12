@@ -94,6 +94,9 @@ class ProgrammeMembershipServiceTest {
     scheduler = mock(Scheduler.class);
     historyService = mock(HistoryService.class);
     service = new ProgrammeMembershipService(scheduler, historyService);
+
+    ProgrammeMembershipService.notificationServiceLaunchDate = LocalDate.MIN;
+    //to avoid this affecting the scheduling logic unless explicitly needed
   }
 
   @ParameterizedTest
@@ -437,6 +440,47 @@ class ProgrammeMembershipServiceTest {
 
     verify(scheduler, never()).scheduleJob(any(), any());
     //since the 0-week notification has already been sent
+  }
+
+  @Test
+  void shouldNotScheduleNotificationsIfProgrammeStartedBeforeCutoffTimePeriod()
+      throws SchedulerException {
+    Curriculum theCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, "any specialty");
+    ProgrammeMembership programmeMembership = new ProgrammeMembership();
+    programmeMembership.setTisId(TIS_ID);
+    programmeMembership.setPersonId(PERSON_ID);
+    programmeMembership.setStartDate(
+        LocalDate.now().minusWeeks(
+            ProgrammeMembershipService.WEEKS_AFTER_PROGRAMME_START_MUTE_NOTIFICATIONS + 1));
+    programmeMembership.setCurricula(List.of(theCurriculum));
+
+    when(historyService.findAllForTrainee(PERSON_ID)).thenReturn(new ArrayList<>());
+
+    service.addNotifications(programmeMembership);
+
+    verify(scheduler, never()).scheduleJob(any(), any());
+    //since the programme started too far in the past
+  }
+
+  @Test
+  void shouldNotScheduleNotificationsIfScheduledBeforeServiceFirstLaunched()
+      throws SchedulerException {
+    ProgrammeMembershipService.notificationServiceLaunchDate = LocalDate.MAX;
+    //artificially set service not yet initiated
+
+    Curriculum theCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, "any specialty");
+    ProgrammeMembership programmeMembership = new ProgrammeMembership();
+    programmeMembership.setTisId(TIS_ID);
+    programmeMembership.setPersonId(PERSON_ID);
+    programmeMembership.setStartDate(START_DATE);
+    programmeMembership.setCurricula(List.of(theCurriculum));
+
+    when(historyService.findAllForTrainee(PERSON_ID)).thenReturn(new ArrayList<>());
+
+    service.addNotifications(programmeMembership);
+
+    verify(scheduler, never()).scheduleJob(any(), any());
+    //since all notifications would be before the service launch
   }
 
   @Test
