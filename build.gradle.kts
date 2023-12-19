@@ -1,11 +1,11 @@
 plugins {
-  id "java"
+  java
   id("org.springframework.boot") version "3.1.5"
   id("io.spring.dependency-management") version "1.1.4"
 
   // Code quality plugins
-  id "checkstyle"
-  id "jacoco"
+  checkstyle
+  jacoco
   id("org.sonarqube") version "4.4.1.3373"
 }
 
@@ -13,10 +13,8 @@ group = "uk.nhs.tis.trainee"
 version = "1.9.2"
 
 configurations {
-  checkstyleConfig
-
   compileOnly {
-    extendsFrom(annotationProcessor)
+    extendsFrom(configurations.annotationProcessor.get())
   }
 }
 
@@ -57,22 +55,22 @@ dependencies {
   annotationProcessor("org.projectlombok:lombok")
 
   // MapStruct
-  ext.mapstructVersion = "1.5.5.Final"
+  val mapstructVersion = "1.5.5.Final"
   implementation("org.mapstruct:mapstruct:${mapstructVersion}")
   annotationProcessor("org.mapstruct:mapstruct-processor:${mapstructVersion}")
   testAnnotationProcessor("org.mapstruct:mapstruct-processor:${mapstructVersion}")
 
-  ext.mongockVersion = "5.3.6"
+  val mongockVersion = "5.3.6"
   implementation("io.mongock:mongock-springboot-v3:${mongockVersion}")
   implementation("io.mongock:mongodb-springdata-v4-driver:${mongockVersion}")
 
   // Sentry reporting
-  ext.sentryVersion = "6.34.0"
+  val sentryVersion = "6.34.0"
   implementation("io.sentry:sentry-spring-boot-starter:${sentryVersion}")
   implementation("io.sentry:sentry-logback:${sentryVersion}")
 
   testImplementation("org.springframework.cloud:spring-cloud-starter-bootstrap")
-  ext.playtikaTestcontainersVersion = "3.0.6"
+  val playtikaTestcontainersVersion = "3.0.6"
   testImplementation("com.playtika.testcontainers:embedded-mongodb:$playtikaTestcontainersVersion")
   testImplementation("com.playtika.testcontainers:embedded-mysql:$playtikaTestcontainersVersion")
   testImplementation("com.playtika.testcontainers:embedded-redis:$playtikaTestcontainersVersion")
@@ -80,14 +78,6 @@ dependencies {
   testImplementation("org.testcontainers:junit-jupiter:1.19.3")
 
   testImplementation("org.jsoup:jsoup:1.17.1")
-
-  checkstyleConfig("com.puppycrawl.tools:checkstyle:${checkstyle.toolVersion}") {
-    transitive = false
-  }
-}
-
-checkstyle {
-  config = resources.text.fromArchiveEntry(configurations.checkstyleConfig, "google_checks.xml")
 }
 
 java {
@@ -95,6 +85,10 @@ java {
     languageVersion.set(JavaLanguageVersion.of(17))
     vendor.set(JvmVendorSpec.ADOPTIUM)
   }
+}
+
+checkstyle {
+  config = resources.text.fromArchiveEntry(configurations.checkstyle.get().first(), "google_checks.xml")
 }
 
 sonarqube {
