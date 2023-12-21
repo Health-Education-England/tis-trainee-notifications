@@ -24,8 +24,8 @@ repositories {
 
 dependencyManagement {
   imports {
-    mavenBom("org.springframework.cloud:spring-cloud-dependencies:2022.0.4")
-    mavenBom("io.awspring.cloud:spring-cloud-aws-dependencies:3.0.3")
+    mavenBom("org.springframework.cloud:spring-cloud-dependencies:2023.0.0")
+    mavenBom("io.awspring.cloud:spring-cloud-aws-dependencies:3.1.0")
   }
 }
 
@@ -44,7 +44,7 @@ dependencies {
   implementation("io.awspring.cloud:spring-cloud-aws-starter-ses")
   implementation("io.awspring.cloud:spring-cloud-aws-starter-sqs")
   implementation("software.amazon.awssdk:cognitoidentityprovider")
-  implementation("com.amazonaws:aws-xray-recorder-sdk-spring:2.14.0")
+  implementation("com.amazonaws:aws-xray-recorder-sdk-spring:2.15.0")
 
   implementation("com.mysql:mysql-connector-j")
   implementation("org.flywaydb:flyway-core")
@@ -70,7 +70,7 @@ dependencies {
   implementation("io.sentry:sentry-logback:${sentryVersion}")
 
   testImplementation("org.springframework.cloud:spring-cloud-starter-bootstrap")
-  val playtikaTestcontainersVersion = "3.0.6"
+  val playtikaTestcontainersVersion = "3.1.0"
   testImplementation("com.playtika.testcontainers:embedded-mongodb:$playtikaTestcontainersVersion")
   testImplementation("com.playtika.testcontainers:embedded-mysql:$playtikaTestcontainersVersion")
   testImplementation("com.playtika.testcontainers:embedded-redis:$playtikaTestcontainersVersion")
