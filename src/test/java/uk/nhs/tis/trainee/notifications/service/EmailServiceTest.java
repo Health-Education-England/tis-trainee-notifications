@@ -406,6 +406,7 @@ class EmailServiceTest {
     service.sendMessage(TRAINEE_ID, RECIPIENT, NOTIFICATION_TYPE, "", new HashMap<>(), null, true);
 
     verify(mailSender, never()).send((MimeMessage) any());
+    verify(historyService, never()).save(any());
   }
 
   @Test
@@ -417,5 +418,6 @@ class EmailServiceTest {
     service.sendMessage(TRAINEE_ID, RECIPIENT, NOTIFICATION_TYPE, "", new HashMap<>(), null, false);
 
     verify(mailSender).send((MimeMessage) any());
+    verify(historyService).save(any());
   }
 }
