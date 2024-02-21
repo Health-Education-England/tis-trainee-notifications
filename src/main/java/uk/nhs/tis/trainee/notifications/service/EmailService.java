@@ -148,8 +148,8 @@ public class EmailService {
       RecipientInfo recipientInfo = new RecipientInfo(traineeId, EMAIL, recipient);
       TemplateInfo templateInfo = new TemplateInfo(notificationType.getTemplateName(),
           templateVersion, templateVariables);
-      History history = new History(notificationId, tisReferenceInfo, notificationType, recipientInfo,
-          templateInfo, Instant.now(), NotificationStatus.SENT, null);
+      History history = new History(notificationId, tisReferenceInfo, notificationType,
+          recipientInfo, templateInfo, Instant.now(), NotificationStatus.SENT, null);
       historyService.save(history);
 
       log.info("Sent template {} to {}.", templateName, recipient);
