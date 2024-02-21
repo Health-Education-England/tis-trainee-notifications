@@ -143,20 +143,20 @@ public class EmailService {
 
     if (!doNotSendJustLog) {
       mailSender.send(helper.getMimeMessage());
+
+      // Store the notification history.
+      RecipientInfo recipientInfo = new RecipientInfo(traineeId, EMAIL, recipient);
+      TemplateInfo templateInfo = new TemplateInfo(notificationType.getTemplateName(),
+          templateVersion, templateVariables);
+      History history = new History(notificationId, tisReferenceInfo, notificationType, recipientInfo,
+          templateInfo, Instant.now(), NotificationStatus.SENT, null);
+      historyService.save(history);
+
+      log.info("Sent template {} to {}.", templateName, recipient);
     } else {
       log.info("For now, just logging mail to '{}' with subject '{}' and content '{}'", recipient,
           subject, content);
     }
-
-    // Store the notification history.
-    RecipientInfo recipientInfo = new RecipientInfo(traineeId, EMAIL, recipient);
-    TemplateInfo templateInfo = new TemplateInfo(notificationType.getTemplateName(),
-        templateVersion, templateVariables);
-    History history = new History(notificationId, tisReferenceInfo, notificationType, recipientInfo,
-        templateInfo, Instant.now(), NotificationStatus.SENT, null);
-    historyService.save(history);
-
-    log.info("Sent template {} to {}.", templateName, recipient);
   }
 
   /**
