@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright 2023 Crown Copyright (Health Education England)
+ * Copyright 2024 Crown Copyright (Health Education England)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
  * associated documentation files (the "Software"), to deal in the Software without restriction,
@@ -19,11 +19,17 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package uk.nhs.tis.trainee.notifications.model;
+package uk.nhs.tis.trainee.notifications.dto;
+
+import java.util.UUID;
 
 /**
- * An enumeration of possible notification statuses.
+ * An event published when a user account is confirmed.
+ *
+ * @param userId    The user account ID.
+ * @param traineeId The linked trainee ID.
+ * @param email     The user account's email address.
  */
-public enum NotificationStatus {
-  FAILED, SENT, UNREAD
+public record AccountConfirmedEvent(UUID userId, String traineeId, String email) {
+
 }

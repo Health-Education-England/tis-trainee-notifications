@@ -21,30 +21,18 @@
 
 package uk.nhs.tis.trainee.notifications.model;
 
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+
 /**
  * An enumeration of possible message types.
  */
+@Getter
+@AllArgsConstructor
 public enum MessageType {
 
+  IN_APP("in-app"),
   EMAIL("email");
 
   private final String templatePath;
-
-  /**
-   * Create an enumeration of a possible message type.
-   *
-   * @param templatePath The resource sub-path for templates of this type.
-   */
-  MessageType(String templatePath) {
-    this.templatePath = templatePath;
-  }
-
-  /**
-   * Get the resource sub-path for templates of this type.
-   *
-   * @return The template sub-path.
-   */
-  public String getTemplatePath() {
-    return templatePath;
-  }
 }

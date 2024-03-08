@@ -26,6 +26,7 @@ import static org.springframework.util.ResourceUtils.CLASSPATH_URL_PREFIX;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -54,14 +55,19 @@ public class MethodArgumentUtil {
     for (NotificationType type : NotificationType.values()) {
       String name = type.getTemplateName();
       Path templateRoot = emailRoot.toPath().resolve(name);
-      int parentNameCount = templateRoot.getNameCount();
-      List<Arguments> typeArguments = Files.walk(templateRoot)
-          .filter(Files::isRegularFile)
-          .map(path -> path.subpath(parentNameCount, path.getNameCount()))
-          .map(subPath -> subPath.toString().replace(".html", ""))
-          .map(version -> Arguments.of(type, version))
-          .toList();
-      arguments.addAll(typeArguments);
+
+      try (Stream<Path> paths = Files.walk(templateRoot)) {
+        int parentNameCount = templateRoot.getNameCount();
+        List<Arguments> typeArguments = paths
+            .filter(Files::isRegularFile)
+            .map(path -> path.subpath(parentNameCount, path.getNameCount()))
+            .map(subPath -> subPath.toString().replace(".html", ""))
+            .map(version -> Arguments.of(type, version))
+            .toList();
+        arguments.addAll(typeArguments);
+      } catch (NoSuchFileException e) {
+        // Not all notification types have an email template.
+      }
     }
 
     return arguments.stream();

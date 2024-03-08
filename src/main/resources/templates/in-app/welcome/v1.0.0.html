@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <title>Welcome Notification</title>
+  </head>
+  <body>
+    <h1>In-App Notification</h1>
+    <h2>Subject</h2>
+    <th:block th:fragment="subject">Welcome to TIS Self-Service</th:block>
+    <h2>Content</h2>
+    <th:block th:fragment="content">Welcome to TIS Self-Service
+
+Our goal is to improve your training experience by making TIS Self-Service a one-stop-shop for your training-related admin tasks.
+
+We are in the Private Beta phase of delivery so expect more features soon.</th:block>
+  </body>
+</html>
