@@ -74,6 +74,37 @@ public class MethodArgumentUtil {
   }
 
   /**
+   * Get all versions of each in-app template for each {@link NotificationType}.
+   *
+   * @return A stream of NotificationType and versions, indexed in that order.
+   * @throws IOException If the template files could not be traversed.
+   */
+  public static Stream<Arguments> getInAppTemplateTypeAndVersions() throws IOException {
+    File emailRoot = ResourceUtils.getFile(CLASSPATH_URL_PREFIX + "templates/in-app/");
+    List<Arguments> arguments = new ArrayList<>();
+
+    for (NotificationType type : NotificationType.values()) {
+      String name = type.getTemplateName();
+      Path templateRoot = emailRoot.toPath().resolve(name);
+
+      try (Stream<Path> paths = Files.walk(templateRoot)) {
+        int parentNameCount = templateRoot.getNameCount();
+        List<Arguments> typeArguments = paths
+            .filter(Files::isRegularFile)
+            .map(path -> path.subpath(parentNameCount, path.getNameCount()))
+            .map(subPath -> subPath.toString().replace(".html", ""))
+            .map(version -> Arguments.of(type, version))
+            .toList();
+        arguments.addAll(typeArguments);
+      } catch (NoSuchFileException e) {
+        // Not all notification types have an email template.
+      }
+    }
+
+    return arguments.stream();
+  }
+
+  /**
    * Get all combinations for {@link MessageType} and {@link NotificationType}.
    *
    * @return A stream of MessageType and NotificationType combinations, indexed in that order.

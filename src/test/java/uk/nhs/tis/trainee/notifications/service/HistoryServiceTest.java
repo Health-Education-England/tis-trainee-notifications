@@ -252,4 +252,45 @@ class HistoryServiceTest {
     assertThat("Unexpected message presence.", rebuiltMessage.isPresent(), is(true));
     assertThat("Unexpected message.", rebuiltMessage.get(), is(message));
   }
+
+  @Test
+  void shouldNotRebuildMessageForTraineeWhenNotificationNotFound() {
+    when(repository.findByIdAndRecipient_Id(any(), any())).thenReturn(Optional.empty());
+
+    Optional<String> message = service.rebuildMessage(TRAINEE_ID, NOTIFICATION_ID);
+
+    assertThat("Unexpected message.", message, is(Optional.empty()));
+
+    verifyNoInteractions(templateService);
+  }
+
+  @ParameterizedTest
+  @MethodSource("uk.nhs.tis.trainee.notifications.MethodArgumentUtil#getTemplateCombinations")
+  void shouldRebuildMessageForTraineeWhenNotificationFound(MessageType messageType,
+      NotificationType notificationType) {
+    ObjectId notificationId = new ObjectId(NOTIFICATION_ID);
+    RecipientInfo recipientInfo = new RecipientInfo(TRAINEE_ID, messageType, TRAINEE_CONTACT);
+    TemplateInfo templateInfo = new TemplateInfo(TEMPLATE_NAME, TEMPLATE_VERSION,
+        TEMPLATE_VARIABLES);
+    TisReferenceInfo tisReferenceInfo = new TisReferenceInfo(TIS_REFERENCE_TYPE, TIS_REFERENCE_ID);
+
+    History history = new History(notificationId, tisReferenceInfo, notificationType, recipientInfo,
+        templateInfo, Instant.now(), SENT, null);
+    when(repository.findByIdAndRecipient_Id(any(), any())).thenReturn(Optional.of(history));
+
+    String templatePath = "type/test/template/v1.2.3";
+    when(templateService.getTemplatePath(messageType, TEMPLATE_NAME, TEMPLATE_VERSION)).thenReturn(
+        templatePath);
+
+    String message = """
+        <html>
+          <p>Rebuilt message</p>
+        </html>""";
+    when(templateService.process(templatePath, Set.of(), TEMPLATE_VARIABLES)).thenReturn(message);
+
+    Optional<String> rebuiltMessage = service.rebuildMessage(TRAINEE_ID, NOTIFICATION_ID);
+
+    assertThat("Unexpected message presence.", rebuiltMessage.isPresent(), is(true));
+    assertThat("Unexpected message.", rebuiltMessage.get(), is(message));
+  }
 }

@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright 2023 Crown Copyright (Health Education England)
+ * Copyright 2024 Crown Copyright (Health Education England)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
  * associated documentation files (the "Software"), to deal in the Software without restriction,
@@ -19,36 +19,39 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package uk.nhs.tis.trainee.notifications.repository;
+package uk.nhs.tis.trainee.notifications.api.util;
 
-import java.util.List;
-import java.util.Optional;
-import org.bson.types.ObjectId;
-import org.springframework.data.mongodb.repository.MongoRepository;
-import org.springframework.stereotype.Repository;
-import uk.nhs.tis.trainee.notifications.model.History;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.util.Base64;
+import java.util.Map;
 
 /**
- * A repository of historical notifications.
+ * A utility for dealing with authorization tokens.
  */
-@Repository
-public interface HistoryRepository extends
-    MongoRepository<History, ObjectId> {
+public class AuthTokenUtil {
+
+  private static final String TIS_ID_ATTRIBUTE = "custom:tisId";
+
+  private static final ObjectMapper mapper = new ObjectMapper();
+
+  private AuthTokenUtil() {
+  }
 
   /**
-   * Find all history for the given recipient ID.
+   * Get the trainee's TIS ID from the provided token.
    *
-   * @param recipientId The ID of the recipient to get the history for.
-   * @return The found history, empty if none found.
+   * @param token The token to use.
+   * @return The trainee's TIS ID.
+   * @throws IOException If the token's payload was not a Map.
    */
-  List<History> findAllByRecipient_IdOrderBySentAtDesc(String recipientId);
+  public static String getTraineeTisId(String token) throws IOException {
+    String[] tokenSections = token.split("\\.");
+    byte[] payloadBytes = Base64.getUrlDecoder()
+        .decode(tokenSections[1].getBytes(StandardCharsets.UTF_8));
 
-  /**
-   * Find a specific history record associated with the given recipient ID.
-   *
-   * @param id          The ID of the history record.
-   * @param recipientId The ID of the recipient to get the history for.
-   * @return The found history, empty if none found.
-   */
-  Optional<History> findByIdAndRecipient_Id(ObjectId id, String recipientId);
+    Map<?, ?> payload = mapper.readValue(payloadBytes, Map.class);
+    return (String) payload.get(TIS_ID_ATTRIBUTE);
+  }
 }

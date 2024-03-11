@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright 2023 Crown Copyright (Health Education England)
+ * Copyright 2024 Crown Copyright (Health Education England)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
  * associated documentation files (the "Software"), to deal in the Software without restriction,
@@ -19,36 +19,38 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package uk.nhs.tis.trainee.notifications.repository;
+package uk.nhs.tis.trainee.notifications;
 
-import java.util.List;
-import java.util.Optional;
-import org.bson.types.ObjectId;
-import org.springframework.data.mongodb.repository.MongoRepository;
-import org.springframework.stereotype.Repository;
-import uk.nhs.tis.trainee.notifications.model.History;
+import java.nio.charset.StandardCharsets;
+import java.util.Base64;
 
 /**
- * A repository of historical notifications.
+ * A utility for generating test JWT tokens.
  */
-@Repository
-public interface HistoryRepository extends
-    MongoRepository<History, ObjectId> {
+public class TestJwtUtil {
+
+  public static final String TIS_ID_ATTRIBUTE = "custom:tisId";
 
   /**
-   * Find all history for the given recipient ID.
+   * Generate a token with the given payload.
    *
-   * @param recipientId The ID of the recipient to get the history for.
-   * @return The found history, empty if none found.
+   * @param payload The payload to inject in to the token.
+   * @return The generated token.
    */
-  List<History> findAllByRecipient_IdOrderBySentAtDesc(String recipientId);
+  public static String generateToken(String payload) {
+    String encodedPayload = Base64.getUrlEncoder()
+        .encodeToString(payload.getBytes(StandardCharsets.UTF_8));
+    return String.format("aGVhZGVy.%s.c2lnbmF0dXJl", encodedPayload);
+  }
 
   /**
-   * Find a specific history record associated with the given recipient ID.
+   * Generate a token with the TIS ID attribute as the payload.
    *
-   * @param id          The ID of the history record.
-   * @param recipientId The ID of the recipient to get the history for.
-   * @return The found history, empty if none found.
+   * @param traineeTisId The TIS ID to inject in to the payload.
+   * @return The generated token.
    */
-  Optional<History> findByIdAndRecipient_Id(ObjectId id, String recipientId);
+  public static String generateTokenForTisId(String traineeTisId) {
+    String payload = String.format("{\"%s\":\"%s\"}", TIS_ID_ATTRIBUTE, traineeTisId);
+    return generateToken(payload);
+  }
 }

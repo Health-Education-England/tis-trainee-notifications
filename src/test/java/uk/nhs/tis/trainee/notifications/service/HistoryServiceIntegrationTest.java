@@ -26,6 +26,7 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.springframework.test.annotation.DirtiesContext.ClassMode.AFTER_EACH_TEST_METHOD;
 import static uk.nhs.tis.trainee.notifications.model.MessageType.EMAIL;
+import static uk.nhs.tis.trainee.notifications.model.MessageType.IN_APP;
 import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.SENT;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.FORM_UPDATED;
 
@@ -216,6 +217,115 @@ class HistoryServiceIntegrationTest {
     Element emailHeader = body.children().get(0);
     assertThat("Unexpected element tag.", emailHeader.tagName(), is("h1"));
     assertThat("Unexpected email header.", emailHeader.text(), is("Email Message"));
+
+    Element subjectHeader = body.children().get(1);
+    assertThat("Unexpected element tag.", subjectHeader.tagName(), is("h2"));
+    assertThat("Unexpected subject header.", subjectHeader.text(), is("Subject"));
+
+    Element bodyHeader = body.children().get(2);
+    assertThat("Unexpected element tag.", bodyHeader.tagName(), is("h2"));
+    assertThat("Unexpected body header.", bodyHeader.text(), is("Content"));
+  }
+
+  @ParameterizedTest
+  @MethodSource(
+      "uk.nhs.tis.trainee.notifications.MethodArgumentUtil#getInAppTemplateTypeAndVersions")
+  void shouldRebuildInAppMessageWhenNotificationFound(NotificationType notificationType,
+      String version) {
+    RecipientInfo recipientInfo = new RecipientInfo(TRAINEE_ID, IN_APP, TRAINEE_CONTACT);
+    TemplateInfo templateInfo = new TemplateInfo(notificationType.getTemplateName(), version,
+        TEMPLATE_VARIABLES);
+    TisReferenceInfo tisReferenceInfo = new TisReferenceInfo(TIS_REFERENCE_TYPE, TIS_REFERENCE_ID);
+
+    History history = new History(NOTIFICATION_ID, tisReferenceInfo, notificationType,
+        recipientInfo, templateInfo, Instant.now(), SENT, null);
+    service.save(history);
+
+    Optional<String> message = service.rebuildMessage(NOTIFICATION_ID.toString());
+
+    assertThat("Unexpected message presence.", message.isPresent(), is(true));
+
+    Document content = Jsoup.parse(message.get());
+    Element body = content.body();
+
+    Element emailHeader = body.children().get(0);
+    assertThat("Unexpected element tag.", emailHeader.tagName(), is("h1"));
+    assertThat("Unexpected email header.", emailHeader.text(), is("In-App Notification"));
+
+    Element subjectHeader = body.children().get(1);
+    assertThat("Unexpected element tag.", subjectHeader.tagName(), is("h2"));
+    assertThat("Unexpected subject header.", subjectHeader.text(), is("Subject"));
+
+    Element bodyHeader = body.children().get(2);
+    assertThat("Unexpected element tag.", bodyHeader.tagName(), is("h2"));
+    assertThat("Unexpected body header.", bodyHeader.text(), is("Content"));
+  }
+
+  @Test
+  void shouldNotRebuildMessageForTraineeWhenNotificationNotFound() {
+    Optional<String> message = service.rebuildMessage(TRAINEE_ID, ObjectId.get().toString());
+
+    assertThat("Unexpected message.", message, is(Optional.empty()));
+  }
+
+  @ParameterizedTest
+  @MethodSource(
+      "uk.nhs.tis.trainee.notifications.MethodArgumentUtil#getEmailTemplateTypeAndVersions")
+  void shouldRebuildEmailMessageForTraineeWhenNotificationFound(NotificationType notificationType,
+      String version) {
+    RecipientInfo recipientInfo = new RecipientInfo(TRAINEE_ID, EMAIL, TRAINEE_CONTACT);
+    TemplateInfo templateInfo = new TemplateInfo(notificationType.getTemplateName(), version,
+        TEMPLATE_VARIABLES);
+    TisReferenceInfo tisReferenceInfo = new TisReferenceInfo(TIS_REFERENCE_TYPE, TIS_REFERENCE_ID);
+
+    History history = new History(NOTIFICATION_ID, tisReferenceInfo, notificationType,
+        recipientInfo, templateInfo, Instant.now(), SENT, null);
+    service.save(history);
+
+    Optional<String> message = service.rebuildMessage(TRAINEE_ID, NOTIFICATION_ID.toString());
+
+    assertThat("Unexpected message presence.", message.isPresent(), is(true));
+
+    Document content = Jsoup.parse(message.get());
+    Element body = content.body();
+
+    Element emailHeader = body.children().get(0);
+    assertThat("Unexpected element tag.", emailHeader.tagName(), is("h1"));
+    assertThat("Unexpected email header.", emailHeader.text(), is("Email Message"));
+
+    Element subjectHeader = body.children().get(1);
+    assertThat("Unexpected element tag.", subjectHeader.tagName(), is("h2"));
+    assertThat("Unexpected subject header.", subjectHeader.text(), is("Subject"));
+
+    Element bodyHeader = body.children().get(2);
+    assertThat("Unexpected element tag.", bodyHeader.tagName(), is("h2"));
+    assertThat("Unexpected body header.", bodyHeader.text(), is("Content"));
+  }
+
+  @ParameterizedTest
+  @MethodSource(
+      "uk.nhs.tis.trainee.notifications.MethodArgumentUtil#getInAppTemplateTypeAndVersions")
+  void shouldRebuildInAppMessageForTraineeWhenNotificationFound(NotificationType notificationType,
+      String version) {
+    RecipientInfo recipientInfo = new RecipientInfo(TRAINEE_ID, IN_APP, TRAINEE_CONTACT);
+    TemplateInfo templateInfo = new TemplateInfo(notificationType.getTemplateName(), version,
+        TEMPLATE_VARIABLES);
+    TisReferenceInfo tisReferenceInfo = new TisReferenceInfo(TIS_REFERENCE_TYPE, TIS_REFERENCE_ID);
+
+    History history = new History(NOTIFICATION_ID, tisReferenceInfo, notificationType,
+        recipientInfo, templateInfo, Instant.now(), SENT, null);
+    service.save(history);
+
+    Optional<String> message = service.rebuildMessage(TRAINEE_ID, NOTIFICATION_ID.toString());
+
+    assertThat("Unexpected message presence.", message.isPresent(), is(true));
+
+    Document content = Jsoup.parse(message.get());
+    Element body = content.body();
+
+    Element emailHeader = body.children().get(0);
+    assertThat("Unexpected element tag.", emailHeader.tagName(), is("h1"));
+    assertThat("Unexpected email header.", emailHeader.text(), is("In-App Notification"));
 
     Element subjectHeader = body.children().get(1);
     assertThat("Unexpected element tag.", subjectHeader.tagName(), is("h2"));
