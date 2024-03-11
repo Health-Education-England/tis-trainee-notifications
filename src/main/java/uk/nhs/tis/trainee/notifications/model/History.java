@@ -31,11 +31,14 @@ import org.springframework.data.mongodb.core.mapping.Field;
 /**
  * A representation of a historical notification.
  *
- * @param id        A unique identifier for the notification.
- * @param type      The type of notification sent.
- * @param recipient The recipient information the notification was sent to.
- * @param template  The template information used to generate the notification.
- * @param sentAt    The timestamp that the notification was sent at.
+ * @param id           A unique identifier for the notification.
+ * @param type         The type of notification sent.
+ * @param recipient    The recipient information the notification was sent to.
+ * @param template     The template information used to generate the notification.
+ * @param sentAt       The timestamp that the notification was sent at.
+ * @param readAt       The timestamp that the notification was read at.
+ * @param status       The status of the notification history e.g. SENT or FAILED.
+ * @param statusDetail Any additional detail about the status.
  */
 @Document(collection = "History")
 public record History(
@@ -46,6 +49,7 @@ public record History(
     RecipientInfo recipient,
     TemplateInfo template,
     Instant sentAt,
+    Instant readAt,
     NotificationStatus status,
     String statusDetail) {
 

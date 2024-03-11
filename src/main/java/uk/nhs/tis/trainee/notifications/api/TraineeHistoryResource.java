@@ -21,6 +21,10 @@
 
 package uk.nhs.tis.trainee.notifications.api;
 
+import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.ARCHIVED;
+import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.READ;
+import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.UNREAD;
+
 import java.io.IOException;
 import java.util.List;
 import java.util.Optional;
@@ -30,6 +34,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -67,17 +72,9 @@ public class TraineeHistoryResource {
   ResponseEntity<List<HistoryDto>> getTraineeHistory(
       @RequestHeader(HttpHeaders.AUTHORIZATION) String token) {
     log.info("Retrieving notification history for the authorized trainee.");
+    String traineeId = getTraineeId(token);
 
-    String traineeId;
-    try {
-      traineeId = AuthTokenUtil.getTraineeTisId(token);
-
-      if (traineeId == null) {
-        log.warn("The trainee ID was not found in the token.");
-        return ResponseEntity.badRequest().build();
-      }
-    } catch (IOException e) {
-      log.warn("Unable to read the trainee ID from the token.", e);
+    if (traineeId == null) {
       return ResponseEntity.badRequest().build();
     }
 
@@ -91,23 +88,16 @@ public class TraineeHistoryResource {
    * Get the historic notification with the given ID.
    *
    * @param notificationId The ID of the notification to get.
+   * @param token          The authorization token from the request header.
    * @return The found notification.
    */
   @GetMapping("/message/{notificationId}")
   ResponseEntity<String> getHistoricalMessage(@PathVariable String notificationId,
       @RequestHeader(HttpHeaders.AUTHORIZATION) String token) {
     log.info("Retrieving notification message for the authorized trainee.");
+    String traineeId = getTraineeId(token);
 
-    String traineeId;
-    try {
-      traineeId = AuthTokenUtil.getTraineeTisId(token);
-
-      if (traineeId == null) {
-        log.warn("The trainee ID was not found in the token.");
-        return ResponseEntity.badRequest().build();
-      }
-    } catch (IOException e) {
-      log.warn("Unable to read the trainee ID from the token.", e);
+    if (traineeId == null) {
       return ResponseEntity.badRequest().build();
     }
 
@@ -116,5 +106,93 @@ public class TraineeHistoryResource {
 
     return message.map(msg -> ResponseEntity.ok().contentType(MediaType.TEXT_HTML).body(msg))
         .orElseGet(() -> ResponseEntity.notFound().build());
+  }
+
+  /**
+   * Update the status of a notification to set it to "ARCHIVED".
+   *
+   * @param notificationId The ID of the notification to mark as archived.
+   * @param token          The authorization token from the request header.
+   * @return The updated notification history.
+   */
+  @PutMapping("/notification/{notificationId}/archive")
+  ResponseEntity<HistoryDto> archiveNotification(@PathVariable String notificationId,
+      @RequestHeader(HttpHeaders.AUTHORIZATION) String token) {
+    log.info("Archiving notification for the authorized trainee.");
+    String traineeId = getTraineeId(token);
+
+    if (traineeId == null) {
+      return ResponseEntity.badRequest().build();
+    }
+
+    log.info("Archiving notification {}.", notificationId);
+    Optional<HistoryDto> history = service.updateStatus(traineeId, notificationId, ARCHIVED, "");
+    return ResponseEntity.of(history);
+  }
+
+  /**
+   * Update the status of a notification to set it to "READ".
+   *
+   * @param notificationId The ID of the notification to mark as read.
+   * @param token          The authorization token from the request header.
+   * @return The updated notification history.
+   */
+  @PutMapping("/notification/{notificationId}/mark-read")
+  ResponseEntity<HistoryDto> markNotificationAsRead(@PathVariable String notificationId,
+      @RequestHeader(HttpHeaders.AUTHORIZATION) String token) {
+    log.info("Marking notification as read for the authorized trainee.");
+    String traineeId = getTraineeId(token);
+
+    if (traineeId == null) {
+      return ResponseEntity.badRequest().build();
+    }
+
+    log.info("Marking notification {} as read.", notificationId);
+    Optional<HistoryDto> history = service.updateStatus(traineeId, notificationId, READ, "");
+    return ResponseEntity.of(history);
+  }
+
+  /**
+   * Update the status of a notification to set it to "UNREAD".
+   *
+   * @param notificationId The ID of the notification to mark as unread.
+   * @param token          The authorization token from the request header.
+   * @return The updated notification history.
+   */
+  @PutMapping("/notification/{notificationId}/mark-unread")
+  ResponseEntity<HistoryDto> markNotificationAsUnread(@PathVariable String notificationId,
+      @RequestHeader(HttpHeaders.AUTHORIZATION) String token) {
+    log.info("Marking notification as unread for the authorized trainee.");
+    String traineeId = getTraineeId(token);
+
+    if (traineeId == null) {
+      return ResponseEntity.badRequest().build();
+    }
+
+    log.info("Marking notification {} as unread.", notificationId);
+    Optional<HistoryDto> history = service.updateStatus(traineeId, notificationId, UNREAD, "");
+    return ResponseEntity.of(history);
+  }
+
+  /**
+   * Get the trainee ID from the given authorization token.
+   *
+   * @param token The authorization token from the request header.
+   * @return The token's trainee ID or null if not available.
+   */
+  private String getTraineeId(String token) {
+    String traineeId = null;
+
+    try {
+      traineeId = AuthTokenUtil.getTraineeTisId(token);
+
+      if (traineeId == null) {
+        log.warn("The trainee ID was not found in the token.");
+      }
+    } catch (IOException e) {
+      log.warn("Unable to read the trainee ID from the token.", e);
+    }
+
+    return traineeId;
   }
 }

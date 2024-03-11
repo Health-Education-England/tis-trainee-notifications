@@ -30,6 +30,7 @@ import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.FAILED;
 import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.SENT;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.COJ_CONFIRMATION;
 
+import java.time.Duration;
 import java.time.Instant;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -60,8 +61,8 @@ class PopulateNotificationHistoryStatusIntegrationTest {
 
   @Test
   void shouldMigrateHistoryWithEmptyStatus() {
-    History history = new History(null, null, COJ_CONFIRMATION, null, null, Instant.now(), null,
-        null);
+    History history = new History(null, null, COJ_CONFIRMATION, null, null, Instant.now(),
+        Instant.now().plus(Duration.ofDays(1)), null, null);
     history = mongoTemplate.save(history);
 
     migrator.migrate();
@@ -74,8 +75,8 @@ class PopulateNotificationHistoryStatusIntegrationTest {
 
   @Test
   void shouldNotMigrateHistoryWithPopulatedStatus() {
-    History history = new History(null, null, COJ_CONFIRMATION, null, null, Instant.now(), FAILED,
-        null);
+    History history = new History(null, null, COJ_CONFIRMATION, null, null, Instant.now(),
+        Instant.now().plus(Duration.ofDays(1)), FAILED, null);
     history = mongoTemplate.save(history);
 
     migrator.migrate();
