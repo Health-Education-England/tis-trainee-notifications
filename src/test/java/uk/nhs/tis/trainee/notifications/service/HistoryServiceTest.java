@@ -27,6 +27,8 @@ import static org.hamcrest.CoreMatchers.sameInstance;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyMap;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -237,8 +239,7 @@ class HistoryServiceTest {
   void shouldNotUpdateStatusForTraineeWhenHistoryNotFound(NotificationStatus status) {
     when(repository.findByIdAndRecipient_Id(any(), any())).thenReturn(Optional.empty());
 
-    Optional<HistoryDto> updatedHistory = service.updateStatus(TRAINEE_ID, NOTIFICATION_ID, status,
-        "Status: update");
+    Optional<HistoryDto> updatedHistory = service.updateStatus(TRAINEE_ID, NOTIFICATION_ID, status);
 
     assertThat("Unexpected history presence.", updatedHistory.isPresent(), is(false));
   }
@@ -256,7 +257,7 @@ class HistoryServiceTest {
         Optional.of(foundHistory));
 
     assertThrows(IllegalArgumentException.class,
-        () -> service.updateStatus(TRAINEE_ID, NOTIFICATION_ID, status, ""));
+        () -> service.updateStatus(TRAINEE_ID, NOTIFICATION_ID, status));
 
     verify(repository, never()).save(any());
   }
@@ -277,14 +278,13 @@ class HistoryServiceTest {
         Optional.of(foundHistory));
     when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
-    Optional<HistoryDto> updatedHistory = service.updateStatus(TRAINEE_ID, NOTIFICATION_ID, status,
-        "Status: update");
+    Optional<HistoryDto> updatedHistory = service.updateStatus(TRAINEE_ID, NOTIFICATION_ID, status);
 
     assertThat("Unexpected history presence.", updatedHistory.isPresent(), is(true));
     HistoryDto history = updatedHistory.get();
 
     assertThat("Unexpected status.", history.status(), is(status));
-    assertThat("Unexpected status detail.", history.statusDetail(), is("Status: update"));
+    assertThat("Unexpected status detail.", history.statusDetail(), is(""));
 
     // Check other fields are unchanged.
     assertThat("Unexpected ID.", history.id(), is(notificationId.toString()));
@@ -310,7 +310,7 @@ class HistoryServiceTest {
         Optional.of(foundHistory));
 
     assertThrows(IllegalArgumentException.class,
-        () -> service.updateStatus(TRAINEE_ID, NOTIFICATION_ID, status, ""));
+        () -> service.updateStatus(TRAINEE_ID, NOTIFICATION_ID, status));
 
     verify(repository, never()).save(any());
   }
@@ -330,14 +330,13 @@ class HistoryServiceTest {
         Optional.of(foundHistory));
     when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
-    Optional<HistoryDto> updatedHistory = service.updateStatus(TRAINEE_ID, NOTIFICATION_ID, status,
-        "Status: update");
+    Optional<HistoryDto> updatedHistory = service.updateStatus(TRAINEE_ID, NOTIFICATION_ID, status);
 
     assertThat("Unexpected history presence.", updatedHistory.isPresent(), is(true));
     HistoryDto history = updatedHistory.get();
 
     assertThat("Unexpected status.", history.status(), is(status));
-    assertThat("Unexpected status detail.", history.statusDetail(), is("Status: update"));
+    assertThat("Unexpected status detail.", history.statusDetail(), is(""));
 
     // Check other fields are unchanged.
     assertThat("Unexpected ID.", history.id(), is(notificationId.toString()));
@@ -483,11 +482,48 @@ class HistoryServiceTest {
         <html>
           <p>Rebuilt message</p>
         </html>""";
-    when(templateService.process(templatePath, Set.of(), TEMPLATE_VARIABLES)).thenReturn(message);
+    when(templateService.process(eq(templatePath), any(), eq(TEMPLATE_VARIABLES))).thenReturn(
+        message);
 
     Optional<String> rebuiltMessage = service.rebuildMessage(TRAINEE_ID, NOTIFICATION_ID);
 
     assertThat("Unexpected message presence.", rebuiltMessage.isPresent(), is(true));
     assertThat("Unexpected message.", rebuiltMessage.get(), is(message));
+  }
+
+  @ParameterizedTest
+  @EnumSource(NotificationType.class)
+  void shouldRebuildMessageForTraineeWithContentSelectorWhenInAppNotificationFound(
+      NotificationType notificationType) {
+    ObjectId notificationId = new ObjectId(NOTIFICATION_ID);
+    RecipientInfo recipientInfo = new RecipientInfo(null, IN_APP, null);
+    TemplateInfo templateInfo = new TemplateInfo(null, null, TEMPLATE_VARIABLES);
+    History history = new History(notificationId, null, notificationType, recipientInfo,
+        templateInfo, null, null, null, null);
+
+    when(repository.findByIdAndRecipient_Id(any(), any())).thenReturn(Optional.of(history));
+    when(templateService.process(any(), any(), eq(TEMPLATE_VARIABLES))).thenReturn("");
+
+    service.rebuildMessage(TRAINEE_ID, NOTIFICATION_ID);
+
+    verify(templateService).process(any(), eq(Set.of("content")), anyMap());
+  }
+
+  @ParameterizedTest
+  @EnumSource(NotificationType.class)
+  void shouldRebuildMessageForTraineeWithNoSelectorWhenEmailNotificationFound(
+      NotificationType notificationType) {
+    ObjectId notificationId = new ObjectId(NOTIFICATION_ID);
+    RecipientInfo recipientInfo = new RecipientInfo(null, EMAIL, null);
+    TemplateInfo templateInfo = new TemplateInfo(null, null, TEMPLATE_VARIABLES);
+    History history = new History(notificationId, null, notificationType, recipientInfo,
+        templateInfo, null, null, null, null);
+
+    when(repository.findByIdAndRecipient_Id(any(), any())).thenReturn(Optional.of(history));
+    when(templateService.process(any(), any(), eq(TEMPLATE_VARIABLES))).thenReturn("");
+
+    service.rebuildMessage(TRAINEE_ID, NOTIFICATION_ID);
+
+    verify(templateService).process(any(), eq(Set.of()), anyMap());
   }
 }
