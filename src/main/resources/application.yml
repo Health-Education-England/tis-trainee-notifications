@@ -14,6 +14,7 @@ application:
     sender: ${EMAIL_SENDER}
   environment: ${ENVIRONMENT:local}
   queues:
+    account-confirmed: ${ACCOUNT_CONFIRMED_QUEUE}
     coj-received: ${COJ_RECEIVED_QUEUE}
     credential-revoked: ${CREDENTIAL_REVOKED_QUEUE}
     email-failure: ${EMAIL_FAILURE_QUEUE}
@@ -27,6 +28,8 @@ application:
       email: v1.0.0
     form-updated:
       email: v1.0.0
+    welcome:
+      in-app: v1.0.0
   timezone: Europe/London
 
 com:

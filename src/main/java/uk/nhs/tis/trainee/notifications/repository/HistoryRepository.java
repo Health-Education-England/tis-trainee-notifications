@@ -22,6 +22,7 @@
 package uk.nhs.tis.trainee.notifications.repository;
 
 import java.util.List;
+import java.util.Optional;
 import org.bson.types.ObjectId;
 import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.stereotype.Repository;
@@ -41,4 +42,13 @@ public interface HistoryRepository extends
    * @return The found history, empty if none found.
    */
   List<History> findAllByRecipient_IdOrderBySentAtDesc(String recipientId);
+
+  /**
+   * Find a specific history record associated with the given recipient ID.
+   *
+   * @param id          The ID of the history record.
+   * @param recipientId The ID of the recipient to get the history for.
+   * @return The found history, empty if none found.
+   */
+  Optional<History> findByIdAndRecipient_Id(ObjectId id, String recipientId);
 }

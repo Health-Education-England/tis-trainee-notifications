@@ -23,10 +23,14 @@ package uk.nhs.tis.trainee.notifications.model;
 
 import java.util.EnumSet;
 import java.util.Set;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
 
 /**
  * An enumeration of possible notification types.
  */
+@Getter
+@AllArgsConstructor
 public enum NotificationType {
 
   COJ_CONFIRMATION("coj-confirmation"),
@@ -35,38 +39,18 @@ public enum NotificationType {
   PROGRAMME_UPDATED_WEEK_8("programme-updated-week-8"),
   PROGRAMME_UPDATED_WEEK_4("programme-updated-week-4"),
   PROGRAMME_UPDATED_WEEK_1("programme-updated-week-1"),
-  PROGRAMME_UPDATED_WEEK_0("programme-updated-week-0");
-
-  private final String templateName;
-
-  /**
-   * Create an enumeration of a possible notification type.
-   *
-   * @param templateName The name of the template for this type of notification.
-   */
-  NotificationType(String templateName) {
-    this.templateName = templateName;
-  }
-
-  /**
-   * Get the name for templates of this type.
-   *
-   * @return The template name.
-   */
-  public String getTemplateName() {
-    return templateName;
-  }
+  PROGRAMME_UPDATED_WEEK_0("programme-updated-week-0"),
+  WELCOME("welcome");
 
   /**
    * The set of Programme Updated notification types.
    */
-  static final Set<NotificationType> programmeUpdateNotificationTypes = EnumSet.of(
+  @Getter
+  private static final Set<NotificationType> programmeUpdateNotificationTypes = EnumSet.of(
       PROGRAMME_UPDATED_WEEK_8,
       PROGRAMME_UPDATED_WEEK_4,
       PROGRAMME_UPDATED_WEEK_1,
       PROGRAMME_UPDATED_WEEK_0);
 
-  public static Set<NotificationType> getProgrammeUpdateNotificationTypes() {
-    return programmeUpdateNotificationTypes;
-  }
+  private final String templateName;
 }

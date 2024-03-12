@@ -117,7 +117,35 @@ public class HistoryService {
       return Optional.empty();
     }
 
-    History history = optionalHistory.get();
+    return rebuildMessage(optionalHistory.get());
+  }
+
+  /**
+   * Rebuild the message for a given trainee's notification.
+   *
+   * @param traineeId      The ID of the trainee.
+   * @param notificationId The ID of the notification.
+   * @return The rebuilt message, or empty if the notification was not found.
+   */
+  public Optional<String> rebuildMessage(String traineeId, String notificationId) {
+    Optional<History> optionalHistory = repository.findByIdAndRecipient_Id(
+        new ObjectId(notificationId), traineeId);
+
+    if (optionalHistory.isEmpty()) {
+      log.info("Notification {} was not found for trainee {}.", notificationId, traineeId);
+      return Optional.empty();
+    }
+
+    return rebuildMessage(optionalHistory.get());
+  }
+
+  /**
+   * Rebuild the message for a given notification history.
+   *
+   * @param history The historical notification.
+   * @return The rebuilt message, or empty if the notification was not found.
+   */
+  private Optional<String> rebuildMessage(History history) {
     MessageType messageType = history.recipient().type();
     TemplateInfo templateInfo = history.template();
 
