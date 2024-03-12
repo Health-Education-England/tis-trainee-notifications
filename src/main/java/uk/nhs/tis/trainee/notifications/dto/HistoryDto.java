@@ -35,12 +35,13 @@ import uk.nhs.tis.trainee.notifications.model.NotificationType;
  * @param type         The type of notification e.g. EMAIL
  * @param subject      The subject of the notification e.g. COJ_CONFIRMATION
  * @param contact      The contact details used to send the notification.
- * @param sentAt       The timestamp the notification was sent at.
+ * @param sentAt       The timestamp that the notification was sent at.
+ * @param readAt       The timestamp that the notification was read at.
  * @param status       The status of the notification history e.g. SENT or FAILED.
  * @param statusDetail Any additional detail about the status.
  */
 public record HistoryDto(String id, TisReferenceInfo tisReference, MessageType type,
-                         NotificationType subject, String contact, Instant sentAt,
+                         NotificationType subject, String contact, Instant sentAt, Instant readAt,
                          NotificationStatus status, String statusDetail) {
 
 }

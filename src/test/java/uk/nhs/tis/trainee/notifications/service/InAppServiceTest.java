@@ -147,6 +147,18 @@ class InAppServiceTest {
 
   @ParameterizedTest
   @EnumSource(NotificationType.class)
+  void shouldNotSetReadAtWhenCreatingNotification(NotificationType notificationType) {
+    service.createNotifications(TRAINEE_ID, notificationType, VERSION);
+
+    ArgumentCaptor<History> historyCaptor = ArgumentCaptor.forClass(History.class);
+    verify(historyService).save(historyCaptor.capture());
+
+    History history = historyCaptor.getValue();
+    assertThat("Unexpected readAt timestamp.", history.readAt(), nullValue());
+  }
+
+  @ParameterizedTest
+  @EnumSource(NotificationType.class)
   void shouldSetStatusWhenCreatingNotification(NotificationType notificationType) {
     service.createNotifications(TRAINEE_ID, notificationType, VERSION);
 

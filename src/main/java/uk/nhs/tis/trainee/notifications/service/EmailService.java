@@ -113,7 +113,7 @@ public class EmailService {
    * @param templateVersion   The version of the template to be sent.
    * @param templateVariables The variables to pass to the template.
    * @param tisReferenceInfo  The TIS reference information (table and key).
-   * @param doNotSendJustLog Do not actually send the mail, simply log the action.
+   * @param doNotSendJustLog  Do not actually send the mail, simply log the action.
    * @throws MessagingException When the message could not be sent.
    */
   public void sendMessage(String traineeId, String recipient, NotificationType notificationType,
@@ -149,7 +149,7 @@ public class EmailService {
       TemplateInfo templateInfo = new TemplateInfo(notificationType.getTemplateName(),
           templateVersion, templateVariables);
       History history = new History(notificationId, tisReferenceInfo, notificationType,
-          recipientInfo, templateInfo, Instant.now(), NotificationStatus.SENT, null);
+          recipientInfo, templateInfo, Instant.now(), null, NotificationStatus.SENT, null);
       historyService.save(history);
 
       log.info("Sent template {} to {}.", templateName, recipient);

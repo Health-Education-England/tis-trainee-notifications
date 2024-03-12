@@ -21,7 +21,16 @@
 
 package uk.nhs.tis.trainee.notifications.service;
 
+import static uk.nhs.tis.trainee.notifications.model.MessageType.EMAIL;
+import static uk.nhs.tis.trainee.notifications.model.MessageType.IN_APP;
+import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.ARCHIVED;
+import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.FAILED;
+import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.READ;
+import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.SENT;
+import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.UNREAD;
+
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
@@ -41,6 +50,11 @@ import uk.nhs.tis.trainee.notifications.repository.HistoryRepository;
 @Slf4j
 @Service
 public class HistoryService {
+
+  private static final Map<MessageType, Set<NotificationStatus>> VALID_STATUSES = Map.of(
+      EMAIL, Set.of(FAILED, SENT),
+      IN_APP, Set.of(ARCHIVED, READ, UNREAD)
+  );
 
   private final HistoryRepository repository;
   private final TemplateService templateService;
@@ -78,7 +92,7 @@ public class HistoryService {
    * @param detail         The detail of the status.
    * @return The updated notification history, or empty if not found.
    */
-  public Optional<History> updateStatus(String notificationId, NotificationStatus status,
+  public Optional<HistoryDto> updateStatus(String notificationId, NotificationStatus status,
       String detail) {
     Optional<History> optionalHistory = repository.findById(new ObjectId(notificationId));
 
@@ -87,9 +101,56 @@ public class HistoryService {
       return Optional.empty();
     }
 
-    History history = optionalHistory.get();
+    return updateStatus(optionalHistory.get(), status, detail);
+  }
+
+  /**
+   * Update the status of a notification.
+   *
+   * @param traineeId      The ID of the trainee.
+   * @param notificationId The notification to update the status of.
+   * @param status         The new status.
+   * @param detail         The detail of the status.
+   * @return The updated notification history, or empty if not found.
+   */
+  public Optional<HistoryDto> updateStatus(String traineeId, String notificationId,
+      NotificationStatus status, String detail) {
+    Optional<History> optionalHistory = repository.findByIdAndRecipient_Id(
+        new ObjectId(notificationId), traineeId);
+
+    if (optionalHistory.isEmpty()) {
+      log.info("Notification {} was not found for trainee {}.", notificationId, traineeId);
+      return Optional.empty();
+    }
+
+    return updateStatus(optionalHistory.get(), status, detail);
+  }
+
+  /**
+   * Update the status of a notification.
+   *
+   * @param history The notification history to update.
+   * @param status  The new status.
+   * @param detail  The detail of the status.
+   * @return The updated notification history, or empty if not found.
+   */
+  private Optional<HistoryDto> updateStatus(History history, NotificationStatus status,
+      String detail) {
+
+    // Validate the status is valid for the notification type.
+    MessageType type = history.recipient().type();
+    boolean valid = VALID_STATUSES.get(type).contains(status);
+
+    if (!valid) {
+      String message = String.format(
+          "Invalid combination of type %s and status %s for notification %s.", type, status,
+          history.id());
+      throw new IllegalArgumentException(message);
+    }
+
     history = mapper.updateStatus(history, status, detail);
-    return Optional.of(repository.save(history));
+    history = repository.save(history);
+    return Optional.of(mapper.toDto(history));
   }
 
   /**

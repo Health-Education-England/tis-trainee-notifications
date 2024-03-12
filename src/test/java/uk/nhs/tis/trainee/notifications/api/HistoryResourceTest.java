@@ -89,11 +89,11 @@ class HistoryResourceTest {
     TisReferenceInfo tisReferenceForm
         = new TisReferenceInfo(TisReferenceType.FORMR_PARTA, TIS_REFERENCE_ID);
     HistoryDto history1 = new HistoryDto("1", tisReferenceProgramme, EMAIL, COJ_CONFIRMATION,
-        TRAINEE_CONTACT_1, Instant.MIN, SENT, null);
+        TRAINEE_CONTACT_1, Instant.MIN, Instant.MAX, SENT, null);
     HistoryDto history2 = new HistoryDto("2", tisReferenceProgramme, EMAIL, CREDENTIAL_REVOKED,
-        TRAINEE_CONTACT_2, Instant.EPOCH, FAILED, null);
+        TRAINEE_CONTACT_2, Instant.EPOCH, Instant.EPOCH, FAILED, null);
     HistoryDto history3 = new HistoryDto("3", tisReferenceForm, EMAIL, FORM_UPDATED,
-        TRAINEE_CONTACT_3, Instant.MAX, FAILED, "Additional detail");
+        TRAINEE_CONTACT_3, Instant.MAX, Instant.MIN, FAILED, "Additional detail");
 
     when(service.findAllForTrainee(TRAINEE_ID)).thenReturn(List.of(history1, history2, history3));
 
@@ -110,6 +110,7 @@ class HistoryResourceTest {
         .andExpect(jsonPath("$[0].subject").value(COJ_CONFIRMATION.toString()))
         .andExpect(jsonPath("$[0].contact").value(TRAINEE_CONTACT_1))
         .andExpect(jsonPath("$[0].sentAt").value(Instant.MIN.toString()))
+        .andExpect(jsonPath("$[0].readAt").value(Instant.MAX.toString()))
         .andExpect(jsonPath("$[0].status").value(SENT.toString()))
         .andExpect(jsonPath("$[0].statusDetail").doesNotExist())
         .andExpect(jsonPath("$[1].id").value("2"))
@@ -120,6 +121,7 @@ class HistoryResourceTest {
         .andExpect(jsonPath("$[1].subject").value(CREDENTIAL_REVOKED.toString()))
         .andExpect(jsonPath("$[1].contact").value(TRAINEE_CONTACT_2))
         .andExpect(jsonPath("$[1].sentAt").value(Instant.EPOCH.toString()))
+        .andExpect(jsonPath("$[1].readAt").value(Instant.EPOCH.toString()))
         .andExpect(jsonPath("$[1].status").value(FAILED.toString()))
         .andExpect(jsonPath("$[1].statusDetail").doesNotExist())
         .andExpect(jsonPath("$[2].id").value("3"))
@@ -130,6 +132,7 @@ class HistoryResourceTest {
         .andExpect(jsonPath("$[2].subject").value(FORM_UPDATED.toString()))
         .andExpect(jsonPath("$[2].contact").value(TRAINEE_CONTACT_3))
         .andExpect(jsonPath("$[2].sentAt").value(Instant.MAX.toString()))
+        .andExpect(jsonPath("$[2].readAt").value(Instant.MIN.toString()))
         .andExpect(jsonPath("$[2].status").value(FAILED.toString()))
         .andExpect(jsonPath("$[2].statusDetail").value("Additional detail"));
   }

@@ -21,6 +21,9 @@
 
 package uk.nhs.tis.trainee.notifications.mapper;
 
+import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.READ;
+
+import java.time.Instant;
 import java.util.List;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
@@ -55,11 +58,32 @@ public interface HistoryMapper {
   @Mapping(target = "subject", source = "type")
   @Mapping(target = "contact", source = "recipient.contact")
   @Mapping(target = "sentAt")
+  @Mapping(target = "readAt")
   @Mapping(target = "status")
   @Mapping(target = "statusDetail")
   HistoryDto toDto(History entity);
 
+  /**
+   * Update the status of the given history entity.
+   *
+   * @param entity The history to update the status of.
+   * @param status The new status.
+   * @param detail Any relevant status detail.
+   * @return The updated history entity.
+   */
   @Mapping(target = "status", source = "status")
   @Mapping(target = "statusDetail", source = "detail")
+  @Mapping(target = "readAt", expression = "java(calculateReadAt(entity, status))")
   History updateStatus(History entity, NotificationStatus status, String detail);
+
+  /**
+   * Calculate the readAt field based on the entity and status.
+   *
+   * @param entity The entity to calculate the readAt for.
+   * @param status The notification status.
+   * @return The readAt value to use for the entity.
+   */
+  default Instant calculateReadAt(History entity, NotificationStatus status) {
+    return entity.readAt() == null && status.equals(READ) ? Instant.now() : entity.readAt();
+  }
 }
