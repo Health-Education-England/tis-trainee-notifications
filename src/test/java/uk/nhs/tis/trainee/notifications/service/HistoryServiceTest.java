@@ -284,7 +284,7 @@ class HistoryServiceTest {
     HistoryDto history = updatedHistory.get();
 
     assertThat("Unexpected status.", history.status(), is(status));
-    assertThat("Unexpected status detail.", history.statusDetail(), is(""));
+    assertThat("Unexpected status detail.", history.statusDetail(), nullValue());
 
     // Check other fields are unchanged.
     assertThat("Unexpected ID.", history.id(), is(notificationId.toString()));
@@ -336,7 +336,7 @@ class HistoryServiceTest {
     HistoryDto history = updatedHistory.get();
 
     assertThat("Unexpected status.", history.status(), is(status));
-    assertThat("Unexpected status detail.", history.statusDetail(), is(""));
+    assertThat("Unexpected status detail.", history.statusDetail(), nullValue());
 
     // Check other fields are unchanged.
     assertThat("Unexpected ID.", history.id(), is(notificationId.toString()));

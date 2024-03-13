@@ -61,7 +61,7 @@ public class InAppService {
         Map.of());
 
     History history = new History(null, null, notificationType, recipient, template, Instant.now(),
-        null, UNREAD, "");
+        null, UNREAD, null);
     historyService.save(history);
   }
 }

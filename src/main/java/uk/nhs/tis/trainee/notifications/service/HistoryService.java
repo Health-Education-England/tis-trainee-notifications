@@ -122,7 +122,7 @@ public class HistoryService {
       return Optional.empty();
     }
 
-    return updateStatus(optionalHistory.get(), status, "");
+    return updateStatus(optionalHistory.get(), status, null);
   }
 
   /**
