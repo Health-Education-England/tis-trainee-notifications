@@ -178,6 +178,6 @@ class InAppServiceTest {
     verify(historyService).save(historyCaptor.capture());
 
     History history = historyCaptor.getValue();
-    assertThat("Unexpected status detail.", history.statusDetail(), is(""));
+    assertThat("Unexpected status detail.", history.statusDetail(), nullValue());
   }
 }
