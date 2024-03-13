@@ -41,6 +41,8 @@ import org.bson.types.ObjectId;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
+import org.jsoup.nodes.Node;
+import org.jsoup.nodes.TextNode;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -327,16 +329,9 @@ class HistoryServiceIntegrationTest {
     Document content = Jsoup.parse(message.get());
     Element body = content.body();
 
-    Element emailHeader = body.children().get(0);
-    assertThat("Unexpected element tag.", emailHeader.tagName(), is("h1"));
-    assertThat("Unexpected email header.", emailHeader.text(), is("In-App Notification"));
+    assertThat("Unexpected child count.", body.childNodeSize(), is(1));
 
-    Element subjectHeader = body.children().get(1);
-    assertThat("Unexpected element tag.", subjectHeader.tagName(), is("h2"));
-    assertThat("Unexpected subject header.", subjectHeader.text(), is("Subject"));
-
-    Element bodyHeader = body.children().get(2);
-    assertThat("Unexpected element tag.", bodyHeader.tagName(), is("h2"));
-    assertThat("Unexpected body header.", bodyHeader.text(), is("Content"));
+    Node contentNode = body.childNode(0);
+    assertThat("Unexpected node type.", contentNode, instanceOf(TextNode.class));
   }
 }

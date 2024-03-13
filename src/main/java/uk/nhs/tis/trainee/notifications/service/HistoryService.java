@@ -110,11 +110,10 @@ public class HistoryService {
    * @param traineeId      The ID of the trainee.
    * @param notificationId The notification to update the status of.
    * @param status         The new status.
-   * @param detail         The detail of the status.
    * @return The updated notification history, or empty if not found.
    */
   public Optional<HistoryDto> updateStatus(String traineeId, String notificationId,
-      NotificationStatus status, String detail) {
+      NotificationStatus status) {
     Optional<History> optionalHistory = repository.findByIdAndRecipient_Id(
         new ObjectId(notificationId), traineeId);
 
@@ -123,7 +122,7 @@ public class HistoryService {
       return Optional.empty();
     }
 
-    return updateStatus(optionalHistory.get(), status, detail);
+    return updateStatus(optionalHistory.get(), status, "");
   }
 
   /**
@@ -178,7 +177,7 @@ public class HistoryService {
       return Optional.empty();
     }
 
-    return rebuildMessage(optionalHistory.get());
+    return rebuildMessage(optionalHistory.get(), Set.of());
   }
 
   /**
@@ -197,22 +196,25 @@ public class HistoryService {
       return Optional.empty();
     }
 
-    return rebuildMessage(optionalHistory.get());
+    History history = optionalHistory.get();
+    Set<String> selectors = history.recipient().type() == IN_APP ? Set.of("content") : Set.of();
+    return rebuildMessage(history, selectors);
   }
 
   /**
    * Rebuild the message for a given notification history.
    *
    * @param history The historical notification.
+   * @param selectors The template selectors to use.
    * @return The rebuilt message, or empty if the notification was not found.
    */
-  private Optional<String> rebuildMessage(History history) {
+  private Optional<String> rebuildMessage(History history, Set<String> selectors) {
     MessageType messageType = history.recipient().type();
     TemplateInfo templateInfo = history.template();
 
     String templatePath = templateService.getTemplatePath(messageType, templateInfo.name(),
         templateInfo.version());
-    String message = templateService.process(templatePath, Set.of(), templateInfo.variables());
+    String message = templateService.process(templatePath, selectors, templateInfo.variables());
     return Optional.of(message);
   }
 }
