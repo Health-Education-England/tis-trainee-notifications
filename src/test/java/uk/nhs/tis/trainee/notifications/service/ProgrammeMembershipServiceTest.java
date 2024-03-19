@@ -233,7 +233,7 @@ class ProgrammeMembershipServiceTest {
     sentNotifications.add(new HistoryDto("id",
         new TisReferenceInfo(TisReferenceType.PROGRAMME_MEMBERSHIP, TIS_ID),
         MessageType.EMAIL,
-        NotificationType.PROGRAMME_UPDATED_WEEK_8,
+        NotificationType.PROGRAMME_UPDATED_WEEK_8, null,
         "email address",
         Instant.MIN, Instant.MAX, SENT, null));
 
@@ -285,7 +285,7 @@ class ProgrammeMembershipServiceTest {
     sentNotifications.add(new HistoryDto("id",
         new TisReferenceInfo(TisReferenceType.PROGRAMME_MEMBERSHIP, TIS_ID),
         MessageType.EMAIL,
-        notificationType,
+        notificationType, null,
         "email address",
         Instant.MIN, Instant.MAX, SENT, null));
 
@@ -311,7 +311,7 @@ class ProgrammeMembershipServiceTest {
     sentNotifications.add(new HistoryDto("id",
         new TisReferenceInfo(TisReferenceType.PLACEMENT, TIS_ID),
         MessageType.EMAIL,
-        NotificationType.PROGRAMME_UPDATED_WEEK_8, //to avoid masking the test condition
+        NotificationType.PROGRAMME_UPDATED_WEEK_8, null, //to avoid masking the test condition
         "email address",
         Instant.MIN, Instant.MAX, SENT, null));
 
@@ -337,7 +337,7 @@ class ProgrammeMembershipServiceTest {
     sentNotifications.add(new HistoryDto("id",
         new TisReferenceInfo(TisReferenceType.PROGRAMME_MEMBERSHIP, "another id"),
         MessageType.EMAIL,
-        NotificationType.PROGRAMME_UPDATED_WEEK_8,
+        NotificationType.PROGRAMME_UPDATED_WEEK_8, null,
         "email address",
         Instant.MIN, Instant.MAX, SENT, null));
 
@@ -427,7 +427,7 @@ class ProgrammeMembershipServiceTest {
     sentNotifications.add(new HistoryDto("id",
         new TisReferenceInfo(TisReferenceType.PROGRAMME_MEMBERSHIP, TIS_ID),
         MessageType.EMAIL,
-        NotificationType.PROGRAMME_UPDATED_WEEK_0,
+        NotificationType.PROGRAMME_UPDATED_WEEK_0, null,
         "email address",
         Instant.MIN, Instant.MAX, SENT, null));
 
@@ -453,7 +453,7 @@ class ProgrammeMembershipServiceTest {
     sentNotifications.add(new HistoryDto("id",
         null,
         MessageType.EMAIL,
-        NotificationType.PROGRAMME_UPDATED_WEEK_0,
+        NotificationType.PROGRAMME_UPDATED_WEEK_0, null,
         "email address",
         Instant.MIN, Instant.MAX, SENT, null));
 
@@ -479,7 +479,7 @@ class ProgrammeMembershipServiceTest {
     sentNotifications.add(new HistoryDto("id",
         null,
         MessageType.EMAIL,
-        NotificationType.PROGRAMME_UPDATED_WEEK_8,
+        NotificationType.PROGRAMME_UPDATED_WEEK_8, null,
         "email address",
         Instant.MIN, Instant.MAX, SENT, null));
 

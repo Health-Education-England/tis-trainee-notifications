@@ -34,6 +34,7 @@ import uk.nhs.tis.trainee.notifications.model.NotificationType;
  * @param tisReference The TIS reference info for the entity that prompted the notification.
  * @param type         The type of notification e.g. EMAIL
  * @param subject      The subject of the notification e.g. COJ_CONFIRMATION
+ * @param subjectText  The subject text of the notification
  * @param contact      The contact details used to send the notification.
  * @param sentAt       The timestamp that the notification was sent at.
  * @param readAt       The timestamp that the notification was read at.
@@ -41,7 +42,8 @@ import uk.nhs.tis.trainee.notifications.model.NotificationType;
  * @param statusDetail Any additional detail about the status.
  */
 public record HistoryDto(String id, TisReferenceInfo tisReference, MessageType type,
-                         NotificationType subject, String contact, Instant sentAt, Instant readAt,
-                         NotificationStatus status, String statusDetail) {
+                         NotificationType subject, String subjectText, String contact,
+                         Instant sentAt, Instant readAt, NotificationStatus status,
+                         String statusDetail) {
 
 }

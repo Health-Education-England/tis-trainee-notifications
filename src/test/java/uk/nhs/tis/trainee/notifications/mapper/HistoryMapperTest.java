@@ -26,16 +26,22 @@ import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.lessThan;
+import static uk.nhs.tis.trainee.notifications.mapper.HistoryMapper.WELCOME_SUBJECT_TEXT;
 
 import java.time.Duration;
 import java.time.Instant;
+import org.bson.types.ObjectId;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.EnumSource.Mode;
+import uk.nhs.tis.trainee.notifications.dto.HistoryDto;
 import uk.nhs.tis.trainee.notifications.model.History;
+import uk.nhs.tis.trainee.notifications.model.History.RecipientInfo;
+import uk.nhs.tis.trainee.notifications.model.MessageType;
 import uk.nhs.tis.trainee.notifications.model.NotificationStatus;
+import uk.nhs.tis.trainee.notifications.model.NotificationType;
 
 class HistoryMapperTest {
 
@@ -74,5 +80,38 @@ class HistoryMapperTest {
 
     long diffSeconds = Instant.now().getEpochSecond() - readAt.getEpochSecond();
     assertThat("Unexpected readAt timestamp drift.", diffSeconds, lessThan(10L));
+  }
+
+  @Test
+  void shouldGenerateSubjectTextWhenWelcomeInAppNotification() {
+    ObjectId id = new ObjectId();
+    RecipientInfo recipient = new RecipientInfo(null, MessageType.IN_APP, null);
+    History entity = new History(id, null, NotificationType.WELCOME, recipient, null,
+        null, null, null, null);
+
+    HistoryDto dto = mapper.toDto(entity);
+    assertThat("Unexpected subject text.", dto.subjectText(), is(WELCOME_SUBJECT_TEXT));
+  }
+
+  @Test
+  void shouldHaveNoSubjectTextWhenNotInAppNotification() {
+    ObjectId id = new ObjectId();
+    RecipientInfo recipient = new RecipientInfo(null, MessageType.EMAIL, null);
+    History entity = new History(id, null, NotificationType.WELCOME, recipient, null,
+        null, null, null, null);
+
+    HistoryDto dto = mapper.toDto(entity);
+    assertThat("Unexpected subject text.", dto.subjectText(), is(nullValue()));
+  }
+
+  @Test
+  void shouldHaveNoSubjectTextWhenUnmappedInAppNotification() {
+    ObjectId id = new ObjectId();
+    RecipientInfo recipient = new RecipientInfo(null, MessageType.IN_APP, null);
+    History entity = new History(id, null, NotificationType.COJ_CONFIRMATION, recipient, null,
+        null, null, null, null);
+
+    HistoryDto dto = mapper.toDto(entity);
+    assertThat("Unexpected subject text.", dto.subjectText(), is(nullValue()));
   }
 }
