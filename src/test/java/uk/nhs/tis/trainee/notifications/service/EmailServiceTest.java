@@ -62,7 +62,7 @@ import org.mockito.ArgumentCaptor;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.thymeleaf.context.Context;
 import software.amazon.awssdk.services.cognitoidentityprovider.model.UserNotFoundException;
-import uk.nhs.tis.trainee.notifications.dto.UserAccountDetails;
+import uk.nhs.tis.trainee.notifications.dto.UserDetails;
 import uk.nhs.tis.trainee.notifications.model.History;
 import uk.nhs.tis.trainee.notifications.model.History.RecipientInfo;
 import uk.nhs.tis.trainee.notifications.model.History.TemplateInfo;
@@ -74,6 +74,7 @@ class EmailServiceTest {
 
   private static final NotificationType NOTIFICATION_TYPE = NotificationType.COJ_CONFIRMATION;
   private static final String RECIPIENT = "anthony.gilliam@tis.nhs.uk";
+  private static final String GMC = "111111";
   private static final String TRAINEE_ID = "40";
   private static final String USER_ID = UUID.randomUUID().toString();
   private static final String SENDER = "sender@test.email";
@@ -93,7 +94,7 @@ class EmailServiceTest {
     historyService = mock(HistoryService.class);
     when(userAccountService.getUserAccountIds(TRAINEE_ID)).thenReturn(Set.of(USER_ID));
     when(userAccountService.getUserDetails(USER_ID)).thenReturn(
-        new UserAccountDetails(RECIPIENT, null));
+        new UserDetails(true, RECIPIENT, null, null, null, GMC));
 
     mailSender = mock(JavaMailSender.class);
     when(mailSender.createMimeMessage()).thenReturn(new MimeMessage((Session) null));
@@ -148,7 +149,7 @@ class EmailServiceTest {
   @NullAndEmptySource
   void shouldThrowExceptionWhenSendingToExistingUserAndEmailNotFound(String email) {
     when(userAccountService.getUserDetails(USER_ID)).thenReturn(
-        new UserAccountDetails(email, "Gilliam"));
+        new UserDetails(true, email, "Mr", "Gilliam", "Anthony", GMC));
 
     assertThrows(IllegalArgumentException.class,
         () -> service.sendMessageToExistingUser(TRAINEE_ID, NOTIFICATION_TYPE, null,
@@ -158,7 +159,7 @@ class EmailServiceTest {
   @Test
   void shouldThrowExceptionWhenSendingWithNoNotificationType() {
     when(userAccountService.getUserDetails(USER_ID)).thenReturn(
-        new UserAccountDetails(RECIPIENT, "Gilliam"));
+        new UserDetails(true, RECIPIENT, "Mr", "Gilliam", "Anthony", GMC));
 
     assertThrows(NullPointerException.class,
         () -> service.sendMessageToExistingUser(TRAINEE_ID, null, "",
@@ -168,7 +169,7 @@ class EmailServiceTest {
   @Test
   void shouldGetNameFromUserAccountWhenNoNameProvided() throws MessagingException {
     when(userAccountService.getUserDetails(USER_ID)).thenReturn(
-        new UserAccountDetails(RECIPIENT, "Gilliam"));
+        new UserDetails(true, RECIPIENT, "Mr", "Gilliam", "Anthony", GMC));
 
     service.sendMessageToExistingUser(TRAINEE_ID, NOTIFICATION_TYPE, "", Map.of(),
         null);
@@ -177,41 +178,45 @@ class EmailServiceTest {
     verify(templateService, atLeastOnce()).process(any(), any(), contextCaptor.capture());
 
     Context context = contextCaptor.getValue();
-    assertThat("Unexpected name variable.", context.getVariable("name"), is("Gilliam"));
+    assertThat("Unexpected family name variable.", context.getVariable("familyName"),
+        is("Gilliam"));
   }
 
   @Test
   void shouldUseProvidedNameWhenNameProvided() throws MessagingException {
     when(userAccountService.getUserDetails(USER_ID)).thenReturn(
-        new UserAccountDetails(RECIPIENT, "Gilliam"));
+        new UserDetails(true, RECIPIENT, "Mr", "Gilliam", "Anthony", GMC));
 
-    service.sendMessageToExistingUser(TRAINEE_ID, NOTIFICATION_TYPE, "", Map.of("name", "Maillig"),
-        null);
+    service.sendMessageToExistingUser(TRAINEE_ID, NOTIFICATION_TYPE, "",
+        Map.of("familyName", "Maillig"), null);
 
     ArgumentCaptor<Context> contextCaptor = ArgumentCaptor.forClass(Context.class);
     verify(templateService, atLeastOnce()).process(any(), any(), contextCaptor.capture());
 
     Context context = contextCaptor.getValue();
-    assertThat("Unexpected name variable.", context.getVariable("name"), is("Maillig"));
+    assertThat("Unexpected family name variable.", context.getVariable("familyName"),
+        is("Maillig"));
   }
 
   @Test
   void shouldGetDomainFromPropertiesWhenNoDomainProvided() throws MessagingException {
-    service.sendMessageToExistingUser(TRAINEE_ID, NOTIFICATION_TYPE, "", Map.of(), null);
+    service.sendMessageToExistingUser(TRAINEE_ID, NOTIFICATION_TYPE, "",
+        Map.of(), null);
 
     ArgumentCaptor<Context> contextCaptor = ArgumentCaptor.forClass(Context.class);
     verify(templateService, atLeastOnce()).process(any(), any(), contextCaptor.capture());
 
     Context context = contextCaptor.getValue();
-    assertThat("Unexpected domain variable.", context.getVariable("domain"), is(APP_DOMAIN));
+    assertThat("Unexpected domain variable.", context.getVariable("domain"),
+        is(APP_DOMAIN));
   }
 
   @Test
   void shouldUseProvidedDomainWhenDomainProvided() throws MessagingException {
     URI domain = URI.create("local.override.com");
 
-    service.sendMessageToExistingUser(TRAINEE_ID, NOTIFICATION_TYPE, "", Map.of("domain", domain),
-        null);
+    service.sendMessageToExistingUser(TRAINEE_ID, NOTIFICATION_TYPE, "",
+        Map.of("domain", domain), null);
 
     ArgumentCaptor<Context> contextCaptor = ArgumentCaptor.forClass(Context.class);
     verify(templateService, atLeastOnce()).process(any(), any(), contextCaptor.capture());
@@ -223,9 +228,11 @@ class EmailServiceTest {
   @Test
   void shouldSendMessageToUserAccountEmail() throws MessagingException {
     when(userAccountService.getUserDetails(USER_ID)).thenReturn(
-        new UserAccountDetails("anthony.gilliam@tis.nhs.uk", ""));
+        new UserDetails(true, "anthony.gilliam@tis.nhs.uk", "", "",
+            "", GMC));
 
-    service.sendMessageToExistingUser(TRAINEE_ID, NOTIFICATION_TYPE, "", Map.of(), null);
+    service.sendMessageToExistingUser(TRAINEE_ID, NOTIFICATION_TYPE, "",
+        Map.of(), null);
 
     ArgumentCaptor<MimeMessage> messageCaptor = ArgumentCaptor.forClass(MimeMessage.class);
     verify(mailSender).send(messageCaptor.capture());
@@ -241,7 +248,8 @@ class EmailServiceTest {
 
   @Test
   void shouldSendMessageFromSender() throws MessagingException {
-    service.sendMessageToExistingUser(TRAINEE_ID, NOTIFICATION_TYPE, "", Map.of(), null);
+    service.sendMessageToExistingUser(TRAINEE_ID, NOTIFICATION_TYPE, "",
+        Map.of(), null);
 
     ArgumentCaptor<MimeMessage> messageCaptor = ArgumentCaptor.forClass(MimeMessage.class);
     verify(mailSender).send(messageCaptor.capture());
@@ -258,7 +266,8 @@ class EmailServiceTest {
     when(templateService.process(any(), eq(Set.of("subject")), (Context) any())).thenReturn(
         template);
 
-    service.sendMessageToExistingUser(TRAINEE_ID, NOTIFICATION_TYPE, "", Map.of(), null);
+    service.sendMessageToExistingUser(TRAINEE_ID, NOTIFICATION_TYPE, "",
+        Map.of(), null);
 
     ArgumentCaptor<MimeMessage> messageCaptor = ArgumentCaptor.forClass(MimeMessage.class);
     verify(mailSender).send(messageCaptor.capture());
@@ -273,7 +282,8 @@ class EmailServiceTest {
     when(templateService.process(any(), eq(Set.of("content")), (Context) any())).thenReturn(
         template);
 
-    service.sendMessageToExistingUser(TRAINEE_ID, NOTIFICATION_TYPE, "", Map.of(), null);
+    service.sendMessageToExistingUser(TRAINEE_ID, NOTIFICATION_TYPE, "",
+        Map.of(), null);
 
     ArgumentCaptor<MimeMessage> messageCaptor = ArgumentCaptor.forClass(MimeMessage.class);
     verify(mailSender).send(messageCaptor.capture());
@@ -292,7 +302,8 @@ class EmailServiceTest {
     when(templateService.process(any(), eq(Set.of("content")), (Context) any())).thenReturn(
         template);
 
-    service.sendMessageToExistingUser(TRAINEE_ID, NOTIFICATION_TYPE, "", Map.of(), null);
+    service.sendMessageToExistingUser(TRAINEE_ID, NOTIFICATION_TYPE, "",
+        Map.of(), null);
 
     ArgumentCaptor<MimeMessage> messageCaptor = ArgumentCaptor.forClass(MimeMessage.class);
     verify(mailSender).send(messageCaptor.capture());
@@ -300,7 +311,8 @@ class EmailServiceTest {
     MimeMessage message = messageCaptor.getValue();
     String notificationId = message.getHeader("NotificationId", "");
     assertThat("Unexpected notification ID header.", notificationId, notNullValue());
-    assertThat("Unexpected notification ID validity.", ObjectId.isValid(notificationId), is(true));
+    assertThat("Unexpected notification ID validity.", ObjectId.isValid(notificationId),
+        is(true));
   }
 
   @ParameterizedTest
@@ -313,7 +325,8 @@ class EmailServiceTest {
     service.sendMessageToExistingUser(TRAINEE_ID, notificationType, "v1.2.3",
         Map.of("key1", "value1"), null);
 
-    verify(templateService, times(2)).process(eq("template/path"), any(), (Context) any());
+    verify(templateService, times(2)).process(eq("template/path"),
+        any(), (Context) any());
 
     ArgumentCaptor<Set<String>> selectorCaptor = ArgumentCaptor.forClass(Set.class);
     ArgumentCaptor<Context> contextCaptor = ArgumentCaptor.forClass(Context.class);
@@ -326,10 +339,12 @@ class EmailServiceTest {
 
     List<Context> contexts = contextCaptor.getAllValues();
     Context context = contexts.get(0);
-    assertThat("Unexpected template variable.", context.getVariable("key1"), is("value1"));
+    assertThat("Unexpected template variable.", context.getVariable("key1"),
+        is("value1"));
 
     context = contexts.get(1);
-    assertThat("Unexpected template variable.", context.getVariable("key1"), is("value1"));
+    assertThat("Unexpected template variable.", context.getVariable("key1"),
+        is("value1"));
   }
 
   @ParameterizedTest
@@ -337,7 +352,8 @@ class EmailServiceTest {
   void shouldStoreHistoryWhenMessageSent(NotificationType notificationType)
       throws MessagingException {
     when(userAccountService.getUserDetails(USER_ID)).thenReturn(
-        new UserAccountDetails(RECIPIENT, "Gilliam"));
+        new UserDetails(true, RECIPIENT, "Mr", "Gilliam",
+            "Anthony", GMC));
     String templateVersion = "v1.2.3";
     TisReferenceInfo tisReferenceInfo = new TisReferenceInfo(REFERENCE_TABLE, REFERENCE_KEY);
 
@@ -369,9 +385,10 @@ class EmailServiceTest {
     assertThat("Unexpected template version.", templateInfo.version(), is(templateVersion));
 
     Map<String, Object> storedVariables = templateInfo.variables();
-    assertThat("Unexpected template variable count.", storedVariables.size(), is(3));
+    assertThat("Unexpected template variable count.", storedVariables.size(), is(4));
     assertThat("Unexpected template variable.", storedVariables.get("key1"), is("value1"));
-    assertThat("Unexpected template variable.", storedVariables.get("name"), is("Gilliam"));
+    assertThat("Unexpected template variable.", storedVariables.get("familyName"),
+        is("Gilliam"));
     assertThat("Unexpected template variable.", storedVariables.get("domain"), is(APP_DOMAIN));
   }
 
@@ -381,7 +398,8 @@ class EmailServiceTest {
     when(templateService.process(any(), eq(Set.of("content")), (Context) any())).thenReturn(
         template);
 
-    service.sendMessageToExistingUser(TRAINEE_ID, NOTIFICATION_TYPE, "", Map.of(), null);
+    service.sendMessageToExistingUser(TRAINEE_ID, NOTIFICATION_TYPE, "",
+        Map.of(), null);
 
     ArgumentCaptor<MimeMessage> messageCaptor = ArgumentCaptor.forClass(MimeMessage.class);
     verify(mailSender).send(messageCaptor.capture());
@@ -403,7 +421,8 @@ class EmailServiceTest {
     when(templateService.process(any(), eq(Set.of("content")), (Context) any())).thenReturn(
         template);
 
-    service.sendMessage(TRAINEE_ID, RECIPIENT, NOTIFICATION_TYPE, "", new HashMap<>(), null, true);
+    service.sendMessage(TRAINEE_ID, RECIPIENT, NOTIFICATION_TYPE, "", new HashMap<>(),
+        null, true);
 
     verify(mailSender, never()).send((MimeMessage) any());
     verify(historyService, never()).save(any());
@@ -415,7 +434,8 @@ class EmailServiceTest {
     when(templateService.process(any(), eq(Set.of("content")), (Context) any())).thenReturn(
         template);
 
-    service.sendMessage(TRAINEE_ID, RECIPIENT, NOTIFICATION_TYPE, "", new HashMap<>(), null, false);
+    service.sendMessage(TRAINEE_ID, RECIPIENT, NOTIFICATION_TYPE, "", new HashMap<>(),
+        null, false);
 
     verify(mailSender).send((MimeMessage) any());
     verify(historyService).save(any());

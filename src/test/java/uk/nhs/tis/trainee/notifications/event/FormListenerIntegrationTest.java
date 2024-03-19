@@ -23,7 +23,6 @@ package uk.nhs.tis.trainee.notifications.event;
 
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.notNullValue;
-import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
@@ -59,7 +58,7 @@ import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.test.context.ActiveProfiles;
 import uk.nhs.tis.trainee.notifications.dto.FormUpdateEvent;
-import uk.nhs.tis.trainee.notifications.dto.UserAccountDetails;
+import uk.nhs.tis.trainee.notifications.dto.UserDetails;
 import uk.nhs.tis.trainee.notifications.model.History;
 import uk.nhs.tis.trainee.notifications.model.History.RecipientInfo;
 import uk.nhs.tis.trainee.notifications.model.History.TemplateInfo;
@@ -77,7 +76,10 @@ class FormListenerIntegrationTest {
   private static final String PERSON_ID = "40";
   private static final String USER_ID = UUID.randomUUID().toString();
   private static final String EMAIL = "anthony.gilliam@tis.nhs.uk";
+  private static final String TITLE = "Mr";
   private static final String FAMILY_NAME = "Gilliam";
+  private static final String GIVEN_NAME = "Anthony";
+  private static final String GMC = "111111";
 
   private static final Instant FORM_UPDATED_AT = Instant.parse("2023-08-01T00:00:00Z");
   private static final String APP_DOMAIN = "https://local.notifications.com";
@@ -128,7 +130,7 @@ class FormListenerIntegrationTest {
         missingValue, null, FORM_CONTENT);
 
     when(userAccountService.getUserDetails(USER_ID)).thenReturn(
-        new UserAccountDetails(EMAIL, missingValue));
+        new UserDetails(true, EMAIL, TITLE, missingValue, missingValue, GMC));
 
     // Spy on the email service and inject a missing domain.
     EmailService emailService = spy(this.emailService);
@@ -174,7 +176,7 @@ class FormListenerIntegrationTest {
     FormUpdateEvent event = new FormUpdateEvent(FORM_NAME, FORM_SUBMITTED, PERSON_ID,
         FORM_TYPE, FORM_UPDATED_AT, FORM_CONTENT);
     when(userAccountService.getUserDetails(USER_ID)).thenReturn(
-        new UserAccountDetails(EMAIL, FAMILY_NAME));
+        new UserDetails(true, EMAIL, TITLE, FAMILY_NAME, GIVEN_NAME, GMC));
 
     listener.handleFormUpdate(event);
 
@@ -218,7 +220,7 @@ class FormListenerIntegrationTest {
     FormUpdateEvent event = new FormUpdateEvent(FORM_NAME, FORM_UNSUBMITTED, PERSON_ID,
         FORM_TYPE, FORM_UPDATED_AT, FORM_CONTENT);
     when(userAccountService.getUserDetails(USER_ID)).thenReturn(
-        new UserAccountDetails(EMAIL, FAMILY_NAME));
+        new UserDetails(true, EMAIL, TITLE, FAMILY_NAME, GIVEN_NAME, GMC));
 
     listener.handleFormUpdate(event);
 
@@ -262,7 +264,7 @@ class FormListenerIntegrationTest {
     FormUpdateEvent event = new FormUpdateEvent(FORM_NAME, FORM_DELETED, PERSON_ID,
         FORM_TYPE, FORM_UPDATED_AT, FORM_CONTENT);
     when(userAccountService.getUserDetails(USER_ID)).thenReturn(
-        new UserAccountDetails(EMAIL, FAMILY_NAME));
+        new UserDetails(true, EMAIL, TITLE, FAMILY_NAME, GIVEN_NAME, GMC));
 
     listener.handleFormUpdate(event);
 
@@ -303,7 +305,7 @@ class FormListenerIntegrationTest {
     FormUpdateEvent event = new FormUpdateEvent(FORM_NAME, FORM_SUBMITTED, PERSON_ID,
         FORM_TYPE, FORM_UPDATED_AT, FORM_CONTENT);
     when(userAccountService.getUserDetails(USER_ID)).thenReturn(
-        new UserAccountDetails(EMAIL, FAMILY_NAME));
+        new UserDetails(true, EMAIL, TITLE, FAMILY_NAME, GIVEN_NAME, GMC));
 
     listener.handleFormUpdate(event);
 
@@ -326,8 +328,8 @@ class FormListenerIntegrationTest {
     assertThat("Unexpected template version.", templateInfo.version(), is(templateVersion));
 
     Map<String, Object> storedVariables = templateInfo.variables();
-    assertThat("Unexpected template variable count.", storedVariables.size(), is(6));
-    assertThat("Unexpected template variable.", storedVariables.get("name"), is(FAMILY_NAME));
+    assertThat("Unexpected template variable count.", storedVariables.size(), is(7));
+    assertThat("Unexpected template variable.", storedVariables.get("familyName"), is(FAMILY_NAME));
     assertThat("Unexpected template variable.", storedVariables.get("lifecycleState"),
         is(FORM_SUBMITTED));
     assertThat("Unexpected template variable.", storedVariables.get("formType"), is(FORM_TYPE));

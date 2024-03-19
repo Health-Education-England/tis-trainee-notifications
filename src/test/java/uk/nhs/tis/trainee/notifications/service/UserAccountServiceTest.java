@@ -49,7 +49,7 @@ import software.amazon.awssdk.services.cognitoidentityprovider.model.ListUsersRe
 import software.amazon.awssdk.services.cognitoidentityprovider.model.UserNotFoundException;
 import software.amazon.awssdk.services.cognitoidentityprovider.model.UserType;
 import software.amazon.awssdk.services.cognitoidentityprovider.paginators.ListUsersIterable;
-import uk.nhs.tis.trainee.notifications.dto.UserAccountDetails;
+import uk.nhs.tis.trainee.notifications.dto.UserDetails;
 
 class UserAccountServiceTest {
 
@@ -57,11 +57,13 @@ class UserAccountServiceTest {
 
   private static final String USER_ID_1 = UUID.randomUUID().toString();
   private static final String PERSON_ID_1 = "1";
+  private static final String GMC_NUMBER = "111111";
 
   private static final String USER_ID_2 = UUID.randomUUID().toString();
   private static final String PERSON_ID_2 = "2";
   private static final String EMAIL = "anthony.gilliam@tis.nhs.uk";
   private static final String FAMILY_NAME = "Gilliam";
+  private static final String GIVEN_NAME = "Anthony";
 
   private static final String ATTRIBUTE_PERSON_ID = "custom:tisId";
   private static final String ATTRIBUTE_USER_ID = "sub";
@@ -187,15 +189,20 @@ class UserAccountServiceTest {
     AdminGetUserResponse response = AdminGetUserResponse.builder()
         .userAttributes(
             AttributeType.builder().name("email").value(EMAIL).build(),
-            AttributeType.builder().name("family_name").value(FAMILY_NAME).build()
+            AttributeType.builder().name("family_name").value(FAMILY_NAME).build(),
+            AttributeType.builder().name("given_name").value(GIVEN_NAME).build()
         ).build();
 
     when(cognitoClient.adminGetUser(any(AdminGetUserRequest.class))).thenReturn(response);
 
-    UserAccountDetails userDetails = service.getUserDetails(USER_ID_1);
+    UserDetails userDetails = service.getUserDetails(USER_ID_1);
 
+    assertThat("Unexpected isRegistered.", userDetails.isRegistered(), is(true));
     assertThat("Unexpected email.", userDetails.email(), is(EMAIL));
+    assertThat("Unexpected title.", userDetails.title(), is(nullValue()));
     assertThat("Unexpected family name.", userDetails.familyName(), is(FAMILY_NAME));
+    assertThat("Unexpected given name.", userDetails.givenName(), is(GIVEN_NAME));
+    assertThat("Unexpected gmc number.", userDetails.gmcNumber(), is(nullValue()));
   }
 
   @Test
@@ -203,7 +210,7 @@ class UserAccountServiceTest {
     AdminGetUserResponse response = AdminGetUserResponse.builder().build();
     when(cognitoClient.adminGetUser(any(AdminGetUserRequest.class))).thenReturn(response);
 
-    UserAccountDetails userDetails = service.getUserDetails(USER_ID_1);
+    UserDetails userDetails = service.getUserDetails(USER_ID_1);
 
     assertThat("Unexpected email.", userDetails.email(), nullValue());
     assertThat("Unexpected family name.", userDetails.familyName(), nullValue());

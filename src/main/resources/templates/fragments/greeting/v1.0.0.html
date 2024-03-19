@@ -5,6 +5,6 @@
     <title>Greeting</title>
   </head>
   <body>
-    <p>Dear <span th:text="${not #strings.isEmpty(name)} ? |Dr ${name}| : _">Doctor</span>,</p>
+    <p>Dear <span th:text="${not #strings.isEmpty(familyName)} ? |Dr ${familyName}| : _">Doctor</span>,</p>
   </body>
 </html>

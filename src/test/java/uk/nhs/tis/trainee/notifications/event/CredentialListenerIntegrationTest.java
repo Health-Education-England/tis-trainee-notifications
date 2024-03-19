@@ -23,7 +23,6 @@ package uk.nhs.tis.trainee.notifications.event;
 
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.notNullValue;
-import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.CoreMatchers.startsWith;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.matchesPattern;
@@ -61,7 +60,7 @@ import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.test.context.ActiveProfiles;
 import uk.nhs.tis.trainee.notifications.dto.CredentialEvent;
-import uk.nhs.tis.trainee.notifications.dto.UserAccountDetails;
+import uk.nhs.tis.trainee.notifications.dto.UserDetails;
 import uk.nhs.tis.trainee.notifications.model.History;
 import uk.nhs.tis.trainee.notifications.model.History.RecipientInfo;
 import uk.nhs.tis.trainee.notifications.model.History.TemplateInfo;
@@ -79,7 +78,10 @@ class CredentialListenerIntegrationTest {
   private static final String TRAINEE_ID = "40";
   private static final String USER_ID = UUID.randomUUID().toString();
   private static final String EMAIL = "anthony.gilliam@tis.nhs.uk";
+  private static final String TITLE = "Mr";
   private static final String FAMILY_NAME = "Gilliam";
+  private static final String GIVEN_NAME = "Anthony";
+  private static final String GMC = "111111";
 
   private static final String CREDENTIAL_TYPE = "TestCredential";
   private static final Instant ISSUED_AT = Instant.parse("2024-01-01T00:00:00Z");
@@ -125,7 +127,7 @@ class CredentialListenerIntegrationTest {
       throws Exception {
     CredentialEvent event = new CredentialEvent(null, missingValue, null, TRAINEE_ID);
     when(userAccountService.getUserDetails(USER_ID)).thenReturn(
-        new UserAccountDetails(EMAIL, missingValue));
+        new UserDetails(true, EMAIL, TITLE, missingValue, missingValue, GMC));
 
     // Spy on the email service and inject a missing domain.
     EmailService emailService = spy(this.emailService);
@@ -170,7 +172,7 @@ class CredentialListenerIntegrationTest {
   void shouldSendFullyTailoredRevocationNoticeWhenAllTemplateVariablesAvailable() throws Exception {
     CredentialEvent event = new CredentialEvent(null, CREDENTIAL_TYPE, ISSUED_AT, TRAINEE_ID);
     when(userAccountService.getUserDetails(USER_ID)).thenReturn(
-        new UserAccountDetails(EMAIL, FAMILY_NAME));
+        new UserDetails(true, EMAIL, TITLE, FAMILY_NAME, GIVEN_NAME, GMC));
 
     listener.handleCredentialRevoked(event);
 
@@ -211,7 +213,7 @@ class CredentialListenerIntegrationTest {
   void shouldSendRevocationNoticeWithTailoredNameWhenAvailable() throws Exception {
     CredentialEvent event = new CredentialEvent(null, null, null, TRAINEE_ID);
     when(userAccountService.getUserDetails(USER_ID)).thenReturn(
-        new UserAccountDetails(EMAIL, FAMILY_NAME));
+        new UserDetails(true, EMAIL, TITLE, FAMILY_NAME, GIVEN_NAME, GMC));
 
     listener.handleCredentialRevoked(event);
 
@@ -249,7 +251,7 @@ class CredentialListenerIntegrationTest {
       throws Exception {
     CredentialEvent event = new CredentialEvent(null, credentialType, null, TRAINEE_ID);
     when(userAccountService.getUserDetails(USER_ID)).thenReturn(
-        new UserAccountDetails(EMAIL, null));
+        new UserDetails(true, EMAIL, TITLE, null, null, GMC));
 
     listener.handleCredentialRevoked(event);
 
@@ -289,7 +291,7 @@ class CredentialListenerIntegrationTest {
   void shouldSendRevocationNoticeWithTailoredIssuedAtWhenAvailable() throws Exception {
     CredentialEvent event = new CredentialEvent(null, null, ISSUED_AT, TRAINEE_ID);
     when(userAccountService.getUserDetails(USER_ID)).thenReturn(
-        new UserAccountDetails(EMAIL, null));
+        new UserDetails(true, EMAIL, TITLE, null, null, GMC));
 
     listener.handleCredentialRevoked(event);
 
@@ -327,7 +329,7 @@ class CredentialListenerIntegrationTest {
   void shouldSendRevocationNoticeWithTailoredDomainWhenAvailable() throws Exception {
     CredentialEvent event = new CredentialEvent(null, null, null, TRAINEE_ID);
     when(userAccountService.getUserDetails(USER_ID)).thenReturn(
-        new UserAccountDetails(EMAIL, null));
+        new UserDetails(true, EMAIL, TITLE, null, null, GMC));
 
     listener.handleCredentialRevoked(event);
 
@@ -363,7 +365,7 @@ class CredentialListenerIntegrationTest {
   void shouldSendRevocationNoticeTailoredForTrainingPlacement() throws Exception {
     CredentialEvent event = new CredentialEvent(null, "Training Placement", null, TRAINEE_ID);
     when(userAccountService.getUserDetails(USER_ID)).thenReturn(
-        new UserAccountDetails(EMAIL, null));
+        new UserDetails(true, EMAIL, TITLE, null, null, GMC));
 
     listener.handleCredentialRevoked(event);
 
@@ -391,7 +393,7 @@ class CredentialListenerIntegrationTest {
   void shouldSendRevocationNoticeTailoredForTrainingProgramme() throws Exception {
     CredentialEvent event = new CredentialEvent(null, "Training Programme", null, TRAINEE_ID);
     when(userAccountService.getUserDetails(USER_ID)).thenReturn(
-        new UserAccountDetails(EMAIL, null));
+        new UserDetails(true, EMAIL, TITLE, null, null, GMC));
 
     listener.handleCredentialRevoked(event);
 
@@ -419,7 +421,7 @@ class CredentialListenerIntegrationTest {
   void shouldStoreCredentialRevokedNotificationHistoryWhenMessageSent() throws MessagingException {
     CredentialEvent event = new CredentialEvent(null, CREDENTIAL_TYPE, ISSUED_AT, TRAINEE_ID);
     when(userAccountService.getUserDetails(USER_ID)).thenReturn(
-        new UserAccountDetails(EMAIL, FAMILY_NAME));
+        new UserDetails(true, EMAIL, TITLE, FAMILY_NAME, GIVEN_NAME, GMC));
 
     listener.handleCredentialRevoked(event);
 
@@ -442,8 +444,9 @@ class CredentialListenerIntegrationTest {
     assertThat("Unexpected template version.", templateInfo.version(), is(templateVersion));
 
     Map<String, Object> storedVariables = templateInfo.variables();
-    assertThat("Unexpected template variable count.", storedVariables.size(), is(4));
-    assertThat("Unexpected template variable.", storedVariables.get("name"), is(FAMILY_NAME));
+    assertThat("Unexpected template variable count.", storedVariables.size(), is(5));
+    assertThat("Unexpected template variable.", storedVariables.get("familyName"),
+        is(FAMILY_NAME));
     assertThat("Unexpected template variable.", storedVariables.get("credentialType"),
         is(CREDENTIAL_TYPE));
     assertThat("Unexpected template variable.", storedVariables.get("issuedAt"), is(ISSUED_AT));

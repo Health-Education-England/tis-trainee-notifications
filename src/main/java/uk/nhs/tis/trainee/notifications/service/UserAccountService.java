@@ -39,7 +39,7 @@ import software.amazon.awssdk.services.cognitoidentityprovider.model.AttributeTy
 import software.amazon.awssdk.services.cognitoidentityprovider.model.ListUsersRequest;
 import software.amazon.awssdk.services.cognitoidentityprovider.model.UserType;
 import software.amazon.awssdk.services.cognitoidentityprovider.paginators.ListUsersIterable;
-import uk.nhs.tis.trainee.notifications.dto.UserAccountDetails;
+import uk.nhs.tis.trainee.notifications.dto.UserDetails;
 
 /**
  * A service providing user account data.
@@ -52,6 +52,7 @@ public class UserAccountService {
 
   private static final String ATTRIBUTE_EMAIL = "email";
   private static final String ATTRIBUTE_FAMILY_NAME = "family_name";
+  private static final String ATTRIBUTE_GIVEN_NAME = "given_name";
 
   private final CognitoIdentityProviderClient cognitoClient;
   private final String userPoolId;
@@ -118,7 +119,7 @@ public class UserAccountService {
    * @param userAccountId The user ID to get the details of.
    * @return The found user account details.
    */
-  public UserAccountDetails getUserDetails(String userAccountId) {
+  public UserDetails getUserDetails(String userAccountId) {
     log.info("Getting user details for account {}", userAccountId);
     AdminGetUserRequest request = AdminGetUserRequest.builder()
         .userPoolId(userPoolId)
@@ -128,7 +129,12 @@ public class UserAccountService {
     Map<String, String> attributes = response.userAttributes().stream()
         .collect(Collectors.toMap(AttributeType::name, AttributeType::value));
 
-    return new UserAccountDetails(attributes.get(ATTRIBUTE_EMAIL),
-        attributes.get(ATTRIBUTE_FAMILY_NAME));
+    return new UserDetails(
+        true,
+        attributes.get(ATTRIBUTE_EMAIL),
+        null,
+        attributes.get(ATTRIBUTE_FAMILY_NAME),
+        attributes.get(ATTRIBUTE_GIVEN_NAME),
+        null);
   }
 }
