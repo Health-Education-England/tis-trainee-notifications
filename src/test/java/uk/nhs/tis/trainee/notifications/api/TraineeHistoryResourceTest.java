@@ -119,11 +119,11 @@ class TraineeHistoryResourceTest {
     TisReferenceInfo tisReferenceForm
         = new TisReferenceInfo(TisReferenceType.FORMR_PARTA, TIS_REFERENCE_ID);
     HistoryDto history1 = new HistoryDto("1", tisReferenceProgramme, EMAIL, COJ_CONFIRMATION,
-        TRAINEE_CONTACT_1, Instant.MIN, Instant.MAX, SENT, null);
+        null, TRAINEE_CONTACT_1, Instant.MIN, Instant.MAX, SENT, null);
     HistoryDto history2 = new HistoryDto("2", tisReferenceProgramme, EMAIL, CREDENTIAL_REVOKED,
-        TRAINEE_CONTACT_2, Instant.EPOCH, Instant.EPOCH, FAILED, null);
+        null, TRAINEE_CONTACT_2, Instant.EPOCH, Instant.EPOCH, FAILED, null);
     HistoryDto history3 = new HistoryDto("3", tisReferenceForm, EMAIL, FORM_UPDATED,
-        TRAINEE_CONTACT_3, Instant.MAX, Instant.MIN, FAILED, "Additional detail");
+        null, TRAINEE_CONTACT_3, Instant.MAX, Instant.MIN, FAILED, "Additional detail");
 
     when(service.findAllForTrainee(TRAINEE_ID)).thenReturn(List.of(history1, history2, history3));
 
@@ -259,7 +259,7 @@ class TraineeHistoryResourceTest {
       throws Exception {
     TisReferenceInfo tisReference
         = new TisReferenceInfo(TisReferenceType.FORMR_PARTA, TIS_REFERENCE_ID);
-    HistoryDto history = new HistoryDto("1", tisReference, IN_APP, FORM_UPDATED,
+    HistoryDto history = new HistoryDto("1", tisReference, IN_APP, FORM_UPDATED, null,
         TRAINEE_CONTACT_1, Instant.MIN, Instant.MAX, status, "Additional detail");
     when(service.updateStatus(TRAINEE_ID, NOTIFICATION_ID, status)).thenReturn(
         Optional.of(history));

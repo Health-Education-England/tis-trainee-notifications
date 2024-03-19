@@ -30,13 +30,17 @@ import org.mapstruct.Mapping;
 import org.mapstruct.MappingConstants.ComponentModel;
 import uk.nhs.tis.trainee.notifications.dto.HistoryDto;
 import uk.nhs.tis.trainee.notifications.model.History;
+import uk.nhs.tis.trainee.notifications.model.MessageType;
 import uk.nhs.tis.trainee.notifications.model.NotificationStatus;
+import uk.nhs.tis.trainee.notifications.model.NotificationType;
 
 /**
  * A mapper to convert between notification history data types.
  */
 @Mapper(componentModel = ComponentModel.SPRING)
 public interface HistoryMapper {
+
+  String WELCOME_SUBJECT_TEXT = "Welcome to TIS Self-Service";
 
   /**
    * Convert history entities to history DTOs.
@@ -56,6 +60,8 @@ public interface HistoryMapper {
   @Mapping(target = "type", source = "recipient.type")
   @Mapping(target = "tisReference")
   @Mapping(target = "subject", source = "type")
+  @Mapping(target = "subjectText",
+      expression = "java(getSubjectText(entity.type(), entity.recipient().type()))")
   @Mapping(target = "contact", source = "recipient.contact")
   @Mapping(target = "sentAt")
   @Mapping(target = "readAt")
@@ -85,5 +91,23 @@ public interface HistoryMapper {
    */
   default Instant calculateReadAt(History entity, NotificationStatus status) {
     return entity.readAt() == null && status.equals(READ) ? Instant.now() : entity.readAt();
+  }
+
+  /**
+   * Get the subject text from the NotificationType for in-app messages. Note this is hardcoded, not
+   * extracted from the applicable template subject fragment.
+   *
+   * @param notificationType The notification type.
+   * @param messageType      The message type.
+   * @return The corresponding subject text.
+   */
+  default String getSubjectText(NotificationType notificationType, MessageType messageType) {
+    if (messageType != MessageType.IN_APP) {
+      return null; //these are ignored
+    }
+    return switch (notificationType) {
+      case WELCOME -> WELCOME_SUBJECT_TEXT;
+      default -> null;
+    };
   }
 }
