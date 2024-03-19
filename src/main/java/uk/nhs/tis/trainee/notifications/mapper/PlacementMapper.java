@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright 2023 Crown Copyright (Health Education England)
+ * Copyright 2024 Crown Copyright (Health Education England)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
  * associated documentation files (the "Software"), to deal in the Software without restriction,
@@ -19,39 +19,33 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package uk.nhs.tis.trainee.notifications.model;
+package uk.nhs.tis.trainee.notifications.mapper;
 
-import java.util.EnumSet;
-import java.util.Set;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
+import java.util.Map;
+import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
+import org.mapstruct.MappingConstants.ComponentModel;
+import org.mapstruct.ReportingPolicy;
+import uk.nhs.tis.trainee.notifications.model.Placement;
 
 /**
- * An enumeration of possible notification types.
+ * A mapper to map between TIS Data and Placement Data.
  */
-@Getter
-@AllArgsConstructor
-public enum NotificationType {
-
-  COJ_CONFIRMATION("coj-confirmation"),
-  CREDENTIAL_REVOKED("credential-revoked"),
-  FORM_UPDATED("form-updated"),
-  PLACEMENT_UPDATED_WEEK_12("placement-updated-week-12"),
-  PROGRAMME_UPDATED_WEEK_8("programme-updated-week-8"),
-  PROGRAMME_UPDATED_WEEK_4("programme-updated-week-4"),
-  PROGRAMME_UPDATED_WEEK_1("programme-updated-week-1"),
-  PROGRAMME_UPDATED_WEEK_0("programme-updated-week-0"),
-  WELCOME("welcome");
+@Mapper(componentModel = ComponentModel.SPRING, unmappedTargetPolicy = ReportingPolicy.IGNORE)
+public interface PlacementMapper {
 
   /**
-   * The set of Programme Updated notification types.
+   * Map a record data map to a Placement.
+   *
+   * @param recordData The map to convert.
+   * @return The mapped Placement.
    */
-  @Getter
-  private static final Set<NotificationType> programmeUpdateNotificationTypes = EnumSet.of(
-      PROGRAMME_UPDATED_WEEK_8,
-      PROGRAMME_UPDATED_WEEK_4,
-      PROGRAMME_UPDATED_WEEK_1,
-      PROGRAMME_UPDATED_WEEK_0);
-
-  private final String templateName;
+  @Mapping(target = "tisId", source = "recordData.id")
+  @Mapping(target = "personId", source = "recordData.traineeId")
+  @Mapping(target = "startDate", source = "recordData.dateFrom")
+  @Mapping(target = "placementType", source = "recordData.placementType")
+  @Mapping(target = "owner", source = "recordData.owner")
+  Placement toEntity(Map<String, String> recordData);
 }
+
+

@@ -46,7 +46,8 @@ import org.springframework.boot.autoconfigure.thymeleaf.ThymeleafAutoConfigurati
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.mail.javamail.JavaMailSender;
-import uk.nhs.tis.trainee.notifications.dto.UserAccountDetails;
+import org.springframework.web.client.RestTemplate;
+import uk.nhs.tis.trainee.notifications.dto.UserDetails;
 import uk.nhs.tis.trainee.notifications.model.NotificationType;
 
 @SpringBootTest(classes = {EmailService.class, TemplateService.class})
@@ -56,6 +57,8 @@ class EmailServiceIntegrationTest {
   private static final String PERSON_ID = "40";
   private static final String USER_ID = UUID.randomUUID().toString();
   private static final String RECIPIENT = "test@tis.nhs.uk";
+  private static final String GMC = "111111";
+  private static final String API = "the-url/api/trainee-profile/account-details/{tisId}";
 
   @MockBean
   private JavaMailSender mailSender;
@@ -65,6 +68,9 @@ class EmailServiceIntegrationTest {
 
   @MockBean
   private UserAccountService userAccountService;
+
+  @MockBean
+  private RestTemplate restTemplate;
 
   @Autowired
   private EmailService service;
@@ -81,7 +87,7 @@ class EmailServiceIntegrationTest {
   void shouldIncludeSubjectInTemplates(NotificationType notificationType, String templateVersion)
       throws Exception {
     when(userAccountService.getUserDetails(USER_ID)).thenReturn(
-        new UserAccountDetails(RECIPIENT, null));
+        new UserDetails(true, RECIPIENT, null, null, null, null));
 
     service.sendMessageToExistingUser(PERSON_ID, notificationType, templateVersion, Map.of(), null);
 
@@ -98,7 +104,7 @@ class EmailServiceIntegrationTest {
   void shouldIncludeContentInTemplates(NotificationType notificationType, String templateVersion)
       throws Exception {
     when(userAccountService.getUserDetails(USER_ID)).thenReturn(
-        new UserAccountDetails(RECIPIENT, null));
+        new UserDetails(true, RECIPIENT, null, null, null, null));
 
     service.sendMessageToExistingUser(PERSON_ID, notificationType, templateVersion, Map.of(), null);
 
@@ -115,7 +121,7 @@ class EmailServiceIntegrationTest {
   void shouldGreetExistingUsersConsistentlyWhenNameNotAvailable(NotificationType notificationType,
       String templateVersion) throws Exception {
     when(userAccountService.getUserDetails(USER_ID)).thenReturn(
-        new UserAccountDetails(RECIPIENT, null));
+        new UserDetails(true, RECIPIENT, null, null, null, null));
 
     service.sendMessageToExistingUser(PERSON_ID, notificationType, templateVersion, Map.of(), null);
 
@@ -137,7 +143,7 @@ class EmailServiceIntegrationTest {
   void shouldGreetExistingUsersConsistentlyWhenNameAvailable(NotificationType notificationType,
       String templateVersion) throws Exception {
     when(userAccountService.getUserDetails(USER_ID)).thenReturn(
-        new UserAccountDetails(RECIPIENT, "Gilliam"));
+        new UserDetails(true, RECIPIENT, null, "Gilliam", "Anthony", null));
 
     service.sendMessageToExistingUser(PERSON_ID, notificationType, templateVersion, Map.of(), null);
 
@@ -148,9 +154,15 @@ class EmailServiceIntegrationTest {
     Document content = Jsoup.parse((String) message.getContent());
     Element body = content.body();
 
-    Element greeting = body.children().get(0);
-    assertThat("Unexpected element tag.", greeting.tagName(), is("p"));
-    assertThat("Unexpected greeting.", greeting.text(), is("Dear Dr Gilliam,"));
+    if (notificationType.equals(NotificationType.PLACEMENT_UPDATED_WEEK_12)) {
+      Element greeting = body.children().get(0);
+      assertThat("Unexpected element tag.", greeting.tagName(), is("p"));
+      assertThat("Unexpected greeting.", greeting.text(), is("Dear Dr Anthony Gilliam,"));
+    } else {
+      Element greeting = body.children().get(0);
+      assertThat("Unexpected element tag.", greeting.tagName(), is("p"));
+      assertThat("Unexpected greeting.", greeting.text(), is("Dear Dr Gilliam,"));
+    }
   }
 
   @ParameterizedTest
@@ -159,10 +171,10 @@ class EmailServiceIntegrationTest {
   void shouldGreetExistingUsersConsistentlyWhenNameProvided(NotificationType notificationType,
       String templateVersion) throws Exception {
     when(userAccountService.getUserDetails(USER_ID)).thenReturn(
-        new UserAccountDetails(RECIPIENT, "Gilliam"));
+        new UserDetails(true, RECIPIENT, null, "Gilliam", "Anthony", null));
 
     service.sendMessageToExistingUser(PERSON_ID, notificationType, templateVersion,
-        Map.of("name", "Maillig"), null);
+        Map.of("familyName", "Maillig"), null);
 
     ArgumentCaptor<MimeMessage> messageCaptor = ArgumentCaptor.forClass(MimeMessage.class);
     verify(mailSender).send(messageCaptor.capture());
@@ -171,8 +183,14 @@ class EmailServiceIntegrationTest {
     Document content = Jsoup.parse((String) message.getContent());
     Element body = content.body();
 
-    Element greeting = body.children().get(0);
-    assertThat("Unexpected element tag.", greeting.tagName(), is("p"));
-    assertThat("Unexpected greeting.", greeting.text(), is("Dear Dr Maillig,"));
+    if (notificationType.equals(NotificationType.PLACEMENT_UPDATED_WEEK_12)) {
+      Element greeting = body.children().get(0);
+      assertThat("Unexpected element tag.", greeting.tagName(), is("p"));
+      assertThat("Unexpected greeting.", greeting.text(), is("Dear Dr Anthony Maillig,"));
+    } else {
+      Element greeting = body.children().get(0);
+      assertThat("Unexpected element tag.", greeting.tagName(), is("p"));
+      assertThat("Unexpected greeting.", greeting.text(), is("Dear Dr Maillig,"));
+    }
   }
 }

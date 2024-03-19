@@ -16,42 +16,23 @@
  * NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
  * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
  * DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ *  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
 package uk.nhs.tis.trainee.notifications.model;
 
-import java.util.EnumSet;
-import java.util.Set;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 
 /**
- * An enumeration of possible notification types.
+ * A list of HREF types that may be used by local office contacts.
  */
 @Getter
 @AllArgsConstructor
-public enum NotificationType {
+public enum HrefType {
+  PROTOCOL_EMAIL("email"),
+  ABSOLUTE_URL("url"),
+  NON_HREF("NON_HREF");
 
-  COJ_CONFIRMATION("coj-confirmation"),
-  CREDENTIAL_REVOKED("credential-revoked"),
-  FORM_UPDATED("form-updated"),
-  PLACEMENT_UPDATED_WEEK_12("placement-updated-week-12"),
-  PROGRAMME_UPDATED_WEEK_8("programme-updated-week-8"),
-  PROGRAMME_UPDATED_WEEK_4("programme-updated-week-4"),
-  PROGRAMME_UPDATED_WEEK_1("programme-updated-week-1"),
-  PROGRAMME_UPDATED_WEEK_0("programme-updated-week-0"),
-  WELCOME("welcome");
-
-  /**
-   * The set of Programme Updated notification types.
-   */
-  @Getter
-  private static final Set<NotificationType> programmeUpdateNotificationTypes = EnumSet.of(
-      PROGRAMME_UPDATED_WEEK_8,
-      PROGRAMME_UPDATED_WEEK_4,
-      PROGRAMME_UPDATED_WEEK_1,
-      PROGRAMME_UPDATED_WEEK_0);
-
-  private final String templateName;
+  private final String hrefTypeName;
 }

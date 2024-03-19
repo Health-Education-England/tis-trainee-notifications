@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright 2023 Crown Copyright (Health Education England)
+ * Copyright 2024 Crown Copyright (Health Education England)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
  * associated documentation files (the "Software"), to deal in the Software without restriction,
@@ -22,11 +22,21 @@
 package uk.nhs.tis.trainee.notifications.dto;
 
 /**
- * Account details for an individual user.
+ * User details for an individual user.
  *
- * @param email      The account's registered email.
- * @param familyName The user's family name.
+ * @param isRegistered  Boolean of whether the user registered the account on Cognito.
+ * @param email         The account's registered email.
+ * @param title         The user's title.
+ * @param familyName    The user's family name.
+ * @param givenName     The user's given name.
+ * @param gmcNumber     The user's GMC number.
  */
-public record UserAccountDetails(String email, String familyName) {
+public record UserDetails(
+    Boolean isRegistered,
+    String email,
+    String title,
+    String familyName,
+    String givenName,
+    String gmcNumber) {
 
 }

@@ -39,7 +39,7 @@ import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
 import org.thymeleaf.context.Context;
-import uk.nhs.tis.trainee.notifications.dto.UserAccountDetails;
+import uk.nhs.tis.trainee.notifications.dto.UserDetails;
 import uk.nhs.tis.trainee.notifications.model.History;
 import uk.nhs.tis.trainee.notifications.model.History.RecipientInfo;
 import uk.nhs.tis.trainee.notifications.model.History.TemplateInfo;
@@ -91,7 +91,7 @@ public class EmailService {
       throw new IllegalArgumentException("Unable to send notification as no trainee ID available");
     }
 
-    UserAccountDetails userDetails = getRecipientAccount(traineeId);
+    UserDetails userDetails = getRecipientAccount(traineeId);
 
     if (Strings.isBlank(userDetails.email())) {
       String message = "Could not find email address for user '%s'".formatted(traineeId);
@@ -99,7 +99,8 @@ public class EmailService {
     }
 
     templateVariables = new HashMap<>(templateVariables);
-    templateVariables.putIfAbsent("name", userDetails.familyName());
+    templateVariables.putIfAbsent("familyName", userDetails.familyName());
+    templateVariables.putIfAbsent("givenName", userDetails.givenName());
     sendMessage(traineeId, userDetails.email(), notificationType, templateVersion,
         templateVariables, tisReferenceInfo, false);
   }
@@ -165,7 +166,7 @@ public class EmailService {
    * @param traineeId The trainee ID to get the account for.
    * @return The found account.
    */
-  public UserAccountDetails getRecipientAccount(String traineeId) {
+  public UserDetails getRecipientAccount(String traineeId) {
     Set<String> userAccountIds = userAccountService.getUserAccountIds(traineeId);
 
     return switch (userAccountIds.size()) {

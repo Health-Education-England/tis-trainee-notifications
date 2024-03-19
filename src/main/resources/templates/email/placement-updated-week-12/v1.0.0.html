@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+</head>
+<body>
+<h1>Email Message</h1>
+<h2>Subject</h2>
+<th:block th:fragment="subject">Placement confirmation: 12 weeks to go</th:block>
+<h2>Content</h2>
+<th:block th:fragment="content">
+  <p th:if="${#strings.isEmpty(givenName) AND #strings.isEmpty(familyName)}">Dear Doctor,</p>
+  <p th:if="${not (#strings.isEmpty(givenName) OR #strings.isEmpty(familyName))}">Dear <span th:text="${not #strings.isEmpty(title)} ? ${title} : 'Dr'"></span> <span th:text="${not #strings.isEmpty(givenName)} ? ${givenName} : _"></span> <span th:text="${not #strings.isEmpty(familyName)} ? ${familyName} : _"></span>,</p>
+  <p th:if="${not #strings.isEmpty(gmcNumber)}">GMC <span th:text="${gmcNumber}"></span></p>
+  <p>
+    We appreciate this must be a busy time for you but please set some time aside to read this letter as it contains some vital information regarding your training placement.
+  </p>
+  <p>
+    The NHS England team can now confirm your placement within a <b><span th:text="${localOfficeName}"></span></b> programme.
+  </p>
+  <p>
+    Please note your allocation and grade progression if appropriate will be subject to you receiving a satisfactory ARCP outcome, and your continued registration/licence to practise with the GMC for the duration of your training.
+  </p>
+  <th:block th:switch="${isRegistered}"
+  ><p th:case="true">
+    We have a registered account for you on TIS Self Service against the email address <b><span th:text="${email}"></span></b>. To access your upcoming placement details please log in to TIS Self Service: <a href="https://trainee.tis.nhs.uk/home">https://trainee.tis.nhs.uk/home</a>
+  </p>
+  <p th:case="false">
+    We have no TIS Self Service account associated to your record. Please create one by clicking the link below.
+    <br/>
+    Please ensure you use the email address we have against our records <b><span th:text="${email}"></span></b>
+    <br/>
+    <a href="https://trainee.tis.nhs.uk/">https://trainee.tis.nhs.uk/</a>.
+  </p>
+  </th:block>
+  <p>
+    If your email address is likely to change, then please ensure that you update our team via <th:block th:switch="${contactHref}"
+  ><span th:case="url"><a th:href="${localOfficeContact}"><span th:text="${localOfficeContact}"></span></a></span
+  ><span th:case="email"><a th:href="'mailto:' + ${localOfficeContact}"><span th:text="${localOfficeContact}"></span></a></span
+  ><span th:case="*"><span th:text="${localOfficeContact}"></span></span
+  ></th:block> or see our <a href="https://tis-support.hee.nhs.uk/trainees/changes-to-account/">FAQ</a> for details.
+  </p>
+  <p>
+    The placement information reflects what we have recorded on our Training Information System (TIS) as your next placement- <b>please bear in mind that the end date may not be when you finish your rotation, but instead be a change in Grade, WTE or Post number on our system.</b>
+  </p>
+  <p>
+    Further details on the specialist area of your placement will be confirmed by your employing organisation. This is because we are only able to confirm details that relate specifically to your college recognised curriculum.
+  </p>
+  <p>
+    An example of this would be If you have preference a specific post with your Training Programme Director but does not relate to sub-specialty training. This may be a job in a specific location or department
+  </p>
+  <p>
+    Kind Regards,
+  </p>
+  <p>
+    <span th:text="${not #strings.isEmpty(localOfficeName)} ? ${localOfficeName} : _"></span>
+  </p>
+  <p>
+    Workforce, Training and Education
+  </p>
+  <p>
+    NHS England
+  </p>
+</th:block>
+</body>
+</html>

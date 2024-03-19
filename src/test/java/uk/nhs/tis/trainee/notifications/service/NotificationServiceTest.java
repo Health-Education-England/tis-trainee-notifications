@@ -21,6 +21,9 @@
 
 package uk.nhs.tis.trainee.notifications.service;
 
+import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.CoreMatchers.nullValue;
+import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.Assert.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.mockito.ArgumentMatchers.any;
@@ -33,6 +36,12 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.quartz.JobBuilder.newJob;
+import static uk.nhs.tis.trainee.notifications.model.NotificationType.PLACEMENT_UPDATED_WEEK_12;
+import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_UPDATED_WEEK_8;
+import static uk.nhs.tis.trainee.notifications.service.NotificationService.PAST_MILESTONE_SCHEDULE_DELAY_HOURS;
+import static uk.nhs.tis.trainee.notifications.service.PlacementService.PLACEMENT_OWNER_FIELD;
+import static uk.nhs.tis.trainee.notifications.service.PlacementService.PLACEMENT_SPECIALTY_FIELD;
+import static uk.nhs.tis.trainee.notifications.service.PlacementService.PLACEMENT_TYPE_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.NOTIFICATION_TYPE_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.PERSON_ID_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.PROGRAMME_NAME_FIELD;
@@ -40,16 +49,29 @@ import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipServic
 import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.TIS_ID_FIELD;
 
 import jakarta.mail.MessagingException;
+import java.time.Instant;
 import java.time.LocalDate;
+import java.time.ZoneId;
+import java.time.temporal.ChronoUnit;
+import java.util.Date;
+import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.params.provider.EnumSource.Mode;
+import org.mockito.ArgumentCaptor;
 import org.quartz.JobDataMap;
 import org.quartz.JobDetail;
 import org.quartz.JobExecutionContext;
 import org.quartz.JobKey;
+import org.quartz.Scheduler;
+import org.quartz.SchedulerException;
+import org.quartz.Trigger;
+import org.quartz.TriggerKey;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
-import uk.nhs.tis.trainee.notifications.dto.UserAccountDetails;
+import uk.nhs.tis.trainee.notifications.dto.UserDetails;
 import uk.nhs.tis.trainee.notifications.model.NotificationType;
 
 class NotificationServiceTest {
@@ -62,17 +84,30 @@ class NotificationServiceTest {
   private static final String PERSON_ID = "person-id";
   private static final String PROGRAMME_NAME = "the programme";
   private static final LocalDate START_DATE = LocalDate.now();
-  private static final NotificationType NOTIFICATION_TYPE
-      = NotificationType.PROGRAMME_UPDATED_WEEK_8;
+  private static final NotificationType PM_NOTIFICATION_TYPE = PROGRAMME_UPDATED_WEEK_8;
 
+  private static final String LOCAL_OFFICE = "local office";
+  private static final String PLACEMENT_SPECIALTY = "specialty";
+  private static final String PLACEMENT_TYPE = "placement type";
+  private static final NotificationType PLACEMENT_NOTIFICATION_TYPE = PLACEMENT_UPDATED_WEEK_12;
+
+  private static final String COGNITO_EMAIL = "cognito@email";
+  private static final String COGNITO_FAMILY_NAME = "cognito-family-name";
+  private static final String COGNITO_GIVEN_NAME = "cognito-given-name";
   private static final String USER_EMAIL = "email@address";
+  private static final String USER_TITLE = "title";
   private static final String USER_FAMILY_NAME = "family-name";
+  private static final String USER_GIVEN_NAME = "given-name";
+  private static final String USER_GMC = "111111";
 
-  private JobDetail jobDetails;
+  private JobDetail programmeJobDetails;
+  private JobDataMap programmeJobDataMap;
+  private JobDataMap placementJobDataMap;
 
   private NotificationService service;
   private EmailService emailService;
   private RestTemplate restTemplate;
+  private Scheduler scheduler;
   private JobExecutionContext jobExecutionContext;
 
   @BeforeEach
@@ -80,26 +115,42 @@ class NotificationServiceTest {
     jobExecutionContext = mock(JobExecutionContext.class);
     emailService = mock(EmailService.class);
     restTemplate = mock(RestTemplate.class);
+    scheduler = mock(Scheduler.class);
 
-    JobDataMap jobDataMap = new JobDataMap();
-    jobDataMap.put(TIS_ID_FIELD, TIS_ID);
-    jobDataMap.put(PERSON_ID_FIELD, PERSON_ID);
-    jobDataMap.put(PROGRAMME_NAME_FIELD, PROGRAMME_NAME);
-    jobDataMap.put(NOTIFICATION_TYPE_FIELD, NOTIFICATION_TYPE.toString());
-    jobDataMap.put(START_DATE_FIELD, START_DATE);
-    jobDetails = newJob(NotificationService.class)
+    programmeJobDataMap = new JobDataMap();
+    programmeJobDataMap.put(TIS_ID_FIELD, TIS_ID);
+    programmeJobDataMap.put(PERSON_ID_FIELD, PERSON_ID);
+    programmeJobDataMap.put(PROGRAMME_NAME_FIELD, PROGRAMME_NAME);
+    programmeJobDataMap.put(NOTIFICATION_TYPE_FIELD, PM_NOTIFICATION_TYPE.toString());
+    programmeJobDataMap.put(START_DATE_FIELD, START_DATE);
+
+    placementJobDataMap = new JobDataMap();
+    placementJobDataMap.put(TIS_ID_FIELD, TIS_ID);
+    placementJobDataMap.put(PERSON_ID_FIELD, PERSON_ID);
+    placementJobDataMap.put(NOTIFICATION_TYPE_FIELD, PLACEMENT_NOTIFICATION_TYPE.toString());
+    placementJobDataMap.put(START_DATE_FIELD, START_DATE);
+    placementJobDataMap.put(PLACEMENT_TYPE_FIELD, PLACEMENT_TYPE);
+    placementJobDataMap.put(PLACEMENT_OWNER_FIELD, LOCAL_OFFICE);
+    placementJobDataMap.put(PLACEMENT_SPECIALTY_FIELD, PLACEMENT_SPECIALTY);
+
+    programmeJobDetails = newJob(NotificationService.class)
         .withIdentity(JOB_KEY)
-        .usingJobData(jobDataMap)
+        .usingJobData(programmeJobDataMap)
         .build();
 
-    service = new NotificationService(emailService, restTemplate, TEMPLATE_VERSION, SERVICE_URL);
+    service = new NotificationService(
+        emailService, restTemplate, scheduler, TEMPLATE_VERSION, SERVICE_URL);
   }
 
   @Test
   void shouldSetNotificationResultWhenSuccessfullyExecuted() {
-    UserAccountDetails userAccountDetails = new UserAccountDetails(USER_EMAIL, USER_FAMILY_NAME);
-    when(jobExecutionContext.getJobDetail()).thenReturn(jobDetails);
+    UserDetails userAccountDetails =
+        new UserDetails(
+            true, USER_EMAIL, USER_TITLE, USER_FAMILY_NAME, USER_GIVEN_NAME, USER_GMC);
+    when(jobExecutionContext.getJobDetail()).thenReturn(programmeJobDetails);
     when(emailService.getRecipientAccount(PERSON_ID)).thenReturn(userAccountDetails);
+    when(restTemplate.getForObject("the-url/api/trainee-profile/account-details/{tisId}",
+        UserDetails.class, Map.of(TIS_ID_FIELD, PERSON_ID))).thenReturn(userAccountDetails);
 
     service.execute(jobExecutionContext);
 
@@ -108,7 +159,7 @@ class NotificationServiceTest {
 
   @Test
   void shouldNotSetResultWhenUserDetailsCannotBeFound() {
-    when(jobExecutionContext.getJobDetail()).thenReturn(jobDetails);
+    when(jobExecutionContext.getJobDetail()).thenReturn(programmeJobDetails);
 
     when(emailService.getRecipientAccount(any())).thenReturn(null);
     when(restTemplate.getForObject(any(), any(), anyMap())).thenReturn(null);
@@ -119,21 +170,8 @@ class NotificationServiceTest {
   }
 
   @Test
-  void shouldNotGetAccountDetailsFromApiWhenAlreadyFoundInCognito() {
-    UserAccountDetails userAccountDetails = new UserAccountDetails(USER_EMAIL, USER_FAMILY_NAME);
-
-    when(jobExecutionContext.getJobDetail()).thenReturn(jobDetails);
-    when(emailService.getRecipientAccount(PERSON_ID)).thenReturn(userAccountDetails);
-
-    service.execute(jobExecutionContext);
-
-    verify(emailService).getRecipientAccount(any());
-    verify(restTemplate, never()).getForObject(any(), any(), anyMap());
-  }
-
-  @Test
   void shouldHandleRestClientExceptions() {
-    when(jobExecutionContext.getJobDetail()).thenReturn(jobDetails);
+    when(jobExecutionContext.getJobDetail()).thenReturn(programmeJobDetails);
 
     when(emailService.getRecipientAccount(any())).thenThrow(new IllegalArgumentException("error"));
     when(restTemplate.getForObject(any(), any(), anyMap()))
@@ -144,7 +182,7 @@ class NotificationServiceTest {
 
   @Test
   void shouldHandleCognitoExceptions() {
-    when(jobExecutionContext.getJobDetail()).thenReturn(jobDetails);
+    when(jobExecutionContext.getJobDetail()).thenReturn(programmeJobDetails);
 
     when(emailService.getRecipientAccount(any())).thenThrow(new IllegalArgumentException("error"));
 
@@ -153,8 +191,12 @@ class NotificationServiceTest {
 
   @Test
   void shouldRethrowEmailServiceExceptions() throws MessagingException {
-    UserAccountDetails userAccountDetails = new UserAccountDetails(USER_EMAIL, USER_FAMILY_NAME);
-    when(jobExecutionContext.getJobDetail()).thenReturn(jobDetails);
+    UserDetails userAccountDetails =
+        new UserDetails(
+            false, USER_EMAIL, USER_TITLE, USER_FAMILY_NAME, USER_GIVEN_NAME, USER_GMC);
+    when(restTemplate.getForObject("the-url/api/trainee-profile/account-details/{tisId}",
+        UserDetails.class, Map.of(TIS_ID_FIELD, PERSON_ID))).thenReturn(userAccountDetails);
+    when(jobExecutionContext.getJobDetail()).thenReturn(programmeJobDetails);
     when(emailService.getRecipientAccount(PERSON_ID)).thenReturn(userAccountDetails);
 
     doThrow(new MessagingException("error"))
@@ -164,14 +206,233 @@ class NotificationServiceTest {
   }
 
   @Test
-  void shouldLogEmailsNotSendThem() throws MessagingException {
-    UserAccountDetails userAccountDetails = new UserAccountDetails(USER_EMAIL, USER_FAMILY_NAME);
+  void shouldLogProgrammeMembershipEmailsNotSendThem() throws MessagingException {
+    UserDetails userAccountDetails =
+        new UserDetails(
+            false, USER_EMAIL, USER_TITLE, USER_FAMILY_NAME, USER_GIVEN_NAME, USER_GMC);
 
-    when(jobExecutionContext.getJobDetail()).thenReturn(jobDetails);
+    when(jobExecutionContext.getJobDetail()).thenReturn(programmeJobDetails);
     when(emailService.getRecipientAccount(PERSON_ID)).thenReturn(userAccountDetails);
+    when(restTemplate.getForObject("the-url/api/trainee-profile/account-details/{tisId}",
+        UserDetails.class, Map.of(TIS_ID_FIELD, PERSON_ID))).thenReturn(userAccountDetails);
 
     service.execute(jobExecutionContext);
 
     verify(emailService).sendMessage(any(), any(), any(), any(), any(), any(), eq(true));
+  }
+
+  @Test
+  void shouldLogPlacementEmailsNotSendThem() throws MessagingException {
+    UserDetails userAccountDetails =
+        new UserDetails(
+            false, USER_EMAIL, USER_TITLE, USER_FAMILY_NAME, USER_GIVEN_NAME, USER_GMC);
+
+    JobDetail placementJobDetails = newJob(NotificationService.class)
+        .withIdentity(JOB_KEY)
+        .usingJobData(placementJobDataMap)
+        .build();
+
+    when(jobExecutionContext.getJobDetail()).thenReturn(placementJobDetails);
+    when(emailService.getRecipientAccount(PERSON_ID)).thenReturn(userAccountDetails);
+    when(restTemplate.getForObject("the-url/api/trainee-profile/account-details/{tisId}",
+        UserDetails.class, Map.of(TIS_ID_FIELD, PERSON_ID))).thenReturn(userAccountDetails);
+
+    service.execute(jobExecutionContext);
+
+    verify(emailService).sendMessage(any(), any(), any(), any(), any(), any(), eq(true));
+  }
+
+  @ParameterizedTest
+  @EnumSource(value = NotificationType.class, mode = Mode.EXCLUDE,
+      names = {"PLACEMENT_UPDATED_WEEK_12", "PROGRAMME_UPDATED_WEEK_8", "PROGRAMME_UPDATED_WEEK_4",
+          "PROGRAMME_UPDATED_WEEK_1", "PROGRAMME_UPDATED_WEEK_0"})
+  void shouldIgnoreNonProgrammeOrPlacementJobs(NotificationType notificationType)
+      throws MessagingException {
+    UserDetails userAccountDetails =
+        new UserDetails(
+            false, USER_EMAIL, USER_TITLE, USER_FAMILY_NAME, USER_GIVEN_NAME, USER_GMC);
+
+    programmeJobDetails.getJobDataMap().put(NOTIFICATION_TYPE_FIELD, notificationType);
+    when(jobExecutionContext.getJobDetail()).thenReturn(programmeJobDetails);
+    when(emailService.getRecipientAccount(PERSON_ID)).thenReturn(userAccountDetails);
+    when(restTemplate.getForObject("the-url/api/trainee-profile/account-details/{tisId}",
+        UserDetails.class, Map.of(TIS_ID_FIELD, PERSON_ID))).thenReturn(userAccountDetails);
+
+    service.execute(jobExecutionContext);
+
+    verify(emailService, never())
+        .sendMessage(any(), any(), any(), any(), any(), any(), anyBoolean());
+    verify(jobExecutionContext, never()).setResult(any());
+  }
+
+  @Test
+  void shouldScheduleProgrammeMembershipNotification() throws SchedulerException {
+    NotificationType milestone = NotificationType.PROGRAMME_UPDATED_WEEK_0;
+    String jobId = milestone + "-" + TIS_ID;
+
+    LocalDate expectedDate = START_DATE
+        .minusDays(0);
+    Date when = Date.from(expectedDate
+        .atStartOfDay()
+        .atZone(ZoneId.systemDefault())
+        .toInstant());
+
+    service.scheduleNotification(jobId, programmeJobDataMap, when);
+
+    ArgumentCaptor<JobDetail> jobDetailCaptor = ArgumentCaptor.forClass(JobDetail.class);
+    ArgumentCaptor<Trigger> triggerCaptor = ArgumentCaptor.forClass(Trigger.class);
+    verify(scheduler).scheduleJob(jobDetailCaptor.capture(), triggerCaptor.capture());
+
+    //verify the details of the job scheduled
+    JobKey expectedJobKey = new JobKey(jobId);
+
+    JobDetail jobDetail = jobDetailCaptor.getValue();
+    assertThat("Unexpected job id key.", jobDetail.getKey(), is(expectedJobKey));
+    JobDataMap expectedJobDataMap = jobDetail.getJobDataMap();
+    assertThat("Unexpected tisId.", expectedJobDataMap.get(TIS_ID_FIELD), is(TIS_ID));
+    assertThat("Unexpected personId.", expectedJobDataMap.get(PERSON_ID_FIELD), is(PERSON_ID));
+    assertThat("Unexpected start date.",
+        expectedJobDataMap.get(START_DATE_FIELD), is(START_DATE));
+
+    Trigger trigger = triggerCaptor.getValue();
+    TriggerKey expectedTriggerKey = TriggerKey.triggerKey("trigger-" + jobId);
+    assertThat("Unexpected trigger id", trigger.getKey(), is(expectedTriggerKey));
+    assertThat("Unexpected trigger start time", trigger.getStartTime(), is(when));
+  }
+
+  @Test
+  void shouldSchedulePlacementNotification() throws SchedulerException {
+    String jobId = NotificationType.PLACEMENT_UPDATED_WEEK_12 + "-" + TIS_ID;
+
+    LocalDate expectedDate = START_DATE.minusDays(84);
+    Date when = Date.from(expectedDate
+        .atStartOfDay()
+        .atZone(ZoneId.systemDefault())
+        .toInstant());
+
+    service.scheduleNotification(jobId, placementJobDataMap, when);
+
+    ArgumentCaptor<JobDetail> jobDetailCaptor = ArgumentCaptor.forClass(JobDetail.class);
+    ArgumentCaptor<Trigger> triggerCaptor = ArgumentCaptor.forClass(Trigger.class);
+    verify(scheduler).scheduleJob(jobDetailCaptor.capture(), triggerCaptor.capture());
+
+    //verify the details of the job scheduled
+    JobKey expectedJobKey = new JobKey(jobId);
+
+    JobDetail jobDetail = jobDetailCaptor.getValue();
+    assertThat("Unexpected job id key.", jobDetail.getKey(), is(expectedJobKey));
+    JobDataMap expectedJobDataMap = jobDetail.getJobDataMap();
+    assertThat("Unexpected tisId.", expectedJobDataMap.get(TIS_ID_FIELD), is(TIS_ID));
+    assertThat("Unexpected personId.", expectedJobDataMap.get(PERSON_ID_FIELD),
+        is(PERSON_ID));
+    assertThat("Unexpected start date.", expectedJobDataMap.get(START_DATE_FIELD),
+        is(START_DATE));
+    assertThat("Unexpected placement type.", expectedJobDataMap.get(PLACEMENT_TYPE_FIELD),
+        is(PLACEMENT_TYPE));
+    assertThat("Unexpected local office.", expectedJobDataMap.get(PLACEMENT_OWNER_FIELD),
+        is(LOCAL_OFFICE));
+    assertThat("Unexpected specialty.", expectedJobDataMap.get(PLACEMENT_SPECIALTY_FIELD),
+        is(PLACEMENT_SPECIALTY));
+
+    Trigger trigger = triggerCaptor.getValue();
+    TriggerKey expectedTriggerKey = TriggerKey.triggerKey("trigger-" + jobId);
+    assertThat("Unexpected trigger id", trigger.getKey(), is(expectedTriggerKey));
+    assertThat("Unexpected trigger start time", trigger.getStartTime(), is(when));
+  }
+
+  @Test
+  void shouldRemoveNotification() throws SchedulerException {
+    String jobId = NotificationType.PROGRAMME_UPDATED_WEEK_0 + "-" + TIS_ID;
+
+    service.removeNotification(jobId);
+
+    JobKey expectedJobKey = new JobKey(jobId);
+    verify(scheduler).deleteJob(expectedJobKey);
+  }
+
+  @Test
+  void shouldMapUserDetailsWhenCognitoAndTssAccountsExist() {
+    UserDetails cognitoAccountDetails =
+        new UserDetails(
+            true, COGNITO_EMAIL, null, COGNITO_FAMILY_NAME, COGNITO_GIVEN_NAME, null);
+    UserDetails traineeProfileDetails =
+        new UserDetails(
+            null, USER_EMAIL, USER_TITLE, USER_FAMILY_NAME, USER_GIVEN_NAME, USER_GMC);
+
+    UserDetails expectedResult =
+        service.mapUserDetails(cognitoAccountDetails, traineeProfileDetails);
+
+    assertThat("Unexpected isRegister", expectedResult.isRegistered(), is(true));
+    assertThat("Unexpected email", expectedResult.email(), is(COGNITO_EMAIL));
+    assertThat("Unexpected title", expectedResult.title(), is(USER_TITLE));
+    assertThat("Unexpected family name", expectedResult.familyName(), is(COGNITO_FAMILY_NAME));
+    assertThat("Unexpected given name", expectedResult.givenName(), is(COGNITO_GIVEN_NAME));
+    assertThat("Unexpected gmc number", expectedResult.gmcNumber(), is(USER_GMC));
+  }
+
+  @Test
+  void shouldMapUserDetailsWhenCognitoAccountNotExist() {
+    UserDetails traineeProfileDetails =
+        new UserDetails(
+            null, USER_EMAIL, USER_TITLE, USER_FAMILY_NAME, USER_GIVEN_NAME, USER_GMC);
+
+    UserDetails expectedResult = service.mapUserDetails(null, traineeProfileDetails);
+
+    assertThat("Unexpected isRegister", expectedResult.isRegistered(), is(false));
+    assertThat("Unexpected email", expectedResult.email(), is(USER_EMAIL));
+    assertThat("Unexpected title", expectedResult.title(), is(USER_TITLE));
+    assertThat("Unexpected family name", expectedResult.familyName(), is(USER_FAMILY_NAME));
+    assertThat("Unexpected given name", expectedResult.givenName(), is(USER_GIVEN_NAME));
+    assertThat("Unexpected gmc number", expectedResult.gmcNumber(), is(USER_GMC));
+  }
+
+  @Test
+  void shouldMapUserDetailsWhenTssAccountNotExist() {
+    UserDetails cognitoAccountDetails =
+        new UserDetails(
+            true, COGNITO_EMAIL, null, COGNITO_FAMILY_NAME, COGNITO_GIVEN_NAME, null);
+
+    UserDetails expectedResult = service.mapUserDetails(cognitoAccountDetails, null);
+
+    assertThat("Unexpected user details", expectedResult, is(nullValue()));
+  }
+
+  @Test
+  void shouldMapUserDetailsWhenBothCognitoAccountAndTraineeProfileNotExist() {
+    UserDetails expectedResult = service.mapUserDetails(null, null);
+
+    assertThat("Unexpected user details", expectedResult, is(nullValue()));
+  }
+
+  @Test
+  void shouldHaveNoOneInPilot() {
+    boolean isInPilot = service.isInPilot("local office", "specialty",
+        LocalDate.now());
+    assertThat("Unexpected pilot membership", isInPilot, is(false));
+  }
+
+  @Test
+  void shouldScheduleMissedMilestonesImmediately() {
+    Date expectedMilestone = Date.from(Instant.now()
+        .plus(PAST_MILESTONE_SCHEDULE_DELAY_HOURS, ChronoUnit.HOURS));
+
+    Date scheduledDate = service.getScheduleDate(LocalDate.MIN, 0);
+
+    assertThat("Unexpected scheduled date", scheduledDate, is(expectedMilestone));
+  }
+
+  @Test
+  void shouldScheduleFutureMilestonesAtStartOfCorrectDay() {
+    LocalDate startDate = LocalDate.now().plusMonths(12);
+    int daysBeforeStart = 100;
+    LocalDate milestoneDate = startDate.minusDays(daysBeforeStart);
+    Date expectedMilestone = Date.from(milestoneDate
+        .atStartOfDay()
+        .atZone(ZoneId.systemDefault())
+        .toInstant());
+
+    Date scheduledDate = service.getScheduleDate(startDate, daysBeforeStart);
+
+    assertThat("Unexpected scheduled date", scheduledDate, is(expectedMilestone));
   }
 }

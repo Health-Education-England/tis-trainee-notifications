@@ -19,6 +19,8 @@ application:
     credential-revoked: ${CREDENTIAL_REVOKED_QUEUE}
     email-failure: ${EMAIL_FAILURE_QUEUE}
     form-updated: ${FORM_UPDATED_QUEUE}
+    placement-updated: ${PLACEMENT_UPDATED_QUEUE}
+    placement-deleted: ${PLACEMENT_DELETED_QUEUE}
     programme-membership-updated: ${PROGRAMME_MEMBERSHIP_UPDATED_QUEUE}
     programme-membership-deleted: ${PROGRAMME_MEMBERSHIP_DELETED_QUEUE}
   template-versions:
@@ -91,3 +93,7 @@ service:
     host: ${TRAINEE_DETAILS_HOST:localhost}
     port: ${TRAINEE_DETAILS_PORT:8203}
     url: http://${service.trainee.host}:${service.trainee.port}/trainee
+  reference:
+    host: ${TRAINEE_REFERENCE_HOST:localhost}
+    port: ${TRAINEE_REFERENCE_PORT:8205}
+    url: http://${service.trainee.host}:${service.reference.port}/reference
