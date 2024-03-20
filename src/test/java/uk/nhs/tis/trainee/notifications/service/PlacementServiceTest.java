@@ -125,6 +125,13 @@ class PlacementServiceTest {
   }
 
   @Test
+  void shouldExcludePlacementWithoutPlacementType() {
+    boolean isExcluded = service.isExcluded(new Placement());
+
+    assertThat("Unexpected excluded value.", isExcluded, is(true));
+  }
+
+  @Test
   void shouldRemoveStaleNotifications() throws SchedulerException {
     Placement placement = new Placement();
     placement.setTisId(TIS_ID);
