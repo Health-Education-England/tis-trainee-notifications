@@ -110,6 +110,9 @@ public class PlacementService {
    * @return true if the placement is excluded.
    */
   public boolean isExcluded(Placement placement) {
+    if (placement.getPlacementType() == null) {
+      return true; //should not happen, but some legacy data has no placement type set.
+    }
     return (PLACEMENT_TYPES_TO_ACT_ON.stream()
         .noneMatch(placement.getPlacementType()::equalsIgnoreCase));
   }
