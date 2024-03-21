@@ -164,6 +164,31 @@ class PlacementServiceTest {
   }
 
   @Test
+  void shouldNotAddNotificationsIfNoStartDate() throws SchedulerException {
+    Placement placement = new Placement();
+    placement.setTisId(TIS_ID);
+    placement.setOwner(OWNER);
+    placement.setPlacementType(IN_POST);
+
+    service.addNotifications(placement);
+
+    verify(notificationService, never()).scheduleNotification(any(), any(), any());
+  }
+
+  @Test
+  void shouldNotAddNotificationsIfPastStartDate() throws SchedulerException {
+    Placement placement = new Placement();
+    placement.setTisId(TIS_ID);
+    placement.setOwner(OWNER);
+    placement.setPlacementType(IN_POST);
+    placement.setStartDate(LocalDate.MIN);
+
+    service.addNotifications(placement);
+
+    verify(notificationService, never()).scheduleNotification(any(), any(), any());
+  }
+
+  @Test
   void shouldAddNotificationsIfNotExcluded() throws SchedulerException {
     Placement placement = new Placement();
     placement.setTisId(TIS_ID);
