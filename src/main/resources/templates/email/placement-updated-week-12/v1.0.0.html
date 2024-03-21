@@ -6,7 +6,7 @@
 <body>
 <h1>Email Message</h1>
 <h2>Subject</h2>
-<th:block th:fragment="subject">Placement confirmation: 12 weeks to go</th:block>
+<th:block th:fragment="subject">Placement confirmation</th:block>
 <h2>Content</h2>
 <th:block th:fragment="content">
   <p th:if="${#strings.isEmpty(givenName) AND #strings.isEmpty(familyName)}">Dear Doctor,</p>

@@ -72,8 +72,7 @@ public class PlacementService {
       = List.of("In post", "In post - Acting up", "In Post - Extension");
   public static final String API_GET_OWNER_CONTACT =
       "/api/local-office-contact-by-lo-name/{localOfficeName}";
-  protected static final String DEFAULT_NO_CONTACT_MESSAGE = "your local office";
-  protected static final String INVALID_CONTACT_HREF = "NOT_HREF";
+  protected static final String DEFAULT_NO_CONTACT_MESSAGE = "your local deanery office";
 
   private final HistoryService historyService;
   private final NotificationService notificationService;
@@ -163,7 +162,7 @@ public class PlacementService {
 
       LocalDate startDate = placement.getStartDate();
 
-      boolean shouldSchedule = shouldScheduleNotification(notificationsAlreadySent);
+      boolean shouldSchedule = shouldScheduleNotification(notificationsAlreadySent, startDate);
 
       if (shouldSchedule) {
         log.info("Scheduling notification {} for {}.",
@@ -231,8 +230,11 @@ public class PlacementService {
    * @return true if it should be scheduled, false otherwise.
    */
   private boolean shouldScheduleNotification(
-      Map<NotificationType, Instant> notificationsAlreadySent) {
+      Map<NotificationType, Instant> notificationsAlreadySent, LocalDate startDate) {
 
+    if (startDate == null || startDate.isBefore(LocalDate.now())) {
+      return false;
+    }
     //do not resend any notification
     return (!notificationsAlreadySent.containsKey(PLACEMENT_UPDATED_WEEK_12));
   }
