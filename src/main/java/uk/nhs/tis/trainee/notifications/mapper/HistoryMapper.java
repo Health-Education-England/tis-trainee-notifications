@@ -103,11 +103,11 @@ public interface HistoryMapper {
    */
   default String getSubjectText(NotificationType notificationType, MessageType messageType) {
     if (messageType != MessageType.IN_APP) {
-      return null; //these are ignored
+      return ""; //these are ignored
     }
     return switch (notificationType) {
       case WELCOME -> WELCOME_SUBJECT_TEXT;
-      default -> null;
+      default -> "";
     };
   }
 }

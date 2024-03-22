@@ -94,24 +94,24 @@ class HistoryMapperTest {
   }
 
   @Test
-  void shouldHaveNoSubjectTextWhenNotInAppNotification() {
+  void shouldHaveBlankSubjectTextWhenNotInAppNotification() {
     ObjectId id = new ObjectId();
     RecipientInfo recipient = new RecipientInfo(null, MessageType.EMAIL, null);
     History entity = new History(id, null, NotificationType.WELCOME, recipient, null,
         null, null, null, null);
 
     HistoryDto dto = mapper.toDto(entity);
-    assertThat("Unexpected subject text.", dto.subjectText(), is(nullValue()));
+    assertThat("Unexpected subject text.", dto.subjectText(), is(""));
   }
 
   @Test
-  void shouldHaveNoSubjectTextWhenUnmappedInAppNotification() {
+  void shouldHaveBlankSubjectTextWhenUnmappedInAppNotification() {
     ObjectId id = new ObjectId();
     RecipientInfo recipient = new RecipientInfo(null, MessageType.IN_APP, null);
     History entity = new History(id, null, NotificationType.COJ_CONFIRMATION, recipient, null,
         null, null, null, null);
 
     HistoryDto dto = mapper.toDto(entity);
-    assertThat("Unexpected subject text.", dto.subjectText(), is(nullValue()));
+    assertThat("Unexpected subject text.", dto.subjectText(), is(""));
   }
 }
