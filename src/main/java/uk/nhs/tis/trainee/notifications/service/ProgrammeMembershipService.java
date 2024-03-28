@@ -21,6 +21,8 @@
 
 package uk.nhs.tis.trainee.notifications.service;
 
+import static uk.nhs.tis.trainee.notifications.model.NotificationType.E_PORTFOLIO;
+
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.Date;
@@ -32,8 +34,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.quartz.JobDataMap;
 import org.quartz.SchedulerException;
 import org.springframework.stereotype.Service;
+import uk.nhs.tis.trainee.notifications.config.TemplateVersions;
 import uk.nhs.tis.trainee.notifications.dto.HistoryDto;
 import uk.nhs.tis.trainee.notifications.model.Curriculum;
+import uk.nhs.tis.trainee.notifications.model.History.TisReferenceInfo;
 import uk.nhs.tis.trainee.notifications.model.NotificationType;
 import uk.nhs.tis.trainee.notifications.model.ProgrammeMembership;
 import uk.nhs.tis.trainee.notifications.model.TisReferenceType;
@@ -45,6 +49,7 @@ import uk.nhs.tis.trainee.notifications.model.TisReferenceType;
 @Slf4j
 @Service
 public class ProgrammeMembershipService {
+
   public static final String TIS_ID_FIELD = "tisId";
   public static final String PERSON_ID_FIELD = "personId";
   public static final String PROGRAMME_NAME_FIELD = "programmeName";
@@ -58,12 +63,17 @@ public class ProgrammeMembershipService {
       = List.of("PUBLIC HEALTH MEDICINE", "FOUNDATION");
 
   private final HistoryService historyService;
+  private final InAppService inAppService;
   private final NotificationService notificationService;
 
-  public ProgrammeMembershipService(HistoryService historyService,
-                                    NotificationService notificationService) {
+  private final TemplateVersions templateVersions;
+
+  public ProgrammeMembershipService(HistoryService historyService, InAppService inAppService,
+      NotificationService notificationService, TemplateVersions templateVersions) {
     this.historyService = historyService;
+    this.inAppService = inAppService;
     this.notificationService = notificationService;
+    this.templateVersions = templateVersions;
   }
 
   /**
@@ -138,7 +148,6 @@ public class ProgrammeMembershipService {
     if (!isExcluded) {
       Map<NotificationType, Instant> notificationsAlreadySent
           = getNotificationsSent(programmeMembership.getPersonId(), programmeMembership.getTisId());
-
       LocalDate startDate = programmeMembership.getStartDate();
 
       for (NotificationType milestone : NotificationType.getProgrammeUpdateNotificationTypes()) {
@@ -171,6 +180,21 @@ public class ProgrammeMembershipService {
             throw (e); //to allow message to be requeue-ed
           }
         }
+      }
+
+      // Create ePortfolio notification if the PM qualifies.
+      boolean meetsCriteria = notificationService.meetsCriteria(programmeMembership, true, true);
+      boolean isUnique = !notificationsAlreadySent.containsKey(E_PORTFOLIO);
+
+      if (meetsCriteria && isUnique) {
+        TisReferenceInfo tisReference = new TisReferenceInfo(TisReferenceType.PROGRAMME_MEMBERSHIP,
+            programmeMembership.getTisId());
+        Map<String, Object> variables = Map.of(
+            PROGRAMME_NAME_FIELD, programmeMembership.getProgrammeName(),
+            START_DATE_FIELD, programmeMembership.getStartDate()
+        );
+        inAppService.createNotifications(programmeMembership.getPersonId(), tisReference,
+            E_PORTFOLIO, templateVersions.getEPortfolio(), variables);
       }
     }
   }
@@ -227,7 +251,7 @@ public class ProgrammeMembershipService {
    *
    * @param notificationType The notification type.
    * @return The number of days before the programme start for the notification, or null if not a
-   *         programme update notification type.
+   * programme update notification type.
    */
   public Integer getNotificationDaysBeforeStart(NotificationType notificationType) {
     switch (notificationType) {
