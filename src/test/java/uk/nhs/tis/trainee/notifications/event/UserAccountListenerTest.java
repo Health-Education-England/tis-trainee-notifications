@@ -25,6 +25,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.WELCOME;
 
+import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -53,6 +54,6 @@ class UserAccountListenerTest {
 
     listener.handleAccountConfirmation(event);
 
-    verify(inAppService).createNotifications(TRAINEE_ID, WELCOME, VERSION);
+    verify(inAppService).createNotifications(TRAINEE_ID, null, WELCOME, VERSION, Map.of());
   }
 }

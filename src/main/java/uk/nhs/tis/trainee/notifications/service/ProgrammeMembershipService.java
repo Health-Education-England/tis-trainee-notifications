@@ -21,19 +21,25 @@
 
 package uk.nhs.tis.trainee.notifications.service;
 
+import static uk.nhs.tis.trainee.notifications.model.NotificationType.E_PORTFOLIO;
+
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.Date;
 import java.util.EnumMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
 import org.quartz.JobDataMap;
 import org.quartz.SchedulerException;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import uk.nhs.tis.trainee.notifications.dto.HistoryDto;
 import uk.nhs.tis.trainee.notifications.model.Curriculum;
+import uk.nhs.tis.trainee.notifications.model.History.TisReferenceInfo;
 import uk.nhs.tis.trainee.notifications.model.NotificationType;
 import uk.nhs.tis.trainee.notifications.model.ProgrammeMembership;
 import uk.nhs.tis.trainee.notifications.model.TisReferenceType;
@@ -45,6 +51,7 @@ import uk.nhs.tis.trainee.notifications.model.TisReferenceType;
 @Slf4j
 @Service
 public class ProgrammeMembershipService {
+
   public static final String TIS_ID_FIELD = "tisId";
   public static final String PERSON_ID_FIELD = "personId";
   public static final String PROGRAMME_NAME_FIELD = "programmeName";
@@ -58,12 +65,18 @@ public class ProgrammeMembershipService {
       = List.of("PUBLIC HEALTH MEDICINE", "FOUNDATION");
 
   private final HistoryService historyService;
+  private final InAppService inAppService;
   private final NotificationService notificationService;
 
-  public ProgrammeMembershipService(HistoryService historyService,
-                                    NotificationService notificationService) {
+  private final String eportfolioVersion;
+
+  public ProgrammeMembershipService(HistoryService historyService, InAppService inAppService,
+      NotificationService notificationService,
+      @Value("${application.template-versions.e-portfolio.in-app}") String eportfolioVersion) {
     this.historyService = historyService;
+    this.inAppService = inAppService;
     this.notificationService = notificationService;
+    this.eportfolioVersion = eportfolioVersion;
   }
 
   /**
@@ -108,7 +121,12 @@ public class ProgrammeMembershipService {
       String programmeMembershipId) {
     EnumMap<NotificationType, Instant> notifications = new EnumMap<>(NotificationType.class);
     List<HistoryDto> correspondence = historyService.findAllForTrainee(traineeId);
-    for (NotificationType milestone : NotificationType.getProgrammeUpdateNotificationTypes()) {
+
+    Set<NotificationType> notificationTypes = new HashSet<>(
+        NotificationType.getProgrammeUpdateNotificationTypes());
+    notificationTypes.add(E_PORTFOLIO);
+
+    for (NotificationType milestone : notificationTypes) {
       Optional<HistoryDto> sentItem = correspondence.stream()
           .filter(c -> c.tisReference() != null)
           .filter(c ->
@@ -139,39 +157,76 @@ public class ProgrammeMembershipService {
       Map<NotificationType, Instant> notificationsAlreadySent
           = getNotificationsSent(programmeMembership.getPersonId(), programmeMembership.getTisId());
 
-      LocalDate startDate = programmeMembership.getStartDate();
+      createDirectNotifications(programmeMembership, notificationsAlreadySent);
+      createInAppNotifications(programmeMembership, notificationsAlreadySent);
+    }
+  }
 
-      for (NotificationType milestone : NotificationType.getProgrammeUpdateNotificationTypes()) {
-        boolean shouldSchedule = shouldScheduleNotification(startDate, milestone,
-            notificationsAlreadySent);
+  /**
+   * Create "direct" notifications, such as email, which may be scheduled for a future date/time.
+   *
+   * @param programmeMembership      The updated programme membership.
+   * @param notificationsAlreadySent Previously sent notifications.
+   * @throws SchedulerException if any one of the notification jobs could not be scheduled.
+   */
+  private void createDirectNotifications(ProgrammeMembership programmeMembership,
+      Map<NotificationType, Instant> notificationsAlreadySent) throws SchedulerException {
+    LocalDate startDate = programmeMembership.getStartDate();
 
-        if (shouldSchedule) {
-          log.info("Scheduling notification {} for {}.", milestone, programmeMembership.getTisId());
-          Integer daysBeforeStart = getNotificationDaysBeforeStart(milestone);
-          Date when = notificationService.getScheduleDate(startDate, daysBeforeStart);
+    for (NotificationType milestone : NotificationType.getProgrammeUpdateNotificationTypes()) {
+      boolean shouldSchedule = shouldScheduleNotification(startDate, milestone,
+          notificationsAlreadySent);
 
-          JobDataMap jobDataMap = new JobDataMap();
-          jobDataMap.put(TIS_ID_FIELD, programmeMembership.getTisId());
-          jobDataMap.put(PERSON_ID_FIELD, programmeMembership.getPersonId());
-          jobDataMap.put(PROGRAMME_NAME_FIELD, programmeMembership.getProgrammeName());
-          jobDataMap.put(START_DATE_FIELD, programmeMembership.getStartDate());
-          jobDataMap.put(NOTIFICATION_TYPE_FIELD, milestone);
-          if (programmeMembership.getConditionsOfJoining() != null) {
-            jobDataMap.put(COJ_SYNCED_FIELD,
-                programmeMembership.getConditionsOfJoining().syncedAt());
-          }
-          // Note the status of the trainee will be retrieved when the job is executed, as will
-          // their name and email address, not now.
+      if (shouldSchedule) {
+        log.info("Scheduling notification {} for {}.", milestone, programmeMembership.getTisId());
+        Integer daysBeforeStart = getNotificationDaysBeforeStart(milestone);
+        Date when = notificationService.getScheduleDate(startDate, daysBeforeStart);
 
-          String jobId = milestone + "-" + programmeMembership.getTisId();
-          try {
-            notificationService.scheduleNotification(jobId, jobDataMap, when);
-          } catch (SchedulerException e) {
-            log.error("Failed to schedule notification {}: {}", jobId, e.toString());
-            throw (e); //to allow message to be requeue-ed
-          }
+        JobDataMap jobDataMap = new JobDataMap();
+        jobDataMap.put(TIS_ID_FIELD, programmeMembership.getTisId());
+        jobDataMap.put(PERSON_ID_FIELD, programmeMembership.getPersonId());
+        jobDataMap.put(PROGRAMME_NAME_FIELD, programmeMembership.getProgrammeName());
+        jobDataMap.put(START_DATE_FIELD, programmeMembership.getStartDate());
+        jobDataMap.put(NOTIFICATION_TYPE_FIELD, milestone);
+        if (programmeMembership.getConditionsOfJoining() != null) {
+          jobDataMap.put(COJ_SYNCED_FIELD,
+              programmeMembership.getConditionsOfJoining().syncedAt());
+        }
+        // Note the status of the trainee will be retrieved when the job is executed, as will
+        // their name and email address, not now.
+
+        String jobId = milestone + "-" + programmeMembership.getTisId();
+        try {
+          notificationService.scheduleNotification(jobId, jobDataMap, when);
+        } catch (SchedulerException e) {
+          log.error("Failed to schedule notification {}: {}", jobId, e.toString());
+          throw (e); //to allow message to be requeue-ed
         }
       }
+    }
+  }
+
+  /**
+   * Create any relevant in-app notifications.
+   *
+   * @param programmeMembership      The updated programme membership.
+   * @param notificationsAlreadySent Previously sent notifications.
+   */
+  private void createInAppNotifications(ProgrammeMembership programmeMembership,
+      Map<NotificationType, Instant> notificationsAlreadySent) {
+    // Create ePortfolio notification if the PM qualifies.
+    boolean meetsCriteria = notificationService.meetsCriteria(programmeMembership, true, true);
+    boolean isUnique = !notificationsAlreadySent.containsKey(E_PORTFOLIO);
+
+    if (meetsCriteria && isUnique) {
+      TisReferenceInfo tisReference = new TisReferenceInfo(TisReferenceType.PROGRAMME_MEMBERSHIP,
+          programmeMembership.getTisId());
+      Map<String, Object> variables = Map.of(
+          PROGRAMME_NAME_FIELD, programmeMembership.getProgrammeName(),
+          START_DATE_FIELD, programmeMembership.getStartDate()
+      );
+      inAppService.createNotifications(programmeMembership.getPersonId(), tisReference,
+          E_PORTFOLIO, eportfolioVersion, variables);
     }
   }
 
@@ -211,14 +266,20 @@ public class ProgrammeMembershipService {
       // A future notification, to be scheduled at the appropriate time
       // unless a more recent notification has already been sent
       return (notificationsAlreadySent.keySet().stream()
-          .noneMatch(t -> getNotificationDaysBeforeStart(t) < daysBeforeStart));
+          .noneMatch(t -> {
+            Integer days = getNotificationDaysBeforeStart(t);
+            return days != null && days < daysBeforeStart;
+          }));
     } else {
       // A past ('missed') notification, to be scheduled promptly
       // if it is the most recent missed notification.
       // Do not schedule if it is not the most recent missed notification, regardless of whether
       // any more recent ones have been sent or not.
       return (getPastNotifications(programmeStartDate).stream()
-          .noneMatch(t -> getNotificationDaysBeforeStart(t) < daysBeforeStart));
+          .noneMatch(t -> {
+            Integer days = getNotificationDaysBeforeStart(t);
+            return days != null && days < daysBeforeStart;
+          }));
     }
   }
 
@@ -227,7 +288,7 @@ public class ProgrammeMembershipService {
    *
    * @param notificationType The notification type.
    * @return The number of days before the programme start for the notification, or null if not a
-   *         programme update notification type.
+   *     programme update notification type.
    */
   public Integer getNotificationDaysBeforeStart(NotificationType notificationType) {
     switch (notificationType) {
