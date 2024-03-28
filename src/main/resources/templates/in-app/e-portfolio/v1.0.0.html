@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <title>ePortfolio Notification</title>
+  </head>
+  <body>
+    <h1>In-App Notification</h1>
+    <h2>Subject</h2>
+    <th:block th:fragment="subject">ePortfolio</th:block>
+    <h2>Content</h2>
+    <th:block th:fragment="content">ePortfolio
+
+This notification pertains to the following programme <th:block th:text="${not #strings.isEmpty(programmeName)} ? ${programmeName} : _">(programme name missing)</th:block> starting on <th:block th:text="${startDate} ? |${#temporals.format(startDate, 'dd MMMM yyyy')}| : _">(start date missing)</th:block>.
+
+Please remember to register with your Royal College or Faculty as appropriate, and they will set up your e-portfolio account. https://tis-support.hee.nhs.uk/trainees/royal-college-faculties-contact-information</th:block>
+  </body>
+</html>

@@ -55,6 +55,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.quartz.JobDataMap;
 import org.quartz.SchedulerException;
+import uk.nhs.tis.trainee.notifications.config.TemplateVersions;
 import uk.nhs.tis.trainee.notifications.dto.CojSignedEvent.ConditionsOfJoining;
 import uk.nhs.tis.trainee.notifications.dto.HistoryDto;
 import uk.nhs.tis.trainee.notifications.model.Curriculum;
@@ -80,15 +81,22 @@ class ProgrammeMembershipServiceTest {
   private static final Curriculum IGNORED_CURRICULUM
       = new Curriculum("some-subtype", "some-specialty");
 
+  private static final String E_PORTFOILIO_VERSION = "v1.2.3";
+
   ProgrammeMembershipService service;
   HistoryService historyService;
+  InAppService inAppService;
   NotificationService notificationService;
 
   @BeforeEach
   void setUp() {
     historyService = mock(HistoryService.class);
+    inAppService = mock(InAppService.class);
     notificationService = mock(NotificationService.class);
-    service = new ProgrammeMembershipService(historyService, notificationService);
+    TemplateVersions templateVersions = new TemplateVersions();
+    templateVersions.setEPortfolio(E_PORTFOILIO_VERSION);
+    service = new ProgrammeMembershipService(historyService, inAppService, notificationService,
+        templateVersions);
   }
 
   @ParameterizedTest
@@ -194,9 +202,9 @@ class ProgrammeMembershipServiceTest {
     ArgumentCaptor<JobDataMap> jobDataMapCaptor = ArgumentCaptor.forClass(JobDataMap.class);
     ArgumentCaptor<Date> dateCaptor = ArgumentCaptor.forClass(Date.class);
     verify(notificationService, times(jobsToSchedule)).scheduleNotification(
-            stringCaptor.capture(),
-            jobDataMapCaptor.capture(),
-            dateCaptor.capture()
+        stringCaptor.capture(),
+        jobDataMapCaptor.capture(),
+        dateCaptor.capture()
     );
 
     //verify the details of the last notification added
