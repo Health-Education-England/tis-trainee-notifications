@@ -12,7 +12,11 @@ application:
   domain: ${APP_DOMAIN:}
   email:
     sender: ${EMAIL_SENDER}
+    enabled: ${EMAIL_ENABLED:false}
   environment: ${ENVIRONMENT:local}
+  in-app:
+    enabled: ${IN_APP_ENABLED:false}
+  notifications-whitelist: ${NOTIFICATIONS_WHITELIST:[]}
   queues:
     account-confirmed: ${ACCOUNT_CONFIRMED_QUEUE}
     coj-received: ${COJ_RECEIVED_QUEUE}

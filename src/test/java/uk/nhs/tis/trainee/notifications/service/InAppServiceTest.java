@@ -28,6 +28,7 @@ import static org.hamcrest.Matchers.lessThan;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static uk.nhs.tis.trainee.notifications.model.MessageType.IN_APP;
 import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.UNREAD;
@@ -66,6 +67,14 @@ class InAppServiceTest {
     service.createNotifications(TRAINEE_ID, null, notificationType, VERSION, Map.of());
 
     verify(historyService).save(any());
+  }
+
+  @ParameterizedTest
+  @EnumSource(NotificationType.class)
+  void shouldNotStoreNotificationIfOnlyLogged(NotificationType notificationType) {
+    service.createNotifications(TRAINEE_ID, notificationType, VERSION, true);
+
+    verify(historyService, never()).save(any());
   }
 
   @ParameterizedTest

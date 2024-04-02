@@ -118,6 +118,7 @@ class NotificationServiceTest {
   private EmailService emailService;
   private RestTemplate restTemplate;
   private Scheduler scheduler;
+  private MessageDispatchService messageDispatchService;
   private JobExecutionContext jobExecutionContext;
 
   @BeforeEach
@@ -126,6 +127,7 @@ class NotificationServiceTest {
     emailService = mock(EmailService.class);
     restTemplate = mock(RestTemplate.class);
     scheduler = mock(Scheduler.class);
+    messageDispatchService = mock(MessageDispatchService.class);
 
     programmeJobDataMap = new JobDataMap();
     programmeJobDataMap.put(TIS_ID_FIELD, TIS_ID);
@@ -148,8 +150,8 @@ class NotificationServiceTest {
         .usingJobData(programmeJobDataMap)
         .build();
 
-    service = new NotificationService(
-        emailService, restTemplate, scheduler, TEMPLATE_VERSION, SERVICE_URL);
+    service = new NotificationService(emailService, restTemplate, scheduler, messageDispatchService,
+        TEMPLATE_VERSION, SERVICE_URL);
   }
 
   @Test
@@ -232,7 +234,7 @@ class NotificationServiceTest {
   }
 
   @Test
-  void shouldLogPlacementEmailsNotSendThem() throws MessagingException {
+  void shouldLogPlacementEmailForNotValidRecipientNotSendThem() throws MessagingException {
     UserDetails userAccountDetails =
         new UserDetails(
             false, USER_EMAIL, USER_TITLE, USER_FAMILY_NAME, USER_GIVEN_NAME, USER_GMC);
@@ -246,10 +248,58 @@ class NotificationServiceTest {
     when(emailService.getRecipientAccount(PERSON_ID)).thenReturn(userAccountDetails);
     when(restTemplate.getForObject("the-url/api/trainee-profile/account-details/{tisId}",
         UserDetails.class, Map.of(TIS_ID_FIELD, PERSON_ID))).thenReturn(userAccountDetails);
+    when(messageDispatchService.isValidRecipient(any(), any())).thenReturn(false);
+    when(messageDispatchService.isPlacementInPilot2024(any(), any())).thenReturn(true);
 
     service.execute(jobExecutionContext);
 
     verify(emailService).sendMessage(any(), any(), any(), any(), any(), any(), eq(true));
+  }
+
+  @Test
+  void shouldLogPlacementEmailForNotNotPilot2024NotSendThem() throws MessagingException {
+    UserDetails userAccountDetails =
+        new UserDetails(
+            false, USER_EMAIL, USER_TITLE, USER_FAMILY_NAME, USER_GIVEN_NAME, USER_GMC);
+
+    JobDetail placementJobDetails = newJob(NotificationService.class)
+        .withIdentity(JOB_KEY)
+        .usingJobData(placementJobDataMap)
+        .build();
+
+    when(jobExecutionContext.getJobDetail()).thenReturn(placementJobDetails);
+    when(emailService.getRecipientAccount(PERSON_ID)).thenReturn(userAccountDetails);
+    when(restTemplate.getForObject("the-url/api/trainee-profile/account-details/{tisId}",
+        UserDetails.class, Map.of(TIS_ID_FIELD, PERSON_ID))).thenReturn(userAccountDetails);
+    when(messageDispatchService.isValidRecipient(any(), any())).thenReturn(true);
+    when(messageDispatchService.isPlacementInPilot2024(any(), any())).thenReturn(false);
+
+    service.execute(jobExecutionContext);
+
+    verify(emailService).sendMessage(any(), any(), any(), any(), any(), any(), eq(true));
+  }
+
+  @Test
+  void shouldSendPlacementEmailForValidRecipientInPilot2024() throws MessagingException {
+    UserDetails userAccountDetails =
+        new UserDetails(
+            false, USER_EMAIL, USER_TITLE, USER_FAMILY_NAME, USER_GIVEN_NAME, USER_GMC);
+
+    JobDetail placementJobDetails = newJob(NotificationService.class)
+        .withIdentity(JOB_KEY)
+        .usingJobData(placementJobDataMap)
+        .build();
+
+    when(jobExecutionContext.getJobDetail()).thenReturn(placementJobDetails);
+    when(emailService.getRecipientAccount(PERSON_ID)).thenReturn(userAccountDetails);
+    when(restTemplate.getForObject("the-url/api/trainee-profile/account-details/{tisId}",
+        UserDetails.class, Map.of(TIS_ID_FIELD, PERSON_ID))).thenReturn(userAccountDetails);
+    when(messageDispatchService.isValidRecipient(any(), any())).thenReturn(true);
+    when(messageDispatchService.isPlacementInPilot2024(any(), any())).thenReturn(true);
+
+    service.execute(jobExecutionContext);
+
+    verify(emailService).sendMessage(any(), any(), any(), any(), any(), any(), eq(false));
   }
 
   @ParameterizedTest
@@ -412,13 +462,6 @@ class NotificationServiceTest {
     UserDetails expectedResult = service.mapUserDetails(null, null);
 
     assertThat("Unexpected user details", expectedResult, is(nullValue()));
-  }
-
-  @Test
-  void shouldHaveNoOneInPilot() {
-    boolean isInPilot = service.isInPilot("local office", "specialty",
-        LocalDate.now());
-    assertThat("Unexpected pilot membership", isInPilot, is(false));
   }
 
   @Test

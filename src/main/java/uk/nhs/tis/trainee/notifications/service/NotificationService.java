@@ -51,6 +51,7 @@ import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 import uk.nhs.tis.trainee.notifications.dto.UserDetails;
 import uk.nhs.tis.trainee.notifications.model.History.TisReferenceInfo;
+import uk.nhs.tis.trainee.notifications.model.MessageType;
 import uk.nhs.tis.trainee.notifications.model.NotificationType;
 import uk.nhs.tis.trainee.notifications.model.ProgrammeMembership;
 
@@ -69,6 +70,7 @@ public class NotificationService implements Job {
   private final String templateVersion;
   private final String serviceUrl;
   private final Scheduler scheduler;
+  private final MessageDispatchService messageDispatchService;
 
   /**
    * Initialise the Notification Service.
@@ -80,7 +82,7 @@ public class NotificationService implements Job {
    *                        information.
    */
   public NotificationService(EmailService emailService, RestTemplate restTemplate,
-      Scheduler scheduler,
+      Scheduler scheduler, MessageDispatchService messageDispatchService,
       @Value("${application.template-versions.form-updated.email}") String templateVersion,
       @Value("${service.trainee.url}") String serviceUrl) {
     this.emailService = emailService;
@@ -88,6 +90,7 @@ public class NotificationService implements Job {
     this.scheduler = scheduler;
     this.templateVersion = templateVersion;
     this.serviceUrl = serviceUrl;
+    this.messageDispatchService = messageDispatchService;
   }
 
   /**
@@ -97,7 +100,7 @@ public class NotificationService implements Job {
    */
   @Override
   public void execute(JobExecutionContext jobExecutionContext) {
-    boolean justLogEmail = true;
+    boolean actuallySendEmail = false; //default to logging email only
     String jobKey = jobExecutionContext.getJobDetail().getKey().toString();
     Map<String, String> result = new HashMap<>();
     JobDataMap jobDetails = jobExecutionContext.getJobDetail().getJobDataMap();
@@ -111,21 +114,28 @@ public class NotificationService implements Job {
         NotificationType.valueOf(jobDetails.get(NOTIFICATION_TYPE_FIELD).toString());
 
     if (NotificationType.getProgrammeUpdateNotificationTypes().contains(notificationType)) {
+
       personId = jobDetails.getString(ProgrammeMembershipService.PERSON_ID_FIELD);
       jobName = jobDetails.getString(ProgrammeMembershipService.PROGRAMME_NAME_FIELD);
       startDate = (LocalDate) jobDetails.get(ProgrammeMembershipService.START_DATE_FIELD);
       tisReferenceInfo = new TisReferenceInfo(PROGRAMME_MEMBERSHIP,
           jobDetails.get(ProgrammeMembershipService.TIS_ID_FIELD).toString());
 
+      // when the new starter emails are finalised, the following should be enabled:
+      // actuallySendEmail = messageDispatchService.isValidRecipient(MessageType.EMAIL, personId)
+      //     && messageDispatchService.isProgrammeMembershipNewStarter(personId,
+      //     tisReferenceInfo.id());
+
     } else if (notificationType == NotificationType.PLACEMENT_UPDATED_WEEK_12) {
+
       personId = jobDetails.getString(PlacementService.PERSON_ID_FIELD);
       jobName = jobDetails.getString(PlacementService.PLACEMENT_TYPE_FIELD);
       startDate = (LocalDate) jobDetails.get(PlacementService.START_DATE_FIELD);
       tisReferenceInfo = new TisReferenceInfo(PLACEMENT,
           jobDetails.get(PlacementService.TIS_ID_FIELD).toString());
-      String localOfficeName = jobDetails.getString(PlacementService.PLACEMENT_OWNER_FIELD);
-      String specialty = jobDetails.getString(PlacementService.PLACEMENT_SPECIALTY_FIELD);
-      justLogEmail = !isInPilot(localOfficeName, specialty, startDate);
+
+      actuallySendEmail = messageDispatchService.isValidRecipient(MessageType.EMAIL, personId)
+          && messageDispatchService.isPlacementInPilot2024(personId, tisReferenceInfo.id());
     }
 
     UserDetails userCognitoAccountDetails = getCognitoAccountDetails(personId);
@@ -142,7 +152,7 @@ public class NotificationService implements Job {
 
       try {
         emailService.sendMessage(personId, userAccountDetails.email(), notificationType,
-            templateVersion, jobDetails.getWrappedMap(), tisReferenceInfo, justLogEmail);
+            templateVersion, jobDetails.getWrappedMap(), tisReferenceInfo, !actuallySendEmail);
       } catch (MessagingException e) {
         throw new RuntimeException(e);
       }
@@ -325,19 +335,5 @@ public class NotificationService implements Job {
     }
 
     return true;
-  }
-
-  /**
-   * TEMPORARY (I hope). Identifies placements that fall within the pilot group 2024.
-   *
-   * @param localOffice The placement local office.
-   * @param specialty   The placement specialty.
-   * @param startDate   The placement start date.
-   * @return true if the placement is in the pilot group, otherwise false.
-   */
-  protected boolean isInPilot(String localOffice, String specialty, LocalDate startDate) {
-
-    // for now, say no-one is in pilot
-    return false;
   }
 }
