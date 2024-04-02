@@ -24,12 +24,15 @@ package uk.nhs.tis.trainee.notifications.service;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.web.client.RestTemplate;
 import uk.nhs.tis.trainee.notifications.model.MessageType;
 
@@ -74,4 +77,27 @@ class MessageDispatchServiceTest {
         service.isValidRecipient(MessageType.EMAIL, "some other id"), is(true));
   }
 
+  @ParameterizedTest
+  @ValueSource(booleans = {true, false})
+  void isPlacementInPilot2024ShouldReturnApiResult(boolean apiResult) {
+    when(restTemplate
+        .getForObject("the-url/api/placement/ispilot2024/{traineeTisId}/{placementId}",
+        boolean.class, Map.of("traineeTisId", "123",
+                "placementId", "abc"))).thenReturn(apiResult);
+
+    assertThat("Unexpected isPlacementInPilot2024() result.",
+        service.isPlacementInPilot2024("123", "abc"), is(apiResult));
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {true, false})
+  void isProgrammeMembershipNewStarterShouldReturnApiResult(boolean apiResult) {
+    when(restTemplate
+        .getForObject("the-url/api/programme-membership/isnewstarter/{traineeTisId}/{programmeMembershipId}",
+            boolean.class, Map.of("traineeTisId", "123",
+                "programmeMembershipId", "abc"))).thenReturn(apiResult);
+
+    assertThat("Unexpected isProgrammeMembershipNewStarter() result.",
+        service.isProgrammeMembershipNewStarter("123", "abc"), is(apiResult));
+  }
 }
