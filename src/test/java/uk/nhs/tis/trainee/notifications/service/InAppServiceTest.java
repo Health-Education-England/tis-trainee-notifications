@@ -72,7 +72,10 @@ class InAppServiceTest {
   @ParameterizedTest
   @EnumSource(NotificationType.class)
   void shouldNotStoreNotificationIfOnlyLogged(NotificationType notificationType) {
-    service.createNotifications(TRAINEE_ID, notificationType, VERSION, true);
+    String referenceId = UUID.randomUUID().toString();
+    TisReferenceInfo referenceInfo = new TisReferenceInfo(PLACEMENT, referenceId);
+    service.createNotifications(TRAINEE_ID, referenceInfo, notificationType, VERSION, Map.of(),
+        true);
 
     verify(historyService, never()).save(any());
   }

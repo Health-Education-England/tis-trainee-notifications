@@ -21,6 +21,7 @@
 
 package uk.nhs.tis.trainee.notifications.service;
 
+import static uk.nhs.tis.trainee.notifications.model.MessageType.IN_APP;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.E_PORTFOLIO;
 
 import java.time.Instant;
@@ -215,7 +216,8 @@ public class ProgrammeMembershipService {
   private void createInAppNotifications(ProgrammeMembership programmeMembership,
       Map<NotificationType, Instant> notificationsAlreadySent) {
     // Create ePortfolio notification if the PM qualifies.
-    boolean meetsCriteria = notificationService.meetsCriteria(programmeMembership, true, true);
+    boolean meetsCriteria = notificationService.programmeMembershipMeetsCriteria(
+        programmeMembership, true, true);
     boolean isUnique = !notificationsAlreadySent.containsKey(E_PORTFOLIO);
 
     if (meetsCriteria && isUnique) {
@@ -225,8 +227,11 @@ public class ProgrammeMembershipService {
           PROGRAMME_NAME_FIELD, programmeMembership.getProgrammeName(),
           START_DATE_FIELD, programmeMembership.getStartDate()
       );
+      boolean doNotSendJustLog
+          = !notificationService.programmeMembershipIsNotifiable(programmeMembership, IN_APP);
+
       inAppService.createNotifications(programmeMembership.getPersonId(), tisReference,
-          E_PORTFOLIO, eportfolioVersion, variables);
+          E_PORTFOLIO, eportfolioVersion, variables, doNotSendJustLog);
     }
   }
 

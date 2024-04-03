@@ -26,7 +26,6 @@ import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
-import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 import uk.nhs.tis.trainee.notifications.model.MessageType;
 
@@ -42,9 +41,11 @@ public class MessageDispatchService {
   private static final String TRAINEE_TIS_ID_FIELD = "traineeTisId";
   private static final String PLACEMENT_ID_FIELD = "placementId";
   private static final String PROGRAMME_MEMBERSHIP_ID_FIELD = "programmeMembershipId";
-  protected static final String API_IS_PILOT_2024
+  protected static final String API_PLACEMENT_IS_PILOT_2024
       = "/api/placement/ispilot2024/{traineeTisId}/{placementId}";
-  protected static final String API_NEW_STARTER
+  protected static final String API_PROGRAMME_MEMBERSHIP_IS_PILOT_2024
+      = "/api/programme-membership/ispilot2024/{traineeTisId}/{programmeMembershipId}";
+  protected static final String API_PROGRAMME_MEMBERSHIP_NEW_STARTER
       = "/api/programme-membership/isnewstarter/{traineeTisId}/{programmeMembershipId}";
 
   private final List<String> notificationsWhitelist;
@@ -82,7 +83,7 @@ public class MessageDispatchService {
    * @param traineeTisId The trainee TIS ID of the recipient.
    * @return true if the trainee could receive the message, otherwise false.
    */
-  public boolean isValidRecipient(MessageType messageType, String traineeTisId) {
+  public boolean isValidRecipient(String traineeTisId, MessageType messageType) {
 
     boolean inWhitelist = notificationsWhitelist.contains(traineeTisId);
 
@@ -97,43 +98,60 @@ public class MessageDispatchService {
   }
 
   /**
-   * TEMPORARY. Identifies if a placement falls within the pilot group 2024.
+   * Identifies if a placement falls within the pilot group 2024.
    *
-   * @param traineeTisId The trainee TIS ID whose placement it is.
-   * @param placementId  The placement ID.
+   * @param traineeId   The trainee TIS ID whose placement it is.
+   * @param placementId The placement ID.
    * @return true if the placement is in the pilot group, otherwise false.
    */
-  public boolean isPlacementInPilot2024(String traineeTisId, String placementId) {
-    try {
-      return Boolean.TRUE.equals(
-          restTemplate.getForObject(serviceUrl + API_IS_PILOT_2024, Boolean.class,
-              Map.of(TRAINEE_TIS_ID_FIELD, traineeTisId,
-                  PLACEMENT_ID_FIELD, placementId)));
-    } catch (RestClientException rce) {
-      log.warn("Exception occurred when requesting trainee " + traineeTisId
-          + " placement " + placementId + " pilot 2024 status : " + rce);
+  public boolean isPlacementInPilot2024(String traineeId, String placementId) {
+    Boolean isPilot = restTemplate.getForObject(serviceUrl + API_PLACEMENT_IS_PILOT_2024,
+        Boolean.class, Map.of(TRAINEE_TIS_ID_FIELD, traineeId, PLACEMENT_ID_FIELD, placementId));
+    if (isPilot == null || !isPilot) {
+      log.info("Trainee {} placement {} is not in the pilot 2024.", traineeId, placementId);
+      return false;
     }
-    return false;
+    return true;
+  }
+
+  /**
+   * Identifies if a programme membership falls within the pilot group 2024.
+   *
+   * @param traineeId             The trainee TIS ID whose placement it is.
+   * @param programmeMembershipId The programme membership ID.
+   * @return true if the programme membership is in the pilot group, otherwise false.
+   */
+  public boolean isProgrammeMembershipInPilot2024(String traineeId, String programmeMembershipId) {
+    Boolean isPilot = restTemplate.getForObject(serviceUrl
+            + API_PROGRAMME_MEMBERSHIP_IS_PILOT_2024, Boolean.class,
+        Map.of(TRAINEE_TIS_ID_FIELD, traineeId,
+            PROGRAMME_MEMBERSHIP_ID_FIELD, programmeMembershipId));
+    if (isPilot == null || !isPilot) {
+      log.info("Trainee {} programme membership {} is not in the pilot 2024.",
+          traineeId, programmeMembershipId);
+      return false;
+    }
+    return true;
   }
 
   /**
    * Identifies if a programme membership is considered a 'new starter' programme membership.
    *
-   * @param traineeTisId          The trainee TIS ID whose programme membership it is.
+   * @param traineeId             The trainee TIS ID whose programme membership it is.
    * @param programmeMembershipId The programme membership ID.
    * @return true if the programme membership is a 'new starter' PM, otherwise false.
    */
-  public boolean isProgrammeMembershipNewStarter(String traineeTisId,
-      String programmeMembershipId) {
-    try {
-      return Boolean.TRUE.equals(
-          restTemplate.getForObject(serviceUrl + API_NEW_STARTER, Boolean.class,
-              Map.of(TRAINEE_TIS_ID_FIELD, traineeTisId,
-                  PROGRAMME_MEMBERSHIP_ID_FIELD, programmeMembershipId)));
-    } catch (RestClientException rce) {
-      log.warn("Exception occurred when requesting trainee " + traineeTisId
-          + " programme membership " + programmeMembershipId + " new starter status : " + rce);
+  public boolean isProgrammeMembershipNewStarter(String traineeId, String programmeMembershipId) {
+    Boolean isNewStarter = restTemplate.getForObject(
+        serviceUrl + API_PROGRAMME_MEMBERSHIP_NEW_STARTER,
+        Boolean.class, Map.of(TRAINEE_TIS_ID_FIELD, traineeId,
+            PROGRAMME_MEMBERSHIP_ID_FIELD, programmeMembershipId));
+
+    if (isNewStarter == null || !isNewStarter) {
+      log.info("Trainee {} programme membership {} is not a new starter.",
+          traineeId, programmeMembershipId);
+      return false;
     }
-    return false;
+    return true;
   }
 }

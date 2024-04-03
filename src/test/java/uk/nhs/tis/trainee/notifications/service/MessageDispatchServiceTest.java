@@ -23,7 +23,6 @@ package uk.nhs.tis.trainee.notifications.service;
 
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -33,8 +32,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.params.provider.NullSource;
 import org.junit.jupiter.params.provider.ValueSource;
-import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 import uk.nhs.tis.trainee.notifications.model.MessageType;
 
@@ -58,42 +57,55 @@ class MessageDispatchServiceTest {
   @EnumSource(MessageType.class)
   void whitelistedShouldBeValidRecipients(MessageType messageType) {
     assertThat("Unexpected isValidRecipient().",
-        service.isValidRecipient(messageType, WHITELIST_1), is(true));
+        service.isValidRecipient(WHITELIST_1, messageType), is(true));
   }
 
   @ParameterizedTest
   @EnumSource(MessageType.class)
   void nonWhitelistedShouldNotBeValidRecipientsIfNotificationsNotEnabled(MessageType messageType) {
     assertThat("Unexpected isValidRecipient().",
-        service.isValidRecipient(messageType, "some other id"), is(false));
+        service.isValidRecipient("some other id", messageType), is(false));
   }
 
   @Test
   void nonWhitelistedShouldBeValidRecipientsIfNotificationsEnabled() {
     service = new MessageDispatchService(restTemplate, WHITELISTED, true, false, SERVICE_URL);
     assertThat("Unexpected isValidRecipient().",
-        service.isValidRecipient(MessageType.IN_APP, "some other id"), is(true));
+        service.isValidRecipient("some other id", MessageType.IN_APP), is(true));
 
     service = new MessageDispatchService(restTemplate, WHITELISTED, false, true, SERVICE_URL);
     assertThat("Unexpected isValidRecipient().",
-        service.isValidRecipient(MessageType.EMAIL, "some other id"), is(true));
+        service.isValidRecipient("some other id", MessageType.EMAIL), is(true));
   }
 
   @ParameterizedTest
-  @ValueSource(booleans = {true, false})
-  void isPlacementInPilot2024ShouldReturnApiResult(boolean apiResult) {
+  @NullSource
+  @ValueSource(booleans = false)
+  void isPlacementInPilot2024ShouldReturnFalseIfApiNotTrue(Boolean apiResult) {
     when(restTemplate
         .getForObject("the-url/api/placement/ispilot2024/{traineeTisId}/{placementId}",
             Boolean.class, Map.of("traineeTisId", "123",
                 "placementId", "abc"))).thenReturn(apiResult);
 
     assertThat("Unexpected isPlacementInPilot2024() result.",
-        service.isPlacementInPilot2024("123", "abc"), is(apiResult));
+        service.isPlacementInPilot2024("123", "abc"), is(false));
+  }
+
+  @Test
+  void isPlacementInPilot2024ShouldReturnTrueIfApiTrue() {
+    when(restTemplate
+        .getForObject("the-url/api/placement/ispilot2024/{traineeTisId}/{placementId}",
+            Boolean.class, Map.of("traineeTisId", "123",
+                "placementId", "abc"))).thenReturn(true);
+
+    assertThat("Unexpected isPlacementInPilot2024() result.",
+        service.isPlacementInPilot2024("123", "abc"), is(true));
   }
 
   @ParameterizedTest
-  @ValueSource(booleans = {true, false})
-  void isProgrammeMembershipNewStarterShouldReturnApiResult(boolean apiResult) {
+  @NullSource
+  @ValueSource(booleans = false)
+  void isProgrammeMembershipNewStarterShouldReturnFalseIfApiNotTrue(Boolean apiResult) {
     when(restTemplate
         .getForObject(
             "the-url/api/programme-membership/isnewstarter/{traineeTisId}/{programmeMembershipId}",
@@ -102,30 +114,47 @@ class MessageDispatchServiceTest {
 
     assertThat("Unexpected isProgrammeMembershipNewStarter() result.",
         service.isProgrammeMembershipNewStarter("123", "abc"),
-        is(apiResult));
+        is(false));
   }
 
   @Test
-  void ifApiErrorPlacementInPilot2024ShouldReturnFalse() {
-    doThrow(new RestClientException("error"))
-        .when(restTemplate)
-            .getForObject("the-url/api/placement/ispilot2024/{traineeTisId}/{placementId}",
-                Boolean.class, Map.of("traineeTisId", "123",
-                    "placementId", "abc"));
-    assertThat("Unexpected isPlacementInPilot2024() result.",
-        service.isPlacementInPilot2024("123", "abc"), is(false));
-  }
+  void isProgrammeMembershipNewStarterShouldReturnTrueIfApiTrue() {
+    when(restTemplate
+        .getForObject(
+            "the-url/api/programme-membership/isnewstarter/{traineeTisId}/{programmeMembershipId}",
+            Boolean.class, Map.of("traineeTisId", "123",
+                "programmeMembershipId", "abc"))).thenReturn(true);
 
-  @Test
-  void ifApiErrorProgrammeMembershipNewStarterShouldReturnFalse() {
-    doThrow(new RestClientException("error"))
-        .when(restTemplate)
-            .getForObject(
-                "the-url/api/programme-membership/isnewstarter/{traineeTisId}/{programmeMembershipId}",
-                Boolean.class, Map.of("traineeTisId", "123",
-                    "programmeMembershipId", "abc"));
     assertThat("Unexpected isProgrammeMembershipNewStarter() result.",
         service.isProgrammeMembershipNewStarter("123", "abc"),
+        is(true));
+  }
+
+  @ParameterizedTest
+  @NullSource
+  @ValueSource(booleans = false)
+  void isProgrammeMembershipInPilotShouldReturnFalseIfApiNotTrue(Boolean apiResult) {
+    when(restTemplate
+        .getForObject(
+            "the-url/api/programme-membership/ispilot2024/{traineeTisId}/{programmeMembershipId}",
+            Boolean.class, Map.of("traineeTisId", "123",
+                "programmeMembershipId", "abc"))).thenReturn(apiResult);
+
+    assertThat("Unexpected isProgrammeMembershipInPilot2024() result.",
+        service.isProgrammeMembershipInPilot2024("123", "abc"),
         is(false));
+  }
+
+  @Test
+  void isProgrammeMembershipInPilotShouldReturnTrueIfApiTrue() {
+    when(restTemplate
+        .getForObject(
+            "the-url/api/programme-membership/ispilot2024/{traineeTisId}/{programmeMembershipId}",
+            Boolean.class, Map.of("traineeTisId", "123",
+                "programmeMembershipId", "abc"))).thenReturn(true);
+
+    assertThat("Unexpected isProgrammeMembershipInPilot2024() result.",
+        service.isProgrammeMembershipInPilot2024("123", "abc"),
+        is(true));
   }
 }

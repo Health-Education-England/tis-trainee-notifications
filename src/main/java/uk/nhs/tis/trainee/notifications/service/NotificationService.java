@@ -121,7 +121,7 @@ public class NotificationService implements Job {
       tisReferenceInfo = new TisReferenceInfo(PROGRAMME_MEMBERSHIP,
           jobDetails.get(ProgrammeMembershipService.TIS_ID_FIELD).toString());
 
-      // when the new starter emails are finalised, the following should be enabled:
+      // when the new starter emails are finalised, the following could be enabled:
       // actuallySendEmail = messageDispatchService.isValidRecipient(MessageType.EMAIL, personId)
       //     && messageDispatchService.isProgrammeMembershipNewStarter(personId,
       //     tisReferenceInfo.id());
@@ -134,7 +134,7 @@ public class NotificationService implements Job {
       tisReferenceInfo = new TisReferenceInfo(PLACEMENT,
           jobDetails.get(PlacementService.TIS_ID_FIELD).toString());
 
-      actuallySendEmail = messageDispatchService.isValidRecipient(MessageType.EMAIL, personId)
+      actuallySendEmail = messageDispatchService.isValidRecipient(personId, MessageType.EMAIL)
           && messageDispatchService.isPlacementInPilot2024(personId, tisReferenceInfo.id());
     }
 
@@ -300,40 +300,51 @@ public class NotificationService implements Job {
   }
 
   /**
-   * Check whether an object meets the selected notification criteria.
+   * Check whether a programme membership meets the selected notification criteria.
    *
    * @param programmeMembership The programme membership to check.
    * @param checkNewStarter     Whether the trainee must be a new starter.
    * @param checkPilot          Whether the trainee must be in a pilot.
-   * @return true if all criteria bet, or false if one or more criteria fail.
+   * @return true if all criteria met, or false if one or more criteria fail.
    */
-  public boolean meetsCriteria(ProgrammeMembership programmeMembership,
+  public boolean programmeMembershipMeetsCriteria(ProgrammeMembership programmeMembership,
       boolean checkNewStarter, boolean checkPilot) {
     String traineeId = programmeMembership.getPersonId();
     String pmId = programmeMembership.getTisId();
 
     if (checkNewStarter) {
-      String apiPath = "/api/programme-membership/isnewstarter/{traineeId}/{pmId}";
-      Boolean isNewStarter = restTemplate.getForObject(serviceUrl + apiPath, Boolean.class,
-          Map.of("traineeId", traineeId, "pmId", pmId));
+      boolean isNewStarter = messageDispatchService.isProgrammeMembershipNewStarter(traineeId,
+          pmId);
 
-      if (isNewStarter == null || !isNewStarter) {
+      if (!isNewStarter) {
         log.info("Skipping notification creation as trainee {} is not a new starter.", traineeId);
         return false;
       }
     }
 
     if (checkPilot) {
-      String apiPath = "/api/programme-membership/ispilot2024/{traineeId}/{pmId}";
-      Boolean isInPilot = restTemplate.getForObject(serviceUrl + apiPath, Boolean.class,
-          Map.of("traineeId", traineeId, "pmId", pmId));
+      boolean isInPilot = messageDispatchService.isProgrammeMembershipInPilot2024(traineeId, pmId);
 
-      if (isInPilot == null || !isInPilot) {
+      if (!isInPilot) {
         log.info("Skipping notification creation as trainee {} is not in the pilot.", traineeId);
         return false;
       }
     }
 
     return true;
+  }
+
+  /**
+   * Check whether a programme membership's trainee should receive the given message-type
+   * notification.
+   *
+   * @param programmeMembership The programme membership to check.
+   * @param messageType         The potential notification message type.
+   * @return true if the trainee should receive the notification, otherwise false.
+   */
+  public boolean programmeMembershipIsNotifiable(ProgrammeMembership programmeMembership,
+      MessageType messageType) {
+    String traineeId = programmeMembership.getPersonId();
+    return messageDispatchService.isValidRecipient(traineeId, messageType);
   }
 }

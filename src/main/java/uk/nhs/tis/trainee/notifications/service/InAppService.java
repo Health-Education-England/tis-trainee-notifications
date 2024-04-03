@@ -32,7 +32,6 @@ import uk.nhs.tis.trainee.notifications.model.History;
 import uk.nhs.tis.trainee.notifications.model.History.RecipientInfo;
 import uk.nhs.tis.trainee.notifications.model.History.TemplateInfo;
 import uk.nhs.tis.trainee.notifications.model.History.TisReferenceInfo;
-import uk.nhs.tis.trainee.notifications.model.History.TisReferenceInfo;
 import uk.nhs.tis.trainee.notifications.model.NotificationType;
 
 /**
@@ -58,8 +57,9 @@ public class InAppService {
    * @param templateVariables The variables to insert in to the template.
    * @param doNotStoreJustLog Do not store the notification, just log it.
    */
-  public void createNotifications(String traineeId, TisReferenceInfo tisReference, NotificationType notificationType,
-      String templateVersion, Map<String, Object> templateVariables, boolean doNotStoreJustLog) {
+  public void createNotifications(String traineeId, TisReferenceInfo tisReference,
+      NotificationType notificationType, String templateVersion,
+      Map<String, Object> templateVariables, boolean doNotStoreJustLog) {
     log.info("Creating in-app {} notification for trainee {}.", notificationType, traineeId);
     RecipientInfo recipient = new RecipientInfo(traineeId, IN_APP, null);
     TemplateInfo template = new TemplateInfo(notificationType.getTemplateName(), templateVersion,
@@ -79,11 +79,15 @@ public class InAppService {
    * Create an in-app notification.
    *
    * @param traineeId         The trainee ID to associate the notification with.
+   * @param tisReference      The TIS reference of the associated object.
    * @param notificationType  The type of notification.
    * @param templateVersion   The version of the template to use.
+   * @param templateVariables The variables to insert in to the template.
    */
-  public void createNotifications(String traineeId, NotificationType notificationType,
-      String templateVersion) {
-    createNotifications(traineeId, notificationType, templateVersion, false);
+  public void createNotifications(String traineeId, TisReferenceInfo tisReference,
+      NotificationType notificationType, String templateVersion,
+      Map<String, Object> templateVariables) {
+    createNotifications(traineeId, tisReference, notificationType, templateVersion,
+        templateVariables, false);
   }
 }
