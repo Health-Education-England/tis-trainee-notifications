@@ -101,7 +101,8 @@ class MessageDispatchServiceTest {
                 "programmeMembershipId", "abc"))).thenReturn(apiResult);
 
     assertThat("Unexpected isProgrammeMembershipNewStarter() result.",
-        service.isProgrammeMembershipNewStarter("123", "abc"), is(apiResult));
+        service.isProgrammeMembershipNewStarter("123", "abc"),
+        is(apiResult));
   }
 
   @Test
@@ -124,6 +125,7 @@ class MessageDispatchServiceTest {
                 Boolean.class, Map.of("traineeTisId", "123",
                     "programmeMembershipId", "abc"));
     assertThat("Unexpected isProgrammeMembershipNewStarter() result.",
-        service.isProgrammeMembershipNewStarter("123", "abc"), is(false));
+        service.isProgrammeMembershipNewStarter("123", "abc"),
+        is(false));
   }
 }

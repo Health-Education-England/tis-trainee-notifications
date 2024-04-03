@@ -233,8 +233,10 @@ class NotificationServiceTest {
     verify(emailService).sendMessage(any(), any(), any(), any(), any(), any(), eq(true));
   }
 
-  @Test
-  void shouldLogPlacementEmailForNotValidRecipientNotSendThem() throws MessagingException {
+  @ParameterizedTest
+  @ValueSource(booleans = {true, false})
+  void shouldLogPlacementEmailWhenNotMatchBothCriteria(boolean apiResult)
+      throws MessagingException {
     UserDetails userAccountDetails =
         new UserDetails(
             false, USER_EMAIL, USER_TITLE, USER_FAMILY_NAME, USER_GIVEN_NAME, USER_GMC);
@@ -248,8 +250,8 @@ class NotificationServiceTest {
     when(emailService.getRecipientAccount(PERSON_ID)).thenReturn(userAccountDetails);
     when(restTemplate.getForObject("the-url/api/trainee-profile/account-details/{tisId}",
         UserDetails.class, Map.of(TIS_ID_FIELD, PERSON_ID))).thenReturn(userAccountDetails);
-    when(messageDispatchService.isValidRecipient(any(), any())).thenReturn(false);
-    when(messageDispatchService.isPlacementInPilot2024(any(), any())).thenReturn(true);
+    when(messageDispatchService.isValidRecipient(any(), any())).thenReturn(apiResult);
+    when(messageDispatchService.isPlacementInPilot2024(any(), any())).thenReturn(!apiResult);
 
     service.execute(jobExecutionContext);
 
@@ -257,30 +259,7 @@ class NotificationServiceTest {
   }
 
   @Test
-  void shouldLogPlacementEmailForNotNotPilot2024NotSendThem() throws MessagingException {
-    UserDetails userAccountDetails =
-        new UserDetails(
-            false, USER_EMAIL, USER_TITLE, USER_FAMILY_NAME, USER_GIVEN_NAME, USER_GMC);
-
-    JobDetail placementJobDetails = newJob(NotificationService.class)
-        .withIdentity(JOB_KEY)
-        .usingJobData(placementJobDataMap)
-        .build();
-
-    when(jobExecutionContext.getJobDetail()).thenReturn(placementJobDetails);
-    when(emailService.getRecipientAccount(PERSON_ID)).thenReturn(userAccountDetails);
-    when(restTemplate.getForObject("the-url/api/trainee-profile/account-details/{tisId}",
-        UserDetails.class, Map.of(TIS_ID_FIELD, PERSON_ID))).thenReturn(userAccountDetails);
-    when(messageDispatchService.isValidRecipient(any(), any())).thenReturn(true);
-    when(messageDispatchService.isPlacementInPilot2024(any(), any())).thenReturn(false);
-
-    service.execute(jobExecutionContext);
-
-    verify(emailService).sendMessage(any(), any(), any(), any(), any(), any(), eq(true));
-  }
-
-  @Test
-  void shouldSendPlacementEmailForValidRecipientInPilot2024() throws MessagingException {
+  void shouldSendPlacementEmailWhenMatchBothCriteria() throws MessagingException {
     UserDetails userAccountDetails =
         new UserDetails(
             false, USER_EMAIL, USER_TITLE, USER_FAMILY_NAME, USER_GIVEN_NAME, USER_GMC);
