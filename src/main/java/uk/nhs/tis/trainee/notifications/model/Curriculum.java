@@ -32,7 +32,8 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 @JsonIgnoreProperties(ignoreUnknown = true)
 public record Curriculum(
     String curriculumSubType,
-    String curriculumSpecialty
+    String curriculumSpecialty,
+    boolean curriculumSpecialtyBlockIndemnity
 ) {
 
 }
