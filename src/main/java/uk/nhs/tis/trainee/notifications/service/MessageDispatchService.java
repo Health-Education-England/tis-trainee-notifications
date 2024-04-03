@@ -106,11 +106,11 @@ public class MessageDispatchService {
   public boolean isPlacementInPilot2024(String traineeTisId, String placementId) {
     try {
       return Boolean.TRUE.equals(
-          restTemplate.getForObject(serviceUrl + API_IS_PILOT_2024, boolean.class,
+          restTemplate.getForObject(serviceUrl + API_IS_PILOT_2024, Boolean.class,
               Map.of(TRAINEE_TIS_ID_FIELD, traineeTisId,
                   PLACEMENT_ID_FIELD, placementId)));
     } catch (RestClientException rce) {
-      log.warn("Exception occur when requesting trainee " + traineeTisId
+      log.warn("Exception occurred when requesting trainee " + traineeTisId
           + " placement " + placementId + " pilot 2024 status : " + rce);
     }
     return false;
@@ -127,11 +127,11 @@ public class MessageDispatchService {
       String programmeMembershipId) {
     try {
       return Boolean.TRUE.equals(
-          restTemplate.getForObject(serviceUrl + API_NEW_STARTER, boolean.class,
+          restTemplate.getForObject(serviceUrl + API_NEW_STARTER, Boolean.class,
               Map.of(TRAINEE_TIS_ID_FIELD, traineeTisId,
                   PROGRAMME_MEMBERSHIP_ID_FIELD, programmeMembershipId)));
     } catch (RestClientException rce) {
-      log.warn("Exception occur when requesting trainee " + traineeTisId
+      log.warn("Exception occurred when requesting trainee " + traineeTisId
           + " programme membership " + programmeMembershipId + " new starter status : " + rce);
     }
     return false;
