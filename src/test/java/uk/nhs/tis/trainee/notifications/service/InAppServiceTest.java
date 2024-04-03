@@ -25,11 +25,13 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.lessThan;
+import static org.hamcrest.Matchers.notNullValue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static uk.nhs.tis.trainee.notifications.model.MessageType.IN_APP;
 import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.UNREAD;
+import static uk.nhs.tis.trainee.notifications.model.TisReferenceType.PLACEMENT;
 
 import java.time.Instant;
 import java.util.Map;
@@ -41,6 +43,7 @@ import org.mockito.ArgumentCaptor;
 import uk.nhs.tis.trainee.notifications.model.History;
 import uk.nhs.tis.trainee.notifications.model.History.RecipientInfo;
 import uk.nhs.tis.trainee.notifications.model.History.TemplateInfo;
+import uk.nhs.tis.trainee.notifications.model.History.TisReferenceInfo;
 import uk.nhs.tis.trainee.notifications.model.NotificationType;
 
 class InAppServiceTest {
@@ -60,7 +63,7 @@ class InAppServiceTest {
   @ParameterizedTest
   @EnumSource(NotificationType.class)
   void shouldCreateNotification(NotificationType notificationType) {
-    service.createNotifications(TRAINEE_ID, notificationType, VERSION);
+    service.createNotifications(TRAINEE_ID, null, notificationType, VERSION, Map.of());
 
     verify(historyService).save(any());
   }
@@ -68,7 +71,7 @@ class InAppServiceTest {
   @ParameterizedTest
   @EnumSource(NotificationType.class)
   void shouldNotSetIdWhenCreatingNotification(NotificationType notificationType) {
-    service.createNotifications(TRAINEE_ID, notificationType, VERSION);
+    service.createNotifications(TRAINEE_ID, null, notificationType, VERSION, Map.of());
 
     ArgumentCaptor<History> historyCaptor = ArgumentCaptor.forClass(History.class);
     verify(historyService).save(historyCaptor.capture());
@@ -79,20 +82,24 @@ class InAppServiceTest {
 
   @ParameterizedTest
   @EnumSource(NotificationType.class)
-  void shouldNotSetTisReferenceWhenCreatingNotification(NotificationType notificationType) {
-    service.createNotifications(TRAINEE_ID, notificationType, VERSION);
+  void shouldSetTisReferenceWhenCreatingNotification(NotificationType notificationType) {
+    String referenceId = UUID.randomUUID().toString();
+    TisReferenceInfo referenceInfo = new TisReferenceInfo(PLACEMENT, referenceId);
+    service.createNotifications(TRAINEE_ID, referenceInfo, notificationType, VERSION, Map.of());
 
     ArgumentCaptor<History> historyCaptor = ArgumentCaptor.forClass(History.class);
     verify(historyService).save(historyCaptor.capture());
 
     History history = historyCaptor.getValue();
-    assertThat("Unexpected TIS reference info.", history.tisReference(), nullValue());
+    assertThat("Unexpected TIS reference info.", history.tisReference(), notNullValue());
+    assertThat("Unexpected TIS reference type.", history.tisReference().type(), is(PLACEMENT));
+    assertThat("Unexpected TIS reference id.", history.tisReference().id(), is(referenceId));
   }
 
   @ParameterizedTest
   @EnumSource(NotificationType.class)
   void shouldSetNotificationTypeWhenCreatingNotification(NotificationType notificationType) {
-    service.createNotifications(TRAINEE_ID, notificationType, VERSION);
+    service.createNotifications(TRAINEE_ID, null, notificationType, VERSION, Map.of());
 
     ArgumentCaptor<History> historyCaptor = ArgumentCaptor.forClass(History.class);
     verify(historyService).save(historyCaptor.capture());
@@ -104,7 +111,7 @@ class InAppServiceTest {
   @ParameterizedTest
   @EnumSource(NotificationType.class)
   void shouldSetRecipientInfoWhenCreatingNotification(NotificationType notificationType) {
-    service.createNotifications(TRAINEE_ID, notificationType, VERSION);
+    service.createNotifications(TRAINEE_ID, null, notificationType, VERSION, Map.of());
 
     ArgumentCaptor<History> historyCaptor = ArgumentCaptor.forClass(History.class);
     verify(historyService).save(historyCaptor.capture());
@@ -119,7 +126,12 @@ class InAppServiceTest {
   @ParameterizedTest
   @EnumSource(NotificationType.class)
   void shouldSetTemplateInfoWhenCreatingNotification(NotificationType notificationType) {
-    service.createNotifications(TRAINEE_ID, notificationType, VERSION);
+    Map<String, Object> variables = Map.of(
+        "field1", "value1",
+        "field2", 2,
+        "field3", Instant.EPOCH
+    );
+    service.createNotifications(TRAINEE_ID, null, notificationType, VERSION, variables);
 
     ArgumentCaptor<History> historyCaptor = ArgumentCaptor.forClass(History.class);
     verify(historyService).save(historyCaptor.capture());
@@ -129,13 +141,18 @@ class InAppServiceTest {
     assertThat("Unexpected template name.", template.name(),
         is(notificationType.getTemplateName()));
     assertThat("Unexpected template version.", template.version(), is(VERSION));
-    assertThat("Unexpected template variables.", template.variables(), is(Map.of()));
+
+    Map<String, Object> savedVariables = template.variables();
+    assertThat("Unexpected template variable count.", savedVariables.size(), is(3));
+    assertThat("Unexpected template variable.", savedVariables.get("field1"), is("value1"));
+    assertThat("Unexpected template variable.", savedVariables.get("field2"), is(2));
+    assertThat("Unexpected template variable.", savedVariables.get("field3"), is(Instant.EPOCH));
   }
 
   @ParameterizedTest
   @EnumSource(NotificationType.class)
   void shouldSetSentAtWhenCreatingNotification(NotificationType notificationType) {
-    service.createNotifications(TRAINEE_ID, notificationType, VERSION);
+    service.createNotifications(TRAINEE_ID, null, notificationType, VERSION, Map.of());
 
     ArgumentCaptor<History> historyCaptor = ArgumentCaptor.forClass(History.class);
     verify(historyService).save(historyCaptor.capture());
@@ -148,7 +165,7 @@ class InAppServiceTest {
   @ParameterizedTest
   @EnumSource(NotificationType.class)
   void shouldNotSetReadAtWhenCreatingNotification(NotificationType notificationType) {
-    service.createNotifications(TRAINEE_ID, notificationType, VERSION);
+    service.createNotifications(TRAINEE_ID, null, notificationType, VERSION, Map.of());
 
     ArgumentCaptor<History> historyCaptor = ArgumentCaptor.forClass(History.class);
     verify(historyService).save(historyCaptor.capture());
@@ -160,7 +177,7 @@ class InAppServiceTest {
   @ParameterizedTest
   @EnumSource(NotificationType.class)
   void shouldSetStatusWhenCreatingNotification(NotificationType notificationType) {
-    service.createNotifications(TRAINEE_ID, notificationType, VERSION);
+    service.createNotifications(TRAINEE_ID, null, notificationType, VERSION, Map.of());
 
     ArgumentCaptor<History> historyCaptor = ArgumentCaptor.forClass(History.class);
     verify(historyService).save(historyCaptor.capture());
@@ -172,7 +189,7 @@ class InAppServiceTest {
   @ParameterizedTest
   @EnumSource(NotificationType.class)
   void shouldSetStatusDetailWhenCreatingNotification(NotificationType notificationType) {
-    service.createNotifications(TRAINEE_ID, notificationType, VERSION);
+    service.createNotifications(TRAINEE_ID, null, notificationType, VERSION, Map.of());
 
     ArgumentCaptor<History> historyCaptor = ArgumentCaptor.forClass(History.class);
     verify(historyService).save(historyCaptor.capture());

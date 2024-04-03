@@ -24,6 +24,7 @@ package uk.nhs.tis.trainee.notifications.event;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.WELCOME;
 
 import io.awspring.cloud.sqs.annotation.SqsListener;
+import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -54,6 +55,6 @@ public class UserAccountListener {
   @SqsListener("${application.queues.account-confirmed}")
   public void handleAccountConfirmation(AccountConfirmedEvent event) {
     log.info("Handling account confirmation event for user {}.", event.userId());
-    inAppService.createNotifications(event.traineeId(), WELCOME, templateVersion);
+    inAppService.createNotifications(event.traineeId(), null, WELCOME, templateVersion, Map.of());
   }
 }

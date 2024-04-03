@@ -33,7 +33,10 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 import static org.quartz.JobBuilder.newJob;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PLACEMENT_UPDATED_WEEK_12;
@@ -60,6 +63,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.EnumSource.Mode;
+import org.junit.jupiter.params.provider.NullSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.quartz.JobDataMap;
 import org.quartz.JobDetail;
@@ -73,11 +78,16 @@ import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 import uk.nhs.tis.trainee.notifications.dto.UserDetails;
 import uk.nhs.tis.trainee.notifications.model.NotificationType;
+import uk.nhs.tis.trainee.notifications.model.ProgrammeMembership;
 
 class NotificationServiceTest {
 
   private static final String TEMPLATE_VERSION = "template-version";
   private static final String SERVICE_URL = "the-url";
+  private static final String API_PATH_IS_NEW_STARTER =
+      SERVICE_URL + "/api/programme-membership/isnewstarter/{traineeId}/{pmId}";
+  private static final String API_PATH_IS_PILOT =
+      SERVICE_URL + "/api/programme-membership/ispilot2024/{traineeId}/{pmId}";
   private static final String JOB_KEY_STRING = "job-key";
   private static final JobKey JOB_KEY = new JobKey(JOB_KEY_STRING);
   private static final String TIS_ID = "tis-id";
@@ -434,5 +444,148 @@ class NotificationServiceTest {
     Date scheduledDate = service.getScheduleDate(startDate, daysBeforeStart);
 
     assertThat("Unexpected scheduled date", scheduledDate, is(expectedMilestone));
+  }
+
+  @Test
+  void shouldMeetCriteriaWhenIsNewStarterAndIsInPilot() {
+    ProgrammeMembership programmeMembership = new ProgrammeMembership();
+    programmeMembership.setTisId(TIS_ID);
+    programmeMembership.setPersonId(PERSON_ID);
+
+    when(restTemplate.getForObject(eq(API_PATH_IS_NEW_STARTER), any(), anyMap())).thenReturn(true);
+    when(restTemplate.getForObject(eq(API_PATH_IS_PILOT), any(), anyMap())).thenReturn(true);
+
+    boolean meetsCriteria = service.meetsCriteria(programmeMembership, true, true);
+
+    assertThat("Unexpected unmet criteria.", meetsCriteria, is(true));
+
+    Map<String, Object> params = Map.of(
+        "traineeId", PERSON_ID,
+        "pmId", TIS_ID
+    );
+    verify(restTemplate).getForObject(API_PATH_IS_NEW_STARTER, Boolean.class, params);
+    verify(restTemplate).getForObject(API_PATH_IS_PILOT, Boolean.class, params);
+  }
+
+  @ParameterizedTest
+  @NullSource
+  @ValueSource(booleans = false)
+  void shouldNotMeetCriteriaWhenNotNewStarterAndNotInPilot(Boolean metCriteria) {
+    ProgrammeMembership programmeMembership = new ProgrammeMembership();
+    programmeMembership.setTisId(TIS_ID);
+    programmeMembership.setPersonId(PERSON_ID);
+
+    when(restTemplate.getForObject(eq(API_PATH_IS_NEW_STARTER), any(), anyMap())).thenReturn(
+        metCriteria);
+    when(restTemplate.getForObject(eq(API_PATH_IS_PILOT), any(), anyMap())).thenReturn(metCriteria);
+
+    boolean meetsCriteria = service.meetsCriteria(programmeMembership, true, true);
+
+    assertThat("Unexpected unmet criteria.", meetsCriteria, is(false));
+
+    Map<String, Object> params = Map.of(
+        "traineeId", PERSON_ID,
+        "pmId", TIS_ID
+    );
+    // Verify that we short-circuit on the first false result.
+    verify(restTemplate, times(1)).getForObject(any(), eq(Boolean.class), eq(params));
+  }
+
+  @Test
+  void shouldMeetCriteriaWhenIsNewStarterAndAndPilotCheckSkipped() {
+    ProgrammeMembership programmeMembership = new ProgrammeMembership();
+    programmeMembership.setTisId(TIS_ID);
+    programmeMembership.setPersonId(PERSON_ID);
+
+    when(restTemplate.getForObject(eq(API_PATH_IS_NEW_STARTER), any(), anyMap())).thenReturn(true);
+
+    boolean meetsCriteria = service.meetsCriteria(programmeMembership, true, false);
+
+    assertThat("Unexpected unmet criteria.", meetsCriteria, is(true));
+
+    Map<String, Object> params = Map.of(
+        "traineeId", PERSON_ID,
+        "pmId", TIS_ID
+    );
+    verify(restTemplate).getForObject(API_PATH_IS_NEW_STARTER, Boolean.class, params);
+    verifyNoMoreInteractions(restTemplate);
+  }
+
+  @ParameterizedTest
+  @NullSource
+  @ValueSource(booleans = false)
+  void shouldNotMeetCriteriaWhenNotNewStarterAndAndPilotCheckSkipped(Boolean metCriteria) {
+    ProgrammeMembership programmeMembership = new ProgrammeMembership();
+    programmeMembership.setTisId(TIS_ID);
+    programmeMembership.setPersonId(PERSON_ID);
+
+    when(restTemplate.getForObject(eq(API_PATH_IS_NEW_STARTER), any(), anyMap())).thenReturn(
+        metCriteria);
+
+    boolean meetsCriteria = service.meetsCriteria(programmeMembership, true, false);
+
+    assertThat("Unexpected unmet criteria.", meetsCriteria, is(false));
+
+    Map<String, Object> params = Map.of(
+        "traineeId", PERSON_ID,
+        "pmId", TIS_ID
+    );
+    verify(restTemplate).getForObject(API_PATH_IS_NEW_STARTER, Boolean.class, params);
+    verifyNoMoreInteractions(restTemplate);
+  }
+
+  @Test
+  void shouldMeetCriteriaWhenNewStartCheckSkippedAndIsInPilot() {
+    ProgrammeMembership programmeMembership = new ProgrammeMembership();
+    programmeMembership.setTisId(TIS_ID);
+    programmeMembership.setPersonId(PERSON_ID);
+
+    when(restTemplate.getForObject(eq(API_PATH_IS_PILOT), any(), anyMap())).thenReturn(true);
+
+    boolean meetsCriteria = service.meetsCriteria(programmeMembership, false, true);
+
+    assertThat("Unexpected unmet criteria.", meetsCriteria, is(true));
+
+    Map<String, Object> params = Map.of(
+        "traineeId", PERSON_ID,
+        "pmId", TIS_ID
+    );
+    verify(restTemplate).getForObject(API_PATH_IS_PILOT, Boolean.class, params);
+    verifyNoMoreInteractions(restTemplate);
+  }
+
+  @ParameterizedTest
+  @NullSource
+  @ValueSource(booleans = false)
+  void shouldNotMeetCriteriaWhenNewStartCheckSkippedAndNotInPilot(Boolean metCriteria) {
+    ProgrammeMembership programmeMembership = new ProgrammeMembership();
+    programmeMembership.setTisId(TIS_ID);
+    programmeMembership.setPersonId(PERSON_ID);
+
+    when(restTemplate.getForObject(eq(API_PATH_IS_PILOT), any(), anyMap())).thenReturn(metCriteria);
+
+    boolean meetsCriteria = service.meetsCriteria(programmeMembership, false, true);
+
+    assertThat("Unexpected unmet criteria.", meetsCriteria, is(false));
+
+    Map<String, Object> params = Map.of(
+        "traineeId", PERSON_ID,
+        "pmId", TIS_ID
+    );
+    verify(restTemplate).getForObject(API_PATH_IS_PILOT, Boolean.class, params);
+    verifyNoMoreInteractions(restTemplate);
+  }
+
+  @Test
+  void shouldMeetCriteriaWhenAllChecksSkipped() {
+    ProgrammeMembership programmeMembership = new ProgrammeMembership();
+    programmeMembership.setTisId(TIS_ID);
+    programmeMembership.setPersonId(PERSON_ID);
+
+    boolean meetsCriteria = service.meetsCriteria(programmeMembership, false, false);
+
+    assertThat("Unexpected unmet criteria.", meetsCriteria, is(true));
+
+    verifyNoInteractions(restTemplate);
   }
 }

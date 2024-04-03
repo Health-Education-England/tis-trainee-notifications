@@ -27,13 +27,18 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.SENT;
+import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.UNREAD;
+import static uk.nhs.tis.trainee.notifications.model.NotificationType.E_PORTFOLIO;
+import static uk.nhs.tis.trainee.notifications.model.TisReferenceType.PROGRAMME_MEMBERSHIP;
 import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.COJ_SYNCED_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.PERSON_ID_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.PROGRAMME_NAME_FIELD;
@@ -46,6 +51,7 @@ import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -80,15 +86,20 @@ class ProgrammeMembershipServiceTest {
   private static final Curriculum IGNORED_CURRICULUM
       = new Curriculum("some-subtype", "some-specialty");
 
+  private static final String E_PORTFOLIO_VERSION = "v1.2.3";
+
   ProgrammeMembershipService service;
   HistoryService historyService;
+  InAppService inAppService;
   NotificationService notificationService;
 
   @BeforeEach
   void setUp() {
     historyService = mock(HistoryService.class);
+    inAppService = mock(InAppService.class);
     notificationService = mock(NotificationService.class);
-    service = new ProgrammeMembershipService(historyService, notificationService);
+    service = new ProgrammeMembershipService(historyService, inAppService, notificationService,
+        E_PORTFOLIO_VERSION);
   }
 
   @ParameterizedTest
@@ -163,10 +174,85 @@ class ProgrammeMembershipServiceTest {
     service.addNotifications(programmeMembership);
 
     verify(notificationService, never()).scheduleNotification(any(), any(), any());
+    verifyNoInteractions(inAppService);
   }
 
   @Test
-  void shouldAddNotificationsIfNotExcluded() throws SchedulerException {
+  void shouldAddEportfolioInAppNotificationsIfNotExcludedAndMeetsCriteria()
+      throws SchedulerException {
+    Curriculum theCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, "any specialty");
+    ProgrammeMembership programmeMembership = new ProgrammeMembership();
+    programmeMembership.setTisId(TIS_ID);
+    programmeMembership.setPersonId(PERSON_ID);
+    programmeMembership.setProgrammeName(PROGRAMME_NAME);
+    programmeMembership.setStartDate(START_DATE);
+    programmeMembership.setCurricula(List.of(theCurriculum));
+    programmeMembership.setConditionsOfJoining(new ConditionsOfJoining(Instant.MIN));
+
+    when(notificationService.meetsCriteria(programmeMembership, true, true)).thenReturn(true);
+
+    service.addNotifications(programmeMembership);
+
+    ArgumentCaptor<TisReferenceInfo> referenceInfoCaptor = ArgumentCaptor.forClass(
+        TisReferenceInfo.class);
+    ArgumentCaptor<Map<String, Object>> variablesCaptor = ArgumentCaptor.forClass(Map.class);
+    verify(inAppService).createNotifications(eq(PERSON_ID), referenceInfoCaptor.capture(),
+        eq(E_PORTFOLIO), eq(E_PORTFOLIO_VERSION), variablesCaptor.capture());
+
+    TisReferenceInfo referenceInfo = referenceInfoCaptor.getValue();
+    assertThat("Unexpected reference type.", referenceInfo.type(), is(PROGRAMME_MEMBERSHIP));
+    assertThat("Unexpected reference id.", referenceInfo.id(), is(TIS_ID));
+
+    Map<String, Object> variables = variablesCaptor.getValue();
+    assertThat("Unexpected variable count.", variables.size(), is(2));
+    assertThat("Unexpected variable.", variables.get(PROGRAMME_NAME_FIELD), is(PROGRAMME_NAME));
+    assertThat("Unexpected variable.", variables.get(START_DATE_FIELD), is(START_DATE));
+  }
+
+  @Test
+  void shouldAddEportfolioInAppNotificationsIfNotMeetsCriteria()
+      throws SchedulerException {
+    Curriculum theCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, "any specialty");
+    ProgrammeMembership programmeMembership = new ProgrammeMembership();
+    programmeMembership.setTisId(TIS_ID);
+    programmeMembership.setPersonId(PERSON_ID);
+    programmeMembership.setProgrammeName(PROGRAMME_NAME);
+    programmeMembership.setStartDate(START_DATE);
+    programmeMembership.setCurricula(List.of(theCurriculum));
+    programmeMembership.setConditionsOfJoining(new ConditionsOfJoining(Instant.MIN));
+
+    when(notificationService.meetsCriteria(programmeMembership, true, true)).thenReturn(false);
+
+    service.addNotifications(programmeMembership);
+
+    verifyNoInteractions(inAppService);
+  }
+
+  @Test
+  void shouldNotAddEportfolioInAppNotificationsIfNotUnique() throws SchedulerException {
+    Curriculum theCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, "any specialty");
+    ProgrammeMembership programmeMembership = new ProgrammeMembership();
+    programmeMembership.setTisId(TIS_ID);
+    programmeMembership.setPersonId(PERSON_ID);
+    programmeMembership.setProgrammeName(PROGRAMME_NAME);
+    programmeMembership.setStartDate(START_DATE);
+    programmeMembership.setCurricula(List.of(theCurriculum));
+    programmeMembership.setConditionsOfJoining(new ConditionsOfJoining(Instant.MIN));
+
+    List<HistoryDto> sentNotifications = List.of(
+        new HistoryDto("id", new TisReferenceInfo(PROGRAMME_MEMBERSHIP, TIS_ID), MessageType.IN_APP,
+            E_PORTFOLIO, null, null, Instant.MIN, Instant.MAX, UNREAD, null));
+
+    when(historyService.findAllForTrainee(PERSON_ID)).thenReturn(sentNotifications);
+    when(notificationService.meetsCriteria(programmeMembership, true, true)).thenReturn(true);
+
+    service.addNotifications(programmeMembership);
+
+    verifyNoInteractions(inAppService);
+  }
+
+  @Test
+  void shouldAddDirectNotificationsIfNotExcluded() throws SchedulerException {
     Curriculum theCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, "any specialty");
     ProgrammeMembership programmeMembership = new ProgrammeMembership();
     programmeMembership.setTisId(TIS_ID);
@@ -194,9 +280,9 @@ class ProgrammeMembershipServiceTest {
     ArgumentCaptor<JobDataMap> jobDataMapCaptor = ArgumentCaptor.forClass(JobDataMap.class);
     ArgumentCaptor<Date> dateCaptor = ArgumentCaptor.forClass(Date.class);
     verify(notificationService, times(jobsToSchedule)).scheduleNotification(
-            stringCaptor.capture(),
-            jobDataMapCaptor.capture(),
-            dateCaptor.capture()
+        stringCaptor.capture(),
+        jobDataMapCaptor.capture(),
+        dateCaptor.capture()
     );
 
     //verify the details of the last notification added
@@ -229,7 +315,7 @@ class ProgrammeMembershipServiceTest {
 
     List<HistoryDto> sentNotifications = new ArrayList<>();
     sentNotifications.add(new HistoryDto("id",
-        new TisReferenceInfo(TisReferenceType.PROGRAMME_MEMBERSHIP, TIS_ID),
+        new TisReferenceInfo(PROGRAMME_MEMBERSHIP, TIS_ID),
         MessageType.EMAIL,
         NotificationType.PROGRAMME_UPDATED_WEEK_8, null,
         "email address",
@@ -292,7 +378,7 @@ class ProgrammeMembershipServiceTest {
 
     List<HistoryDto> sentNotifications = new ArrayList<>();
     sentNotifications.add(new HistoryDto("id",
-        new TisReferenceInfo(TisReferenceType.PROGRAMME_MEMBERSHIP, TIS_ID),
+        new TisReferenceInfo(PROGRAMME_MEMBERSHIP, TIS_ID),
         MessageType.EMAIL,
         notificationType, null,
         "email address",
@@ -346,7 +432,7 @@ class ProgrammeMembershipServiceTest {
 
     List<HistoryDto> sentNotifications = new ArrayList<>();
     sentNotifications.add(new HistoryDto("id",
-        new TisReferenceInfo(TisReferenceType.PROGRAMME_MEMBERSHIP, "another id"),
+        new TisReferenceInfo(PROGRAMME_MEMBERSHIP, "another id"),
         MessageType.EMAIL,
         NotificationType.PROGRAMME_UPDATED_WEEK_8, null,
         "email address",
@@ -424,7 +510,7 @@ class ProgrammeMembershipServiceTest {
 
     List<HistoryDto> sentNotifications = new ArrayList<>();
     sentNotifications.add(new HistoryDto("id",
-        new TisReferenceInfo(TisReferenceType.PROGRAMME_MEMBERSHIP, TIS_ID),
+        new TisReferenceInfo(PROGRAMME_MEMBERSHIP, TIS_ID),
         MessageType.EMAIL,
         NotificationType.PROGRAMME_UPDATED_WEEK_0, null,
         "email address",

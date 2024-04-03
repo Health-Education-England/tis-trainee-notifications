@@ -52,6 +52,7 @@ import org.springframework.web.client.RestTemplate;
 import uk.nhs.tis.trainee.notifications.dto.UserDetails;
 import uk.nhs.tis.trainee.notifications.model.History.TisReferenceInfo;
 import uk.nhs.tis.trainee.notifications.model.NotificationType;
+import uk.nhs.tis.trainee.notifications.model.ProgrammeMembership;
 
 /**
  * A service for executing notification scheduling jobs.
@@ -286,6 +287,44 @@ public class NotificationService implements Job {
       //no trainee details profile
       return null;
     }
+  }
+
+  /**
+   * Check whether an object meets the selected notification criteria.
+   *
+   * @param programmeMembership The programme membership to check.
+   * @param checkNewStarter     Whether the trainee must be a new starter.
+   * @param checkPilot          Whether the trainee must be in a pilot.
+   * @return true if all criteria bet, or false if one or more criteria fail.
+   */
+  public boolean meetsCriteria(ProgrammeMembership programmeMembership,
+      boolean checkNewStarter, boolean checkPilot) {
+    String traineeId = programmeMembership.getPersonId();
+    String pmId = programmeMembership.getTisId();
+
+    if (checkNewStarter) {
+      String apiPath = "/api/programme-membership/isnewstarter/{traineeId}/{pmId}";
+      Boolean isNewStarter = restTemplate.getForObject(serviceUrl + apiPath, Boolean.class,
+          Map.of("traineeId", traineeId, "pmId", pmId));
+
+      if (isNewStarter == null || !isNewStarter) {
+        log.info("Skipping notification creation as trainee {} is not a new starter.", traineeId);
+        return false;
+      }
+    }
+
+    if (checkPilot) {
+      String apiPath = "/api/programme-membership/ispilot2024/{traineeId}/{pmId}";
+      Boolean isInPilot = restTemplate.getForObject(serviceUrl + apiPath, Boolean.class,
+          Map.of("traineeId", traineeId, "pmId", pmId));
+
+      if (isInPilot == null || !isInPilot) {
+        log.info("Skipping notification creation as trainee {} is not in the pilot.", traineeId);
+        return false;
+      }
+    }
+
+    return true;
   }
 
   /**
