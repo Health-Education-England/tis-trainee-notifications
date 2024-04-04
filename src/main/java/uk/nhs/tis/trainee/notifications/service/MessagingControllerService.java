@@ -36,7 +36,7 @@ import uk.nhs.tis.trainee.notifications.model.MessageType;
  */
 @Slf4j
 @Component
-public class MessageDispatchService {
+public class MessagingControllerService {
 
   private static final String TRAINEE_TIS_ID_FIELD = "traineeTisId";
   private static final String PLACEMENT_ID_FIELD = "placementId";
@@ -62,7 +62,7 @@ public class MessageDispatchService {
    * @param inAppNotificationsEnabled Whether in-app notification messages should be sent.
    * @param emailNotificationsEnabled Whether email notification messages should be sent.
    */
-  public MessageDispatchService(RestTemplate restTemplate,
+  public MessagingControllerService(RestTemplate restTemplate,
       @Value("${application.notifications-whitelist}") List<String> notificationsWhitelist,
       @Value("${application.in-app.enabled}") boolean inAppNotificationsEnabled,
       @Value("${application.email.enabled}") boolean emailNotificationsEnabled,
@@ -75,13 +75,13 @@ public class MessageDispatchService {
   }
 
   /**
-   * Determine whether a trainee could receive a message of a particular type. Whitelisted
-   * recipients will always receive the message. For others, whether they could receive it or not
+   * Determine whether a trainee could be sent a message of a particular type. Whitelisted
+   * recipients will always be sent the message. For others, whether they could be sent it or not
    * depends on whether messaging is enabled for the specific message type.
    *
    * @param messageType  The type of message.
    * @param traineeTisId The trainee TIS ID of the recipient.
-   * @return true if the trainee could receive the message, otherwise false.
+   * @return true if the trainee could be sent the message, otherwise false.
    */
   public boolean isValidRecipient(String traineeTisId, MessageType messageType) {
 

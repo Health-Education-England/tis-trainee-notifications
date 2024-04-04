@@ -37,7 +37,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.web.client.RestTemplate;
 import uk.nhs.tis.trainee.notifications.model.MessageType;
 
-class MessageDispatchServiceTest {
+class MessagingControllerServiceTest {
 
   private static final String SERVICE_URL = "the-url";
   private static final String WHITELIST_1 = "123";
@@ -45,12 +45,12 @@ class MessageDispatchServiceTest {
   private static final List<String> WHITELISTED = List.of(WHITELIST_1, WHITELIST_2);
 
   private RestTemplate restTemplate;
-  private MessageDispatchService service;
+  private MessagingControllerService service;
 
   @BeforeEach
   void setUp() {
     restTemplate = mock(RestTemplate.class);
-    service = new MessageDispatchService(restTemplate, WHITELISTED, false, false, SERVICE_URL);
+    service = new MessagingControllerService(restTemplate, WHITELISTED, false, false, SERVICE_URL);
   }
 
   @ParameterizedTest
@@ -69,11 +69,11 @@ class MessageDispatchServiceTest {
 
   @Test
   void nonWhitelistedShouldBeValidRecipientsIfNotificationsEnabled() {
-    service = new MessageDispatchService(restTemplate, WHITELISTED, true, false, SERVICE_URL);
+    service = new MessagingControllerService(restTemplate, WHITELISTED, true, false, SERVICE_URL);
     assertThat("Unexpected isValidRecipient().",
         service.isValidRecipient("some other id", MessageType.IN_APP), is(true));
 
-    service = new MessageDispatchService(restTemplate, WHITELISTED, false, true, SERVICE_URL);
+    service = new MessagingControllerService(restTemplate, WHITELISTED, false, true, SERVICE_URL);
     assertThat("Unexpected isValidRecipient().",
         service.isValidRecipient("some other id", MessageType.EMAIL), is(true));
   }

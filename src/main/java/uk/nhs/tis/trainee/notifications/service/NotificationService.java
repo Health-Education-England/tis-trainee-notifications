@@ -70,7 +70,7 @@ public class NotificationService implements Job {
   private final String templateVersion;
   private final String serviceUrl;
   private final Scheduler scheduler;
-  private final MessageDispatchService messageDispatchService;
+  private final MessagingControllerService messagingControllerService;
 
   /**
    * Initialise the Notification Service.
@@ -82,7 +82,7 @@ public class NotificationService implements Job {
    *                        information.
    */
   public NotificationService(EmailService emailService, RestTemplate restTemplate,
-      Scheduler scheduler, MessageDispatchService messageDispatchService,
+      Scheduler scheduler, MessagingControllerService messagingControllerService,
       @Value("${application.template-versions.form-updated.email}") String templateVersion,
       @Value("${service.trainee.url}") String serviceUrl) {
     this.emailService = emailService;
@@ -90,7 +90,7 @@ public class NotificationService implements Job {
     this.scheduler = scheduler;
     this.templateVersion = templateVersion;
     this.serviceUrl = serviceUrl;
-    this.messageDispatchService = messageDispatchService;
+    this.messagingControllerService = messagingControllerService;
   }
 
   /**
@@ -134,8 +134,8 @@ public class NotificationService implements Job {
       tisReferenceInfo = new TisReferenceInfo(PLACEMENT,
           jobDetails.get(PlacementService.TIS_ID_FIELD).toString());
 
-      actuallySendEmail = messageDispatchService.isValidRecipient(personId, MessageType.EMAIL)
-          && messageDispatchService.isPlacementInPilot2024(personId, tisReferenceInfo.id());
+      actuallySendEmail = messagingControllerService.isValidRecipient(personId, MessageType.EMAIL)
+          && messagingControllerService.isPlacementInPilot2024(personId, tisReferenceInfo.id());
     }
 
     UserDetails userCognitoAccountDetails = getCognitoAccountDetails(personId);
@@ -313,7 +313,7 @@ public class NotificationService implements Job {
     String pmId = programmeMembership.getTisId();
 
     if (checkNewStarter) {
-      boolean isNewStarter = messageDispatchService.isProgrammeMembershipNewStarter(traineeId,
+      boolean isNewStarter = messagingControllerService.isProgrammeMembershipNewStarter(traineeId,
           pmId);
 
       if (!isNewStarter) {
@@ -323,7 +323,8 @@ public class NotificationService implements Job {
     }
 
     if (checkPilot) {
-      boolean isInPilot = messageDispatchService.isProgrammeMembershipInPilot2024(traineeId, pmId);
+      boolean isInPilot
+          = messagingControllerService.isProgrammeMembershipInPilot2024(traineeId, pmId);
 
       if (!isInPilot) {
         log.info("Skipping notification creation as trainee {} is not in the pilot.", traineeId);
@@ -345,6 +346,6 @@ public class NotificationService implements Job {
   public boolean programmeMembershipIsNotifiable(ProgrammeMembership programmeMembership,
       MessageType messageType) {
     String traineeId = programmeMembership.getPersonId();
-    return messageDispatchService.isValidRecipient(traineeId, messageType);
+    return messagingControllerService.isValidRecipient(traineeId, messageType);
   }
 }
