@@ -33,7 +33,6 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
@@ -56,6 +55,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
+import java.util.Calendar;
 import java.util.Date;
 import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
@@ -63,7 +63,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.EnumSource.Mode;
-import org.junit.jupiter.params.provider.NullSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.quartz.JobDataMap;
@@ -76,7 +75,9 @@ import org.quartz.Trigger;
 import org.quartz.TriggerKey;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
+import org.testcontainers.shaded.org.apache.commons.lang3.time.DateUtils;
 import uk.nhs.tis.trainee.notifications.dto.UserDetails;
+import uk.nhs.tis.trainee.notifications.model.MessageType;
 import uk.nhs.tis.trainee.notifications.model.NotificationType;
 import uk.nhs.tis.trainee.notifications.model.ProgrammeMembership;
 
@@ -84,10 +85,6 @@ class NotificationServiceTest {
 
   private static final String TEMPLATE_VERSION = "template-version";
   private static final String SERVICE_URL = "the-url";
-  private static final String API_PATH_IS_NEW_STARTER =
-      SERVICE_URL + "/api/programme-membership/isnewstarter/{traineeId}/{pmId}";
-  private static final String API_PATH_IS_PILOT =
-      SERVICE_URL + "/api/programme-membership/ispilot2024/{traineeId}/{pmId}";
   private static final String JOB_KEY_STRING = "job-key";
   private static final JobKey JOB_KEY = new JobKey(JOB_KEY_STRING);
   private static final String TIS_ID = "tis-id";
@@ -118,6 +115,7 @@ class NotificationServiceTest {
   private EmailService emailService;
   private RestTemplate restTemplate;
   private Scheduler scheduler;
+  private MessagingControllerService messagingControllerService;
   private JobExecutionContext jobExecutionContext;
 
   @BeforeEach
@@ -126,6 +124,7 @@ class NotificationServiceTest {
     emailService = mock(EmailService.class);
     restTemplate = mock(RestTemplate.class);
     scheduler = mock(Scheduler.class);
+    messagingControllerService = mock(MessagingControllerService.class);
 
     programmeJobDataMap = new JobDataMap();
     programmeJobDataMap.put(TIS_ID_FIELD, TIS_ID);
@@ -148,8 +147,9 @@ class NotificationServiceTest {
         .usingJobData(programmeJobDataMap)
         .build();
 
-    service = new NotificationService(
-        emailService, restTemplate, scheduler, TEMPLATE_VERSION, SERVICE_URL);
+    service = new NotificationService(emailService, restTemplate, scheduler,
+        messagingControllerService,
+        TEMPLATE_VERSION, SERVICE_URL);
   }
 
   @Test
@@ -231,8 +231,10 @@ class NotificationServiceTest {
     verify(emailService).sendMessage(any(), any(), any(), any(), any(), any(), eq(true));
   }
 
-  @Test
-  void shouldLogPlacementEmailsNotSendThem() throws MessagingException {
+  @ParameterizedTest
+  @ValueSource(booleans = {true, false})
+  void shouldLogPlacementEmailWhenNotMatchBothCriteria(boolean apiResult)
+      throws MessagingException {
     UserDetails userAccountDetails =
         new UserDetails(
             false, USER_EMAIL, USER_TITLE, USER_FAMILY_NAME, USER_GIVEN_NAME, USER_GMC);
@@ -246,10 +248,35 @@ class NotificationServiceTest {
     when(emailService.getRecipientAccount(PERSON_ID)).thenReturn(userAccountDetails);
     when(restTemplate.getForObject("the-url/api/trainee-profile/account-details/{tisId}",
         UserDetails.class, Map.of(TIS_ID_FIELD, PERSON_ID))).thenReturn(userAccountDetails);
+    when(messagingControllerService.isValidRecipient(any(), any())).thenReturn(apiResult);
+    when(messagingControllerService.isPlacementInPilot2024(any(), any())).thenReturn(!apiResult);
 
     service.execute(jobExecutionContext);
 
     verify(emailService).sendMessage(any(), any(), any(), any(), any(), any(), eq(true));
+  }
+
+  @Test
+  void shouldSendPlacementEmailWhenMatchBothCriteria() throws MessagingException {
+    UserDetails userAccountDetails =
+        new UserDetails(
+            false, USER_EMAIL, USER_TITLE, USER_FAMILY_NAME, USER_GIVEN_NAME, USER_GMC);
+
+    JobDetail placementJobDetails = newJob(NotificationService.class)
+        .withIdentity(JOB_KEY)
+        .usingJobData(placementJobDataMap)
+        .build();
+
+    when(jobExecutionContext.getJobDetail()).thenReturn(placementJobDetails);
+    when(emailService.getRecipientAccount(PERSON_ID)).thenReturn(userAccountDetails);
+    when(restTemplate.getForObject("the-url/api/trainee-profile/account-details/{tisId}",
+        UserDetails.class, Map.of(TIS_ID_FIELD, PERSON_ID))).thenReturn(userAccountDetails);
+    when(messagingControllerService.isValidRecipient(any(), any())).thenReturn(true);
+    when(messagingControllerService.isPlacementInPilot2024(any(), any())).thenReturn(true);
+
+    service.execute(jobExecutionContext);
+
+    verify(emailService).sendMessage(any(), any(), any(), any(), any(), any(), eq(false));
   }
 
   @ParameterizedTest
@@ -415,20 +442,15 @@ class NotificationServiceTest {
   }
 
   @Test
-  void shouldHaveNoOneInPilot() {
-    boolean isInPilot = service.isInPilot("local office", "specialty",
-        LocalDate.now());
-    assertThat("Unexpected pilot membership", isInPilot, is(false));
-  }
-
-  @Test
   void shouldScheduleMissedMilestonesImmediately() {
     Date expectedMilestone = Date.from(Instant.now()
         .plus(PAST_MILESTONE_SCHEDULE_DELAY_HOURS, ChronoUnit.HOURS));
+    Date expectedNearestMinute = DateUtils.round(expectedMilestone, Calendar.MINUTE);
 
     Date scheduledDate = service.getScheduleDate(LocalDate.MIN, 0);
+    Date scheduledNearestMinute = DateUtils.round(scheduledDate, Calendar.MINUTE);
 
-    assertThat("Unexpected scheduled date", scheduledDate, is(expectedMilestone));
+    assertThat("Unexpected scheduled date", scheduledNearestMinute, is(expectedNearestMinute));
   }
 
   @Test
@@ -452,43 +474,38 @@ class NotificationServiceTest {
     programmeMembership.setTisId(TIS_ID);
     programmeMembership.setPersonId(PERSON_ID);
 
-    when(restTemplate.getForObject(eq(API_PATH_IS_NEW_STARTER), any(), anyMap())).thenReturn(true);
-    when(restTemplate.getForObject(eq(API_PATH_IS_PILOT), any(), anyMap())).thenReturn(true);
+    when(messagingControllerService.isProgrammeMembershipInPilot2024(PERSON_ID, TIS_ID)).thenReturn(
+        true);
+    when(messagingControllerService.isProgrammeMembershipNewStarter(PERSON_ID, TIS_ID)).thenReturn(
+        true);
 
-    boolean meetsCriteria = service.meetsCriteria(programmeMembership, true, true);
+    boolean meetsCriteria = service.meetsCriteria(programmeMembership, true,
+        true);
 
-    assertThat("Unexpected unmet criteria.", meetsCriteria, is(true));
+    assertThat("Unexpected unmet programme membership criteria.", meetsCriteria, is(true));
 
-    Map<String, Object> params = Map.of(
-        "traineeId", PERSON_ID,
-        "pmId", TIS_ID
-    );
-    verify(restTemplate).getForObject(API_PATH_IS_NEW_STARTER, Boolean.class, params);
-    verify(restTemplate).getForObject(API_PATH_IS_PILOT, Boolean.class, params);
+    verify(messagingControllerService).isProgrammeMembershipNewStarter(PERSON_ID, TIS_ID);
+    verify(messagingControllerService).isProgrammeMembershipInPilot2024(PERSON_ID, TIS_ID);
   }
 
-  @ParameterizedTest
-  @NullSource
-  @ValueSource(booleans = false)
-  void shouldNotMeetCriteriaWhenNotNewStarterAndNotInPilot(Boolean metCriteria) {
+  @Test
+  void shouldNotMeetCriteriaWhenNotNewStarterAndNotInPilot() {
     ProgrammeMembership programmeMembership = new ProgrammeMembership();
     programmeMembership.setTisId(TIS_ID);
     programmeMembership.setPersonId(PERSON_ID);
 
-    when(restTemplate.getForObject(eq(API_PATH_IS_NEW_STARTER), any(), anyMap())).thenReturn(
-        metCriteria);
-    when(restTemplate.getForObject(eq(API_PATH_IS_PILOT), any(), anyMap())).thenReturn(metCriteria);
+    when(messagingControllerService.isProgrammeMembershipInPilot2024(PERSON_ID, TIS_ID)).thenReturn(
+        false);
+    when(messagingControllerService.isProgrammeMembershipNewStarter(PERSON_ID, TIS_ID)).thenReturn(
+        false);
 
-    boolean meetsCriteria = service.meetsCriteria(programmeMembership, true, true);
+    boolean meetsCriteria = service.meetsCriteria(programmeMembership, true,
+        true);
 
-    assertThat("Unexpected unmet criteria.", meetsCriteria, is(false));
+    assertThat("Unexpected unmet programme membership criteria.", meetsCriteria, is(false));
 
-    Map<String, Object> params = Map.of(
-        "traineeId", PERSON_ID,
-        "pmId", TIS_ID
-    );
     // Verify that we short-circuit on the first false result.
-    verify(restTemplate, times(1)).getForObject(any(), eq(Boolean.class), eq(params));
+    verify(messagingControllerService, never()).isProgrammeMembershipInPilot2024(any(), any());
   }
 
   @Test
@@ -497,41 +514,31 @@ class NotificationServiceTest {
     programmeMembership.setTisId(TIS_ID);
     programmeMembership.setPersonId(PERSON_ID);
 
-    when(restTemplate.getForObject(eq(API_PATH_IS_NEW_STARTER), any(), anyMap())).thenReturn(true);
+    when(messagingControllerService.isProgrammeMembershipNewStarter(PERSON_ID, TIS_ID)).thenReturn(
+        true);
 
-    boolean meetsCriteria = service.meetsCriteria(programmeMembership, true, false);
+    boolean meetsCriteria = service.meetsCriteria(programmeMembership, true,
+        false);
 
-    assertThat("Unexpected unmet criteria.", meetsCriteria, is(true));
-
-    Map<String, Object> params = Map.of(
-        "traineeId", PERSON_ID,
-        "pmId", TIS_ID
-    );
-    verify(restTemplate).getForObject(API_PATH_IS_NEW_STARTER, Boolean.class, params);
-    verifyNoMoreInteractions(restTemplate);
+    assertThat("Unexpected unmet programme membership criteria.", meetsCriteria, is(true));
   }
 
-  @ParameterizedTest
-  @NullSource
-  @ValueSource(booleans = false)
-  void shouldNotMeetCriteriaWhenNotNewStarterAndAndPilotCheckSkipped(Boolean metCriteria) {
+  @Test
+  void shouldNotMeetCriteriaWhenNotNewStarterAndAndPilotCheckSkipped() {
     ProgrammeMembership programmeMembership = new ProgrammeMembership();
     programmeMembership.setTisId(TIS_ID);
     programmeMembership.setPersonId(PERSON_ID);
 
-    when(restTemplate.getForObject(eq(API_PATH_IS_NEW_STARTER), any(), anyMap())).thenReturn(
-        metCriteria);
+    when(messagingControllerService.isProgrammeMembershipNewStarter(PERSON_ID, TIS_ID)).thenReturn(
+        false);
 
-    boolean meetsCriteria = service.meetsCriteria(programmeMembership, true, false);
+    boolean meetsCriteria = service.meetsCriteria(programmeMembership, true,
+        false);
 
-    assertThat("Unexpected unmet criteria.", meetsCriteria, is(false));
+    assertThat("Unexpected unmet programme membership criteria.", meetsCriteria, is(false));
 
-    Map<String, Object> params = Map.of(
-        "traineeId", PERSON_ID,
-        "pmId", TIS_ID
-    );
-    verify(restTemplate).getForObject(API_PATH_IS_NEW_STARTER, Boolean.class, params);
-    verifyNoMoreInteractions(restTemplate);
+    verify(messagingControllerService).isProgrammeMembershipNewStarter(PERSON_ID, TIS_ID);
+    verifyNoMoreInteractions(messagingControllerService);
   }
 
   @Test
@@ -540,40 +547,34 @@ class NotificationServiceTest {
     programmeMembership.setTisId(TIS_ID);
     programmeMembership.setPersonId(PERSON_ID);
 
-    when(restTemplate.getForObject(eq(API_PATH_IS_PILOT), any(), anyMap())).thenReturn(true);
+    when(messagingControllerService.isProgrammeMembershipInPilot2024(PERSON_ID, TIS_ID)).thenReturn(
+        true);
 
-    boolean meetsCriteria = service.meetsCriteria(programmeMembership, false, true);
+    boolean meetsCriteria = service.meetsCriteria(programmeMembership, false,
+        true);
 
-    assertThat("Unexpected unmet criteria.", meetsCriteria, is(true));
+    assertThat("Unexpected unmet programme membership criteria.", meetsCriteria, is(true));
 
-    Map<String, Object> params = Map.of(
-        "traineeId", PERSON_ID,
-        "pmId", TIS_ID
-    );
-    verify(restTemplate).getForObject(API_PATH_IS_PILOT, Boolean.class, params);
-    verifyNoMoreInteractions(restTemplate);
+    verify(messagingControllerService).isProgrammeMembershipInPilot2024(PERSON_ID, TIS_ID);
+    verifyNoMoreInteractions(messagingControllerService);
   }
 
-  @ParameterizedTest
-  @NullSource
-  @ValueSource(booleans = false)
-  void shouldNotMeetCriteriaWhenNewStartCheckSkippedAndNotInPilot(Boolean metCriteria) {
+  @Test
+  void shouldNotMeetCriteriaWhenNewStartCheckSkippedAndNotInPilot() {
     ProgrammeMembership programmeMembership = new ProgrammeMembership();
     programmeMembership.setTisId(TIS_ID);
     programmeMembership.setPersonId(PERSON_ID);
 
-    when(restTemplate.getForObject(eq(API_PATH_IS_PILOT), any(), anyMap())).thenReturn(metCriteria);
+    when(messagingControllerService.isProgrammeMembershipInPilot2024(PERSON_ID, TIS_ID)).thenReturn(
+        false);
 
-    boolean meetsCriteria = service.meetsCriteria(programmeMembership, false, true);
+    boolean meetsCriteria = service.meetsCriteria(programmeMembership, false,
+        true);
 
-    assertThat("Unexpected unmet criteria.", meetsCriteria, is(false));
+    assertThat("Unexpected unmet programme membership criteria.", meetsCriteria, is(false));
 
-    Map<String, Object> params = Map.of(
-        "traineeId", PERSON_ID,
-        "pmId", TIS_ID
-    );
-    verify(restTemplate).getForObject(API_PATH_IS_PILOT, Boolean.class, params);
-    verifyNoMoreInteractions(restTemplate);
+    verify(messagingControllerService).isProgrammeMembershipInPilot2024(PERSON_ID, TIS_ID);
+    verifyNoMoreInteractions(messagingControllerService);
   }
 
   @Test
@@ -582,10 +583,41 @@ class NotificationServiceTest {
     programmeMembership.setTisId(TIS_ID);
     programmeMembership.setPersonId(PERSON_ID);
 
-    boolean meetsCriteria = service.meetsCriteria(programmeMembership, false, false);
+    boolean meetsCriteria = service.meetsCriteria(programmeMembership, false,
+        false);
 
-    assertThat("Unexpected unmet criteria.", meetsCriteria, is(true));
+    assertThat("Unexpected unmet programme membership criteria.", meetsCriteria, is(true));
 
-    verifyNoInteractions(restTemplate);
+    verifyNoInteractions(messagingControllerService);
+  }
+
+  @ParameterizedTest
+  @EnumSource(MessageType.class)
+  void programmeMembershipShouldBeNotifiableWhenIsValidRecipient(MessageType messageType) {
+    ProgrammeMembership programmeMembership = new ProgrammeMembership();
+    programmeMembership.setTisId(TIS_ID);
+    programmeMembership.setPersonId(PERSON_ID);
+
+    when(messagingControllerService.isValidRecipient(PERSON_ID, messageType)).thenReturn(true);
+
+    boolean isNotifiablePm = service.programmeMembershipIsNotifiable(programmeMembership,
+        messageType);
+
+    assertThat("Unexpected programme membership is notifiable value.", isNotifiablePm, is(true));
+  }
+
+  @ParameterizedTest
+  @EnumSource(MessageType.class)
+  void programmeMembershipShouldNotBeNotifiableWhenIsInvalidRecipient(MessageType messageType) {
+    ProgrammeMembership programmeMembership = new ProgrammeMembership();
+    programmeMembership.setTisId(TIS_ID);
+    programmeMembership.setPersonId(PERSON_ID);
+
+    when(messagingControllerService.isValidRecipient(PERSON_ID, messageType)).thenReturn(false);
+
+    boolean isNotifiablePm = service.programmeMembershipIsNotifiable(programmeMembership,
+        messageType);
+
+    assertThat("Unexpected programme membership is notifiable value.", isNotifiablePm, is(false));
   }
 }

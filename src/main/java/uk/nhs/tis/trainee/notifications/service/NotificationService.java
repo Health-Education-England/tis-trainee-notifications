@@ -51,6 +51,7 @@ import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 import uk.nhs.tis.trainee.notifications.dto.UserDetails;
 import uk.nhs.tis.trainee.notifications.model.History.TisReferenceInfo;
+import uk.nhs.tis.trainee.notifications.model.MessageType;
 import uk.nhs.tis.trainee.notifications.model.NotificationType;
 import uk.nhs.tis.trainee.notifications.model.ProgrammeMembership;
 
@@ -69,6 +70,7 @@ public class NotificationService implements Job {
   private final String templateVersion;
   private final String serviceUrl;
   private final Scheduler scheduler;
+  private final MessagingControllerService messagingControllerService;
 
   /**
    * Initialise the Notification Service.
@@ -80,7 +82,7 @@ public class NotificationService implements Job {
    *                        information.
    */
   public NotificationService(EmailService emailService, RestTemplate restTemplate,
-      Scheduler scheduler,
+      Scheduler scheduler, MessagingControllerService messagingControllerService,
       @Value("${application.template-versions.form-updated.email}") String templateVersion,
       @Value("${service.trainee.url}") String serviceUrl) {
     this.emailService = emailService;
@@ -88,6 +90,7 @@ public class NotificationService implements Job {
     this.scheduler = scheduler;
     this.templateVersion = templateVersion;
     this.serviceUrl = serviceUrl;
+    this.messagingControllerService = messagingControllerService;
   }
 
   /**
@@ -97,7 +100,7 @@ public class NotificationService implements Job {
    */
   @Override
   public void execute(JobExecutionContext jobExecutionContext) {
-    boolean justLogEmail = true;
+    boolean actuallySendEmail = false; //default to logging email only
     String jobKey = jobExecutionContext.getJobDetail().getKey().toString();
     Map<String, String> result = new HashMap<>();
     JobDataMap jobDetails = jobExecutionContext.getJobDetail().getJobDataMap();
@@ -111,21 +114,28 @@ public class NotificationService implements Job {
         NotificationType.valueOf(jobDetails.get(NOTIFICATION_TYPE_FIELD).toString());
 
     if (NotificationType.getProgrammeUpdateNotificationTypes().contains(notificationType)) {
+
       personId = jobDetails.getString(ProgrammeMembershipService.PERSON_ID_FIELD);
       jobName = jobDetails.getString(ProgrammeMembershipService.PROGRAMME_NAME_FIELD);
       startDate = (LocalDate) jobDetails.get(ProgrammeMembershipService.START_DATE_FIELD);
       tisReferenceInfo = new TisReferenceInfo(PROGRAMME_MEMBERSHIP,
           jobDetails.get(ProgrammeMembershipService.TIS_ID_FIELD).toString());
 
+      // when the new starter emails are finalised, the following could be enabled:
+      // actuallySendEmail = messageDispatchService.isValidRecipient(MessageType.EMAIL, personId)
+      //     && messageDispatchService.isProgrammeMembershipNewStarter(personId,
+      //     tisReferenceInfo.id());
+
     } else if (notificationType == NotificationType.PLACEMENT_UPDATED_WEEK_12) {
+
       personId = jobDetails.getString(PlacementService.PERSON_ID_FIELD);
       jobName = jobDetails.getString(PlacementService.PLACEMENT_TYPE_FIELD);
       startDate = (LocalDate) jobDetails.get(PlacementService.START_DATE_FIELD);
       tisReferenceInfo = new TisReferenceInfo(PLACEMENT,
           jobDetails.get(PlacementService.TIS_ID_FIELD).toString());
-      String localOfficeName = jobDetails.getString(PlacementService.PLACEMENT_OWNER_FIELD);
-      String specialty = jobDetails.getString(PlacementService.PLACEMENT_SPECIALTY_FIELD);
-      justLogEmail = !isInPilot(localOfficeName, specialty, startDate);
+
+      actuallySendEmail = messagingControllerService.isValidRecipient(personId, MessageType.EMAIL)
+          && messagingControllerService.isPlacementInPilot2024(personId, tisReferenceInfo.id());
     }
 
     UserDetails userCognitoAccountDetails = getCognitoAccountDetails(personId);
@@ -142,7 +152,7 @@ public class NotificationService implements Job {
 
       try {
         emailService.sendMessage(personId, userAccountDetails.email(), notificationType,
-            templateVersion, jobDetails.getWrappedMap(), tisReferenceInfo, justLogEmail);
+            templateVersion, jobDetails.getWrappedMap(), tisReferenceInfo, !actuallySendEmail);
       } catch (MessagingException e) {
         throw new RuntimeException(e);
       }
@@ -295,7 +305,7 @@ public class NotificationService implements Job {
    * @param programmeMembership The programme membership to check.
    * @param checkNewStarter     Whether the trainee must be a new starter.
    * @param checkPilot          Whether the trainee must be in a pilot.
-   * @return true if all criteria bet, or false if one or more criteria fail.
+   * @return true if all criteria met, or false if one or more criteria fail.
    */
   public boolean meetsCriteria(ProgrammeMembership programmeMembership,
       boolean checkNewStarter, boolean checkPilot) {
@@ -303,22 +313,20 @@ public class NotificationService implements Job {
     String pmId = programmeMembership.getTisId();
 
     if (checkNewStarter) {
-      String apiPath = "/api/programme-membership/isnewstarter/{traineeId}/{pmId}";
-      Boolean isNewStarter = restTemplate.getForObject(serviceUrl + apiPath, Boolean.class,
-          Map.of("traineeId", traineeId, "pmId", pmId));
+      boolean isNewStarter = messagingControllerService.isProgrammeMembershipNewStarter(traineeId,
+          pmId);
 
-      if (isNewStarter == null || !isNewStarter) {
+      if (!isNewStarter) {
         log.info("Skipping notification creation as trainee {} is not a new starter.", traineeId);
         return false;
       }
     }
 
     if (checkPilot) {
-      String apiPath = "/api/programme-membership/ispilot2024/{traineeId}/{pmId}";
-      Boolean isInPilot = restTemplate.getForObject(serviceUrl + apiPath, Boolean.class,
-          Map.of("traineeId", traineeId, "pmId", pmId));
+      boolean isInPilot
+          = messagingControllerService.isProgrammeMembershipInPilot2024(traineeId, pmId);
 
-      if (isInPilot == null || !isInPilot) {
+      if (!isInPilot) {
         log.info("Skipping notification creation as trainee {} is not in the pilot.", traineeId);
         return false;
       }
@@ -328,16 +336,16 @@ public class NotificationService implements Job {
   }
 
   /**
-   * TEMPORARY (I hope). Identifies placements that fall within the pilot group 2024.
+   * Check whether a programme membership's trainee should receive the given message-type
+   * notification.
    *
-   * @param localOffice The placement local office.
-   * @param specialty   The placement specialty.
-   * @param startDate   The placement start date.
-   * @return true if the placement is in the pilot group, otherwise false.
+   * @param programmeMembership The programme membership to check.
+   * @param messageType         The potential notification message type.
+   * @return true if the trainee should receive the notification, otherwise false.
    */
-  protected boolean isInPilot(String localOffice, String specialty, LocalDate startDate) {
-
-    // for now, say no-one is in pilot
-    return false;
+  public boolean programmeMembershipIsNotifiable(ProgrammeMembership programmeMembership,
+      MessageType messageType) {
+    String traineeId = programmeMembership.getPersonId();
+    return messagingControllerService.isValidRecipient(traineeId, messageType);
   }
 }

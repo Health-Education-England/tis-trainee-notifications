@@ -177,8 +177,9 @@ class ProgrammeMembershipServiceTest {
     verifyNoInteractions(inAppService);
   }
 
-  @Test
-  void shouldAddEportfolioInAppNotificationsIfNotExcludedAndMeetsCriteria()
+  @ParameterizedTest
+  @ValueSource(booleans = {true, false})
+  void shouldAddEportfolioInAppNotificationsIfNotExcludedAndMeetsCriteria(boolean notifiablePm)
       throws SchedulerException {
     Curriculum theCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, "any specialty");
     ProgrammeMembership programmeMembership = new ProgrammeMembership();
@@ -189,15 +190,20 @@ class ProgrammeMembershipServiceTest {
     programmeMembership.setCurricula(List.of(theCurriculum));
     programmeMembership.setConditionsOfJoining(new ConditionsOfJoining(Instant.MIN));
 
-    when(notificationService.meetsCriteria(programmeMembership, true, true)).thenReturn(true);
+    when(notificationService.meetsCriteria(programmeMembership, true,
+        true)).thenReturn(true);
+    when(notificationService.programmeMembershipIsNotifiable(programmeMembership,
+        MessageType.IN_APP)).thenReturn(notifiablePm);
 
     service.addNotifications(programmeMembership);
 
     ArgumentCaptor<TisReferenceInfo> referenceInfoCaptor = ArgumentCaptor.forClass(
         TisReferenceInfo.class);
     ArgumentCaptor<Map<String, Object>> variablesCaptor = ArgumentCaptor.forClass(Map.class);
+    ArgumentCaptor<Boolean> doNotStoreJustLogCaptor = ArgumentCaptor.forClass(Boolean.class);
     verify(inAppService).createNotifications(eq(PERSON_ID), referenceInfoCaptor.capture(),
-        eq(E_PORTFOLIO), eq(E_PORTFOLIO_VERSION), variablesCaptor.capture());
+        eq(E_PORTFOLIO), eq(E_PORTFOLIO_VERSION), variablesCaptor.capture(),
+        doNotStoreJustLogCaptor.capture());
 
     TisReferenceInfo referenceInfo = referenceInfoCaptor.getValue();
     assertThat("Unexpected reference type.", referenceInfo.type(), is(PROGRAMME_MEMBERSHIP));
@@ -207,10 +213,13 @@ class ProgrammeMembershipServiceTest {
     assertThat("Unexpected variable count.", variables.size(), is(2));
     assertThat("Unexpected variable.", variables.get(PROGRAMME_NAME_FIELD), is(PROGRAMME_NAME));
     assertThat("Unexpected variable.", variables.get(START_DATE_FIELD), is(START_DATE));
+
+    Boolean doNotStoreJustLog = doNotStoreJustLogCaptor.getValue();
+    assertThat("Unexpected doNotStoreJustLog value.", doNotStoreJustLog, is(!notifiablePm));
   }
 
   @Test
-  void shouldAddEportfolioInAppNotificationsIfNotMeetsCriteria()
+  void shouldNotAddEportfolioInAppNotificationsIfNotMeetsCriteria()
       throws SchedulerException {
     Curriculum theCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, "any specialty");
     ProgrammeMembership programmeMembership = new ProgrammeMembership();
@@ -221,7 +230,8 @@ class ProgrammeMembershipServiceTest {
     programmeMembership.setCurricula(List.of(theCurriculum));
     programmeMembership.setConditionsOfJoining(new ConditionsOfJoining(Instant.MIN));
 
-    when(notificationService.meetsCriteria(programmeMembership, true, true)).thenReturn(false);
+    when(notificationService.meetsCriteria(programmeMembership, true,
+        true)).thenReturn(false);
 
     service.addNotifications(programmeMembership);
 
@@ -244,7 +254,10 @@ class ProgrammeMembershipServiceTest {
             E_PORTFOLIO, null, null, Instant.MIN, Instant.MAX, UNREAD, null));
 
     when(historyService.findAllForTrainee(PERSON_ID)).thenReturn(sentNotifications);
-    when(notificationService.meetsCriteria(programmeMembership, true, true)).thenReturn(true);
+    when(notificationService.meetsCriteria(programmeMembership, true,
+        true)).thenReturn(true);
+    when(notificationService.programmeMembershipIsNotifiable(programmeMembership,
+        MessageType.IN_APP)).thenReturn(true);
 
     service.addNotifications(programmeMembership);
 
