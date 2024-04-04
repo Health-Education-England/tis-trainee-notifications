@@ -300,14 +300,14 @@ public class NotificationService implements Job {
   }
 
   /**
-   * Check whether a programme membership meets the selected notification criteria.
+   * Check whether an object meets the selected notification criteria.
    *
    * @param programmeMembership The programme membership to check.
    * @param checkNewStarter     Whether the trainee must be a new starter.
    * @param checkPilot          Whether the trainee must be in a pilot.
    * @return true if all criteria met, or false if one or more criteria fail.
    */
-  public boolean programmeMembershipMeetsCriteria(ProgrammeMembership programmeMembership,
+  public boolean meetsCriteria(ProgrammeMembership programmeMembership,
       boolean checkNewStarter, boolean checkPilot) {
     String traineeId = programmeMembership.getPersonId();
     String pmId = programmeMembership.getTisId();

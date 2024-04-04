@@ -469,7 +469,7 @@ class NotificationServiceTest {
   }
 
   @Test
-  void shouldMeetProgrammeMembershipCriteriaWhenIsNewStarterAndIsInPilot() {
+  void shouldMeetCriteriaWhenIsNewStarterAndIsInPilot() {
     ProgrammeMembership programmeMembership = new ProgrammeMembership();
     programmeMembership.setTisId(TIS_ID);
     programmeMembership.setPersonId(PERSON_ID);
@@ -479,7 +479,7 @@ class NotificationServiceTest {
     when(messagingControllerService.isProgrammeMembershipNewStarter(PERSON_ID, TIS_ID)).thenReturn(
         true);
 
-    boolean meetsCriteria = service.programmeMembershipMeetsCriteria(programmeMembership, true,
+    boolean meetsCriteria = service.meetsCriteria(programmeMembership, true,
         true);
 
     assertThat("Unexpected unmet programme membership criteria.", meetsCriteria, is(true));
@@ -489,7 +489,7 @@ class NotificationServiceTest {
   }
 
   @Test
-  void shouldNotMeetProgrammeMembershipCriteriaWhenNotNewStarterAndNotInPilot() {
+  void shouldNotMeetCriteriaWhenNotNewStarterAndNotInPilot() {
     ProgrammeMembership programmeMembership = new ProgrammeMembership();
     programmeMembership.setTisId(TIS_ID);
     programmeMembership.setPersonId(PERSON_ID);
@@ -499,7 +499,7 @@ class NotificationServiceTest {
     when(messagingControllerService.isProgrammeMembershipNewStarter(PERSON_ID, TIS_ID)).thenReturn(
         false);
 
-    boolean meetsCriteria = service.programmeMembershipMeetsCriteria(programmeMembership, true,
+    boolean meetsCriteria = service.meetsCriteria(programmeMembership, true,
         true);
 
     assertThat("Unexpected unmet programme membership criteria.", meetsCriteria, is(false));
@@ -509,7 +509,7 @@ class NotificationServiceTest {
   }
 
   @Test
-  void shouldMeetProgrammeMembershipCriteriaWhenIsNewStarterAndAndPilotCheckSkipped() {
+  void shouldMeetCriteriaWhenIsNewStarterAndAndPilotCheckSkipped() {
     ProgrammeMembership programmeMembership = new ProgrammeMembership();
     programmeMembership.setTisId(TIS_ID);
     programmeMembership.setPersonId(PERSON_ID);
@@ -517,14 +517,14 @@ class NotificationServiceTest {
     when(messagingControllerService.isProgrammeMembershipNewStarter(PERSON_ID, TIS_ID)).thenReturn(
         true);
 
-    boolean meetsCriteria = service.programmeMembershipMeetsCriteria(programmeMembership, true,
+    boolean meetsCriteria = service.meetsCriteria(programmeMembership, true,
         false);
 
     assertThat("Unexpected unmet programme membership criteria.", meetsCriteria, is(true));
   }
 
   @Test
-  void shouldNotMeetProgrammeMembershipCriteriaWhenNotNewStarterAndAndPilotCheckSkipped() {
+  void shouldNotMeetCriteriaWhenNotNewStarterAndAndPilotCheckSkipped() {
     ProgrammeMembership programmeMembership = new ProgrammeMembership();
     programmeMembership.setTisId(TIS_ID);
     programmeMembership.setPersonId(PERSON_ID);
@@ -532,7 +532,7 @@ class NotificationServiceTest {
     when(messagingControllerService.isProgrammeMembershipNewStarter(PERSON_ID, TIS_ID)).thenReturn(
         false);
 
-    boolean meetsCriteria = service.programmeMembershipMeetsCriteria(programmeMembership, true,
+    boolean meetsCriteria = service.meetsCriteria(programmeMembership, true,
         false);
 
     assertThat("Unexpected unmet programme membership criteria.", meetsCriteria, is(false));
@@ -542,7 +542,7 @@ class NotificationServiceTest {
   }
 
   @Test
-  void shouldMeetProgrammeMembershipCriteriaWhenNewStartCheckSkippedAndIsInPilot() {
+  void shouldMeetCriteriaWhenNewStartCheckSkippedAndIsInPilot() {
     ProgrammeMembership programmeMembership = new ProgrammeMembership();
     programmeMembership.setTisId(TIS_ID);
     programmeMembership.setPersonId(PERSON_ID);
@@ -550,7 +550,7 @@ class NotificationServiceTest {
     when(messagingControllerService.isProgrammeMembershipInPilot2024(PERSON_ID, TIS_ID)).thenReturn(
         true);
 
-    boolean meetsCriteria = service.programmeMembershipMeetsCriteria(programmeMembership, false,
+    boolean meetsCriteria = service.meetsCriteria(programmeMembership, false,
         true);
 
     assertThat("Unexpected unmet programme membership criteria.", meetsCriteria, is(true));
@@ -560,7 +560,7 @@ class NotificationServiceTest {
   }
 
   @Test
-  void shouldNotMeetProgrammeMembershipCriteriaWhenNewStartCheckSkippedAndNotInPilot() {
+  void shouldNotMeetCriteriaWhenNewStartCheckSkippedAndNotInPilot() {
     ProgrammeMembership programmeMembership = new ProgrammeMembership();
     programmeMembership.setTisId(TIS_ID);
     programmeMembership.setPersonId(PERSON_ID);
@@ -568,7 +568,7 @@ class NotificationServiceTest {
     when(messagingControllerService.isProgrammeMembershipInPilot2024(PERSON_ID, TIS_ID)).thenReturn(
         false);
 
-    boolean meetsCriteria = service.programmeMembershipMeetsCriteria(programmeMembership, false,
+    boolean meetsCriteria = service.meetsCriteria(programmeMembership, false,
         true);
 
     assertThat("Unexpected unmet programme membership criteria.", meetsCriteria, is(false));
@@ -578,12 +578,12 @@ class NotificationServiceTest {
   }
 
   @Test
-  void shouldMeetProgrammeMembershipCriteriaWhenAllChecksSkipped() {
+  void shouldMeetCriteriaWhenAllChecksSkipped() {
     ProgrammeMembership programmeMembership = new ProgrammeMembership();
     programmeMembership.setTisId(TIS_ID);
     programmeMembership.setPersonId(PERSON_ID);
 
-    boolean meetsCriteria = service.programmeMembershipMeetsCriteria(programmeMembership, false,
+    boolean meetsCriteria = service.meetsCriteria(programmeMembership, false,
         false);
 
     assertThat("Unexpected unmet programme membership criteria.", meetsCriteria, is(true));

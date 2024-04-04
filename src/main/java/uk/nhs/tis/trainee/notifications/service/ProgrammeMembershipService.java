@@ -216,7 +216,7 @@ public class ProgrammeMembershipService {
   private void createInAppNotifications(ProgrammeMembership programmeMembership,
       Map<NotificationType, Instant> notificationsAlreadySent) {
     // Create ePortfolio notification if the PM qualifies.
-    boolean meetsCriteria = notificationService.programmeMembershipMeetsCriteria(
+    boolean meetsCriteria = notificationService.meetsCriteria(
         programmeMembership, true, true);
     boolean isUnique = !notificationsAlreadySent.containsKey(E_PORTFOLIO);
 

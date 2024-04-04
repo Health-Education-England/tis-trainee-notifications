@@ -190,7 +190,7 @@ class ProgrammeMembershipServiceTest {
     programmeMembership.setCurricula(List.of(theCurriculum));
     programmeMembership.setConditionsOfJoining(new ConditionsOfJoining(Instant.MIN));
 
-    when(notificationService.programmeMembershipMeetsCriteria(programmeMembership, true,
+    when(notificationService.meetsCriteria(programmeMembership, true,
         true)).thenReturn(true);
     when(notificationService.programmeMembershipIsNotifiable(programmeMembership,
         MessageType.IN_APP)).thenReturn(notifiablePm);
@@ -230,7 +230,7 @@ class ProgrammeMembershipServiceTest {
     programmeMembership.setCurricula(List.of(theCurriculum));
     programmeMembership.setConditionsOfJoining(new ConditionsOfJoining(Instant.MIN));
 
-    when(notificationService.programmeMembershipMeetsCriteria(programmeMembership, true,
+    when(notificationService.meetsCriteria(programmeMembership, true,
         true)).thenReturn(false);
 
     service.addNotifications(programmeMembership);
@@ -254,7 +254,7 @@ class ProgrammeMembershipServiceTest {
             E_PORTFOLIO, null, null, Instant.MIN, Instant.MAX, UNREAD, null));
 
     when(historyService.findAllForTrainee(PERSON_ID)).thenReturn(sentNotifications);
-    when(notificationService.programmeMembershipMeetsCriteria(programmeMembership, true,
+    when(notificationService.meetsCriteria(programmeMembership, true,
         true)).thenReturn(true);
     when(notificationService.programmeMembershipIsNotifiable(programmeMembership,
         MessageType.IN_APP)).thenReturn(true);

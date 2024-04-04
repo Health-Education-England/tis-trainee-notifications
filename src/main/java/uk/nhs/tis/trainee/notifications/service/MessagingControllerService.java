@@ -90,10 +90,10 @@ public class MessagingControllerService {
     if (inWhitelist) {
       return true;
     } else {
-      if (messageType == MessageType.EMAIL && emailNotificationsEnabled) {
-        return true;
-      }
-      return messageType == MessageType.IN_APP && inAppNotificationsEnabled;
+      return switch (messageType) {
+        case EMAIL -> emailNotificationsEnabled;
+        case IN_APP -> inAppNotificationsEnabled;
+      };
     }
   }
 
