@@ -377,6 +377,8 @@ class HistoryServiceTest {
     when(repository.findAllByRecipient_IdOrderBySentAtDesc(TRAINEE_ID)).thenReturn(
         List.of(history1, history2));
 
+    when(templateService.process(any(), any(), anyMap())).thenReturn("");
+
     List<HistoryDto> historyDtos = service.findAllForTrainee(TRAINEE_ID);
 
     assertThat("Unexpected history count.", historyDtos.size(), is(2));
@@ -406,6 +408,90 @@ class HistoryServiceTest {
     assertThat("Unexpected history contact.", historyDto2.contact(), is(TRAINEE_CONTACT));
     assertThat("Unexpected history sent at.", historyDto2.sentAt(), is(Instant.MAX));
     assertThat("Unexpected history read at.", historyDto2.readAt(), is(Instant.MIN));
+  }
+
+  @ParameterizedTest
+  @EnumSource(NotificationType.class)
+  void shouldPopulateSubjectInFoundHistoryWhenInAppNotificationWithSubject(
+      NotificationType notificationType) {
+    RecipientInfo recipientInfo = new RecipientInfo(TRAINEE_ID, IN_APP, TRAINEE_CONTACT);
+    TemplateInfo templateInfo = new TemplateInfo(TEMPLATE_NAME, TEMPLATE_VERSION,
+        TEMPLATE_VARIABLES);
+    TisReferenceInfo tisReferenceInfo = new TisReferenceInfo(TIS_REFERENCE_TYPE, TIS_REFERENCE_ID);
+
+    ObjectId id1 = ObjectId.get();
+    History history1 = new History(id1, tisReferenceInfo, notificationType, recipientInfo,
+        templateInfo, Instant.MIN, Instant.MAX, SENT, null);
+
+    when(repository.findAllByRecipient_IdOrderBySentAtDesc(TRAINEE_ID)).thenReturn(
+        List.of(history1));
+
+    String templatePath = "type/test/template/v1.2.3";
+    when(templateService.getTemplatePath(IN_APP, TEMPLATE_NAME, TEMPLATE_VERSION)).thenReturn(
+        templatePath);
+    when(templateService.process(templatePath, Set.of("subject"), TEMPLATE_VARIABLES)).thenReturn(
+        "rebuiltSubject");
+
+    List<HistoryDto> historyDtos = service.findAllForTrainee(TRAINEE_ID);
+
+    assertThat("Unexpected history count.", historyDtos.size(), is(1));
+
+    HistoryDto historyDto = historyDtos.get(0);
+    assertThat("Unexpected history subject text.", historyDto.subjectText(), is("rebuiltSubject"));
+  }
+
+  @ParameterizedTest
+  @EnumSource(NotificationType.class)
+  void shouldNotPopulateSubjectInFoundHistoryWhenInAppNotificationWithNoSubject(
+      NotificationType notificationType) {
+    RecipientInfo recipientInfo = new RecipientInfo(TRAINEE_ID, IN_APP, TRAINEE_CONTACT);
+    TemplateInfo templateInfo = new TemplateInfo(TEMPLATE_NAME, TEMPLATE_VERSION,
+        TEMPLATE_VARIABLES);
+    TisReferenceInfo tisReferenceInfo = new TisReferenceInfo(TIS_REFERENCE_TYPE, TIS_REFERENCE_ID);
+
+    ObjectId id1 = ObjectId.get();
+    History history1 = new History(id1, tisReferenceInfo, notificationType, recipientInfo,
+        templateInfo, Instant.MIN, Instant.MAX, SENT, null);
+
+    when(repository.findAllByRecipient_IdOrderBySentAtDesc(TRAINEE_ID)).thenReturn(
+        List.of(history1));
+
+    String templatePath = "type/test/template/v1.2.3";
+    when(templateService.getTemplatePath(IN_APP, TEMPLATE_NAME, TEMPLATE_VERSION)).thenReturn(
+        templatePath);
+    when(templateService.process(templatePath, Set.of("subject"), TEMPLATE_VARIABLES)).thenReturn(
+        "");
+
+    List<HistoryDto> historyDtos = service.findAllForTrainee(TRAINEE_ID);
+
+    assertThat("Unexpected history count.", historyDtos.size(), is(1));
+
+    HistoryDto historyDto = historyDtos.get(0);
+    assertThat("Unexpected history subject text.", historyDto.subjectText(), nullValue());
+  }
+
+  @ParameterizedTest
+  @EnumSource(NotificationType.class)
+  void shouldNotPopulateSubjectInFoundHistoryWhenEmailNotification(
+      NotificationType notificationType) {
+    RecipientInfo recipientInfo = new RecipientInfo(TRAINEE_ID, EMAIL, TRAINEE_CONTACT);
+    TemplateInfo templateInfo = new TemplateInfo(TEMPLATE_NAME, TEMPLATE_VERSION,
+        TEMPLATE_VARIABLES);
+    TisReferenceInfo tisReferenceInfo = new TisReferenceInfo(TIS_REFERENCE_TYPE, TIS_REFERENCE_ID);
+
+    ObjectId id1 = ObjectId.get();
+    History history1 = new History(id1, tisReferenceInfo, notificationType, recipientInfo,
+        templateInfo, Instant.MIN, Instant.MAX, SENT, null);
+
+    when(repository.findAllByRecipient_IdOrderBySentAtDesc(TRAINEE_ID)).thenReturn(
+        List.of(history1));
+
+    List<HistoryDto> historyDtos = service.findAllForTrainee(TRAINEE_ID);
+
+    assertThat("Unexpected history count.", historyDtos.size(), is(1));
+
+    HistoryDto historyDto = historyDtos.get(0);
+    assertThat("Unexpected history subject text.", historyDto.subjectText(), nullValue());
   }
 
   @Test
