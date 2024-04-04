@@ -160,7 +160,22 @@ public class HistoryService {
    */
   public List<HistoryDto> findAllForTrainee(String traineeId) {
     List<History> history = repository.findAllByRecipient_IdOrderBySentAtDesc(traineeId);
-    return mapper.toDtos(history);
+
+    return history.stream()
+        .map(h -> {
+          String subject = null;
+
+          if (h.recipient().type() == IN_APP) {
+            subject = rebuildMessage(h, Set.of("subject")).orElse("");
+          }
+
+          if (subject == null || subject.isEmpty()) {
+            return mapper.toDto(h);
+          } else {
+            return mapper.toDto(h, subject);
+          }
+        })
+        .toList();
   }
 
   /**
@@ -204,7 +219,7 @@ public class HistoryService {
   /**
    * Rebuild the message for a given notification history.
    *
-   * @param history The historical notification.
+   * @param history   The historical notification.
    * @param selectors The template selectors to use.
    * @return The rebuilt message, or empty if the notification was not found.
    */
