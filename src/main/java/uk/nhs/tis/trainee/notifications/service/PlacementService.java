@@ -23,9 +23,7 @@ package uk.nhs.tis.trainee.notifications.service;
 
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PLACEMENT_UPDATED_WEEK_12;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.PERSON_ID_FIELD;
-import static uk.nhs.tis.trainee.notifications.service.NotificationService.TEMPLATE_CONTACT_HREF_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.TEMPLATE_NOTIFICATION_TYPE_FIELD;
-import static uk.nhs.tis.trainee.notifications.service.NotificationService.TEMPLATE_OWNER_CONTACT_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.TEMPLATE_OWNER_FIELD;
 
 import java.time.Instant;
@@ -40,7 +38,6 @@ import org.quartz.JobDataMap;
 import org.quartz.SchedulerException;
 import org.springframework.stereotype.Service;
 import uk.nhs.tis.trainee.notifications.dto.HistoryDto;
-import uk.nhs.tis.trainee.notifications.model.LocalOfficeContactType;
 import uk.nhs.tis.trainee.notifications.model.NotificationType;
 import uk.nhs.tis.trainee.notifications.model.Placement;
 import uk.nhs.tis.trainee.notifications.model.TisReferenceType;
@@ -158,16 +155,9 @@ public class PlacementService {
         jobDataMap.put(PLACEMENT_TYPE_FIELD, placement.getPlacementType());
         jobDataMap.put(PLACEMENT_SPECIALTY_FIELD, placement.getSpecialty());
         jobDataMap.put(TEMPLATE_OWNER_FIELD, placement.getOwner());
-
-        String contact = notificationService.getOwnerContact(placement.getOwner(),
-            LocalOfficeContactType.ONBOARDING_SUPPORT, LocalOfficeContactType.TSS_SUPPORT);
-        jobDataMap.put(TEMPLATE_OWNER_CONTACT_FIELD, contact);
-        jobDataMap.put(TEMPLATE_CONTACT_HREF_FIELD,
-            notificationService.getHrefTypeForContact(contact));
-
         jobDataMap.put(TEMPLATE_NOTIFICATION_TYPE_FIELD, PLACEMENT_UPDATED_WEEK_12);
         // Note the status of the trainee will be retrieved when the job is executed, as will
-        // their name and email address, not now.
+        // their name and email address, and the contact details of the owner LO, not now.
 
         String jobId = PLACEMENT_UPDATED_WEEK_12 + "-" + placement.getTisId();
         try {

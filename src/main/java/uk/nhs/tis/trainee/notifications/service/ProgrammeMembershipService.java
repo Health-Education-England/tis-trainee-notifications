@@ -25,9 +25,7 @@ import static uk.nhs.tis.trainee.notifications.model.MessageType.IN_APP;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.E_PORTFOLIO;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_CREATED;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.PERSON_ID_FIELD;
-import static uk.nhs.tis.trainee.notifications.service.NotificationService.TEMPLATE_CONTACT_HREF_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.TEMPLATE_NOTIFICATION_TYPE_FIELD;
-import static uk.nhs.tis.trainee.notifications.service.NotificationService.TEMPLATE_OWNER_CONTACT_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.TEMPLATE_OWNER_FIELD;
 
 import java.time.Instant;
@@ -47,7 +45,6 @@ import org.springframework.stereotype.Service;
 import uk.nhs.tis.trainee.notifications.dto.HistoryDto;
 import uk.nhs.tis.trainee.notifications.model.Curriculum;
 import uk.nhs.tis.trainee.notifications.model.History.TisReferenceInfo;
-import uk.nhs.tis.trainee.notifications.model.LocalOfficeContactType;
 import uk.nhs.tis.trainee.notifications.model.NotificationType;
 import uk.nhs.tis.trainee.notifications.model.ProgrammeMembership;
 import uk.nhs.tis.trainee.notifications.model.TisReferenceType;
@@ -199,16 +196,9 @@ public class ProgrammeMembershipService {
             programmeMembership.getConditionsOfJoining().syncedAt());
       }
       jobDataMap.put(TEMPLATE_OWNER_FIELD, programmeMembership.getManagingDeanery());
-      String contact = notificationService.getOwnerContact(
-          programmeMembership.getManagingDeanery(), LocalOfficeContactType.ONBOARDING_SUPPORT,
-          LocalOfficeContactType.TSS_SUPPORT);
-      jobDataMap.put(TEMPLATE_OWNER_CONTACT_FIELD, contact);
-      jobDataMap.put(TEMPLATE_CONTACT_HREF_FIELD,
-          notificationService.getHrefTypeForContact(contact));
-
       jobDataMap.put(TEMPLATE_NOTIFICATION_TYPE_FIELD, milestone);
       // Note the status of the trainee will be retrieved when the job is executed, as will
-      // their name and email address, not now.
+      // their name and email address and the contact details of the owner LO, not now.
 
       String jobId = milestone + "-" + programmeMembership.getTisId();
       try {

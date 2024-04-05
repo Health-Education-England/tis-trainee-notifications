@@ -153,6 +153,12 @@ public class NotificationService implements Job {
       jobDetails.putIfAbsent("gmcNumber", userAccountDetails.gmcNumber());
     }
 
+    String owner = jobDetails.getString(TEMPLATE_OWNER_FIELD);
+    String contact = getOwnerContact(owner, LocalOfficeContactType.ONBOARDING_SUPPORT,
+        LocalOfficeContactType.TSS_SUPPORT);
+    jobDetails.putIfAbsent(TEMPLATE_OWNER_CONTACT_FIELD, contact);
+    jobDetails.putIfAbsent(TEMPLATE_CONTACT_HREF_FIELD, getHrefTypeForContact(contact));
+
     //only consider sending programme-created mails; ignore the programme-updated-* notifications
     if (notificationType == NotificationType.PROGRAMME_CREATED) {
 
