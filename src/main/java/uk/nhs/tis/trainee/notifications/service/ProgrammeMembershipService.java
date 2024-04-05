@@ -23,11 +23,13 @@ package uk.nhs.tis.trainee.notifications.service;
 
 import static uk.nhs.tis.trainee.notifications.model.MessageType.IN_APP;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.E_PORTFOLIO;
+import static uk.nhs.tis.trainee.notifications.model.NotificationType.INDEMNITY_INSURANCE;
 
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.Date;
 import java.util.EnumMap;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -57,6 +59,7 @@ public class ProgrammeMembershipService {
   public static final String PERSON_ID_FIELD = "personId";
   public static final String PROGRAMME_NAME_FIELD = "programmeName";
   public static final String START_DATE_FIELD = "startDate";
+  public static final String BLOCK_INDEMNITY_FIELD = "hasBlockIndemnity";
   public static final String NOTIFICATION_TYPE_FIELD = "notificationType";
   public static final String COJ_SYNCED_FIELD = "conditionsOfJoiningSyncedAt";
 
@@ -70,14 +73,18 @@ public class ProgrammeMembershipService {
   private final NotificationService notificationService;
 
   private final String eportfolioVersion;
+  private final String indemnityInsuranceVersion;
 
   public ProgrammeMembershipService(HistoryService historyService, InAppService inAppService,
       NotificationService notificationService,
-      @Value("${application.template-versions.e-portfolio.in-app}") String eportfolioVersion) {
+      @Value("${application.template-versions.e-portfolio.in-app}") String eportfolioVersion,
+      @Value("${application.template-versions.indemnity-insurance.in-app}")
+      String indemnityInsuranceVersion) {
     this.historyService = historyService;
     this.inAppService = inAppService;
     this.notificationService = notificationService;
     this.eportfolioVersion = eportfolioVersion;
+    this.indemnityInsuranceVersion = indemnityInsuranceVersion;
   }
 
   /**
@@ -126,6 +133,7 @@ public class ProgrammeMembershipService {
     Set<NotificationType> notificationTypes = new HashSet<>(
         NotificationType.getProgrammeUpdateNotificationTypes());
     notificationTypes.add(E_PORTFOLIO);
+    notificationTypes.add(INDEMNITY_INSURANCE);
 
     for (NotificationType milestone : notificationTypes) {
       Optional<HistoryDto> sentItem = correspondence.stream()
@@ -216,22 +224,48 @@ public class ProgrammeMembershipService {
   private void createInAppNotifications(ProgrammeMembership programmeMembership,
       Map<NotificationType, Instant> notificationsAlreadySent) {
     // Create ePortfolio notification if the PM qualifies.
-    boolean meetsCriteria = notificationService.meetsCriteria(
-        programmeMembership, true, true);
-    boolean isUnique = !notificationsAlreadySent.containsKey(E_PORTFOLIO);
+    boolean meetsCriteria = notificationService.meetsCriteria(programmeMembership, true, true);
 
-    if (meetsCriteria && isUnique) {
+    if (meetsCriteria) {
+      createUniqueInAppNotification(programmeMembership, notificationsAlreadySent, E_PORTFOLIO,
+          eportfolioVersion, Map.of());
+
+      boolean hasBlockIndemnity = programmeMembership.getCurricula().stream()
+          .anyMatch(Curriculum::curriculumSpecialtyBlockIndemnity);
+      createUniqueInAppNotification(programmeMembership, notificationsAlreadySent,
+          INDEMNITY_INSURANCE, indemnityInsuranceVersion,
+          Map.of(BLOCK_INDEMNITY_FIELD, hasBlockIndemnity));
+    }
+  }
+
+  /**
+   * Create a unique in-app notification of the given type and version.
+   *
+   * @param programmeMembership      The updated programme membership.
+   * @param notificationsAlreadySent Previously sent notifications.
+   * @param notificationType         The type of notification being sent.
+   * @param notificationVersion      The version of the notification.
+   * @param extraVariables           Extra variables to include with the template, Programme Name
+   *                                 and Start Date are populated automatically.
+   */
+  private void createUniqueInAppNotification(ProgrammeMembership programmeMembership,
+      Map<NotificationType, Instant> notificationsAlreadySent, NotificationType notificationType,
+      String notificationVersion, Map<String, Object> extraVariables) {
+    boolean isUnique = !notificationsAlreadySent.containsKey(notificationType);
+
+    if (isUnique) {
       TisReferenceInfo tisReference = new TisReferenceInfo(TisReferenceType.PROGRAMME_MEMBERSHIP,
           programmeMembership.getTisId());
-      Map<String, Object> variables = Map.of(
-          PROGRAMME_NAME_FIELD, programmeMembership.getProgrammeName(),
-          START_DATE_FIELD, programmeMembership.getStartDate()
-      );
-      boolean doNotSendJustLog
-          = !notificationService.programmeMembershipIsNotifiable(programmeMembership, IN_APP);
+
+      Map<String, Object> variables = new HashMap<>(extraVariables);
+      variables.put(PROGRAMME_NAME_FIELD, programmeMembership.getProgrammeName());
+      variables.put(START_DATE_FIELD, programmeMembership.getStartDate());
+
+      boolean doNotSendJustLog = !notificationService.programmeMembershipIsNotifiable(
+          programmeMembership, IN_APP);
 
       inAppService.createNotifications(programmeMembership.getPersonId(), tisReference,
-          E_PORTFOLIO, eportfolioVersion, variables, doNotSendJustLog);
+          notificationType, notificationVersion, variables, doNotSendJustLog);
     }
   }
 

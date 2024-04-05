@@ -58,7 +58,7 @@ class ProgrammeMembershipMapperTest {
     ProgrammeMembership programmeMembership = new ProgrammeMembership();
     programmeMembership.setTisId(TIS_ID);
     programmeMembership.setStartDate(START_DATE);
-    Curriculum curriculum = new Curriculum(CURRICULUM_SUB_TYPE, CURRICULUM_SPECIALTY);
+    Curriculum curriculum = new Curriculum(CURRICULUM_SUB_TYPE, CURRICULUM_SPECIALTY, false);
     programmeMembership.setCurricula(List.of(curriculum));
 
     ProgrammeMembership returnedPm = mapper.toEntity(event.recrd().getData());

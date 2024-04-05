@@ -27,6 +27,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
@@ -37,8 +38,9 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.SENT;
 import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.UNREAD;
-import static uk.nhs.tis.trainee.notifications.model.NotificationType.E_PORTFOLIO;
+import static uk.nhs.tis.trainee.notifications.model.NotificationType.INDEMNITY_INSURANCE;
 import static uk.nhs.tis.trainee.notifications.model.TisReferenceType.PROGRAMME_MEMBERSHIP;
+import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.BLOCK_INDEMNITY_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.COJ_SYNCED_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.PERSON_ID_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.PROGRAMME_NAME_FIELD;
@@ -55,6 +57,9 @@ import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.params.provider.EnumSource.Mode;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -84,9 +89,10 @@ class ProgrammeMembershipServiceTest {
   //set a year in the future to allow all notifications to be scheduled
 
   private static final Curriculum IGNORED_CURRICULUM
-      = new Curriculum("some-subtype", "some-specialty");
+      = new Curriculum("some-subtype", "some-specialty", false);
 
   private static final String E_PORTFOLIO_VERSION = "v1.2.3";
+  private static final String INDEMNITY_INSURANCE_VERSION = "v2.3.4";
 
   ProgrammeMembershipService service;
   HistoryService historyService;
@@ -99,13 +105,13 @@ class ProgrammeMembershipServiceTest {
     inAppService = mock(InAppService.class);
     notificationService = mock(NotificationService.class);
     service = new ProgrammeMembershipService(historyService, inAppService, notificationService,
-        E_PORTFOLIO_VERSION);
+        E_PORTFOLIO_VERSION, INDEMNITY_INSURANCE_VERSION);
   }
 
   @ParameterizedTest
   @ValueSource(strings = {MEDICAL_CURRICULUM_1, MEDICAL_CURRICULUM_2})
   void shouldNotExcludePmWithMedicalSubtypeAndNoExcludedSpecialties(String subtype) {
-    Curriculum theCurriculum = new Curriculum(subtype, "some-specialty");
+    Curriculum theCurriculum = new Curriculum(subtype, "some-specialty", false);
     ProgrammeMembership programmeMembership = new ProgrammeMembership();
     programmeMembership.setCurricula(List.of(theCurriculum, IGNORED_CURRICULUM));
 
@@ -139,8 +145,8 @@ class ProgrammeMembershipServiceTest {
   @ParameterizedTest
   @ValueSource(strings = {EXCLUDE_SPECIALTY_1, EXCLUDE_SPECIALTY_2})
   void shouldExcludePmWithExcludedSpecialty(String specialty) {
-    Curriculum theCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, specialty);
-    Curriculum anotherCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, "some-specialty");
+    Curriculum theCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, specialty, false);
+    Curriculum anotherCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, "some-specialty", false);
     ProgrammeMembership programmeMembership = new ProgrammeMembership();
     programmeMembership.setCurricula(List.of(theCurriculum, anotherCurriculum));
 
@@ -151,7 +157,7 @@ class ProgrammeMembershipServiceTest {
 
   @Test
   void shouldRemoveStaleNotifications() throws SchedulerException {
-    Curriculum theCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, EXCLUDE_SPECIALTY_1);
+    Curriculum theCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, EXCLUDE_SPECIALTY_1, false);
     ProgrammeMembership programmeMembership = new ProgrammeMembership();
     programmeMembership.setTisId(TIS_ID);
     programmeMembership.setCurricula(List.of(theCurriculum));
@@ -165,8 +171,8 @@ class ProgrammeMembershipServiceTest {
   }
 
   @Test
-  void shouldNotAddNotificationsIfExcluded() throws SchedulerException {
-    Curriculum theCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, EXCLUDE_SPECIALTY_1);
+  void shouldNotAddNotificationsWhenExcluded() throws SchedulerException {
+    Curriculum theCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, EXCLUDE_SPECIALTY_1, false);
     ProgrammeMembership programmeMembership = new ProgrammeMembership();
     programmeMembership.setTisId(TIS_ID);
     programmeMembership.setCurricula(List.of(theCurriculum));
@@ -178,10 +184,14 @@ class ProgrammeMembershipServiceTest {
   }
 
   @ParameterizedTest
-  @ValueSource(booleans = {true, false})
-  void shouldAddEportfolioInAppNotificationsIfNotExcludedAndMeetsCriteria(boolean notifiablePm)
-      throws SchedulerException {
-    Curriculum theCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, "any specialty");
+  @CsvSource(delimiter = '|', textBlock = """
+      E_PORTFOLIO | v1.2.3 | true
+      E_PORTFOLIO | v1.2.3 | false
+      INDEMNITY_INSURANCE | v2.3.4 | true
+      INDEMNITY_INSURANCE | v2.3.4 | false""")
+  void shouldAddInAppNotificationsWhenNotExcludedAndMeetsCriteria(NotificationType notificationType,
+      String notificationVersion, boolean notifiablePm) throws SchedulerException {
+    Curriculum theCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, "any specialty", false);
     ProgrammeMembership programmeMembership = new ProgrammeMembership();
     programmeMembership.setTisId(TIS_ID);
     programmeMembership.setPersonId(PERSON_ID);
@@ -202,7 +212,7 @@ class ProgrammeMembershipServiceTest {
     ArgumentCaptor<Map<String, Object>> variablesCaptor = ArgumentCaptor.forClass(Map.class);
     ArgumentCaptor<Boolean> doNotStoreJustLogCaptor = ArgumentCaptor.forClass(Boolean.class);
     verify(inAppService).createNotifications(eq(PERSON_ID), referenceInfoCaptor.capture(),
-        eq(E_PORTFOLIO), eq(E_PORTFOLIO_VERSION), variablesCaptor.capture(),
+        eq(notificationType), eq(notificationVersion), variablesCaptor.capture(),
         doNotStoreJustLogCaptor.capture());
 
     TisReferenceInfo referenceInfo = referenceInfoCaptor.getValue();
@@ -210,18 +220,92 @@ class ProgrammeMembershipServiceTest {
     assertThat("Unexpected reference id.", referenceInfo.id(), is(TIS_ID));
 
     Map<String, Object> variables = variablesCaptor.getValue();
-    assertThat("Unexpected variable count.", variables.size(), is(2));
-    assertThat("Unexpected variable.", variables.get(PROGRAMME_NAME_FIELD), is(PROGRAMME_NAME));
-    assertThat("Unexpected variable.", variables.get(START_DATE_FIELD), is(START_DATE));
+    assertThat("Unexpected programme name.", variables.get(PROGRAMME_NAME_FIELD),
+        is(PROGRAMME_NAME));
+    assertThat("Unexpected start date.", variables.get(START_DATE_FIELD), is(START_DATE));
 
     Boolean doNotStoreJustLog = doNotStoreJustLogCaptor.getValue();
     assertThat("Unexpected doNotStoreJustLog value.", doNotStoreJustLog, is(!notifiablePm));
   }
 
   @Test
-  void shouldNotAddEportfolioInAppNotificationsIfNotMeetsCriteria()
-      throws SchedulerException {
-    Curriculum theCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, "any specialty");
+  void shouldIncludeBlockFlagInIndemnityInsuranceInAppNotification() throws SchedulerException {
+    Curriculum theCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, "any specialty", true);
+    ProgrammeMembership programmeMembership = new ProgrammeMembership();
+    programmeMembership.setTisId(TIS_ID);
+    programmeMembership.setPersonId(PERSON_ID);
+    programmeMembership.setProgrammeName(PROGRAMME_NAME);
+    programmeMembership.setStartDate(START_DATE);
+    programmeMembership.setCurricula(List.of(theCurriculum));
+    programmeMembership.setConditionsOfJoining(new ConditionsOfJoining(Instant.MIN));
+
+    when(notificationService.meetsCriteria(programmeMembership, true, true)).thenReturn(true);
+
+    service.addNotifications(programmeMembership);
+
+    ArgumentCaptor<Map<String, Object>> variablesCaptor = ArgumentCaptor.forClass(Map.class);
+    verify(inAppService).createNotifications(eq(PERSON_ID), any(), eq(INDEMNITY_INSURANCE),
+        eq(INDEMNITY_INSURANCE_VERSION), variablesCaptor.capture(), anyBoolean());
+
+    Map<String, Object> variables = variablesCaptor.getValue();
+    assertThat("Unexpected variable count.", variables.size(), is(3));
+    assertThat("Unexpected programme name.", variables.get(PROGRAMME_NAME_FIELD),
+        is(PROGRAMME_NAME));
+    assertThat("Unexpected start date.", variables.get(START_DATE_FIELD), is(START_DATE));
+    assertThat("Unexpected block indemnity flag.", variables.get(BLOCK_INDEMNITY_FIELD), is(true));
+  }
+
+  @Test
+  void shouldSetBlockIndemnityToTrueWhenAnySpecialtyHasBlockIndemnity() throws SchedulerException {
+    ProgrammeMembership programmeMembership = new ProgrammeMembership();
+    programmeMembership.setTisId(TIS_ID);
+    programmeMembership.setPersonId(PERSON_ID);
+    programmeMembership.setStartDate(START_DATE);
+    programmeMembership.setCurricula(List.of(
+        new Curriculum(MEDICAL_CURRICULUM_1, "specialty 1", false),
+        new Curriculum(MEDICAL_CURRICULUM_1, "specialty 2", true),
+        new Curriculum(MEDICAL_CURRICULUM_1, "specialty 3", false)
+    ));
+
+    when(notificationService.meetsCriteria(programmeMembership, true, true)).thenReturn(true);
+
+    service.addNotifications(programmeMembership);
+
+    ArgumentCaptor<Map<String, Object>> variablesCaptor = ArgumentCaptor.forClass(Map.class);
+    verify(inAppService).createNotifications(eq(PERSON_ID), any(), eq(INDEMNITY_INSURANCE),
+        eq(INDEMNITY_INSURANCE_VERSION), variablesCaptor.capture(), anyBoolean());
+
+    Map<String, Object> variables = variablesCaptor.getValue();
+    assertThat("Unexpected block indemnity flag.", variables.get(BLOCK_INDEMNITY_FIELD), is(true));
+  }
+
+  @Test
+  void shouldSetBlockIndemnityToFalseWhenNoSpecialtyHasBlockIndemnity() throws SchedulerException {
+    ProgrammeMembership programmeMembership = new ProgrammeMembership();
+    programmeMembership.setTisId(TIS_ID);
+    programmeMembership.setPersonId(PERSON_ID);
+    programmeMembership.setStartDate(START_DATE);
+    programmeMembership.setCurricula(List.of(
+        new Curriculum(MEDICAL_CURRICULUM_1, "specialty 1", false),
+        new Curriculum(MEDICAL_CURRICULUM_1, "specialty 2", false),
+        new Curriculum(MEDICAL_CURRICULUM_1, "specialty 3", false)
+    ));
+
+    when(notificationService.meetsCriteria(programmeMembership, true, true)).thenReturn(true);
+
+    service.addNotifications(programmeMembership);
+
+    ArgumentCaptor<Map<String, Object>> variablesCaptor = ArgumentCaptor.forClass(Map.class);
+    verify(inAppService).createNotifications(eq(PERSON_ID), any(), eq(INDEMNITY_INSURANCE),
+        eq(INDEMNITY_INSURANCE_VERSION), variablesCaptor.capture(), anyBoolean());
+
+    Map<String, Object> variables = variablesCaptor.getValue();
+    assertThat("Unexpected block indemnity flag.", variables.get(BLOCK_INDEMNITY_FIELD), is(false));
+  }
+
+  @Test
+  void shouldNotAddInAppNotificationsWhenNotMeetsCriteria() throws SchedulerException {
+    Curriculum theCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, "any specialty", false);
     ProgrammeMembership programmeMembership = new ProgrammeMembership();
     programmeMembership.setTisId(TIS_ID);
     programmeMembership.setPersonId(PERSON_ID);
@@ -238,9 +322,12 @@ class ProgrammeMembershipServiceTest {
     verifyNoInteractions(inAppService);
   }
 
-  @Test
-  void shouldNotAddEportfolioInAppNotificationsIfNotUnique() throws SchedulerException {
-    Curriculum theCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, "any specialty");
+  @ParameterizedTest
+  @EnumSource(value = NotificationType.class, mode = Mode.INCLUDE, names = {"E_PORTFOLIO",
+      "INDEMNITY_INSURANCE"})
+  void shouldNotAddInAppNotificationsWhenNotUnique(NotificationType notificationType)
+      throws SchedulerException {
+    Curriculum theCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, "any specialty", false);
     ProgrammeMembership programmeMembership = new ProgrammeMembership();
     programmeMembership.setTisId(TIS_ID);
     programmeMembership.setPersonId(PERSON_ID);
@@ -251,7 +338,7 @@ class ProgrammeMembershipServiceTest {
 
     List<HistoryDto> sentNotifications = List.of(
         new HistoryDto("id", new TisReferenceInfo(PROGRAMME_MEMBERSHIP, TIS_ID), MessageType.IN_APP,
-            E_PORTFOLIO, null, null, Instant.MIN, Instant.MAX, UNREAD, null));
+            notificationType, null, null, Instant.MIN, Instant.MAX, UNREAD, null));
 
     when(historyService.findAllForTrainee(PERSON_ID)).thenReturn(sentNotifications);
     when(notificationService.meetsCriteria(programmeMembership, true,
@@ -261,12 +348,13 @@ class ProgrammeMembershipServiceTest {
 
     service.addNotifications(programmeMembership);
 
-    verifyNoInteractions(inAppService);
+    verify(inAppService, never()).createNotifications(any(), any(), eq(notificationType), any(),
+        any());
   }
 
   @Test
-  void shouldAddDirectNotificationsIfNotExcluded() throws SchedulerException {
-    Curriculum theCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, "any specialty");
+  void shouldAddDirectNotificationsWhenNotExcluded() throws SchedulerException {
+    Curriculum theCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, "any specialty", false);
     ProgrammeMembership programmeMembership = new ProgrammeMembership();
     programmeMembership.setTisId(TIS_ID);
     programmeMembership.setPersonId(PERSON_ID);
@@ -318,7 +406,7 @@ class ProgrammeMembershipServiceTest {
 
   @Test
   void shouldNotScheduleSentNotifications() throws SchedulerException {
-    Curriculum theCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, "any specialty");
+    Curriculum theCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, "any specialty", false);
     ProgrammeMembership programmeMembership = new ProgrammeMembership();
     programmeMembership.setTisId(TIS_ID);
     programmeMembership.setPersonId(PERSON_ID);
@@ -381,7 +469,7 @@ class ProgrammeMembershipServiceTest {
       "uk.nhs.tis.trainee.notifications.MethodArgumentUtil#getNonProgrammeUpdateNotificationTypes")
   void shouldIgnoreNonPmUpdateSentNotifications(NotificationType notificationType)
       throws SchedulerException {
-    Curriculum theCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, "any specialty");
+    Curriculum theCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, "any specialty", false);
     ProgrammeMembership programmeMembership = new ProgrammeMembership();
     programmeMembership.setTisId(TIS_ID);
     programmeMembership.setPersonId(PERSON_ID);
@@ -408,7 +496,7 @@ class ProgrammeMembershipServiceTest {
 
   @Test
   void shouldIgnoreNonPmTypeSentNotifications() throws SchedulerException {
-    Curriculum theCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, "any specialty");
+    Curriculum theCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, "any specialty", false);
     ProgrammeMembership programmeMembership = new ProgrammeMembership();
     programmeMembership.setTisId(TIS_ID);
     programmeMembership.setPersonId(PERSON_ID);
@@ -435,7 +523,7 @@ class ProgrammeMembershipServiceTest {
 
   @Test
   void shouldIgnoreOtherPmUpdateSentNotifications() throws SchedulerException {
-    Curriculum theCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, "any specialty");
+    Curriculum theCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, "any specialty", false);
     ProgrammeMembership programmeMembership = new ProgrammeMembership();
     programmeMembership.setTisId(TIS_ID);
     programmeMembership.setPersonId(PERSON_ID);
@@ -464,7 +552,7 @@ class ProgrammeMembershipServiceTest {
   void shouldScheduleMostRecentMissedNotification() throws SchedulerException {
     LocalDate dateToday = LocalDate.now();
 
-    Curriculum theCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, "any specialty");
+    Curriculum theCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, "any specialty", false);
     ProgrammeMembership programmeMembership = new ProgrammeMembership();
     programmeMembership.setTisId(TIS_ID);
     programmeMembership.setPersonId(PERSON_ID);
@@ -493,7 +581,7 @@ class ProgrammeMembershipServiceTest {
   void shouldScheduleMostRecentMissedAndFutureNotifications() throws SchedulerException {
     LocalDate dateThreeWeeksTime = LocalDate.now().plusWeeks(3);
 
-    Curriculum theCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, "any specialty");
+    Curriculum theCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, "any specialty", false);
     ProgrammeMembership programmeMembership = new ProgrammeMembership();
     programmeMembership.setTisId(TIS_ID);
     programmeMembership.setPersonId(PERSON_ID);
@@ -512,9 +600,9 @@ class ProgrammeMembershipServiceTest {
   }
 
   @Test
-  void shouldNotScheduleFutureNotificationsIfAnyCloserToTheStartDateHaveBeenSent()
+  void shouldNotScheduleFutureNotificationsWhenAnyCloserToTheStartDateHaveBeenSent()
       throws SchedulerException {
-    Curriculum theCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, "any specialty");
+    Curriculum theCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, "any specialty", false);
     ProgrammeMembership programmeMembership = new ProgrammeMembership();
     programmeMembership.setTisId(TIS_ID);
     programmeMembership.setPersonId(PERSON_ID);
@@ -540,7 +628,7 @@ class ProgrammeMembershipServiceTest {
   @Test
   void shouldNotFailOnHistoryWithoutTisReferenceInfo()
       throws SchedulerException {
-    Curriculum theCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, "any specialty");
+    Curriculum theCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, "any specialty", false);
     ProgrammeMembership programmeMembership = new ProgrammeMembership();
     programmeMembership.setTisId(TIS_ID);
     programmeMembership.setPersonId(PERSON_ID);
@@ -565,7 +653,7 @@ class ProgrammeMembershipServiceTest {
 
   @Test
   void shouldIgnoreHistoryWithoutTisReferenceInfo() throws SchedulerException {
-    Curriculum theCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, "any specialty");
+    Curriculum theCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, "any specialty", false);
     ProgrammeMembership programmeMembership = new ProgrammeMembership();
     programmeMembership.setTisId(TIS_ID);
     programmeMembership.setPersonId(PERSON_ID);
@@ -592,7 +680,7 @@ class ProgrammeMembershipServiceTest {
 
   @Test
   void shouldRethrowSchedulerExceptions() throws SchedulerException {
-    Curriculum theCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, "any specialty");
+    Curriculum theCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, "any specialty", false);
     ProgrammeMembership programmeMembership = new ProgrammeMembership();
     programmeMembership.setTisId(TIS_ID);
     programmeMembership.setPersonId(PERSON_ID);
@@ -628,7 +716,7 @@ class ProgrammeMembershipServiceTest {
 
   @Test
   void shouldIgnoreMissingConditionsOfJoining() throws SchedulerException {
-    Curriculum theCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, "any specialty");
+    Curriculum theCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, "any specialty", false);
     ProgrammeMembership programmeMembership = new ProgrammeMembership();
     programmeMembership.setTisId(TIS_ID);
     programmeMembership.setPersonId(PERSON_ID);

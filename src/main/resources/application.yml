@@ -36,6 +36,8 @@ application:
       in-app: v1.0.0
     form-updated:
       email: v1.0.0
+    indemnity-insurance:
+      in-app: v1.0.0
     welcome:
       in-app: v1.0.0
   timezone: Europe/London
