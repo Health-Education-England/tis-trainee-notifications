@@ -38,13 +38,13 @@ import static uk.nhs.tis.trainee.notifications.model.HrefType.NON_HREF;
 import static uk.nhs.tis.trainee.notifications.model.HrefType.PROTOCOL_EMAIL;
 import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.SENT;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PLACEMENT_UPDATED_WEEK_12;
-import static uk.nhs.tis.trainee.notifications.service.PlacementService.CONTACT_FIELD;
-import static uk.nhs.tis.trainee.notifications.service.PlacementService.CONTACT_HREF_FIELD;
-import static uk.nhs.tis.trainee.notifications.service.PlacementService.CONTACT_TYPE_FIELD;
+import static uk.nhs.tis.trainee.notifications.service.NotificationService.CONTACT_FIELD;
+import static uk.nhs.tis.trainee.notifications.service.NotificationService.CONTACT_TYPE_FIELD;
+import static uk.nhs.tis.trainee.notifications.service.NotificationService.PERSON_ID_FIELD;
+import static uk.nhs.tis.trainee.notifications.service.NotificationService.TEMPLATE_CONTACT_HREF_FIELD;
+import static uk.nhs.tis.trainee.notifications.service.NotificationService.TEMPLATE_OWNER_CONTACT_FIELD;
+import static uk.nhs.tis.trainee.notifications.service.NotificationService.TEMPLATE_OWNER_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.PlacementService.DEFAULT_NO_CONTACT_MESSAGE;
-import static uk.nhs.tis.trainee.notifications.service.PlacementService.PERSON_ID_FIELD;
-import static uk.nhs.tis.trainee.notifications.service.PlacementService.PLACEMENT_OWNER_CONTACT_FIELD;
-import static uk.nhs.tis.trainee.notifications.service.PlacementService.PLACEMENT_OWNER_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.PlacementService.PLACEMENT_TYPE_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.PlacementService.START_DATE_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.PlacementService.TIS_ID_FIELD;
@@ -99,8 +99,7 @@ class PlacementServiceTest {
   void setUp() {
     historyService = mock(HistoryService.class);
     notificationService = mock(NotificationService.class);
-    restTemplate = mock(RestTemplate.class);
-    service = new PlacementService(historyService, notificationService, restTemplate, SERVICE_URL);
+    service = new PlacementService(historyService, notificationService);
   }
 
   @ParameterizedTest
@@ -142,7 +141,7 @@ class PlacementServiceTest {
     List<Map<String, String>> localOfficeContacts = new ArrayList<>();
     localOfficeContacts.add(Map.of("contact", OWNER_CONTACT));
     when(restTemplate.getForObject(SERVICE_URL, List.class,
-        Map.of(PLACEMENT_OWNER_FIELD, "North West"))).thenReturn(localOfficeContacts);
+        Map.of(TEMPLATE_OWNER_FIELD, "North West"))).thenReturn(localOfficeContacts);
 
     service.addNotifications(placement);
 
@@ -230,7 +229,7 @@ class PlacementServiceTest {
     assertThat("Unexpected start date.", jobDataMap.get(START_DATE_FIELD), is(START_DATE));
     assertThat("Unexpected placement type.", jobDataMap.get(PLACEMENT_TYPE_FIELD),
         is(IN_POST));
-    assertThat("Unexpected placement owner.", jobDataMap.get(PLACEMENT_OWNER_FIELD),
+    assertThat("Unexpected placement owner.", jobDataMap.get(TEMPLATE_OWNER_FIELD),
         is(OWNER));
 
     Date when = dateCaptor.getValue();
@@ -413,7 +412,7 @@ class PlacementServiceTest {
 
     JobDataMap jobDataMap = jobDataMapCaptor.getValue();
     assertThat("Unexpected local office contact.",
-        jobDataMap.get(PLACEMENT_OWNER_CONTACT_FIELD), is(DEFAULT_NO_CONTACT_MESSAGE));
+        jobDataMap.get(TEMPLATE_OWNER_CONTACT_FIELD), is(DEFAULT_NO_CONTACT_MESSAGE));
   }
 
   @Test
@@ -443,7 +442,7 @@ class PlacementServiceTest {
 
     JobDataMap jobDataMap = jobDataMapCaptor.getValue();
     assertThat("Unexpected local office contact.",
-        jobDataMap.get(PLACEMENT_OWNER_CONTACT_FIELD), is(DEFAULT_NO_CONTACT_MESSAGE));
+        jobDataMap.get(TEMPLATE_OWNER_CONTACT_FIELD), is(DEFAULT_NO_CONTACT_MESSAGE));
   }
 
   @Test
@@ -478,7 +477,7 @@ class PlacementServiceTest {
 
     JobDataMap jobDataMap = jobDataMapCaptor.getValue();
     assertThat("Unexpected local office contact.",
-        jobDataMap.get(PLACEMENT_OWNER_CONTACT_FIELD), is(DEFAULT_NO_CONTACT_MESSAGE));
+        jobDataMap.get(TEMPLATE_OWNER_CONTACT_FIELD), is(DEFAULT_NO_CONTACT_MESSAGE));
   }
 
   @Test
@@ -505,7 +504,7 @@ class PlacementServiceTest {
 
     JobDataMap jobDataMap = jobDataMapCaptor.getValue();
     assertThat("Unexpected local office contact.",
-        jobDataMap.get(PLACEMENT_OWNER_CONTACT_FIELD), is(DEFAULT_NO_CONTACT_MESSAGE));
+        jobDataMap.get(TEMPLATE_OWNER_CONTACT_FIELD), is(DEFAULT_NO_CONTACT_MESSAGE));
   }
 
   @Test
@@ -544,7 +543,7 @@ class PlacementServiceTest {
 
     JobDataMap jobDataMap = jobDataMapCaptor.getValue();
     assertThat("Unexpected local office contact.",
-        jobDataMap.get(PLACEMENT_OWNER_CONTACT_FIELD), is("correct contact"));
+        jobDataMap.get(TEMPLATE_OWNER_CONTACT_FIELD), is("correct contact"));
   }
 
   @Test
@@ -579,7 +578,7 @@ class PlacementServiceTest {
 
     JobDataMap jobDataMap = jobDataMapCaptor.getValue();
     assertThat("Unexpected contact href.",
-        jobDataMap.get(CONTACT_HREF_FIELD), is(PROTOCOL_EMAIL.getHrefTypeName()));
+        jobDataMap.get(TEMPLATE_CONTACT_HREF_FIELD), is(PROTOCOL_EMAIL.getHrefTypeName()));
   }
 
   @Test
@@ -614,7 +613,7 @@ class PlacementServiceTest {
 
     JobDataMap jobDataMap = jobDataMapCaptor.getValue();
     assertThat("Unexpected contact href.",
-        jobDataMap.get(CONTACT_HREF_FIELD), is(ABSOLUTE_URL.getHrefTypeName()));
+        jobDataMap.get(TEMPLATE_CONTACT_HREF_FIELD), is(ABSOLUTE_URL.getHrefTypeName()));
   }
 
   @Test
@@ -649,7 +648,7 @@ class PlacementServiceTest {
 
     JobDataMap jobDataMap = jobDataMapCaptor.getValue();
     assertThat("Unexpected contact href.",
-        jobDataMap.get(CONTACT_HREF_FIELD), is(NON_HREF.getHrefTypeName()));
+        jobDataMap.get(TEMPLATE_CONTACT_HREF_FIELD), is(NON_HREF.getHrefTypeName()));
   }
 
   @Test

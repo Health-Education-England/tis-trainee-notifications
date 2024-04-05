@@ -23,6 +23,12 @@ package uk.nhs.tis.trainee.notifications.service;
 
 import static uk.nhs.tis.trainee.notifications.model.MessageType.IN_APP;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.E_PORTFOLIO;
+import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_CREATED;
+import static uk.nhs.tis.trainee.notifications.service.NotificationService.PERSON_ID_FIELD;
+import static uk.nhs.tis.trainee.notifications.service.NotificationService.TEMPLATE_CONTACT_HREF_FIELD;
+import static uk.nhs.tis.trainee.notifications.service.NotificationService.TEMPLATE_NOTIFICATION_TYPE_FIELD;
+import static uk.nhs.tis.trainee.notifications.service.NotificationService.TEMPLATE_OWNER_CONTACT_FIELD;
+import static uk.nhs.tis.trainee.notifications.service.NotificationService.TEMPLATE_OWNER_FIELD;
 
 import java.time.Instant;
 import java.time.LocalDate;
@@ -41,6 +47,7 @@ import org.springframework.stereotype.Service;
 import uk.nhs.tis.trainee.notifications.dto.HistoryDto;
 import uk.nhs.tis.trainee.notifications.model.Curriculum;
 import uk.nhs.tis.trainee.notifications.model.History.TisReferenceInfo;
+import uk.nhs.tis.trainee.notifications.model.LocalOfficeContactType;
 import uk.nhs.tis.trainee.notifications.model.NotificationType;
 import uk.nhs.tis.trainee.notifications.model.ProgrammeMembership;
 import uk.nhs.tis.trainee.notifications.model.TisReferenceType;
@@ -54,10 +61,8 @@ import uk.nhs.tis.trainee.notifications.model.TisReferenceType;
 public class ProgrammeMembershipService {
 
   public static final String TIS_ID_FIELD = "tisId";
-  public static final String PERSON_ID_FIELD = "personId";
   public static final String PROGRAMME_NAME_FIELD = "programmeName";
   public static final String START_DATE_FIELD = "startDate";
-  public static final String NOTIFICATION_TYPE_FIELD = "notificationType";
   public static final String COJ_SYNCED_FIELD = "conditionsOfJoiningSyncedAt";
 
   private static final List<String> INCLUDE_CURRICULUM_SUBTYPES
@@ -174,36 +179,45 @@ public class ProgrammeMembershipService {
       Map<NotificationType, Instant> notificationsAlreadySent) throws SchedulerException {
     LocalDate startDate = programmeMembership.getStartDate();
 
-    for (NotificationType milestone : NotificationType.getProgrammeUpdateNotificationTypes()) {
-      boolean shouldSchedule = shouldScheduleNotification(startDate, milestone,
-          notificationsAlreadySent);
+    //only schedule programme created milestone notifications
+    NotificationType milestone = PROGRAMME_CREATED;
+    boolean shouldSchedule = shouldScheduleNotification(startDate, milestone,
+        notificationsAlreadySent);
 
-      if (shouldSchedule) {
-        log.info("Scheduling notification {} for {}.", milestone, programmeMembership.getTisId());
-        Integer daysBeforeStart = getNotificationDaysBeforeStart(milestone);
-        Date when = notificationService.getScheduleDate(startDate, daysBeforeStart);
+    if (shouldSchedule) {
+      log.info("Scheduling notification {} for {}.", milestone, programmeMembership.getTisId());
+      //default to send notification immediately
+      Date when = notificationService.getScheduleDate(LocalDate.now(), 1);
 
-        JobDataMap jobDataMap = new JobDataMap();
-        jobDataMap.put(TIS_ID_FIELD, programmeMembership.getTisId());
-        jobDataMap.put(PERSON_ID_FIELD, programmeMembership.getPersonId());
-        jobDataMap.put(PROGRAMME_NAME_FIELD, programmeMembership.getProgrammeName());
-        jobDataMap.put(START_DATE_FIELD, programmeMembership.getStartDate());
-        jobDataMap.put(NOTIFICATION_TYPE_FIELD, milestone);
-        if (programmeMembership.getConditionsOfJoining() != null) {
-          jobDataMap.put(COJ_SYNCED_FIELD,
-              programmeMembership.getConditionsOfJoining().syncedAt());
-        }
-        // Note the status of the trainee will be retrieved when the job is executed, as will
-        // their name and email address, not now.
-
-        String jobId = milestone + "-" + programmeMembership.getTisId();
-        try {
-          notificationService.scheduleNotification(jobId, jobDataMap, when);
-        } catch (SchedulerException e) {
-          log.error("Failed to schedule notification {}: {}", jobId, e.toString());
-          throw (e); //to allow message to be requeue-ed
-        }
+      JobDataMap jobDataMap = new JobDataMap();
+      jobDataMap.put(TIS_ID_FIELD, programmeMembership.getTisId());
+      jobDataMap.put(PERSON_ID_FIELD, programmeMembership.getPersonId());
+      jobDataMap.put(PROGRAMME_NAME_FIELD, programmeMembership.getProgrammeName());
+      jobDataMap.put(START_DATE_FIELD, programmeMembership.getStartDate());
+      if (programmeMembership.getConditionsOfJoining() != null) {
+        jobDataMap.put(COJ_SYNCED_FIELD,
+            programmeMembership.getConditionsOfJoining().syncedAt());
       }
+      jobDataMap.put(TEMPLATE_OWNER_FIELD, programmeMembership.getManagingDeanery());
+      String contact = notificationService.getOwnerContact(
+          programmeMembership.getManagingDeanery(), LocalOfficeContactType.ONBOARDING_SUPPORT,
+          LocalOfficeContactType.TSS_SUPPORT);
+      jobDataMap.put(TEMPLATE_OWNER_CONTACT_FIELD, contact);
+      jobDataMap.put(TEMPLATE_CONTACT_HREF_FIELD,
+          notificationService.getHrefTypeForContact(contact));
+
+      jobDataMap.put(TEMPLATE_NOTIFICATION_TYPE_FIELD, milestone);
+      // Note the status of the trainee will be retrieved when the job is executed, as will
+      // their name and email address, not now.
+
+      String jobId = milestone + "-" + programmeMembership.getTisId();
+      try {
+        notificationService.scheduleNotification(jobId, jobDataMap, when);
+      } catch (SchedulerException e) {
+        log.error("Failed to schedule notification {}: {}", jobId, e.toString());
+        throw (e); //to allow message to be requeue-ed
+      }
+
     }
   }
 
@@ -262,6 +276,10 @@ public class ProgrammeMembershipService {
     //do not resend any notification
     if (notificationsAlreadySent.containsKey(milestone)) {
       return false;
+    }
+
+    if (milestone == PROGRAMME_CREATED) {
+      return true; //immediately notify of a new programme membership
     }
 
     Integer daysBeforeStart = getNotificationDaysBeforeStart(milestone);

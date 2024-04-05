@@ -41,11 +41,11 @@ import static org.quartz.JobBuilder.newJob;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PLACEMENT_UPDATED_WEEK_12;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_UPDATED_WEEK_8;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.PAST_MILESTONE_SCHEDULE_DELAY_HOURS;
-import static uk.nhs.tis.trainee.notifications.service.PlacementService.PLACEMENT_OWNER_FIELD;
+import static uk.nhs.tis.trainee.notifications.service.NotificationService.PERSON_ID_FIELD;
+import static uk.nhs.tis.trainee.notifications.service.NotificationService.TEMPLATE_NOTIFICATION_TYPE_FIELD;
+import static uk.nhs.tis.trainee.notifications.service.NotificationService.TEMPLATE_OWNER_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.PlacementService.PLACEMENT_SPECIALTY_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.PlacementService.PLACEMENT_TYPE_FIELD;
-import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.NOTIFICATION_TYPE_FIELD;
-import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.PERSON_ID_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.PROGRAMME_NAME_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.START_DATE_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.TIS_ID_FIELD;
@@ -85,6 +85,7 @@ class NotificationServiceTest {
 
   private static final String TEMPLATE_VERSION = "template-version";
   private static final String SERVICE_URL = "the-url";
+  private static final String REFERENCE_URL = "reference-url";
   private static final String JOB_KEY_STRING = "job-key";
   private static final JobKey JOB_KEY = new JobKey(JOB_KEY_STRING);
   private static final String TIS_ID = "tis-id";
@@ -130,16 +131,17 @@ class NotificationServiceTest {
     programmeJobDataMap.put(TIS_ID_FIELD, TIS_ID);
     programmeJobDataMap.put(PERSON_ID_FIELD, PERSON_ID);
     programmeJobDataMap.put(PROGRAMME_NAME_FIELD, PROGRAMME_NAME);
-    programmeJobDataMap.put(NOTIFICATION_TYPE_FIELD, PM_NOTIFICATION_TYPE.toString());
+    programmeJobDataMap.put(TEMPLATE_OWNER_FIELD, LOCAL_OFFICE);
+    programmeJobDataMap.put(TEMPLATE_NOTIFICATION_TYPE_FIELD, PM_NOTIFICATION_TYPE.toString());
     programmeJobDataMap.put(START_DATE_FIELD, START_DATE);
 
     placementJobDataMap = new JobDataMap();
     placementJobDataMap.put(TIS_ID_FIELD, TIS_ID);
     placementJobDataMap.put(PERSON_ID_FIELD, PERSON_ID);
-    placementJobDataMap.put(NOTIFICATION_TYPE_FIELD, PLACEMENT_NOTIFICATION_TYPE.toString());
+    placementJobDataMap.put(TEMPLATE_NOTIFICATION_TYPE_FIELD, PLACEMENT_NOTIFICATION_TYPE.toString());
     placementJobDataMap.put(START_DATE_FIELD, START_DATE);
     placementJobDataMap.put(PLACEMENT_TYPE_FIELD, PLACEMENT_TYPE);
-    placementJobDataMap.put(PLACEMENT_OWNER_FIELD, LOCAL_OFFICE);
+    placementJobDataMap.put(TEMPLATE_OWNER_FIELD, LOCAL_OFFICE);
     placementJobDataMap.put(PLACEMENT_SPECIALTY_FIELD, PLACEMENT_SPECIALTY);
 
     programmeJobDetails = newJob(NotificationService.class)
@@ -149,7 +151,7 @@ class NotificationServiceTest {
 
     service = new NotificationService(emailService, restTemplate, scheduler,
         messagingControllerService,
-        TEMPLATE_VERSION, SERVICE_URL);
+        TEMPLATE_VERSION, SERVICE_URL, REFERENCE_URL);
   }
 
   @Test
@@ -215,8 +217,11 @@ class NotificationServiceTest {
     assertThrows(RuntimeException.class, () -> service.execute(jobExecutionContext));
   }
 
-  @Test
-  void shouldLogProgrammeMembershipEmailsNotSendThem() throws MessagingException {
+  @ParameterizedTest
+  @EnumSource(value = NotificationType.class,
+      names = {"PROGRAMME_UPDATED_WEEK_8", "PROGRAMME_UPDATED_WEEK_4",
+          "PROGRAMME_UPDATED_WEEK_1", "PROGRAMME_UPDATED_WEEK_0"})
+  void shouldLogProgrammeMembershipUpdatedEmailsNotSendThem() throws MessagingException {
     UserDetails userAccountDetails =
         new UserDetails(
             false, USER_EMAIL, USER_TITLE, USER_FAMILY_NAME, USER_GIVEN_NAME, USER_GMC);
@@ -282,14 +287,14 @@ class NotificationServiceTest {
   @ParameterizedTest
   @EnumSource(value = NotificationType.class, mode = Mode.EXCLUDE,
       names = {"PLACEMENT_UPDATED_WEEK_12", "PROGRAMME_UPDATED_WEEK_8", "PROGRAMME_UPDATED_WEEK_4",
-          "PROGRAMME_UPDATED_WEEK_1", "PROGRAMME_UPDATED_WEEK_0"})
+          "PROGRAMME_UPDATED_WEEK_1", "PROGRAMME_UPDATED_WEEK_0", "PROGRAMME_CREATED"})
   void shouldIgnoreNonProgrammeOrPlacementJobs(NotificationType notificationType)
       throws MessagingException {
     UserDetails userAccountDetails =
         new UserDetails(
             false, USER_EMAIL, USER_TITLE, USER_FAMILY_NAME, USER_GIVEN_NAME, USER_GMC);
 
-    programmeJobDetails.getJobDataMap().put(NOTIFICATION_TYPE_FIELD, notificationType);
+    programmeJobDetails.getJobDataMap().put(TEMPLATE_NOTIFICATION_TYPE_FIELD, notificationType);
     when(jobExecutionContext.getJobDetail()).thenReturn(programmeJobDetails);
     when(emailService.getRecipientAccount(PERSON_ID)).thenReturn(userAccountDetails);
     when(restTemplate.getForObject("the-url/api/trainee-profile/account-details/{tisId}",
@@ -366,7 +371,7 @@ class NotificationServiceTest {
         is(START_DATE));
     assertThat("Unexpected placement type.", expectedJobDataMap.get(PLACEMENT_TYPE_FIELD),
         is(PLACEMENT_TYPE));
-    assertThat("Unexpected local office.", expectedJobDataMap.get(PLACEMENT_OWNER_FIELD),
+    assertThat("Unexpected local office.", expectedJobDataMap.get(TEMPLATE_OWNER_FIELD),
         is(LOCAL_OFFICE));
     assertThat("Unexpected specialty.", expectedJobDataMap.get(PLACEMENT_SPECIALTY_FIELD),
         is(PLACEMENT_SPECIALTY));
