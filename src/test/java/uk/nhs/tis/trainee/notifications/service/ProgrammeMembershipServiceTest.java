@@ -32,7 +32,6 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -50,6 +49,7 @@ import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipServic
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -363,24 +363,17 @@ class ProgrammeMembershipServiceTest {
     programmeMembership.setCurricula(List.of(theCurriculum));
     programmeMembership.setConditionsOfJoining(new ConditionsOfJoining(Instant.MIN));
 
-    int jobsToSchedule = NotificationType.getProgrammeUpdateNotificationTypes().size();
-    NotificationType milestone = NotificationType.PROGRAMME_UPDATED_WEEK_0;
-    LocalDate expectedDate = START_DATE
-        .minusDays(service.getNotificationDaysBeforeStart(milestone));
-    Date expectedWhen = Date.from(expectedDate
-        .atStartOfDay()
-        .atZone(ZoneId.systemDefault())
-        .toInstant());
+    NotificationType milestone = NotificationType.PROGRAMME_CREATED;
+    Date expectedWhen = Date.from(Instant.now().plus(1, ChronoUnit.HOURS));
 
-    when(notificationService
-        .getScheduleDate(START_DATE, service.getNotificationDaysBeforeStart(milestone)))
+    when(notificationService.getScheduleDate(LocalDate.now(), 1))
         .thenReturn(expectedWhen);
     service.addNotifications(programmeMembership);
 
     ArgumentCaptor<String> stringCaptor = ArgumentCaptor.forClass(String.class);
     ArgumentCaptor<JobDataMap> jobDataMapCaptor = ArgumentCaptor.forClass(JobDataMap.class);
     ArgumentCaptor<Date> dateCaptor = ArgumentCaptor.forClass(Date.class);
-    verify(notificationService, times(jobsToSchedule)).scheduleNotification(
+    verify(notificationService).scheduleNotification(
         stringCaptor.capture(),
         jobDataMapCaptor.capture(),
         dateCaptor.capture()
@@ -405,7 +398,7 @@ class ProgrammeMembershipServiceTest {
   }
 
   @Test
-  void shouldNotScheduleSentNotifications() throws SchedulerException {
+  void shouldNotScheduleSentNotification() throws SchedulerException {
     Curriculum theCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, "any specialty", false);
     ProgrammeMembership programmeMembership = new ProgrammeMembership();
     programmeMembership.setTisId(TIS_ID);
@@ -418,50 +411,19 @@ class ProgrammeMembershipServiceTest {
     sentNotifications.add(new HistoryDto("id",
         new TisReferenceInfo(PROGRAMME_MEMBERSHIP, TIS_ID),
         MessageType.EMAIL,
-        NotificationType.PROGRAMME_UPDATED_WEEK_8, null,
+        NotificationType.PROGRAMME_CREATED, null,
         "email address",
         Instant.MIN, Instant.MAX, SENT, null));
 
-    NotificationType milestone = NotificationType.PROGRAMME_UPDATED_WEEK_0;
-    LocalDate expectedDate = START_DATE
-        .minusDays(service.getNotificationDaysBeforeStart(milestone));
-    Date expectedWhen = Date.from(expectedDate
-        .atStartOfDay()
-        .atZone(ZoneId.systemDefault())
-        .toInstant());
+    Date expectedWhen = Date.from(Instant.now().plus(1, ChronoUnit.HOURS));
 
     when(historyService.findAllForTrainee(PERSON_ID)).thenReturn(sentNotifications);
-    when(notificationService
-        .getScheduleDate(START_DATE, service.getNotificationDaysBeforeStart(milestone)))
+    when(notificationService.getScheduleDate(START_DATE, 1))
         .thenReturn(expectedWhen);
 
     service.addNotifications(programmeMembership);
 
-    int jobsToSchedule = NotificationType.getProgrammeUpdateNotificationTypes().size() - 1;
-    ArgumentCaptor<String> stringCaptor = ArgumentCaptor.forClass(String.class);
-    ArgumentCaptor<JobDataMap> jobDataMapCaptor = ArgumentCaptor.forClass(JobDataMap.class);
-    ArgumentCaptor<Date> dateCaptor = ArgumentCaptor.forClass(Date.class);
-    verify(notificationService, times(jobsToSchedule))
-        .scheduleNotification(
-            stringCaptor.capture(),
-            jobDataMapCaptor.capture(),
-            dateCaptor.capture()
-        );
-
-    //verify the details of the last job scheduled, i.e. the 0-week notification
-    String jobId = stringCaptor.getValue();
-    String expectedJobId = milestone + "-" + TIS_ID;
-    assertThat("Unexpected job id.", jobId, is(expectedJobId));
-
-    JobDataMap jobDataMap = jobDataMapCaptor.getValue();
-    assertThat("Unexpected tisId.", jobDataMap.get(TIS_ID_FIELD), is(TIS_ID));
-    assertThat("Unexpected personId.", jobDataMap.get(PERSON_ID_FIELD), is(PERSON_ID));
-    assertThat("Unexpected programme.", jobDataMap.get(PROGRAMME_NAME_FIELD),
-        is(PROGRAMME_NAME));
-    assertThat("Unexpected start date.", jobDataMap.get(START_DATE_FIELD), is(START_DATE));
-
-    Date when = dateCaptor.getValue();
-    assertThat("Unexpected start time", when, is(expectedWhen));
+    verify(notificationService, never()).scheduleNotification(any(), any(), any());
   }
 
   @ParameterizedTest
@@ -489,9 +451,7 @@ class ProgrammeMembershipServiceTest {
 
     service.addNotifications(programmeMembership);
 
-    verify(notificationService,
-        times(NotificationType.getProgrammeUpdateNotificationTypes().size()))
-        .scheduleNotification(any(), any(), any());
+    verify(notificationService).scheduleNotification(any(), any(), any());
   }
 
   @Test
@@ -506,9 +466,9 @@ class ProgrammeMembershipServiceTest {
 
     List<HistoryDto> sentNotifications = new ArrayList<>();
     sentNotifications.add(new HistoryDto("id",
-        new TisReferenceInfo(TisReferenceType.PLACEMENT, TIS_ID),
+        new TisReferenceInfo(TisReferenceType.PLACEMENT, TIS_ID), //note: placement type
         MessageType.EMAIL,
-        NotificationType.PROGRAMME_UPDATED_WEEK_8, null, //to avoid masking the test condition
+        NotificationType.PROGRAMME_CREATED, null, //to avoid masking the test condition
         "email address",
         Instant.MIN, Instant.MAX, SENT, null));
 
@@ -516,9 +476,7 @@ class ProgrammeMembershipServiceTest {
 
     service.addNotifications(programmeMembership);
 
-    verify(notificationService,
-        times(NotificationType.getProgrammeUpdateNotificationTypes().size()))
-        .scheduleNotification(any(), any(), any());
+    verify(notificationService).scheduleNotification(any(), any(), any());
   }
 
   @Test
@@ -535,7 +493,7 @@ class ProgrammeMembershipServiceTest {
     sentNotifications.add(new HistoryDto("id",
         new TisReferenceInfo(PROGRAMME_MEMBERSHIP, "another id"),
         MessageType.EMAIL,
-        NotificationType.PROGRAMME_UPDATED_WEEK_8, null,
+        NotificationType.PROGRAMME_CREATED, null,
         "email address",
         Instant.MIN, Instant.MAX, SENT, null));
 
@@ -543,9 +501,7 @@ class ProgrammeMembershipServiceTest {
 
     service.addNotifications(programmeMembership);
 
-    verify(notificationService,
-        times(NotificationType.getProgrammeUpdateNotificationTypes().size()))
-        .scheduleNotification(any(), any(), any());
+    verify(notificationService).scheduleNotification(any(), any(), any());
   }
 
   @Test
@@ -561,11 +517,11 @@ class ProgrammeMembershipServiceTest {
 
     Date dateLaterThan = Date.from(Instant.now());
     when(notificationService
-        .getScheduleDate(dateToday, 0))
+        .getScheduleDate(dateToday, 1))
         .thenReturn(dateLaterThan);
     service.addNotifications(programmeMembership);
 
-    //the zero-day notification should be scheduled, but no other missed notifications
+    //the notification should be scheduled immediately
     ArgumentCaptor<Date> dateCaptor = ArgumentCaptor.forClass(Date.class);
     verify(notificationService).scheduleNotification(
         any(),
@@ -575,54 +531,6 @@ class ProgrammeMembershipServiceTest {
 
     Date when = dateCaptor.getValue();
     assertThat("Unexpected start time", when, is(dateLaterThan));
-  }
-
-  @Test
-  void shouldScheduleMostRecentMissedAndFutureNotifications() throws SchedulerException {
-    LocalDate dateThreeWeeksTime = LocalDate.now().plusWeeks(3);
-
-    Curriculum theCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, "any specialty", false);
-    ProgrammeMembership programmeMembership = new ProgrammeMembership();
-    programmeMembership.setTisId(TIS_ID);
-    programmeMembership.setPersonId(PERSON_ID);
-    programmeMembership.setStartDate(dateThreeWeeksTime);
-    programmeMembership.setCurricula(List.of(theCurriculum));
-
-    service.addNotifications(programmeMembership);
-
-    //the 8-week notification should be omitted in favour of the 4-week one.
-    verify(notificationService, times(3))
-        .scheduleNotification(any(), any(), any());
-
-    verify(notificationService,
-        times(NotificationType.getProgrammeUpdateNotificationTypes().size()))
-        .removeNotification(any());
-  }
-
-  @Test
-  void shouldNotScheduleFutureNotificationsWhenAnyCloserToTheStartDateHaveBeenSent()
-      throws SchedulerException {
-    Curriculum theCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, "any specialty", false);
-    ProgrammeMembership programmeMembership = new ProgrammeMembership();
-    programmeMembership.setTisId(TIS_ID);
-    programmeMembership.setPersonId(PERSON_ID);
-    programmeMembership.setStartDate(START_DATE);
-    programmeMembership.setCurricula(List.of(theCurriculum));
-
-    List<HistoryDto> sentNotifications = new ArrayList<>();
-    sentNotifications.add(new HistoryDto("id",
-        new TisReferenceInfo(PROGRAMME_MEMBERSHIP, TIS_ID),
-        MessageType.EMAIL,
-        NotificationType.PROGRAMME_UPDATED_WEEK_0, null,
-        "email address",
-        Instant.MIN, Instant.MAX, SENT, null));
-
-    when(historyService.findAllForTrainee(PERSON_ID)).thenReturn(sentNotifications);
-
-    service.addNotifications(programmeMembership);
-
-    verify(notificationService, never()).scheduleNotification(any(), any(), any());
-    //since the 0-week notification has already been sent
   }
 
   @Test
@@ -639,7 +547,7 @@ class ProgrammeMembershipServiceTest {
     sentNotifications.add(new HistoryDto("id",
         null,
         MessageType.EMAIL,
-        NotificationType.PROGRAMME_UPDATED_WEEK_0, null,
+        NotificationType.PROGRAMME_CREATED, null,
         "email address",
         Instant.MIN, Instant.MAX, SENT, null));
 
@@ -665,7 +573,7 @@ class ProgrammeMembershipServiceTest {
     sentNotifications.add(new HistoryDto("id",
         null,
         MessageType.EMAIL,
-        NotificationType.PROGRAMME_UPDATED_WEEK_8, null,
+        NotificationType.PROGRAMME_CREATED, null,
         "email address",
         Instant.MIN, Instant.MAX, SENT, null));
 
@@ -673,9 +581,7 @@ class ProgrammeMembershipServiceTest {
 
     service.addNotifications(programmeMembership);
 
-    verify(notificationService,
-        times(NotificationType.getProgrammeUpdateNotificationTypes().size()))
-        .scheduleNotification(any(), any(), any());
+    verify(notificationService).scheduleNotification(any(), any(), any());
   }
 
   @Test
@@ -709,12 +615,6 @@ class ProgrammeMembershipServiceTest {
   }
 
   @Test
-  void shouldHandleUnknownNotificationTypesForNotificationDays() {
-    assertThat("Unexpected days before start.",
-        service.getNotificationDaysBeforeStart(NotificationType.COJ_CONFIRMATION), nullValue());
-  }
-
-  @Test
   void shouldIgnoreMissingConditionsOfJoining() throws SchedulerException {
     Curriculum theCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, "any specialty", false);
     ProgrammeMembership programmeMembership = new ProgrammeMembership();
@@ -726,14 +626,10 @@ class ProgrammeMembershipServiceTest {
 
     service.addNotifications(programmeMembership);
 
-    int jobsToSchedule = NotificationType.getProgrammeUpdateNotificationTypes().size();
-
     ArgumentCaptor<JobDataMap> jobDataMapCaptor = ArgumentCaptor.forClass(JobDataMap.class);
-    verify(notificationService, times(jobsToSchedule)).scheduleNotification(
-        any(), jobDataMapCaptor.capture(), any()
-    );
+    verify(notificationService).scheduleNotification(any(), jobDataMapCaptor.capture(), any());
 
-    //verify the details of the last job scheduled
+    //verify the details of the job scheduled
     JobDataMap jobDataMap = jobDataMapCaptor.getValue();
     assertThat("Unexpected CoJ synced at.", jobDataMap.get(COJ_SYNCED_FIELD),
         is(nullValue()));

@@ -100,6 +100,7 @@ public class NotificationService implements Job {
    */
   @Override
   public void execute(JobExecutionContext jobExecutionContext) {
+    boolean isActionableJob = false; //default to ignore jobs
     boolean actuallySendEmail = false; //default to logging email only
     String jobKey = jobExecutionContext.getJobDetail().getKey().toString();
     Map<String, String> result = new HashMap<>();
@@ -113,8 +114,10 @@ public class NotificationService implements Job {
     NotificationType notificationType =
         NotificationType.valueOf(jobDetails.get(NOTIFICATION_TYPE_FIELD).toString());
 
-    if (NotificationType.getProgrammeUpdateNotificationTypes().contains(notificationType)) {
+    //only consider sending programme-created mails; ignore the programme-updated-* notifications
+    if (notificationType == NotificationType.PROGRAMME_CREATED) {
 
+      isActionableJob = true;
       personId = jobDetails.getString(ProgrammeMembershipService.PERSON_ID_FIELD);
       jobName = jobDetails.getString(ProgrammeMembershipService.PROGRAMME_NAME_FIELD);
       startDate = (LocalDate) jobDetails.get(ProgrammeMembershipService.START_DATE_FIELD);
@@ -128,6 +131,7 @@ public class NotificationService implements Job {
 
     } else if (notificationType == NotificationType.PLACEMENT_UPDATED_WEEK_12) {
 
+      isActionableJob = true;
       personId = jobDetails.getString(PlacementService.PERSON_ID_FIELD);
       jobName = jobDetails.getString(PlacementService.PLACEMENT_TYPE_FIELD);
       startDate = (LocalDate) jobDetails.get(PlacementService.START_DATE_FIELD);
@@ -142,29 +146,31 @@ public class NotificationService implements Job {
     UserDetails userTraineeDetails = getTraineeDetails(personId);
     UserDetails userAccountDetails = mapUserDetails(userCognitoAccountDetails, userTraineeDetails);
 
-    if (userAccountDetails != null) {
-      jobDetails.putIfAbsent("isRegistered", userAccountDetails.isRegistered());
-      jobDetails.putIfAbsent("title", userAccountDetails.title());
-      jobDetails.putIfAbsent("familyName", userAccountDetails.familyName());
-      jobDetails.putIfAbsent("givenName", userAccountDetails.givenName());
-      jobDetails.putIfAbsent("email", userAccountDetails.email());
-      jobDetails.putIfAbsent("gmcNumber", userAccountDetails.gmcNumber());
+    if (isActionableJob) {
+      if (userAccountDetails != null) {
+        jobDetails.putIfAbsent("isRegistered", userAccountDetails.isRegistered());
+        jobDetails.putIfAbsent("title", userAccountDetails.title());
+        jobDetails.putIfAbsent("familyName", userAccountDetails.familyName());
+        jobDetails.putIfAbsent("givenName", userAccountDetails.givenName());
+        jobDetails.putIfAbsent("email", userAccountDetails.email());
+        jobDetails.putIfAbsent("gmcNumber", userAccountDetails.gmcNumber());
 
-      try {
-        emailService.sendMessage(personId, userAccountDetails.email(), notificationType,
-            templateVersion, jobDetails.getWrappedMap(), tisReferenceInfo, !actuallySendEmail);
-      } catch (MessagingException e) {
-        throw new RuntimeException(e);
+        try {
+          emailService.sendMessage(personId, userAccountDetails.email(), notificationType,
+              templateVersion, jobDetails.getWrappedMap(), tisReferenceInfo, !actuallySendEmail);
+        } catch (MessagingException e) {
+          throw new RuntimeException(e);
+        }
+
+        log.info("Sent {} notification for {} ({}, starting {}) to {} using template {}", jobKey,
+            jobDetails.getString(TIS_ID_FIELD), jobName, startDate, userAccountDetails.email(),
+            templateVersion);
+        Instant processedOn = Instant.now();
+        result.put("status", "sent " + processedOn.toString());
+        jobExecutionContext.setResult(result);
+      } else {
+        log.info("No notification could be sent, no TSS details found for tisId {}", personId);
       }
-
-      log.info("Sent {} notification for {} ({}, starting {}) to {} using template {}", jobKey,
-          jobDetails.getString(TIS_ID_FIELD), jobName, startDate, userAccountDetails.email(),
-          templateVersion);
-      Instant processedOn = Instant.now();
-      result.put("status", "sent " + processedOn.toString());
-      jobExecutionContext.setResult(result);
-    } else {
-      log.info("No notification could be sent, no TSS details found for tisId {}", personId);
     }
   }
 
