@@ -58,8 +58,6 @@ public class PlacementService {
   public static final List<String> PLACEMENT_TYPES_TO_ACT_ON
       = List.of("In post", "In post - Acting up", "In Post - Extension");
 
-  protected static final String DEFAULT_NO_CONTACT_MESSAGE = "your local deanery office";
-
   private final HistoryService historyService;
   private final NotificationService notificationService;
 

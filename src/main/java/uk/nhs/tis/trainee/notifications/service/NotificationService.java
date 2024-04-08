@@ -72,8 +72,8 @@ public class NotificationService implements Job {
   public static final String API_TRAINEE_DETAILS = "/api/trainee-profile/account-details/{tisId}";
   public static final String API_GET_OWNER_CONTACT =
       "/api/local-office-contact-by-lo-name/{localOfficeName}";
-  protected static final String DEFAULT_NO_ONBOARDING_CONTACT_MESSAGE
-      = "your local deanery office for information on onboarding support";
+  protected static final String DEFAULT_NO_CONTACT_MESSAGE
+      = "your local deanery office";
   private static final String TRIGGER_ID_PREFIX = "trigger-";
   protected static final Integer PAST_MILESTONE_SCHEDULE_DELAY_HOURS = 1;
   public static final String TEMPLATE_NOTIFICATION_TYPE_FIELD = "notificationType";
@@ -127,14 +127,15 @@ public class NotificationService implements Job {
    */
   @Override
   public void execute(JobExecutionContext jobExecutionContext) {
+    boolean isActionableJob = false; //default to ignore jobs
     boolean actuallySendEmail = false; //default to logging email only
+    String jobName = "";
     String jobKey = jobExecutionContext.getJobDetail().getKey().toString();
     Map<String, String> result = new HashMap<>();
     JobDataMap jobDetails = jobExecutionContext.getJobDetail().getJobDataMap();
 
     // get job details according to notification type
     String personId = jobDetails.getString(PERSON_ID_FIELD);
-    String jobName = "";
     TisReferenceInfo tisReferenceInfo = null;
     LocalDate startDate = null;
     NotificationType notificationType =
@@ -162,6 +163,7 @@ public class NotificationService implements Job {
     //only consider sending programme-created mails; ignore the programme-updated-* notifications
     if (notificationType == NotificationType.PROGRAMME_CREATED) {
 
+      isActionableJob = true;
       jobName = jobDetails.getString(ProgrammeMembershipService.PROGRAMME_NAME_FIELD);
       startDate = (LocalDate) jobDetails.get(ProgrammeMembershipService.START_DATE_FIELD);
       tisReferenceInfo = new TisReferenceInfo(PROGRAMME_MEMBERSHIP,
@@ -174,6 +176,7 @@ public class NotificationService implements Job {
 
     } else if (notificationType == NotificationType.PLACEMENT_UPDATED_WEEK_12) {
 
+      isActionableJob = true;
       jobName = jobDetails.getString(PlacementService.PLACEMENT_TYPE_FIELD);
       startDate = (LocalDate) jobDetails.get(PlacementService.START_DATE_FIELD);
       tisReferenceInfo = new TisReferenceInfo(PLACEMENT,
@@ -183,22 +186,24 @@ public class NotificationService implements Job {
           && messagingControllerService.isPlacementInPilot2024(personId, tisReferenceInfo.id());
     }
 
-    if (userAccountDetails != null) {
-      try {
-        emailService.sendMessage(personId, userAccountDetails.email(), notificationType,
-            templateVersion, jobDetails.getWrappedMap(), tisReferenceInfo, !actuallySendEmail);
-      } catch (MessagingException e) {
-        throw new RuntimeException(e);
-      }
+    if (isActionableJob) {
+      if (userAccountDetails != null) {
+        try {
+          emailService.sendMessage(personId, userAccountDetails.email(), notificationType,
+              templateVersion, jobDetails.getWrappedMap(), tisReferenceInfo, !actuallySendEmail);
+        } catch (MessagingException e) {
+          throw new RuntimeException(e);
+        }
 
-      log.info("Sent {} notification for {} ({}, starting {}) to {} using template {}", jobKey,
-          jobDetails.getString(TIS_ID_FIELD), jobName, startDate, userAccountDetails.email(),
-          templateVersion);
-      Instant processedOn = Instant.now();
-      result.put("status", "sent " + processedOn.toString());
-      jobExecutionContext.setResult(result);
-    } else {
-      log.info("No notification could be sent, no TSS details found for tisId {}", personId);
+        log.info("Sent {} notification for {} ({}, starting {}) to {} using template {}", jobKey,
+            jobDetails.getString(TIS_ID_FIELD), jobName, startDate, userAccountDetails.email(),
+            templateVersion);
+        Instant processedOn = Instant.now();
+        result.put("status", "sent " + processedOn.toString());
+        jobExecutionContext.setResult(result);
+      } else {
+        log.info("No notification could be sent, no TSS details found for tisId {}", personId);
+      }
     }
   }
 
@@ -258,7 +263,7 @@ public class NotificationService implements Job {
       // 'Missed' milestones: schedule to be sent soon, but not immediately
       // in case of human editing 'jitter'.
       milestone = Date.from(Instant.now()
-          .plus(PAST_MILESTONE_SCHEDULE_DELAY_HOURS, ChronoUnit.MINUTES));
+          .plus(PAST_MILESTONE_SCHEDULE_DELAY_HOURS, ChronoUnit.HOURS));
     } else {
       // Future milestone.
       milestone = Date.from(milestoneDate
@@ -413,7 +418,7 @@ public class NotificationService implements Job {
                 .findFirst();
           }
           return ownerContact.map(oc -> oc.get(CONTACT_FIELD))
-              .orElse(DEFAULT_NO_ONBOARDING_CONTACT_MESSAGE);
+              .orElse(DEFAULT_NO_CONTACT_MESSAGE);
         } else {
           log.warn("Null response when requesting reference local-office-contact-by-lo-name '{}'",
               localOfficeName);
@@ -424,7 +429,7 @@ public class NotificationService implements Job {
       }
     }
     //no matched owner, or other problems retrieving contact
-    return DEFAULT_NO_ONBOARDING_CONTACT_MESSAGE;
+    return DEFAULT_NO_CONTACT_MESSAGE;
   }
 
   /**

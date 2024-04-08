@@ -33,18 +33,16 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-import static uk.nhs.tis.trainee.notifications.model.HrefType.ABSOLUTE_URL;
-import static uk.nhs.tis.trainee.notifications.model.HrefType.NON_HREF;
 import static uk.nhs.tis.trainee.notifications.model.HrefType.PROTOCOL_EMAIL;
 import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.SENT;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PLACEMENT_UPDATED_WEEK_12;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.CONTACT_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.CONTACT_TYPE_FIELD;
+import static uk.nhs.tis.trainee.notifications.service.NotificationService.DEFAULT_NO_CONTACT_MESSAGE;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.PERSON_ID_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.TEMPLATE_CONTACT_HREF_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.TEMPLATE_OWNER_CONTACT_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.TEMPLATE_OWNER_FIELD;
-import static uk.nhs.tis.trainee.notifications.service.PlacementService.DEFAULT_NO_CONTACT_MESSAGE;
 import static uk.nhs.tis.trainee.notifications.service.PlacementService.PLACEMENT_TYPE_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.PlacementService.START_DATE_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.PlacementService.TIS_ID_FIELD;
@@ -445,67 +443,7 @@ class PlacementServiceTest {
         jobDataMap.get(TEMPLATE_OWNER_CONTACT_FIELD), is(DEFAULT_NO_CONTACT_MESSAGE));
   }
 
-  @Test
-  void shouldUseDefaultLocalOfficeContactIfNoContactOfCorrectType()
-      throws SchedulerException {
-    Placement placement = new Placement();
-    placement.setTisId(TIS_ID);
-    placement.setPersonId(PERSON_ID);
-    placement.setStartDate(START_DATE);
-    placement.setOwner(OWNER);
-    placement.setPlacementType(IN_POST);
 
-    when(historyService.findAllForTrainee(PERSON_ID)).thenReturn(new ArrayList<>());
-
-    List<Map<String, String>> contacts = new ArrayList<>();
-    Map<String, String> contact1 = new HashMap<>();
-    contact1.put(CONTACT_TYPE_FIELD, "some other contact type");
-    contact1.put(CONTACT_FIELD, "incorrect contact");
-    contacts.add(contact1);
-
-    when(restTemplate.getForObject(any(), any(), anyMap())).thenReturn(contacts);
-
-    ArgumentCaptor<JobDataMap> jobDataMapCaptor = ArgumentCaptor.forClass(JobDataMap.class);
-
-    service.addNotifications(placement);
-
-    verify(notificationService).scheduleNotification(
-        any(),
-        jobDataMapCaptor.capture(),
-        any()
-    );
-
-    JobDataMap jobDataMap = jobDataMapCaptor.getValue();
-    assertThat("Unexpected local office contact.",
-        jobDataMap.get(TEMPLATE_OWNER_CONTACT_FIELD), is(DEFAULT_NO_CONTACT_MESSAGE));
-  }
-
-  @Test
-  void shouldUseDefaultLocalOfficeContactIfNoLocalOffice()
-      throws SchedulerException {
-    Placement placement = new Placement();
-    placement.setTisId(TIS_ID);
-    placement.setPersonId(PERSON_ID);
-    placement.setStartDate(START_DATE);
-    placement.setOwner(null);
-    placement.setPlacementType(IN_POST);
-
-    when(historyService.findAllForTrainee(PERSON_ID)).thenReturn(new ArrayList<>());
-
-    ArgumentCaptor<JobDataMap> jobDataMapCaptor = ArgumentCaptor.forClass(JobDataMap.class);
-
-    service.addNotifications(placement);
-
-    verify(notificationService).scheduleNotification(
-        any(),
-        jobDataMapCaptor.capture(),
-        any()
-    );
-
-    JobDataMap jobDataMap = jobDataMapCaptor.getValue();
-    assertThat("Unexpected local office contact.",
-        jobDataMap.get(TEMPLATE_OWNER_CONTACT_FIELD), is(DEFAULT_NO_CONTACT_MESSAGE));
-  }
 
   @Test
   void shouldUseTssSupportLocalOfficeContactIfAvailable()
@@ -581,75 +519,7 @@ class PlacementServiceTest {
         jobDataMap.get(TEMPLATE_CONTACT_HREF_FIELD), is(PROTOCOL_EMAIL.getHrefTypeName()));
   }
 
-  @Test
-  void shouldIncludeBlankHrefForUrlContact()
-      throws SchedulerException {
-    Placement placement = new Placement();
-    placement.setTisId(TIS_ID);
-    placement.setPersonId(PERSON_ID);
-    placement.setStartDate(START_DATE);
-    placement.setOwner(OWNER);
-    placement.setPlacementType(IN_POST);
 
-    when(historyService.findAllForTrainee(PERSON_ID)).thenReturn(new ArrayList<>());
-
-    List<Map<String, String>> contacts = new ArrayList<>();
-    Map<String, String> contact1 = new HashMap<>();
-    contact1.put(CONTACT_TYPE_FIELD, LocalOfficeContactType.TSS_SUPPORT.getContactTypeName());
-    contact1.put(CONTACT_FIELD, "https://a.validwebsite.com");
-    contacts.add(contact1);
-
-    when(restTemplate.getForObject(any(), any(), anyMap())).thenReturn(contacts);
-
-    ArgumentCaptor<JobDataMap> jobDataMapCaptor = ArgumentCaptor.forClass(JobDataMap.class);
-
-    service.addNotifications(placement);
-
-    verify(notificationService).scheduleNotification(
-        any(),
-        jobDataMapCaptor.capture(),
-        any()
-    );
-
-    JobDataMap jobDataMap = jobDataMapCaptor.getValue();
-    assertThat("Unexpected contact href.",
-        jobDataMap.get(TEMPLATE_CONTACT_HREF_FIELD), is(ABSOLUTE_URL.getHrefTypeName()));
-  }
-
-  @Test
-  void shouldIncludeNonHrefForNonEmailNonUrlContact()
-      throws SchedulerException {
-    Placement placement = new Placement();
-    placement.setTisId(TIS_ID);
-    placement.setPersonId(PERSON_ID);
-    placement.setStartDate(START_DATE);
-    placement.setOwner(OWNER);
-    placement.setPlacementType(IN_POST);
-
-    when(historyService.findAllForTrainee(PERSON_ID)).thenReturn(new ArrayList<>());
-
-    List<Map<String, String>> contacts = new ArrayList<>();
-    Map<String, String> contact1 = new HashMap<>();
-    contact1.put(CONTACT_TYPE_FIELD, LocalOfficeContactType.TSS_SUPPORT.getContactTypeName());
-    contact1.put(CONTACT_FIELD, "one@email.com, another@email.com");
-    contacts.add(contact1);
-
-    when(restTemplate.getForObject(any(), any(), anyMap())).thenReturn(contacts);
-
-    ArgumentCaptor<JobDataMap> jobDataMapCaptor = ArgumentCaptor.forClass(JobDataMap.class);
-
-    service.addNotifications(placement);
-
-    verify(notificationService).scheduleNotification(
-        any(),
-        jobDataMapCaptor.capture(),
-        any()
-    );
-
-    JobDataMap jobDataMap = jobDataMapCaptor.getValue();
-    assertThat("Unexpected contact href.",
-        jobDataMap.get(TEMPLATE_CONTACT_HREF_FIELD), is(NON_HREF.getHrefTypeName()));
-  }
 
   @Test
   void shouldIgnoreHistoryWithoutTisReferenceInfo() throws SchedulerException {
