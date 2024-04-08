@@ -38,6 +38,7 @@ import static org.mockito.Mockito.when;
 import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.SENT;
 import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.UNREAD;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.INDEMNITY_INSURANCE;
+import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_CREATED;
 import static uk.nhs.tis.trainee.notifications.model.TisReferenceType.PROGRAMME_MEMBERSHIP;
 import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.BLOCK_INDEMNITY_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.COJ_SYNCED_FIELD;
@@ -48,7 +49,6 @@ import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipServic
 
 import java.time.Instant;
 import java.time.LocalDate;
-import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Date;
@@ -363,7 +363,6 @@ class ProgrammeMembershipServiceTest {
     programmeMembership.setCurricula(List.of(theCurriculum));
     programmeMembership.setConditionsOfJoining(new ConditionsOfJoining(Instant.MIN));
 
-    NotificationType milestone = NotificationType.PROGRAMME_CREATED;
     Date expectedWhen = Date.from(Instant.now().plus(1, ChronoUnit.HOURS));
 
     when(notificationService.getScheduleDate(LocalDate.now(), 1))
@@ -379,9 +378,9 @@ class ProgrammeMembershipServiceTest {
         dateCaptor.capture()
     );
 
-    //verify the details of the last notification added
+    //verify the details of the notification added
     String jobId = stringCaptor.getValue();
-    String expectedJobId = milestone + "-" + TIS_ID;
+    String expectedJobId = PROGRAMME_CREATED + "-" + TIS_ID;
     assertThat("Unexpected job id.", jobId, is(expectedJobId));
 
     JobDataMap jobDataMap = jobDataMapCaptor.getValue();
@@ -411,7 +410,7 @@ class ProgrammeMembershipServiceTest {
     sentNotifications.add(new HistoryDto("id",
         new TisReferenceInfo(PROGRAMME_MEMBERSHIP, TIS_ID),
         MessageType.EMAIL,
-        NotificationType.PROGRAMME_CREATED, null,
+        PROGRAMME_CREATED, null,
         "email address",
         Instant.MIN, Instant.MAX, SENT, null));
 
@@ -427,9 +426,9 @@ class ProgrammeMembershipServiceTest {
   }
 
   @ParameterizedTest
-  @MethodSource(
-      "uk.nhs.tis.trainee.notifications.MethodArgumentUtil#getNonProgrammeUpdateNotificationTypes")
-  void shouldIgnoreNonPmUpdateSentNotifications(NotificationType notificationType)
+  @EnumSource(value = NotificationType.class, mode = Mode.EXCLUDE,
+      names = {"PROGRAMME_CREATED", "PLACEMENT_UPDATED_WEEK_12"})
+  void shouldIgnoreNonPmCreatedSentNotifications(NotificationType notificationType)
       throws SchedulerException {
     Curriculum theCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, "any specialty", false);
     ProgrammeMembership programmeMembership = new ProgrammeMembership();
@@ -468,7 +467,7 @@ class ProgrammeMembershipServiceTest {
     sentNotifications.add(new HistoryDto("id",
         new TisReferenceInfo(TisReferenceType.PLACEMENT, TIS_ID), //note: placement type
         MessageType.EMAIL,
-        NotificationType.PROGRAMME_CREATED, null, //to avoid masking the test condition
+        PROGRAMME_CREATED, null, //to avoid masking the test condition
         "email address",
         Instant.MIN, Instant.MAX, SENT, null));
 
@@ -493,7 +492,7 @@ class ProgrammeMembershipServiceTest {
     sentNotifications.add(new HistoryDto("id",
         new TisReferenceInfo(PROGRAMME_MEMBERSHIP, "another id"),
         MessageType.EMAIL,
-        NotificationType.PROGRAMME_CREATED, null,
+        PROGRAMME_CREATED, null,
         "email address",
         Instant.MIN, Instant.MAX, SENT, null));
 
@@ -505,7 +504,7 @@ class ProgrammeMembershipServiceTest {
   }
 
   @Test
-  void shouldScheduleMostRecentMissedNotification() throws SchedulerException {
+  void shouldScheduleMissedNotification() throws SchedulerException {
     LocalDate dateToday = LocalDate.now();
 
     Curriculum theCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, "any specialty", false);
@@ -547,7 +546,7 @@ class ProgrammeMembershipServiceTest {
     sentNotifications.add(new HistoryDto("id",
         null,
         MessageType.EMAIL,
-        NotificationType.PROGRAMME_CREATED, null,
+        PROGRAMME_CREATED, null,
         "email address",
         Instant.MIN, Instant.MAX, SENT, null));
 
@@ -573,7 +572,7 @@ class ProgrammeMembershipServiceTest {
     sentNotifications.add(new HistoryDto("id",
         null,
         MessageType.EMAIL,
-        NotificationType.PROGRAMME_CREATED, null,
+        PROGRAMME_CREATED, null,
         "email address",
         Instant.MIN, Instant.MAX, SENT, null));
 
