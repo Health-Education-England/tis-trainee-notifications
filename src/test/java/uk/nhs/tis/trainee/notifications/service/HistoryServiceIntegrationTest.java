@@ -24,10 +24,12 @@ package uk.nhs.tis.trainee.notifications.service;
 import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.springframework.test.annotation.DirtiesContext.ClassMode.AFTER_EACH_TEST_METHOD;
 import static uk.nhs.tis.trainee.notifications.model.MessageType.EMAIL;
 import static uk.nhs.tis.trainee.notifications.model.MessageType.IN_APP;
 import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.SENT;
+import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.UNREAD;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.FORM_UPDATED;
 
 import java.time.Duration;
@@ -41,8 +43,6 @@ import org.bson.types.ObjectId;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
-import org.jsoup.nodes.Node;
-import org.jsoup.nodes.TextNode;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -319,7 +319,7 @@ class HistoryServiceIntegrationTest {
     TisReferenceInfo tisReferenceInfo = new TisReferenceInfo(TIS_REFERENCE_TYPE, TIS_REFERENCE_ID);
 
     History history = new History(NOTIFICATION_ID, tisReferenceInfo, notificationType,
-        recipientInfo, templateInfo, Instant.now(), Instant.now(), SENT, null);
+        recipientInfo, templateInfo, Instant.now(), Instant.now(), UNREAD, null);
     service.save(history);
 
     Optional<String> message = service.rebuildMessage(TRAINEE_ID, NOTIFICATION_ID.toString());
@@ -329,9 +329,9 @@ class HistoryServiceIntegrationTest {
     Document content = Jsoup.parse(message.get());
     Element body = content.body();
 
-    assertThat("Unexpected child count.", body.childNodeSize(), is(1));
+    assertThat("Unexpected child count.", body.childNodeSize(), greaterThanOrEqualTo(1));
 
-    Node contentNode = body.childNode(0);
-    assertThat("Unexpected node type.", contentNode, instanceOf(TextNode.class));
+    body.children().forEach(
+        contentNode -> assertThat("Unexpected node type.", contentNode.tagName(), is("p")));
   }
 }

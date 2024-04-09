@@ -9,12 +9,28 @@
     <h2>Subject</h2>
     <th:block th:fragment="subject">Indemnity Insurance for Speciality</th:block>
     <h2>Content</h2>
-    <th:block th:fragment="content">Indemnity Insurance for Speciality
-
-This notification pertains to the following programme <th:block th:text="${not #strings.isEmpty(programmeName)} ? ${programmeName} : _">(programme name missing)</th:block> starting on <th:block th:text="${startDate} ? |${#temporals.format(startDate, 'dd MMMM yyyy')}| : _">(start date missing)</th:block>.
-
-Please note that although indemnity cover is provided to postgraduate doctors by your host Trust this does not cover any work outside your agreed training programme. For any work undertaken outside your training programme you must ensure that you purchase additional cover.
-<th:block th:if="${hasBlockIndemnity}">
-The specialty you are training in is covered by a Block indemnity scheme.  You will be contacted separately about this ahead of your programme start date. Please look out for this email and respond as appropriate.</th:block></th:block>
+    <th:block th:fragment="content">
+      <p>
+        This notification pertains to the following programme
+        <th:block th:text="${not #strings.isEmpty(programmeName)} ? ${programmeName} : _"
+          >(programme name missing)</th:block
+        >
+        starting on
+        <th:block th:text="${startDate} ? |${#temporals.format(startDate, 'dd MMMM yyyy')}| : _"
+          >(start date missing)</th:block
+        >.
+      </p>
+      <p>
+        Please note that although indemnity cover is provided to postgraduate doctors by your host
+        Trust this does not cover any work outside your agreed training programme. For any work
+        undertaken outside your training programme you must ensure that you purchase additional
+        cover.
+      </p>
+      <p th:if="${hasBlockIndemnity}">
+        The specialty you are training in is covered by a Block indemnity scheme. You will be
+        contacted separately about this ahead of your programme start date. Please look out for this
+        email and respond as appropriate.
+      </p>
+    </th:block>
   </body>
 </html>
