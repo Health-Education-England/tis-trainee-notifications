@@ -37,6 +37,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
@@ -82,6 +83,7 @@ public class NotificationService implements Job {
   public static final String TEMPLATE_OWNER_CONTACT_FIELD = "localOfficeContact";
   public static final String TEMPLATE_CONTACT_HREF_FIELD = "contactHref";
   public static final String TEMPLATE_OWNER_FIELD = "localOfficeName";
+  public static final String TEMPLATE_OWNER_WEBSITE_FIELD = "localOfficeWebsite";
   public static final String PERSON_ID_FIELD = "personId";
   public static final String OWNER_FIELD = "localOfficeName";
   public static final String CONTACT_TYPE_FIELD = "contactTypeName";
@@ -157,10 +159,14 @@ public class NotificationService implements Job {
     }
 
     String owner = jobDetails.getString(TEMPLATE_OWNER_FIELD);
-    String contact = getOwnerContact(owner, LocalOfficeContactType.ONBOARDING_SUPPORT,
+    List<Map<String, String>> ownerContactList = getOwnerContactList(owner);
+    String contact = getOwnerContact(ownerContactList, LocalOfficeContactType.ONBOARDING_SUPPORT,
         LocalOfficeContactType.TSS_SUPPORT);
     jobDetails.putIfAbsent(TEMPLATE_OWNER_CONTACT_FIELD, contact);
     jobDetails.putIfAbsent(TEMPLATE_CONTACT_HREF_FIELD, getHrefTypeForContact(contact));
+    String website = getOwnerContact(ownerContactList, LocalOfficeContactType.LOCAL_OFFICE_WEBSITE,
+        null);
+    jobDetails.putIfAbsent(TEMPLATE_OWNER_WEBSITE_FIELD, website);
 
     NotificationType notificationType =
         NotificationType.valueOf(jobDetails.get(TEMPLATE_NOTIFICATION_TYPE_FIELD).toString());
@@ -269,7 +275,7 @@ public class NotificationService implements Job {
       // 'Missed' milestones: schedule to be sent soon, but not immediately
       // in case of human editing 'jitter'.
       milestone = Date.from(Instant.now()
-          .plus(PAST_MILESTONE_SCHEDULE_DELAY_HOURS, ChronoUnit.HOURS));
+          .plus(PAST_MILESTONE_SCHEDULE_DELAY_HOURS, ChronoUnit.MINUTES));
     } else {
       // Future milestone.
       milestone = Date.from(milestoneDate
@@ -395,47 +401,52 @@ public class NotificationService implements Job {
   }
 
   /**
-   * Get owner contact from Trainee Reference Service.
+   * Retrieve the full list of contacts for a local office from Trainee Reference Service.
    *
-   * @param localOfficeName     The owner name to search for.
-   * @param contactType         The contact type to return.
-   * @param fallbackContactType if the contactType is not available, return this contactType
-   *                            instead.
-   * @return The specific contact of the owner, or a default message if not found.
+   * @param localOfficeName The local office name.
+   * @return The list of contacts, or an empty list if there is an error.
    */
-  public String getOwnerContact(String localOfficeName, LocalOfficeContactType contactType,
-      LocalOfficeContactType fallbackContactType) {
+  protected List<Map<String, String>> getOwnerContactList(String localOfficeName) {
     if (localOfficeName != null) {
       try {
         @SuppressWarnings("unchecked")
         List<Map<String, String>> ownerContactList
             = restTemplate.getForObject(referenceUrl + API_GET_OWNER_CONTACT,
             List.class, Map.of(OWNER_FIELD, localOfficeName));
-        if (ownerContactList != null) {
-          Optional<Map<String, String>> ownerContact = ownerContactList.stream()
-              .filter(c ->
-                  c.get(CONTACT_TYPE_FIELD).equalsIgnoreCase(contactType.getContactTypeName()))
-              .findFirst();
-          if (ownerContact.isEmpty()) {
-            ownerContact = ownerContactList.stream()
-                .filter(c ->
-                    c.get(CONTACT_TYPE_FIELD)
-                        .equalsIgnoreCase(fallbackContactType.getContactTypeName()))
-                .findFirst();
-          }
-          return ownerContact.map(oc -> oc.get(CONTACT_FIELD))
-              .orElse(DEFAULT_NO_CONTACT_MESSAGE);
-        } else {
-          log.warn("Null response when requesting reference local-office-contact-by-lo-name '{}'",
-              localOfficeName);
-        }
+        return ownerContactList == null? new ArrayList<>() : ownerContactList;
       } catch (RestClientException rce) {
         log.warn("Exception occurred when requesting reference local-office-contact-by-lo-name "
             + "endpoint: " + rce);
       }
     }
-    //no matched owner, or other problems retrieving contact
-    return DEFAULT_NO_CONTACT_MESSAGE;
+    return new ArrayList<>();
+  }
+
+  /**
+   * Get specified owner contact from a list of contacts.
+   *
+   * @param ownerContactList    The owner contact list to search.
+   * @param contactType         The contact type to return.
+   * @param fallbackContactType if the contactType is not available, return this contactType
+   *                            instead.
+   * @return The specific contact of the owner, or a default message if not found.
+   */
+  protected String getOwnerContact(List<Map<String, String>> ownerContactList,
+      LocalOfficeContactType contactType, LocalOfficeContactType fallbackContactType) {
+
+    Optional<Map<String, String>> ownerContact = ownerContactList.stream()
+        .filter(c ->
+            c.get(CONTACT_TYPE_FIELD).equalsIgnoreCase(contactType.getContactTypeName()))
+        .findFirst();
+    if (ownerContact.isEmpty() && fallbackContactType != null) {
+      ownerContact = ownerContactList.stream()
+          .filter(c ->
+              c.get(CONTACT_TYPE_FIELD)
+                  .equalsIgnoreCase(fallbackContactType.getContactTypeName()))
+          .findFirst();
+    }
+    return ownerContact.map(oc -> oc.get(CONTACT_FIELD))
+        .orElse(DEFAULT_NO_CONTACT_MESSAGE);
   }
 
   /**
@@ -446,7 +457,7 @@ public class NotificationService implements Job {
    * @return "email" if it looks like an email address, "url" if it looks like a URL, and "NOT_HREF"
    *     otherwise.
    */
-  public String getHrefTypeForContact(String contact) {
+  protected String getHrefTypeForContact(String contact) {
     try {
       new URL(contact);
       return ABSOLUTE_URL.getHrefTypeName();

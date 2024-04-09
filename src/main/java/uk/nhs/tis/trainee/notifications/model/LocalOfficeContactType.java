@@ -35,7 +35,8 @@ public enum LocalOfficeContactType {
   ONBOARDING_SUPPORT("Onboarding Support"),
   SPONSORSHIP("Sponsorship"),
   DEFERRAL("Deferral"),
-  TSS_SUPPORT("TIS Self-Service Support");
+  TSS_SUPPORT("TIS Self-Service Support"),
+  LOCAL_OFFICE_WEBSITE("Local office website");
 
   private final String contactTypeName;
 }

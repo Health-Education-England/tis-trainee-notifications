@@ -94,7 +94,6 @@ import uk.nhs.tis.trainee.notifications.model.History.TisReferenceInfo;
 import uk.nhs.tis.trainee.notifications.model.LocalOfficeContactType;
 import uk.nhs.tis.trainee.notifications.model.MessageType;
 import uk.nhs.tis.trainee.notifications.model.NotificationType;
-import uk.nhs.tis.trainee.notifications.model.Placement;
 import uk.nhs.tis.trainee.notifications.model.ProgrammeMembership;
 
 class NotificationServiceTest {
@@ -741,9 +740,7 @@ class NotificationServiceTest {
     contact2.put(CONTACT_FIELD, "onboarding");
     contacts.add(contact2);
 
-    when(restTemplate.getForObject(any(), any(), anyMap())).thenReturn(contacts);
-
-    String ownerContact = service.getOwnerContact("a local office",
+    String ownerContact = service.getOwnerContact(contacts,
         LocalOfficeContactType.TSS_SUPPORT, LocalOfficeContactType.DEFERRAL);
 
     assertThat("Unexpected owner contact.", ownerContact, is(contact1.get(CONTACT_FIELD)));
@@ -757,9 +754,7 @@ class NotificationServiceTest {
     contact1.put(CONTACT_FIELD, "one@email.com, another@email.com");
     contacts.add(contact1);
 
-    when(restTemplate.getForObject(any(), any(), anyMap())).thenReturn(contacts);
-
-    String ownerContact = service.getOwnerContact("a local office",
+    String ownerContact = service.getOwnerContact(contacts,
         LocalOfficeContactType.ONBOARDING_SUPPORT, LocalOfficeContactType.TSS_SUPPORT);
 
     assertThat("Unexpected owner contact.", ownerContact, is(contact1.get(CONTACT_FIELD)));
@@ -773,30 +768,40 @@ class NotificationServiceTest {
     contact1.put(CONTACT_FIELD, "one@email.com, another@email.com");
     contacts.add(contact1);
 
-    when(restTemplate.getForObject(any(), any(), anyMap())).thenReturn(contacts);
-
-    String ownerContact = service.getOwnerContact("a local office",
+    String ownerContact = service.getOwnerContact(contacts,
         LocalOfficeContactType.ONBOARDING_SUPPORT, LocalOfficeContactType.DEFERRAL);
 
     assertThat("Unexpected owner contact.", ownerContact, is(DEFAULT_NO_CONTACT_MESSAGE));
   }
 
   @Test
-  void shouldUseDefaultNoContactIfReferenceServiceFailure() {
+  void shouldGetDefaultNoContactWhenContactMissingAndFallbackNull() {
+    List<Map<String, String>> contacts = new ArrayList<>();
+    Map<String, String> contact1 = new HashMap<>();
+    contact1.put(CONTACT_TYPE_FIELD, LocalOfficeContactType.TSS_SUPPORT.getContactTypeName());
+    contact1.put(CONTACT_FIELD, "one@email.com, another@email.com");
+    contacts.add(contact1);
+
+    String ownerContact = service.getOwnerContact(contacts,
+        LocalOfficeContactType.ONBOARDING_SUPPORT, null);
+
+    assertThat("Unexpected owner contact.", ownerContact, is(DEFAULT_NO_CONTACT_MESSAGE));
+  }
+
+  @Test
+  void shouldGetEmptyContactListIfReferenceServiceFailure() {
     doThrow(new RestClientException("error"))
         .when(restTemplate).getForObject(any(), any(), anyMap());
 
-    String ownerContact = service.getOwnerContact("a local office",
-        LocalOfficeContactType.ONBOARDING_SUPPORT, LocalOfficeContactType.DEFERRAL);
+    List<Map<String, String>> contactList = service.getOwnerContactList("a local office");
 
-    assertThat("Unexpected owner contact.", ownerContact, is(DEFAULT_NO_CONTACT_MESSAGE));
+    assertThat("Unexpected owner contact list.", contactList.size(), is(0));
   }
 
   @Test
-  void shouldUseDefaultNoContactIfLocalOfficeNull() {
-    String ownerContact = service.getOwnerContact(null,
-        LocalOfficeContactType.ONBOARDING_SUPPORT, LocalOfficeContactType.DEFERRAL);
+  void shouldGetEmptyContactListIfLocalOfficeNull() {
+    List<Map<String, String>> contactList = service.getOwnerContactList(null);
 
-    assertThat("Unexpected owner contact.", ownerContact, is(DEFAULT_NO_CONTACT_MESSAGE));
+    assertThat("Unexpected owner contact.", contactList.size(), is(0));
   }
 }

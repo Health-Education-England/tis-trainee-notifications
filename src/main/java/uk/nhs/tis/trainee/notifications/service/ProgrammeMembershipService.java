@@ -196,14 +196,14 @@ public class ProgrammeMembershipService {
       jobDataMap.put(PERSON_ID_FIELD, programmeMembership.getPersonId());
       jobDataMap.put(PROGRAMME_NAME_FIELD, programmeMembership.getProgrammeName());
       jobDataMap.put(START_DATE_FIELD, programmeMembership.getStartDate());
+      jobDataMap.put(TEMPLATE_OWNER_FIELD, programmeMembership.getManagingDeanery());
+      jobDataMap.put(TEMPLATE_NOTIFICATION_TYPE_FIELD, milestone);
       if (programmeMembership.getConditionsOfJoining() != null) {
         jobDataMap.put(COJ_SYNCED_FIELD,
             programmeMembership.getConditionsOfJoining().syncedAt());
       }
-      jobDataMap.put(TEMPLATE_OWNER_FIELD, programmeMembership.getManagingDeanery());
-      jobDataMap.put(TEMPLATE_NOTIFICATION_TYPE_FIELD, milestone);
       // Note the status of the trainee will be retrieved when the job is executed, as will
-      // their name and email address, not now.
+      // their name and email address and LO contact details, not now.
 
       String jobId = milestone + "-" + programmeMembership.getTisId();
       try {

@@ -1,46 +1,4 @@
-<!--
-  ~ The MIT License (MIT)
-  ~
-  ~ Copyright 2024 Crown Copyright (Health Education England)
-  ~
-  ~ Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
-  ~ associated documentation files (the "Software"), to deal in the Software without restriction,
-  ~ including without limitation the rights to use, copy, modify, merge, publish, distribute,
-  ~ sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is
-  ~ furnished to do so, subject to the following conditions:
-  ~
-  ~ The above copyright notice and this permission notice shall be included in all copies or
-  ~ substantial portions of the Software.
-  ~
-  ~ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT
-  ~ NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
-  ~ NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
-  ~ DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-  ~  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
--->
-
 <!DOCTYPE html>
-<!--
-  ~ The MIT License (MIT)
-  ~
-  ~ Copyright 2023 Crown Copyright (Health Education England)
-  ~
-  ~ Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
-  ~ associated documentation files (the "Software"), to deal in the Software without restriction,
-  ~ including without limitation the rights to use, copy, modify, merge, publish, distribute,
-  ~ sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is
-  ~ furnished to do so, subject to the following conditions:
-  ~
-  ~ The above copyright notice and this permission notice shall be included in all copies or
-  ~ substantial portions of the Software.
-  ~
-  ~ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT
-  ~ NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
-  ~ NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
-  ~ DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-  ~  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-  -->
-
 <html lang="en" xmlns:th="http://www.thymeleaf.org" xmlns="http://www.w3.org/1999/html">
 <head>
   <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
@@ -48,7 +6,9 @@
 <body>
 <h1>Email Message</h1>
 <h2>Subject</h2>
-<th:block th:fragment="subject">Programme new starter</th:block>
+<th:block th:fragment="subject">NHS England - <span
+    th:text="${not #strings.isEmpty(localOfficeName)} ? ${localOfficeName} : _" th:remove="tag"></span
+  > - Onboarding to your Training programme</th:block>
 <h2>Content</h2>
 <th:block th:fragment="content">
   <div th:replace="fragments/greeting/v1.0.0 :: body"></div>
@@ -105,6 +65,8 @@
   ></th:block> or see our <a href="https://tis-support.hee.nhs.uk/trainees/changes-to-account/">FAQ</a> for details.
   </p>
   <p>Once you access TIS Self Service, you will be presented with a set of actions and notifications to read before relating to your training programme. Please complete the actions and read the notification as requested.</p>
+  <p>For more information regarding the onboarding process please visit our website : <a th:href="${localOfficeWebsite}"><span th:text="${localOfficeWebsite}"></span></a>.</p>
+  <p><b>We are currently piloting the onboarding of Doctors to new programme service. You may come across a series of questions about this within the TIS Self Service app. We appreciate your feedback to help us improve the process and make it easy for you to access the necessary information.</b></p>
   <p>We look forward to welcoming you to <span th:text="${not #strings.isEmpty(localOfficeName)} ? ${localOfficeName} : _"></span></p>
   <p>Kind Regards,</p>
   <p><span th:text="${not #strings.isEmpty(localOfficeName)} ? ${localOfficeName} : _"></span></p>
