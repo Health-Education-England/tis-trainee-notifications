@@ -275,7 +275,7 @@ public class NotificationService implements Job {
       // 'Missed' milestones: schedule to be sent soon, but not immediately
       // in case of human editing 'jitter'.
       milestone = Date.from(Instant.now()
-          .plus(PAST_MILESTONE_SCHEDULE_DELAY_HOURS, ChronoUnit.MINUTES));
+          .plus(PAST_MILESTONE_SCHEDULE_DELAY_HOURS, ChronoUnit.HOURS));
     } else {
       // Future milestone.
       milestone = Date.from(milestoneDate
@@ -413,7 +413,7 @@ public class NotificationService implements Job {
         List<Map<String, String>> ownerContactList
             = restTemplate.getForObject(referenceUrl + API_GET_OWNER_CONTACT,
             List.class, Map.of(OWNER_FIELD, localOfficeName));
-        return ownerContactList == null? new ArrayList<>() : ownerContactList;
+        return ownerContactList == null ? new ArrayList<>() : ownerContactList;
       } catch (RestClientException rce) {
         log.warn("Exception occurred when requesting reference local-office-contact-by-lo-name "
             + "endpoint: " + rce);

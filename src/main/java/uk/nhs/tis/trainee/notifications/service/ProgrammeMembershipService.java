@@ -77,6 +77,15 @@ public class ProgrammeMembershipService {
   private final String eportfolioVersion;
   private final String indemnityInsuranceVersion;
 
+  /**
+   * Initialise the programme membership service.
+   *
+   * @param historyService            The history service to use.
+   * @param inAppService              The in-app service to use.
+   * @param notificationService       The notification service to use.
+   * @param eportfolioVersion         The ePortfolio version.
+   * @param indemnityInsuranceVersion The indemnity insurance version.
+   */
   public ProgrammeMembershipService(HistoryService historyService, InAppService inAppService,
       NotificationService notificationService,
       @Value("${application.template-versions.e-portfolio.in-app}") String eportfolioVersion,

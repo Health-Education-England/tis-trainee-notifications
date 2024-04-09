@@ -443,7 +443,8 @@ class NotificationServiceTest {
     service.execute(jobExecutionContext);
 
     ArgumentCaptor<Map<String, Object>> jobDetailsCaptor = ArgumentCaptor.forClass(Map.class);
-    ArgumentCaptor<TisReferenceInfo> tisReferenceInfoCaptor = ArgumentCaptor.forClass(TisReferenceInfo.class);
+    ArgumentCaptor<TisReferenceInfo> tisReferenceInfoCaptor
+        = ArgumentCaptor.forClass(TisReferenceInfo.class);
 
     verify(emailService).sendMessage(eq(PERSON_ID), eq(USER_EMAIL), eq(PROGRAMME_CREATED),
         eq(TEMPLATE_VERSION), jobDetailsCaptor.capture(), tisReferenceInfoCaptor.capture(),
