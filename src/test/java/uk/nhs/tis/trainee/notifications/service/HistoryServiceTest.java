@@ -179,6 +179,7 @@ class HistoryServiceTest {
     assertThat("Unexpected TIS reference.", history.tisReference(), is(tisReferenceInfo));
     assertThat("Unexpected type.", history.type(), is(EMAIL));
     assertThat("Unexpected subject.", history.subject(), is(COJ_CONFIRMATION));
+    assertThat("Unexpected subject.", history.subjectText(), nullValue());
     assertThat("Unexpected contact.", history.contact(), is(TRAINEE_CONTACT));
     assertThat("Unexpected sent at.", history.sentAt(), is(Instant.MIN));
     assertThat("Unexpected read at.", history.readAt(), is(Instant.MAX));
@@ -212,6 +213,12 @@ class HistoryServiceTest {
     History foundHistory = new History(notificationId, tisReferenceInfo, COJ_CONFIRMATION,
         recipientInfo, templateInfo, Instant.MIN, Instant.MAX, null, null);
 
+    String templatePath = "in-app/test/template/v1.2.3";
+    when(templateService.getTemplatePath(IN_APP, TEMPLATE_NAME, TEMPLATE_VERSION)).thenReturn(
+        templatePath);
+    when(templateService.process(templatePath, Set.of("subject"), TEMPLATE_VARIABLES)).thenReturn(
+        "Test Subject");
+
     when(repository.findById(notificationId)).thenReturn(Optional.of(foundHistory));
     when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
@@ -229,6 +236,7 @@ class HistoryServiceTest {
     assertThat("Unexpected TIS reference.", history.tisReference(), is(tisReferenceInfo));
     assertThat("Unexpected type.", history.type(), is(IN_APP));
     assertThat("Unexpected subject.", history.subject(), is(COJ_CONFIRMATION));
+    assertThat("Unexpected subject text.", history.subjectText(), is("Test Subject"));
     assertThat("Unexpected contact.", history.contact(), is(TRAINEE_CONTACT));
     assertThat("Unexpected sent at.", history.sentAt(), is(Instant.MIN));
     assertThat("Unexpected read at.", history.readAt(), is(Instant.MAX));
@@ -291,6 +299,7 @@ class HistoryServiceTest {
     assertThat("Unexpected TIS reference.", history.tisReference(), is(tisReferenceInfo));
     assertThat("Unexpected type.", history.type(), is(EMAIL));
     assertThat("Unexpected subject.", history.subject(), is(COJ_CONFIRMATION));
+    assertThat("Unexpected subject text.", history.subjectText(), nullValue());
     assertThat("Unexpected contact.", history.contact(), is(TRAINEE_CONTACT));
     assertThat("Unexpected sent at.", history.sentAt(), is(Instant.MIN));
     assertThat("Unexpected read at.", history.readAt(), is(Instant.MAX));
@@ -326,6 +335,12 @@ class HistoryServiceTest {
     History foundHistory = new History(notificationId, tisReferenceInfo, COJ_CONFIRMATION,
         recipientInfo, templateInfo, Instant.MIN, Instant.MAX, null, null);
 
+    String templatePath = "in-app/test/template/v1.2.3";
+    when(templateService.getTemplatePath(IN_APP, TEMPLATE_NAME, TEMPLATE_VERSION)).thenReturn(
+        templatePath);
+    when(templateService.process(templatePath, Set.of("subject"), TEMPLATE_VARIABLES)).thenReturn(
+        "Test Subject");
+
     when(repository.findByIdAndRecipient_Id(notificationId, TRAINEE_ID)).thenReturn(
         Optional.of(foundHistory));
     when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
@@ -343,6 +358,7 @@ class HistoryServiceTest {
     assertThat("Unexpected TIS reference.", history.tisReference(), is(tisReferenceInfo));
     assertThat("Unexpected type.", history.type(), is(IN_APP));
     assertThat("Unexpected subject.", history.subject(), is(COJ_CONFIRMATION));
+    assertThat("Unexpected subject text.", history.subjectText(), is("Test Subject"));
     assertThat("Unexpected contact.", history.contact(), is(TRAINEE_CONTACT));
     assertThat("Unexpected sent at.", history.sentAt(), is(Instant.MIN));
     assertThat("Unexpected read at.", history.readAt(), is(Instant.MAX));

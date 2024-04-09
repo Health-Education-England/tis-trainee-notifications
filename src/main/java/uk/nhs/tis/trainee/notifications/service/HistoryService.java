@@ -149,7 +149,7 @@ public class HistoryService {
 
     history = mapper.updateStatus(history, status, detail);
     history = repository.save(history);
-    return Optional.of(mapper.toDto(history));
+    return Optional.of(toDto(history));
   }
 
   /**
@@ -162,20 +162,28 @@ public class HistoryService {
     List<History> history = repository.findAllByRecipient_IdOrderBySentAtDesc(traineeId);
 
     return history.stream()
-        .map(h -> {
-          String subject = null;
-
-          if (h.recipient().type() == IN_APP) {
-            subject = rebuildMessage(h, Set.of("subject")).orElse("");
-          }
-
-          if (subject == null || subject.isEmpty()) {
-            return mapper.toDto(h);
-          } else {
-            return mapper.toDto(h, subject);
-          }
-        })
+        .map(this::toDto)
         .toList();
+  }
+
+  /**
+   * Convert a history entity to an equivalent DTO, handles in-app subject text.
+   *
+   * @param history The history entity to map.
+   * @return The mapped HistoryDto.
+   */
+  private HistoryDto toDto(History history) {
+    String subject = null;
+
+    if (history.recipient().type() == IN_APP) {
+      subject = rebuildMessage(history, Set.of("subject")).orElse("");
+    }
+
+    if (subject == null || subject.isEmpty()) {
+      return mapper.toDto(history);
+    } else {
+      return mapper.toDto(history, subject);
+    }
   }
 
   /**
