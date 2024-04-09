@@ -24,6 +24,7 @@ package uk.nhs.tis.trainee.notifications.service;
 import static uk.nhs.tis.trainee.notifications.model.MessageType.IN_APP;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.E_PORTFOLIO;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.INDEMNITY_INSURANCE;
+import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_CREATED;
 
 import java.time.Instant;
 import java.time.LocalDate;
@@ -180,37 +181,34 @@ public class ProgrammeMembershipService {
    */
   private void createDirectNotifications(ProgrammeMembership programmeMembership,
       Map<NotificationType, Instant> notificationsAlreadySent) throws SchedulerException {
-    LocalDate startDate = programmeMembership.getStartDate();
 
-    for (NotificationType milestone : NotificationType.getProgrammeUpdateNotificationTypes()) {
-      boolean shouldSchedule = shouldScheduleNotification(startDate, milestone,
-          notificationsAlreadySent);
+    NotificationType milestone = PROGRAMME_CREATED; //do not schedule other programme notifications
+    boolean shouldSchedule = shouldScheduleNotification(milestone, notificationsAlreadySent);
 
-      if (shouldSchedule) {
-        log.info("Scheduling notification {} for {}.", milestone, programmeMembership.getTisId());
-        Integer daysBeforeStart = getNotificationDaysBeforeStart(milestone);
-        Date when = notificationService.getScheduleDate(startDate, daysBeforeStart);
+    if (shouldSchedule) {
+      log.info("Scheduling notification {} for {}.", milestone, programmeMembership.getTisId());
+      //default to send notification immediately
+      Date when = notificationService.getScheduleDate(LocalDate.now(), 1);
 
-        JobDataMap jobDataMap = new JobDataMap();
-        jobDataMap.put(TIS_ID_FIELD, programmeMembership.getTisId());
-        jobDataMap.put(PERSON_ID_FIELD, programmeMembership.getPersonId());
-        jobDataMap.put(PROGRAMME_NAME_FIELD, programmeMembership.getProgrammeName());
-        jobDataMap.put(START_DATE_FIELD, programmeMembership.getStartDate());
-        jobDataMap.put(NOTIFICATION_TYPE_FIELD, milestone);
-        if (programmeMembership.getConditionsOfJoining() != null) {
-          jobDataMap.put(COJ_SYNCED_FIELD,
-              programmeMembership.getConditionsOfJoining().syncedAt());
-        }
-        // Note the status of the trainee will be retrieved when the job is executed, as will
-        // their name and email address, not now.
+      JobDataMap jobDataMap = new JobDataMap();
+      jobDataMap.put(TIS_ID_FIELD, programmeMembership.getTisId());
+      jobDataMap.put(PERSON_ID_FIELD, programmeMembership.getPersonId());
+      jobDataMap.put(PROGRAMME_NAME_FIELD, programmeMembership.getProgrammeName());
+      jobDataMap.put(START_DATE_FIELD, programmeMembership.getStartDate());
+      jobDataMap.put(NOTIFICATION_TYPE_FIELD, milestone);
+      if (programmeMembership.getConditionsOfJoining() != null) {
+        jobDataMap.put(COJ_SYNCED_FIELD,
+            programmeMembership.getConditionsOfJoining().syncedAt());
+      }
+      // Note the status of the trainee will be retrieved when the job is executed, as will
+      // their name and email address, not now.
 
-        String jobId = milestone + "-" + programmeMembership.getTisId();
-        try {
-          notificationService.scheduleNotification(jobId, jobDataMap, when);
-        } catch (SchedulerException e) {
-          log.error("Failed to schedule notification {}: {}", jobId, e.toString());
-          throw (e); //to allow message to be requeue-ed
-        }
+      String jobId = milestone + "-" + programmeMembership.getTisId();
+      try {
+        notificationService.scheduleNotification(jobId, jobDataMap, when);
+      } catch (SchedulerException e) {
+        log.error("Failed to schedule notification {}: {}", jobId, e.toString());
+        throw (e); //to allow message to be requeue-ed
       }
     }
   }
@@ -288,78 +286,18 @@ public class ProgrammeMembershipService {
   /**
    * Helper function to determine whether a notification should be scheduled.
    *
+   * @param milestone                The milestone to consider.
+   * @param notificationsAlreadySent The notifications already sent for this entity.
    * @return true if it should be scheduled, false otherwise.
    */
-  private boolean shouldScheduleNotification(LocalDate programmeStartDate,
-      NotificationType milestone, Map<NotificationType, Instant> notificationsAlreadySent) {
+  private boolean shouldScheduleNotification(NotificationType milestone,
+      Map<NotificationType, Instant> notificationsAlreadySent) {
 
     //do not resend any notification
     if (notificationsAlreadySent.containsKey(milestone)) {
       return false;
     }
 
-    Integer daysBeforeStart = getNotificationDaysBeforeStart(milestone);
-    LocalDate milestoneDate = programmeStartDate.minusDays(daysBeforeStart);
-
-    if (milestoneDate.isAfter(LocalDate.now())) {
-      // A future notification, to be scheduled at the appropriate time
-      // unless a more recent notification has already been sent
-      return (notificationsAlreadySent.keySet().stream()
-          .noneMatch(t -> {
-            Integer days = getNotificationDaysBeforeStart(t);
-            return days != null && days < daysBeforeStart;
-          }));
-    } else {
-      // A past ('missed') notification, to be scheduled promptly
-      // if it is the most recent missed notification.
-      // Do not schedule if it is not the most recent missed notification, regardless of whether
-      // any more recent ones have been sent or not.
-      return (getPastNotifications(programmeStartDate).stream()
-          .noneMatch(t -> {
-            Integer days = getNotificationDaysBeforeStart(t);
-            return days != null && days < daysBeforeStart;
-          }));
-    }
-  }
-
-  /**
-   * Get the number of days in advance of the programme start to send the notification.
-   *
-   * @param notificationType The notification type.
-   * @return The number of days before the programme start for the notification, or null if not a
-   *     programme update notification type.
-   */
-  public Integer getNotificationDaysBeforeStart(NotificationType notificationType) {
-    switch (notificationType) {
-      case PROGRAMME_UPDATED_WEEK_8 -> {
-        return 56;
-      }
-      case PROGRAMME_UPDATED_WEEK_4 -> {
-        return 28;
-      }
-      case PROGRAMME_UPDATED_WEEK_1 -> {
-        return 7;
-      }
-      case PROGRAMME_UPDATED_WEEK_0 -> {
-        return 0;
-      }
-      default -> {
-        return null;
-      }
-    }
-  }
-
-  /**
-   * Retrieve a list of notifications for a given programme start date that should have been sent in
-   * the past (including sent today).
-   *
-   * @param programmeStartDate The programme start date.
-   * @return The list of past notifications.
-   */
-  private List<NotificationType> getPastNotifications(LocalDate programmeStartDate) {
-    return NotificationType.getProgrammeUpdateNotificationTypes().stream()
-        .filter(t -> !programmeStartDate.minusDays(getNotificationDaysBeforeStart(t))
-            .isAfter(LocalDate.now()))
-        .toList();
+    return milestone == PROGRAMME_CREATED; //immediately notify of a new programme membership
   }
 }

@@ -43,6 +43,7 @@ public enum NotificationType {
   PROGRAMME_UPDATED_WEEK_4("programme-updated-week-4"),
   PROGRAMME_UPDATED_WEEK_1("programme-updated-week-1"),
   PROGRAMME_UPDATED_WEEK_0("programme-updated-week-0"),
+  PROGRAMME_CREATED("programme-created"),
   WELCOME("welcome");
 
   /**
@@ -53,7 +54,8 @@ public enum NotificationType {
       PROGRAMME_UPDATED_WEEK_8,
       PROGRAMME_UPDATED_WEEK_4,
       PROGRAMME_UPDATED_WEEK_1,
-      PROGRAMME_UPDATED_WEEK_0);
+      PROGRAMME_UPDATED_WEEK_0,
+      PROGRAMME_CREATED);
 
   private final String templateName;
 }

@@ -39,7 +39,7 @@ import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 import static org.quartz.JobBuilder.newJob;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PLACEMENT_UPDATED_WEEK_12;
-import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_UPDATED_WEEK_8;
+import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_CREATED;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.PAST_MILESTONE_SCHEDULE_DELAY_HOURS;
 import static uk.nhs.tis.trainee.notifications.service.PlacementService.PLACEMENT_OWNER_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.PlacementService.PLACEMENT_SPECIALTY_FIELD;
@@ -91,7 +91,7 @@ class NotificationServiceTest {
   private static final String PERSON_ID = "person-id";
   private static final String PROGRAMME_NAME = "the programme";
   private static final LocalDate START_DATE = LocalDate.now();
-  private static final NotificationType PM_NOTIFICATION_TYPE = PROGRAMME_UPDATED_WEEK_8;
+  private static final NotificationType PM_NOTIFICATION_TYPE = PROGRAMME_CREATED;
 
   private static final String LOCAL_OFFICE = "local office";
   private static final String PLACEMENT_SPECIALTY = "specialty";
@@ -281,8 +281,7 @@ class NotificationServiceTest {
 
   @ParameterizedTest
   @EnumSource(value = NotificationType.class, mode = Mode.EXCLUDE,
-      names = {"PLACEMENT_UPDATED_WEEK_12", "PROGRAMME_UPDATED_WEEK_8", "PROGRAMME_UPDATED_WEEK_4",
-          "PROGRAMME_UPDATED_WEEK_1", "PROGRAMME_UPDATED_WEEK_0"})
+      names = {"PLACEMENT_UPDATED_WEEK_12", "PROGRAMME_CREATED"})
   void shouldIgnoreNonProgrammeOrPlacementJobs(NotificationType notificationType)
       throws MessagingException {
     UserDetails userAccountDetails =
@@ -304,7 +303,7 @@ class NotificationServiceTest {
 
   @Test
   void shouldScheduleProgrammeMembershipNotification() throws SchedulerException {
-    NotificationType milestone = NotificationType.PROGRAMME_UPDATED_WEEK_0;
+    NotificationType milestone = PROGRAMME_CREATED;
     String jobId = milestone + "-" + TIS_ID;
 
     LocalDate expectedDate = START_DATE
@@ -379,7 +378,7 @@ class NotificationServiceTest {
 
   @Test
   void shouldRemoveNotification() throws SchedulerException {
-    String jobId = NotificationType.PROGRAMME_UPDATED_WEEK_0 + "-" + TIS_ID;
+    String jobId = NotificationType.PROGRAMME_CREATED + "-" + TIS_ID;
 
     service.removeNotification(jobId);
 
