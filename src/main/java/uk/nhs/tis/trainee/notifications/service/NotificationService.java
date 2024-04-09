@@ -142,8 +142,6 @@ public class NotificationService implements Job {
 
     TisReferenceInfo tisReferenceInfo = null;
     LocalDate startDate = null;
-    NotificationType notificationType =
-        NotificationType.valueOf(jobDetails.get(TEMPLATE_NOTIFICATION_TYPE_FIELD).toString());
 
     UserDetails userCognitoAccountDetails = getCognitoAccountDetails(personId);
     UserDetails userTraineeDetails = getTraineeDetails(personId);
@@ -163,6 +161,9 @@ public class NotificationService implements Job {
         LocalOfficeContactType.TSS_SUPPORT);
     jobDetails.putIfAbsent(TEMPLATE_OWNER_CONTACT_FIELD, contact);
     jobDetails.putIfAbsent(TEMPLATE_CONTACT_HREF_FIELD, getHrefTypeForContact(contact));
+
+    NotificationType notificationType =
+        NotificationType.valueOf(jobDetails.get(TEMPLATE_NOTIFICATION_TYPE_FIELD).toString());
 
     //only consider sending programme-created mails; ignore the programme-updated-* notifications
     if (notificationType == NotificationType.PROGRAMME_CREATED) {

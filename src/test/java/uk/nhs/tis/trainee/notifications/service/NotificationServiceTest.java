@@ -38,7 +38,6 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 import static org.quartz.JobBuilder.newJob;
-
 import static uk.nhs.tis.trainee.notifications.model.HrefType.ABSOLUTE_URL;
 import static uk.nhs.tis.trainee.notifications.model.HrefType.NON_HREF;
 import static uk.nhs.tis.trainee.notifications.model.HrefType.PROTOCOL_EMAIL;
@@ -159,7 +158,8 @@ class NotificationServiceTest {
     placementJobDataMap = new JobDataMap();
     placementJobDataMap.put(TIS_ID_FIELD, TIS_ID);
     placementJobDataMap.put(PERSON_ID_FIELD, PERSON_ID);
-    placementJobDataMap.put(TEMPLATE_NOTIFICATION_TYPE_FIELD, PLACEMENT_NOTIFICATION_TYPE.toString());
+    placementJobDataMap.put(TEMPLATE_NOTIFICATION_TYPE_FIELD,
+        PLACEMENT_NOTIFICATION_TYPE.toString());
     placementJobDataMap.put(START_DATE_FIELD, START_DATE);
     placementJobDataMap.put(PLACEMENT_TYPE_FIELD, PLACEMENT_TYPE);
     placementJobDataMap.put(TEMPLATE_OWNER_FIELD, LOCAL_OFFICE);
@@ -304,7 +304,8 @@ class NotificationServiceTest {
     when(restTemplate.getForObject("the-url/api/trainee-profile/account-details/{tisId}",
         UserDetails.class, Map.of(TIS_ID_FIELD, PERSON_ID))).thenReturn(userAccountDetails);
     when(messagingControllerService.isValidRecipient(any(), any())).thenReturn(apiResult);
-    when(messagingControllerService.isProgrammeMembershipNewStarter(any(), any())).thenReturn(!apiResult);
+    when(messagingControllerService.isProgrammeMembershipNewStarter(any(), any()))
+        .thenReturn(!apiResult);
 
     service.execute(jobExecutionContext);
 
@@ -427,7 +428,8 @@ class NotificationServiceTest {
     when(restTemplate.getForObject("the-url/api/trainee-profile/account-details/{tisId}",
         UserDetails.class, Map.of(TIS_ID_FIELD, PERSON_ID))).thenReturn(userAccountDetails);
     when(messagingControllerService.isValidRecipient(any(), any())).thenReturn(true);
-    when(messagingControllerService.isProgrammeMembershipNewStarter(any(), any())).thenReturn(true);
+    when(messagingControllerService.isProgrammeMembershipNewStarter(any(), any()))
+        .thenReturn(true);
 
     List<Map<String, String>> contacts = new ArrayList<>();
     Map<String, String> contact1 = new HashMap<>();
@@ -444,7 +446,7 @@ class NotificationServiceTest {
     ArgumentCaptor<Map<String, Object>> jobDetailsCaptor = ArgumentCaptor.forClass(Map.class);
     ArgumentCaptor<TisReferenceInfo> tisReferenceInfoCaptor = ArgumentCaptor.forClass(TisReferenceInfo.class);
 
-    verify(emailService).sendMessage(eq(PERSON_ID), eq(USER_EMAIL),eq(PROGRAMME_CREATED),
+    verify(emailService).sendMessage(eq(PERSON_ID), eq(USER_EMAIL), eq(PROGRAMME_CREATED),
         eq(TEMPLATE_VERSION), jobDetailsCaptor.capture(), tisReferenceInfoCaptor.capture(),
         anyBoolean());
 
@@ -785,6 +787,14 @@ class NotificationServiceTest {
         .when(restTemplate).getForObject(any(), any(), anyMap());
 
     String ownerContact = service.getOwnerContact("a local office",
+        LocalOfficeContactType.ONBOARDING_SUPPORT, LocalOfficeContactType.DEFERRAL);
+
+    assertThat("Unexpected owner contact.", ownerContact, is(DEFAULT_NO_CONTACT_MESSAGE));
+  }
+
+  @Test
+  void shouldUseDefaultNoContactIfLocalOfficeNull() {
+    String ownerContact = service.getOwnerContact(null,
         LocalOfficeContactType.ONBOARDING_SUPPORT, LocalOfficeContactType.DEFERRAL);
 
     assertThat("Unexpected owner contact.", ownerContact, is(DEFAULT_NO_CONTACT_MESSAGE));
