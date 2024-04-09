@@ -39,7 +39,7 @@ import uk.nhs.tis.trainee.notifications.model.History;
  * Delete unused placement-update history records.
  */
 @Slf4j
-@ChangeUnit(id = "deleteUnusedPlacementUpdateHistory", order = "3", runAlways = true)
+@ChangeUnit(id = "deleteUnusedPlacementUpdateHistory", order = "3")
 public class DeleteUnusedPlacementUpdateHistory {
 
   private final MongoTemplate mongoTemplate;
