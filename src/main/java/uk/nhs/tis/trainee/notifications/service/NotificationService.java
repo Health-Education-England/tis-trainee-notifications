@@ -313,7 +313,7 @@ public class NotificationService implements Job {
           userTraineeDetails.title(),
           userCognitoAccountDetails.familyName(),
           userCognitoAccountDetails.givenName(),
-          userTraineeDetails.gmcNumber());
+          userTraineeDetails.gmcNumber().trim());
     } else if (userTraineeDetails != null) {
       //no TSS account or duplicate accounts in Cognito
       return new UserDetails(false,
@@ -321,7 +321,7 @@ public class NotificationService implements Job {
           userTraineeDetails.title(),
           userTraineeDetails.familyName(),
           userTraineeDetails.givenName(),
-          userTraineeDetails.gmcNumber());
+          userTraineeDetails.gmcNumber().trim());
     } else {
       return null;
     }
