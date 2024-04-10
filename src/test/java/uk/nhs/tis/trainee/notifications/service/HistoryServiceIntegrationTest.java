@@ -74,7 +74,8 @@ class HistoryServiceIntegrationTest {
   private static final String TEMPLATE_VERSION = "v1.2.3";
   private static final Map<String, Object> TEMPLATE_VARIABLES = Map.of(
       "key1", "value1",
-      "key2", "value2");
+      "key2", "value2",
+      "isValidGmc", true);
   private static final TisReferenceType TIS_REFERENCE_TYPE = TisReferenceType.PLACEMENT;
   private static final String TIS_REFERENCE_ID = UUID.randomUUID().toString();
 

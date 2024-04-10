@@ -44,6 +44,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.quartz.Job;
 import org.quartz.JobDataMap;
 import org.quartz.JobDetail;
@@ -201,6 +202,13 @@ public class NotificationService implements Job {
 
     if (isActionableJob) {
       if (userAccountDetails != null) {
+        jobDetails.putIfAbsent("isRegistered", userAccountDetails.isRegistered());
+        jobDetails.putIfAbsent("title", userAccountDetails.title());
+        jobDetails.putIfAbsent("familyName", userAccountDetails.familyName());
+        jobDetails.putIfAbsent("givenName", userAccountDetails.givenName());
+        jobDetails.putIfAbsent("email", userAccountDetails.email());
+        jobDetails.putIfAbsent("gmcNumber", userAccountDetails.gmcNumber());
+        jobDetails.putIfAbsent("isValidGmc", isValidGmc(userAccountDetails.gmcNumber()));
 
         try {
           emailService.sendMessage(personId, userAccountDetails.email(), notificationType,
@@ -400,6 +408,19 @@ public class NotificationService implements Job {
       MessageType messageType) {
     String traineeId = programmeMembership.getPersonId();
     return messagingControllerService.isValidRecipient(traineeId, messageType);
+  }
+
+  /**
+   * Validate the stored GMC number of the trainee.
+   *
+   * @param gmcNumber The GMC number to validate.
+   * @return true if it is 7 consecutive numerical digits string, otherwise false.
+   */
+  public boolean isValidGmc(String gmcNumber) {
+    if (gmcNumber == null) {
+      return false;
+    }
+    return (gmcNumber.length() == 7 && StringUtils.isNumeric(gmcNumber));
   }
 
   /**
