@@ -180,10 +180,12 @@ public class NotificationService implements Job {
       tisReferenceInfo = new TisReferenceInfo(PROGRAMME_MEMBERSHIP,
           jobDetails.get(ProgrammeMembershipService.TIS_ID_FIELD).toString());
 
+      ProgrammeMembership minimalPm = new ProgrammeMembership();
+      minimalPm.setPersonId(personId);
+      minimalPm.setTisId(tisReferenceInfo.id());
       actuallySendEmail
           = messagingControllerService.isValidRecipient(personId, MessageType.EMAIL)
-          && messagingControllerService.isProgrammeMembershipNewStarter(personId,
-          tisReferenceInfo.id());
+          && meetsCriteria(minimalPm, true, true);
 
     } else if (notificationType == NotificationType.PLACEMENT_UPDATED_WEEK_12) {
 

@@ -292,7 +292,7 @@ class NotificationServiceTest {
 
   @ParameterizedTest
   @ValueSource(booleans = {true, false})
-  void shouldLogProgrammeCreatedEmailWhenNotMatchBothCriteria(boolean apiResult)
+  void shouldLogProgrammeCreatedEmailWhenNotMatchAllCriteria(boolean apiResult)
       throws MessagingException {
     UserDetails userAccountDetails =
         new UserDetails(
@@ -305,6 +305,8 @@ class NotificationServiceTest {
     when(messagingControllerService.isValidRecipient(any(), any())).thenReturn(apiResult);
     when(messagingControllerService.isProgrammeMembershipNewStarter(any(), any()))
         .thenReturn(!apiResult);
+    when(messagingControllerService.isProgrammeMembershipInPilot2024(any(), any()))
+        .thenReturn(apiResult);
 
     service.execute(jobExecutionContext);
 
@@ -332,7 +334,7 @@ class NotificationServiceTest {
   }
 
   @Test
-  void shouldSendProgrammeCreatedEmailWhenMatchBothCriteria() throws MessagingException {
+  void shouldSendProgrammeCreatedEmailWhenMatchAllCriteria() throws MessagingException {
     UserDetails userAccountDetails =
         new UserDetails(
             false, USER_EMAIL, USER_TITLE, USER_FAMILY_NAME, USER_GIVEN_NAME, USER_GMC);
@@ -343,6 +345,8 @@ class NotificationServiceTest {
         UserDetails.class, Map.of(TIS_ID_FIELD, PERSON_ID))).thenReturn(userAccountDetails);
     when(messagingControllerService.isValidRecipient(any(), any())).thenReturn(true);
     when(messagingControllerService.isProgrammeMembershipNewStarter(any(), any())).thenReturn(true);
+    when(messagingControllerService.isProgrammeMembershipInPilot2024(any(), any()))
+        .thenReturn(true);
 
     service.execute(jobExecutionContext);
 
@@ -428,6 +432,8 @@ class NotificationServiceTest {
         UserDetails.class, Map.of(TIS_ID_FIELD, PERSON_ID))).thenReturn(userAccountDetails);
     when(messagingControllerService.isValidRecipient(any(), any())).thenReturn(true);
     when(messagingControllerService.isProgrammeMembershipNewStarter(any(), any()))
+        .thenReturn(true);
+    when(messagingControllerService.isProgrammeMembershipInPilot2024(any(), any()))
         .thenReturn(true);
 
     List<Map<String, String>> contacts = new ArrayList<>();
