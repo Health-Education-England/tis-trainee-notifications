@@ -21,13 +21,11 @@
 
 package uk.nhs.tis.trainee.notifications.service;
 
-import static uk.nhs.tis.trainee.notifications.model.HrefType.ABSOLUTE_URL;
-import static uk.nhs.tis.trainee.notifications.model.HrefType.NON_HREF;
-import static uk.nhs.tis.trainee.notifications.model.HrefType.PROTOCOL_EMAIL;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PLACEMENT_UPDATED_WEEK_12;
+import static uk.nhs.tis.trainee.notifications.service.NotificationService.PERSON_ID_FIELD;
+import static uk.nhs.tis.trainee.notifications.service.NotificationService.TEMPLATE_NOTIFICATION_TYPE_FIELD;
+import static uk.nhs.tis.trainee.notifications.service.NotificationService.TEMPLATE_OWNER_FIELD;
 
-import java.net.MalformedURLException;
-import java.net.URL;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.Date;
@@ -57,44 +55,26 @@ import uk.nhs.tis.trainee.notifications.model.TisReferenceType;
 public class PlacementService {
 
   public static final String TIS_ID_FIELD = "tisId";
-  public static final String PERSON_ID_FIELD = "personId";
   public static final String START_DATE_FIELD = "startDate";
   public static final String PLACEMENT_TYPE_FIELD = "placementType";
   public static final String PLACEMENT_SPECIALTY_FIELD = "specialty";
-  public static final String NOTIFICATION_TYPE_FIELD = "notificationType";
-  public static final String PLACEMENT_OWNER_FIELD = "localOfficeName";
-  public static final String PLACEMENT_OWNER_CONTACT_FIELD = "localOfficeContact";
-  public static final String CONTACT_TYPE_FIELD = "contactTypeName";
-  public static final String CONTACT_FIELD = "contact";
-  public static final String CONTACT_HREF_FIELD = "contactHref";
 
   public static final List<String> PLACEMENT_TYPES_TO_ACT_ON
       = List.of("In post", "In post - Acting up", "In Post - Extension");
-  public static final String API_GET_OWNER_CONTACT =
-      "/api/local-office-contact-by-lo-name/{localOfficeName}";
-  protected static final String DEFAULT_NO_CONTACT_MESSAGE = "your local deanery office";
 
   private final HistoryService historyService;
   private final NotificationService notificationService;
-  private final RestTemplate restTemplate;
-  private final String serviceUrl;
 
   /**
    * Initialise the Placement Service.
    *
    * @param historyService      The history Service to use.
    * @param notificationService The notification Service to use.
-   * @param restTemplate        The REST template.
-   * @param serviceUrl          The URL for the tis-trainee-reference service to use
    */
   public PlacementService(HistoryService historyService,
-      NotificationService notificationService,
-      RestTemplate restTemplate,
-      @Value("${service.reference.url}") String serviceUrl) {
+      NotificationService notificationService) {
     this.historyService = historyService;
     this.notificationService = notificationService;
-    this.restTemplate = restTemplate;
-    this.serviceUrl = serviceUrl;
   }
 
   /**
@@ -176,15 +156,11 @@ public class PlacementService {
         jobDataMap.put(START_DATE_FIELD, placement.getStartDate());
         jobDataMap.put(PLACEMENT_TYPE_FIELD, placement.getPlacementType());
         jobDataMap.put(PLACEMENT_SPECIALTY_FIELD, placement.getSpecialty());
-        jobDataMap.put(PLACEMENT_OWNER_FIELD, placement.getOwner());
+        jobDataMap.put(TEMPLATE_OWNER_FIELD, placement.getOwner());
+        jobDataMap.put(TEMPLATE_NOTIFICATION_TYPE_FIELD, PLACEMENT_UPDATED_WEEK_12);
 
-        String contact = getOwnerContact(placement.getOwner(), LocalOfficeContactType.TSS_SUPPORT);
-        jobDataMap.put(PLACEMENT_OWNER_CONTACT_FIELD, contact);
-        jobDataMap.put(CONTACT_HREF_FIELD, getHrefTypeForContact(contact));
-
-        jobDataMap.put(NOTIFICATION_TYPE_FIELD, PLACEMENT_UPDATED_WEEK_12);
         // Note the status of the trainee will be retrieved when the job is executed, as will
-        // their name and email address, not now.
+        // their name and email address, and the contact details of the owner LO, not now.
 
         String jobId = PLACEMENT_UPDATED_WEEK_12 + "-" + placement.getTisId();
         try {
@@ -237,59 +213,5 @@ public class PlacementService {
     }
     //do not resend any notification
     return (!notificationsAlreadySent.containsKey(PLACEMENT_UPDATED_WEEK_12));
-  }
-
-  /**
-   * Get placement owner contact from Trainee Reference Service.
-   *
-   * @param localOfficeName The owner name to search for.
-   * @return The specific contact type contact of the owner, or null if not found.
-   */
-  private String getOwnerContact(String localOfficeName, LocalOfficeContactType contactType) {
-    if (localOfficeName != null) {
-      try {
-        @SuppressWarnings("unchecked")
-        List<Map<String, String>> ownerContactList
-            = restTemplate.getForObject(serviceUrl + API_GET_OWNER_CONTACT,
-            List.class, Map.of(PLACEMENT_OWNER_FIELD, localOfficeName));
-        if (ownerContactList != null) {
-          Optional<Map<String, String>> ownerContact = ownerContactList.stream()
-              .filter(c ->
-                  c.get(CONTACT_TYPE_FIELD).equalsIgnoreCase(contactType.getContactTypeName()))
-              .findFirst();
-          return ownerContact.map(oc -> oc.get(CONTACT_FIELD))
-              .orElse(DEFAULT_NO_CONTACT_MESSAGE);
-        } else {
-          log.warn("Null response when requesting reference local-office-contact-by-lo-name '{}'",
-              localOfficeName);
-        }
-      } catch (RestClientException rce) {
-        log.warn("Exception occurred when requesting reference local-office-contact-by-lo-name "
-            + "endpoint: " + rce);
-      }
-    }
-    //no matched owner, or other problems retrieving contact
-    return DEFAULT_NO_CONTACT_MESSAGE;
-  }
-
-  /**
-   * Return a href type for a contact. It is assumed to be either a URL or an email address. There
-   * is minimal checking that it is a validly formatted email address.
-   *
-   * @param contact The contact string, expected to be either an email address or a URL.
-   * @return "email" if it looks like an email address, "url" if it looks like a URL, and "NOT_HREF"
-   *     otherwise.
-   */
-  private String getHrefTypeForContact(String contact) {
-    try {
-      new URL(contact);
-      return ABSOLUTE_URL.getHrefTypeName();
-    } catch (MalformedURLException e) {
-      if (contact.contains("@") && !contact.contains(" ")) {
-        return PROTOCOL_EMAIL.getHrefTypeName();
-      } else {
-        return NON_HREF.getHrefTypeName();
-      }
-    }
   }
 }

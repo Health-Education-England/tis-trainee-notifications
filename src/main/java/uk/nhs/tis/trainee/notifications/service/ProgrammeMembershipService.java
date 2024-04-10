@@ -25,6 +25,9 @@ import static uk.nhs.tis.trainee.notifications.model.MessageType.IN_APP;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.E_PORTFOLIO;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.INDEMNITY_INSURANCE;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_CREATED;
+import static uk.nhs.tis.trainee.notifications.service.NotificationService.PERSON_ID_FIELD;
+import static uk.nhs.tis.trainee.notifications.service.NotificationService.TEMPLATE_NOTIFICATION_TYPE_FIELD;
+import static uk.nhs.tis.trainee.notifications.service.NotificationService.TEMPLATE_OWNER_FIELD;
 
 import java.time.Instant;
 import java.time.LocalDate;
@@ -57,11 +60,9 @@ import uk.nhs.tis.trainee.notifications.model.TisReferenceType;
 public class ProgrammeMembershipService {
 
   public static final String TIS_ID_FIELD = "tisId";
-  public static final String PERSON_ID_FIELD = "personId";
   public static final String PROGRAMME_NAME_FIELD = "programmeName";
   public static final String START_DATE_FIELD = "startDate";
   public static final String BLOCK_INDEMNITY_FIELD = "hasBlockIndemnity";
-  public static final String NOTIFICATION_TYPE_FIELD = "notificationType";
   public static final String COJ_SYNCED_FIELD = "conditionsOfJoiningSyncedAt";
 
   private static final List<String> INCLUDE_CURRICULUM_SUBTYPES
@@ -76,6 +77,15 @@ public class ProgrammeMembershipService {
   private final String eportfolioVersion;
   private final String indemnityInsuranceVersion;
 
+  /**
+   * Initialise the programme membership service.
+   *
+   * @param historyService            The history service to use.
+   * @param inAppService              The in-app service to use.
+   * @param notificationService       The notification service to use.
+   * @param eportfolioVersion         The ePortfolio version.
+   * @param indemnityInsuranceVersion The indemnity insurance version.
+   */
   public ProgrammeMembershipService(HistoryService historyService, InAppService inAppService,
       NotificationService notificationService,
       @Value("${application.template-versions.e-portfolio.in-app}") String eportfolioVersion,
@@ -195,13 +205,14 @@ public class ProgrammeMembershipService {
       jobDataMap.put(PERSON_ID_FIELD, programmeMembership.getPersonId());
       jobDataMap.put(PROGRAMME_NAME_FIELD, programmeMembership.getProgrammeName());
       jobDataMap.put(START_DATE_FIELD, programmeMembership.getStartDate());
-      jobDataMap.put(NOTIFICATION_TYPE_FIELD, milestone);
+      jobDataMap.put(TEMPLATE_OWNER_FIELD, programmeMembership.getManagingDeanery());
+      jobDataMap.put(TEMPLATE_NOTIFICATION_TYPE_FIELD, milestone);
       if (programmeMembership.getConditionsOfJoining() != null) {
         jobDataMap.put(COJ_SYNCED_FIELD,
             programmeMembership.getConditionsOfJoining().syncedAt());
       }
       // Note the status of the trainee will be retrieved when the job is executed, as will
-      // their name and email address, not now.
+      // their name and email address and LO contact details, not now.
 
       String jobId = milestone + "-" + programmeMembership.getTisId();
       try {
