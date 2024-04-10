@@ -80,12 +80,12 @@ public class MethodArgumentUtil {
    * @throws IOException If the template files could not be traversed.
    */
   public static Stream<Arguments> getInAppTemplateTypeAndVersions() throws IOException {
-    File emailRoot = ResourceUtils.getFile(CLASSPATH_URL_PREFIX + "templates/in-app/");
+    File inAppRoot = ResourceUtils.getFile(CLASSPATH_URL_PREFIX + "templates/in-app/");
     List<Arguments> arguments = new ArrayList<>();
 
     for (NotificationType type : NotificationType.values()) {
       String name = type.getTemplateName();
-      Path templateRoot = emailRoot.toPath().resolve(name);
+      Path templateRoot = inAppRoot.toPath().resolve(name);
 
       try (Stream<Path> paths = Files.walk(templateRoot)) {
         int parentNameCount = templateRoot.getNameCount();
