@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <title>Less Than Full Time</title>
+  </head>
+  <body>
+    <h1>In-App Notification</h1>
+    <h2>Subject</h2>
+    <th:block th:fragment="subject">Less Than Full Time</th:block>
+    <h2>Content</h2>
+    <th:block th:fragment="content">
+      <p>
+        This notification pertains to the following programme
+        <th:block th:text="${not #strings.isEmpty(programmeName)} ? ${programmeName} : _"
+          >(programme name missing)</th:block
+        >
+        starting on
+        <th:block th:text="${startDate} ? |${#temporals.format(startDate, 'dd MMMM yyyy')}| : _"
+          >(start date missing)</th:block
+        >.
+      </p>
+      <p>
+        If you already know the programme that you have been allocated to and wish to apply to work
+        LTFT (Less than Full Time), then please submit your application as soon as possible to
+        ensure that there is no delay in notifying your employer.
+      </p>
+      <p>
+        If you are currently awaiting final allocation, then we advise that you submit your
+        application as soon as your programme is confirmed. Please follow your local office process.
+        <th:block: th:switch="${localOfficeContactType}">
+          <a th:case="url" th:href="${localOfficeContact}" th:text="${localOfficeContact}"></a>
+          <a
+            th:case="email"
+            th:href="|mailto:${localOfficeContact}|"
+            th:text="${localOfficeContact}"
+          ></a>
+          <th:block th:case="*"
+            >Contact your local deanery office for information on LTFT.</th:block
+          >
+        </th:block:>
+      </p>
+    </th:block>
+  </body>
+</html>

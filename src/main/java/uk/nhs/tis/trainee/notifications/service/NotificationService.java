@@ -435,6 +435,23 @@ public class NotificationService implements Job {
    */
   protected String getOwnerContact(List<Map<String, String>> ownerContactList,
       LocalOfficeContactType contactType, LocalOfficeContactType fallbackContactType) {
+    return getOwnerContact(ownerContactList, contactType, fallbackContactType,
+        DEFAULT_NO_CONTACT_MESSAGE);
+  }
+
+  /**
+   * Get specified owner contact from a list of contacts.
+   *
+   * @param ownerContactList    The owner contact list to search.
+   * @param contactType         The contact type to return.
+   * @param fallbackContactType if the contactType is not available, return this contactType
+   *                            instead.
+   * @param defaultMessage      The default message if the contact was not found.
+   * @return The specific contact of the owner, or the default message if not found.
+   */
+  protected String getOwnerContact(List<Map<String, String>> ownerContactList,
+      LocalOfficeContactType contactType, LocalOfficeContactType fallbackContactType,
+      String defaultMessage) {
 
     Optional<Map<String, String>> ownerContact = ownerContactList.stream()
         .filter(c ->
@@ -448,7 +465,7 @@ public class NotificationService implements Job {
           .findFirst();
     }
     return ownerContact.map(oc -> oc.get(CONTACT_FIELD))
-        .orElse(DEFAULT_NO_CONTACT_MESSAGE);
+        .orElse(defaultMessage);
   }
 
   /**
