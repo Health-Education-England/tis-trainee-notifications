@@ -839,4 +839,30 @@ class NotificationServiceTest {
 
     assertThat("Unexpected owner contact.", contactList.size(), is(0));
   }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"1234567", "0000000"})
+  void shouldValidateGmcReturnTrueFor7ConsecutiveNumerical(String gmcNumber) {
+
+    boolean isValidGmc = service.isValidGmc(gmcNumber);
+
+    assertThat("Unexpected validate GMC result.", isValidGmc, is(true));
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"abcdefg", "0000g00", "12345678", ""})
+  void shouldValidateGmcReturnFalseForNot7ConsecutiveNumerical(String gmcNumber) {
+
+    boolean isValidGmc = service.isValidGmc(gmcNumber);
+
+    assertThat("Unexpected validate GMC result.", isValidGmc, is(false));
+  }
+
+  @Test
+  void shouldValidateGmcReturnFalseWhenGmcNull() {
+
+    boolean isValidGmc = service.isValidGmc(null);
+
+    assertThat("Unexpected validate GMC result.", isValidGmc, is(false));
+  }
 }
