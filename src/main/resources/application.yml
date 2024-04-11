@@ -33,6 +33,8 @@ application:
       email: v1.0.0
     credential-revoked:
       email: v1.0.0
+    deferral:
+      in-app: v1.0.0
     e-portfolio:
       in-app: v1.0.0
     form-updated:

@@ -22,6 +22,7 @@
 package uk.nhs.tis.trainee.notifications.service;
 
 import static uk.nhs.tis.trainee.notifications.model.MessageType.IN_APP;
+import static uk.nhs.tis.trainee.notifications.model.NotificationType.DEFERRAL;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.E_PORTFOLIO;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.INDEMNITY_INSURANCE;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.LTFT;
@@ -78,6 +79,7 @@ public class ProgrammeMembershipService {
   private final InAppService inAppService;
   private final NotificationService notificationService;
 
+  private final String deferralVersion;
   private final String eportfolioVersion;
   private final String indemnityInsuranceVersion;
   private final String ltftVersion;
@@ -93,6 +95,7 @@ public class ProgrammeMembershipService {
    */
   public ProgrammeMembershipService(HistoryService historyService, InAppService inAppService,
       NotificationService notificationService,
+      @Value("${application.template-versions.deferral.in-app}") String deferralVersion,
       @Value("${application.template-versions.e-portfolio.in-app}") String eportfolioVersion,
       @Value("${application.template-versions.indemnity-insurance.in-app}")
       String indemnityInsuranceVersion,
@@ -100,6 +103,7 @@ public class ProgrammeMembershipService {
     this.historyService = historyService;
     this.inAppService = inAppService;
     this.notificationService = notificationService;
+    this.deferralVersion = deferralVersion;
     this.eportfolioVersion = eportfolioVersion;
     this.indemnityInsuranceVersion = indemnityInsuranceVersion;
     this.ltftVersion = ltftVersion;
@@ -150,6 +154,7 @@ public class ProgrammeMembershipService {
 
     Set<NotificationType> notificationTypes = new HashSet<>(
         NotificationType.getProgrammeUpdateNotificationTypes());
+    notificationTypes.add(DEFERRAL);
     notificationTypes.add(E_PORTFOLIO);
     notificationTypes.add(INDEMNITY_INSURANCE);
     notificationTypes.add(LTFT);
@@ -260,6 +265,10 @@ public class ProgrammeMembershipService {
       String localOfficeContactType = notificationService.getHrefTypeForContact(localOfficeContact);
       createUniqueInAppNotification(programmeMembership, notificationsAlreadySent, LTFT,
           ltftVersion, Map.of(
+              LOCAL_OFFICE_CONTACT_FIELD, localOfficeContact,
+              LOCAL_OFFICE_CONTACT_TYPE_FIELD, localOfficeContactType));
+      createUniqueInAppNotification(programmeMembership, notificationsAlreadySent, DEFERRAL,
+          deferralVersion, Map.of(
               LOCAL_OFFICE_CONTACT_FIELD, localOfficeContact,
               LOCAL_OFFICE_CONTACT_TYPE_FIELD, localOfficeContactType));
     }

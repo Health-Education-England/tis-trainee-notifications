@@ -100,6 +100,7 @@ class ProgrammeMembershipServiceTest {
   private static final String E_PORTFOLIO_VERSION = "v1.2.3";
   private static final String INDEMNITY_INSURANCE_VERSION = "v2.3.4";
   private static final String LTFT_VERSION = "v3.4.5";
+  private static final String DEFERRAL_VERSION ="v4.5.6";
 
   ProgrammeMembershipService service;
   HistoryService historyService;
@@ -112,7 +113,7 @@ class ProgrammeMembershipServiceTest {
     inAppService = mock(InAppService.class);
     notificationService = mock(NotificationService.class);
     service = new ProgrammeMembershipService(historyService, inAppService, notificationService,
-        E_PORTFOLIO_VERSION, INDEMNITY_INSURANCE_VERSION, LTFT_VERSION);
+        E_PORTFOLIO_VERSION, INDEMNITY_INSURANCE_VERSION, LTFT_VERSION,DEFERRAL_VERSION);
   }
 
   @ParameterizedTest
