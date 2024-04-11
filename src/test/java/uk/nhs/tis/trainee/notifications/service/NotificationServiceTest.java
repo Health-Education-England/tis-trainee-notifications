@@ -796,6 +796,34 @@ class NotificationServiceTest {
   }
 
   @Test
+  void shouldUseCustomDefaultNoContactWhenContactAndFallbackMissing() {
+    List<Map<String, String>> contacts = new ArrayList<>();
+    Map<String, String> contact1 = new HashMap<>();
+    contact1.put(CONTACT_TYPE_FIELD, LocalOfficeContactType.TSS_SUPPORT.getContactTypeName());
+    contact1.put(CONTACT_FIELD, "one@email.com, another@email.com");
+    contacts.add(contact1);
+
+    String ownerContact = service.getOwnerContact(contacts,
+        LocalOfficeContactType.ONBOARDING_SUPPORT, LocalOfficeContactType.DEFERRAL, "testDefault");
+
+    assertThat("Unexpected owner contact.", ownerContact, is("testDefault"));
+  }
+
+  @Test
+  void shouldUseCustomDefaultNoContactWhenContactMissingAndFallbackNull() {
+    List<Map<String, String>> contacts = new ArrayList<>();
+    Map<String, String> contact1 = new HashMap<>();
+    contact1.put(CONTACT_TYPE_FIELD, LocalOfficeContactType.TSS_SUPPORT.getContactTypeName());
+    contact1.put(CONTACT_FIELD, "one@email.com, another@email.com");
+    contacts.add(contact1);
+
+    String ownerContact = service.getOwnerContact(contacts,
+        LocalOfficeContactType.ONBOARDING_SUPPORT, null, "testDefault");
+
+    assertThat("Unexpected owner contact.", ownerContact, is("testDefault"));
+  }
+
+  @Test
   void shouldGetEmptyContactListIfReferenceServiceFailure() {
     doThrow(new RestClientException("error"))
         .when(restTemplate).getForObject(any(), any(), anyMap());

@@ -24,6 +24,7 @@ package uk.nhs.tis.trainee.notifications.service;
 import static uk.nhs.tis.trainee.notifications.model.MessageType.IN_APP;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.E_PORTFOLIO;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.INDEMNITY_INSURANCE;
+import static uk.nhs.tis.trainee.notifications.model.NotificationType.LTFT;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_CREATED;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.PERSON_ID_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.TEMPLATE_NOTIFICATION_TYPE_FIELD;
@@ -47,6 +48,7 @@ import org.springframework.stereotype.Service;
 import uk.nhs.tis.trainee.notifications.dto.HistoryDto;
 import uk.nhs.tis.trainee.notifications.model.Curriculum;
 import uk.nhs.tis.trainee.notifications.model.History.TisReferenceInfo;
+import uk.nhs.tis.trainee.notifications.model.LocalOfficeContactType;
 import uk.nhs.tis.trainee.notifications.model.NotificationType;
 import uk.nhs.tis.trainee.notifications.model.ProgrammeMembership;
 import uk.nhs.tis.trainee.notifications.model.TisReferenceType;
@@ -63,6 +65,8 @@ public class ProgrammeMembershipService {
   public static final String PROGRAMME_NAME_FIELD = "programmeName";
   public static final String START_DATE_FIELD = "startDate";
   public static final String BLOCK_INDEMNITY_FIELD = "hasBlockIndemnity";
+  public static final String LOCAL_OFFICE_CONTACT_FIELD = "localOfficeContact";
+  public static final String LOCAL_OFFICE_CONTACT_TYPE_FIELD = "localOfficeContactType";
   public static final String COJ_SYNCED_FIELD = "conditionsOfJoiningSyncedAt";
 
   private static final List<String> INCLUDE_CURRICULUM_SUBTYPES
@@ -76,6 +80,7 @@ public class ProgrammeMembershipService {
 
   private final String eportfolioVersion;
   private final String indemnityInsuranceVersion;
+  private final String ltftVersion;
 
   /**
    * Initialise the programme membership service.
@@ -90,12 +95,14 @@ public class ProgrammeMembershipService {
       NotificationService notificationService,
       @Value("${application.template-versions.e-portfolio.in-app}") String eportfolioVersion,
       @Value("${application.template-versions.indemnity-insurance.in-app}")
-      String indemnityInsuranceVersion) {
+      String indemnityInsuranceVersion,
+      @Value("${application.template-versions.less-than-full-time.in-app}") String ltftVersion) {
     this.historyService = historyService;
     this.inAppService = inAppService;
     this.notificationService = notificationService;
     this.eportfolioVersion = eportfolioVersion;
     this.indemnityInsuranceVersion = indemnityInsuranceVersion;
+    this.ltftVersion = ltftVersion;
   }
 
   /**
@@ -145,6 +152,7 @@ public class ProgrammeMembershipService {
         NotificationType.getProgrammeUpdateNotificationTypes());
     notificationTypes.add(E_PORTFOLIO);
     notificationTypes.add(INDEMNITY_INSURANCE);
+    notificationTypes.add(LTFT);
 
     for (NotificationType milestone : notificationTypes) {
       Optional<HistoryDto> sentItem = correspondence.stream()
@@ -244,6 +252,16 @@ public class ProgrammeMembershipService {
       createUniqueInAppNotification(programmeMembership, notificationsAlreadySent,
           INDEMNITY_INSURANCE, indemnityInsuranceVersion,
           Map.of(BLOCK_INDEMNITY_FIELD, hasBlockIndemnity));
+
+      String owner = programmeMembership.getManagingDeanery();
+      List<Map<String, String>> contactList = notificationService.getOwnerContactList(owner);
+      String localOfficeContact = notificationService.getOwnerContact(contactList,
+          LocalOfficeContactType.LTFT, LocalOfficeContactType.TSS_SUPPORT, "");
+      String localOfficeContactType = notificationService.getHrefTypeForContact(localOfficeContact);
+      createUniqueInAppNotification(programmeMembership, notificationsAlreadySent, LTFT,
+          ltftVersion, Map.of(
+              LOCAL_OFFICE_CONTACT_FIELD, localOfficeContact,
+              LOCAL_OFFICE_CONTACT_TYPE_FIELD, localOfficeContactType));
     }
   }
 

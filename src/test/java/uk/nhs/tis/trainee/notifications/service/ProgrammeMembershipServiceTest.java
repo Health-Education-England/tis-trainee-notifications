@@ -38,11 +38,15 @@ import static org.mockito.Mockito.when;
 import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.SENT;
 import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.UNREAD;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.INDEMNITY_INSURANCE;
+import static uk.nhs.tis.trainee.notifications.model.NotificationType.LTFT;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_CREATED;
 import static uk.nhs.tis.trainee.notifications.model.TisReferenceType.PROGRAMME_MEMBERSHIP;
+import static uk.nhs.tis.trainee.notifications.service.NotificationService.CONTACT_TYPE_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.PERSON_ID_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.BLOCK_INDEMNITY_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.COJ_SYNCED_FIELD;
+import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.LOCAL_OFFICE_CONTACT_FIELD;
+import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.LOCAL_OFFICE_CONTACT_TYPE_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.PROGRAMME_NAME_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.START_DATE_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.TIS_ID_FIELD;
@@ -69,6 +73,8 @@ import uk.nhs.tis.trainee.notifications.dto.CojSignedEvent.ConditionsOfJoining;
 import uk.nhs.tis.trainee.notifications.dto.HistoryDto;
 import uk.nhs.tis.trainee.notifications.model.Curriculum;
 import uk.nhs.tis.trainee.notifications.model.History.TisReferenceInfo;
+import uk.nhs.tis.trainee.notifications.model.HrefType;
+import uk.nhs.tis.trainee.notifications.model.LocalOfficeContactType;
 import uk.nhs.tis.trainee.notifications.model.MessageType;
 import uk.nhs.tis.trainee.notifications.model.NotificationType;
 import uk.nhs.tis.trainee.notifications.model.ProgrammeMembership;
@@ -84,6 +90,7 @@ class ProgrammeMembershipServiceTest {
   private static final String TIS_ID = "123";
   private static final String PERSON_ID = "abc";
   private static final String PROGRAMME_NAME = "the programme";
+  private static final String MANAGING_DEANERY = "the local office";
   private static final LocalDate START_DATE = LocalDate.now().plusYears(1);
   //set a year in the future to allow all notifications to be scheduled
 
@@ -92,6 +99,7 @@ class ProgrammeMembershipServiceTest {
 
   private static final String E_PORTFOLIO_VERSION = "v1.2.3";
   private static final String INDEMNITY_INSURANCE_VERSION = "v2.3.4";
+  private static final String LTFT_VERSION = "v3.4.5";
 
   ProgrammeMembershipService service;
   HistoryService historyService;
@@ -104,7 +112,7 @@ class ProgrammeMembershipServiceTest {
     inAppService = mock(InAppService.class);
     notificationService = mock(NotificationService.class);
     service = new ProgrammeMembershipService(historyService, inAppService, notificationService,
-        E_PORTFOLIO_VERSION, INDEMNITY_INSURANCE_VERSION);
+        E_PORTFOLIO_VERSION, INDEMNITY_INSURANCE_VERSION, LTFT_VERSION);
   }
 
   @ParameterizedTest
@@ -187,7 +195,9 @@ class ProgrammeMembershipServiceTest {
       E_PORTFOLIO | v1.2.3 | true
       E_PORTFOLIO | v1.2.3 | false
       INDEMNITY_INSURANCE | v2.3.4 | true
-      INDEMNITY_INSURANCE | v2.3.4 | false""")
+      INDEMNITY_INSURANCE | v2.3.4 | false
+      LTFT | v3.4.5 | true
+      LTFT | v3.4.5 | false""")
   void shouldAddInAppNotificationsWhenNotExcludedAndMeetsCriteria(NotificationType notificationType,
       String notificationVersion, boolean notifiablePm) throws SchedulerException {
     Curriculum theCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, "any specialty", false);
@@ -203,6 +213,8 @@ class ProgrammeMembershipServiceTest {
         true)).thenReturn(true);
     when(notificationService.programmeMembershipIsNotifiable(programmeMembership,
         MessageType.IN_APP)).thenReturn(notifiablePm);
+    when(notificationService.getOwnerContact(any(), any(), any(), any())).thenReturn("");
+    when(notificationService.getHrefTypeForContact(any())).thenReturn("");
 
     service.addNotifications(programmeMembership);
 
@@ -239,6 +251,8 @@ class ProgrammeMembershipServiceTest {
     programmeMembership.setConditionsOfJoining(new ConditionsOfJoining(Instant.MIN));
 
     when(notificationService.meetsCriteria(programmeMembership, true, true)).thenReturn(true);
+    when(notificationService.getOwnerContact(any(), any(), any(), any())).thenReturn("");
+    when(notificationService.getHrefTypeForContact(any())).thenReturn("");
 
     service.addNotifications(programmeMembership);
 
@@ -267,6 +281,8 @@ class ProgrammeMembershipServiceTest {
     ));
 
     when(notificationService.meetsCriteria(programmeMembership, true, true)).thenReturn(true);
+    when(notificationService.getOwnerContact(any(), any(), any(), any())).thenReturn("");
+    when(notificationService.getHrefTypeForContact(any())).thenReturn("");
 
     service.addNotifications(programmeMembership);
 
@@ -291,6 +307,8 @@ class ProgrammeMembershipServiceTest {
     ));
 
     when(notificationService.meetsCriteria(programmeMembership, true, true)).thenReturn(true);
+    when(notificationService.getOwnerContact(any(), any(), any(), any())).thenReturn("");
+    when(notificationService.getHrefTypeForContact(any())).thenReturn("");
 
     service.addNotifications(programmeMembership);
 
@@ -300,6 +318,50 @@ class ProgrammeMembershipServiceTest {
 
     Map<String, Object> variables = variablesCaptor.getValue();
     assertThat("Unexpected block indemnity flag.", variables.get(BLOCK_INDEMNITY_FIELD), is(false));
+  }
+
+  @ParameterizedTest
+  @CsvSource(delimiter = '|', textBlock = """
+      ltft@example.com | PROTOCOL_EMAIL
+      https://example.com | ABSOLUTE_URL
+      not a href | NON_HREF""")
+  void shouldIncludeContactDetailsInLtftInAppNotification(String contact, HrefType contactType)
+      throws SchedulerException {
+    Curriculum theCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, "any specialty", true);
+    ProgrammeMembership programmeMembership = new ProgrammeMembership();
+    programmeMembership.setTisId(TIS_ID);
+    programmeMembership.setPersonId(PERSON_ID);
+    programmeMembership.setProgrammeName(PROGRAMME_NAME);
+    programmeMembership.setStartDate(START_DATE);
+    programmeMembership.setCurricula(List.of(theCurriculum));
+    programmeMembership.setConditionsOfJoining(new ConditionsOfJoining(Instant.MIN));
+    programmeMembership.setManagingDeanery(MANAGING_DEANERY);
+
+    when(notificationService.meetsCriteria(programmeMembership, true, true)).thenReturn(true);
+
+    List<Map<String, String>> contactList = List.of(
+        Map.of(CONTACT_TYPE_FIELD, LocalOfficeContactType.LTFT.getContactTypeName()));
+    when(notificationService.getOwnerContactList(MANAGING_DEANERY)).thenReturn(contactList);
+    when(notificationService.getOwnerContact(contactList, LocalOfficeContactType.LTFT,
+        LocalOfficeContactType.TSS_SUPPORT, "")).thenReturn(contact);
+    when(notificationService.getHrefTypeForContact(contact)).thenReturn(
+        contactType.getHrefTypeName());
+
+    service.addNotifications(programmeMembership);
+
+    ArgumentCaptor<Map<String, Object>> variablesCaptor = ArgumentCaptor.forClass(Map.class);
+    verify(inAppService).createNotifications(eq(PERSON_ID), any(), eq(LTFT),
+        eq(LTFT_VERSION), variablesCaptor.capture(), anyBoolean());
+
+    Map<String, Object> variables = variablesCaptor.getValue();
+    assertThat("Unexpected variable count.", variables.size(), is(4));
+    assertThat("Unexpected programme name.", variables.get(PROGRAMME_NAME_FIELD),
+        is(PROGRAMME_NAME));
+    assertThat("Unexpected start date.", variables.get(START_DATE_FIELD), is(START_DATE));
+    assertThat("Unexpected local office contact.", variables.get(LOCAL_OFFICE_CONTACT_FIELD),
+        is(contact));
+    assertThat("Unexpected local office contact type.",
+        variables.get(LOCAL_OFFICE_CONTACT_TYPE_FIELD), is(contactType.getHrefTypeName()));
   }
 
   @Test
@@ -323,7 +385,7 @@ class ProgrammeMembershipServiceTest {
 
   @ParameterizedTest
   @EnumSource(value = NotificationType.class, mode = Mode.INCLUDE, names = {"E_PORTFOLIO",
-      "INDEMNITY_INSURANCE"})
+      "INDEMNITY_INSURANCE", "LTFT"})
   void shouldNotAddInAppNotificationsWhenNotUnique(NotificationType notificationType)
       throws SchedulerException {
     Curriculum theCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, "any specialty", false);
@@ -344,6 +406,8 @@ class ProgrammeMembershipServiceTest {
         true)).thenReturn(true);
     when(notificationService.programmeMembershipIsNotifiable(programmeMembership,
         MessageType.IN_APP)).thenReturn(true);
+    when(notificationService.getOwnerContact(any(), any(), any(), any())).thenReturn("");
+    when(notificationService.getHrefTypeForContact(any())).thenReturn("");
 
     service.addNotifications(programmeMembership);
 
