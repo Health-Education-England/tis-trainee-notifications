@@ -78,7 +78,6 @@ public class NotificationService implements Job {
 
   public static final String API_TRAINEE_DETAILS = "/api/trainee-profile/account-details/{tisId}";
   private static final String TRIGGER_ID_PREFIX = "trigger-";
-  protected static final Integer PAST_MILESTONE_SCHEDULE_DELAY_HOURS = 1;
 
   public static final String TEMPLATE_NOTIFICATION_TYPE_FIELD = "notificationType";
   public static final String TEMPLATE_OWNER_CONTACT_FIELD = "localOfficeContact";
@@ -97,6 +96,7 @@ public class NotificationService implements Job {
   private final String referenceUrl;
   private final Scheduler scheduler;
   private final MessagingControllerService messagingControllerService;
+  protected final Integer immediateNotificationDelayMinutes;
 
   /**
    * Initialise the Notification Service.
@@ -116,7 +116,8 @@ public class NotificationService implements Job {
       Scheduler scheduler, MessagingControllerService messagingControllerService,
       @Value("${application.template-versions.form-updated.email}") String templateVersion,
       @Value("${service.trainee.url}") String serviceUrl,
-      @Value("${service.reference.url}") String referenceUrl) {
+      @Value("${service.reference.url}") String referenceUrl,
+      @Value("${application.immediate-notifications-delay-minutes}") Integer notificationDelay) {
     this.emailService = emailService;
     this.restTemplate = restTemplate;
     this.scheduler = scheduler;
@@ -124,6 +125,7 @@ public class NotificationService implements Job {
     this.serviceUrl = serviceUrl;
     this.referenceUrl = referenceUrl;
     this.messagingControllerService = messagingControllerService;
+    this.immediateNotificationDelayMinutes = notificationDelay;
   }
 
   /**
@@ -285,7 +287,7 @@ public class NotificationService implements Job {
       // 'Missed' milestones: schedule to be sent soon, but not immediately
       // in case of human editing 'jitter'.
       milestone = Date.from(Instant.now()
-          .plus(PAST_MILESTONE_SCHEDULE_DELAY_HOURS, ChronoUnit.HOURS));
+          .plus(immediateNotificationDelayMinutes, ChronoUnit.MINUTES));
     } else {
       // Future milestone.
       milestone = Date.from(milestoneDate

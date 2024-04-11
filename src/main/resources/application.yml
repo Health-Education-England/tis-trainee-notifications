@@ -17,6 +17,7 @@ application:
   in-app:
     enabled: ${NOTIFICATIONS_IN_APP_ENABLED:false}
   notifications-whitelist: ${NOTIFICATIONS_WHITELIST:[]}
+  immediate-notifications-delay-minutes: ${IMMEDIATE_NOTIFICATIONS_DELAY:60}
   queues:
     account-confirmed: ${ACCOUNT_CONFIRMED_QUEUE}
     coj-received: ${COJ_RECEIVED_QUEUE}
