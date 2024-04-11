@@ -45,6 +45,7 @@ public interface PlacementMapper {
   @Mapping(target = "startDate", source = "recordData.dateFrom")
   @Mapping(target = "placementType", source = "recordData.placementType")
   @Mapping(target = "owner", source = "recordData.owner")
+  @Mapping(target = "site", source = "recordData.site")
   Placement toEntity(Map<String, String> recordData);
 }
 
