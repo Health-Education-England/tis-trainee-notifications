@@ -48,7 +48,6 @@ import static uk.nhs.tis.trainee.notifications.model.TisReferenceType.PROGRAMME_
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.CONTACT_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.CONTACT_TYPE_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.DEFAULT_NO_CONTACT_MESSAGE;
-import static uk.nhs.tis.trainee.notifications.service.NotificationService.PAST_MILESTONE_SCHEDULE_DELAY_HOURS;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.PERSON_ID_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.TEMPLATE_CONTACT_HREF_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.TEMPLATE_NOTIFICATION_TYPE_FIELD;
@@ -106,6 +105,7 @@ class NotificationServiceTest {
   private static final String TIS_ID = "tis-id";
   private static final String PERSON_ID = "person-id";
   private static final LocalDate START_DATE = LocalDate.now();
+  private static final Integer NOTIFICATION_DELAY = 60;
 
   private static final String LOCAL_OFFICE = "local office";
   private static final String LOCAL_OFFICE_CONTACT = "local office contact";
@@ -176,7 +176,7 @@ class NotificationServiceTest {
 
     service = new NotificationService(emailService, restTemplate, scheduler,
         messagingControllerService,
-        TEMPLATE_VERSION, SERVICE_URL, REFERENCE_URL);
+        TEMPLATE_VERSION, SERVICE_URL, REFERENCE_URL, NOTIFICATION_DELAY);
   }
 
   @Test
@@ -539,7 +539,7 @@ class NotificationServiceTest {
   @Test
   void shouldScheduleMissedMilestonesImmediately() {
     Date expectedMilestone = Date.from(Instant.now()
-        .plus(PAST_MILESTONE_SCHEDULE_DELAY_HOURS, ChronoUnit.HOURS));
+        .plus(NOTIFICATION_DELAY, ChronoUnit.MINUTES));
     Date expectedNearestMinute = DateUtils.round(expectedMilestone, Calendar.MINUTE);
 
     Date scheduledDate = service.getScheduleDate(LocalDate.MIN, 0);
