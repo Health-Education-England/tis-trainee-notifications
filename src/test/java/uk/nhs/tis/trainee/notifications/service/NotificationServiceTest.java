@@ -556,7 +556,8 @@ class NotificationServiceTest {
     assertThat("Unexpected given name", expectedResult.givenName(), is(COGNITO_GIVEN_NAME));
     if (gmcNumber == null) {
       assertThat("Unexpected gmc number.", expectedResult.gmcNumber(), is(nullValue()));
-      assertDoesNotThrow(() -> service.mapUserDetails(cognitoAccountDetails, traineeProfileDetails));
+      assertDoesNotThrow(() ->
+          service.mapUserDetails(cognitoAccountDetails, traineeProfileDetails));
     } else {
       assertThat("Unexpected gmc number.", expectedResult.gmcNumber(), is(USER_GMC));
     }
