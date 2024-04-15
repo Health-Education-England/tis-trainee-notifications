@@ -102,6 +102,7 @@ class ProgrammeMembershipServiceTest {
   private static final String INDEMNITY_INSURANCE_VERSION = "v2.3.4";
   private static final String LTFT_VERSION = "v3.4.5";
   private static final String DEFERRAL_VERSION ="v4.5.6";
+  private static final String SPONSORSHIP_VERSION = "v5.6.7";
 
   ProgrammeMembershipService service;
   HistoryService historyService;
@@ -114,7 +115,8 @@ class ProgrammeMembershipServiceTest {
     inAppService = mock(InAppService.class);
     notificationService = mock(NotificationService.class);
     service = new ProgrammeMembershipService(historyService, inAppService, notificationService,
-        DEFERRAL_VERSION, E_PORTFOLIO_VERSION, INDEMNITY_INSURANCE_VERSION, LTFT_VERSION);
+        DEFERRAL_VERSION, E_PORTFOLIO_VERSION, INDEMNITY_INSURANCE_VERSION, LTFT_VERSION,
+        SPONSORSHIP_VERSION);
   }
 
   @ParameterizedTest
@@ -201,7 +203,10 @@ class ProgrammeMembershipServiceTest {
       LTFT | v3.4.5 | true
       LTFT | v3.4.5 | false
       DEFERRAL | v4.5.6 | true
-      DEFERRAL | v4.5.6 | false""")
+      DEFERRAL | v4.5.6 | false
+      LTFT | v3.4.5 | false
+      SPONSORSHIP | v4.5.6 | true
+      SPONSORSHIP | v4.5.6 | false""")
   void shouldAddInAppNotificationsWhenNotExcludedAndMeetsCriteria(NotificationType notificationType,
       String notificationVersion, boolean notifiablePm) throws SchedulerException {
     Curriculum theCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, "any specialty", false);
@@ -393,7 +398,7 @@ class ProgrammeMembershipServiceTest {
 
   @ParameterizedTest
   @EnumSource(value = NotificationType.class, mode = Mode.INCLUDE, names = {"E_PORTFOLIO",
-      "INDEMNITY_INSURANCE", "LTFT"})
+      "INDEMNITY_INSURANCE", "LTFT", "SPONSORSHIP"})
   void shouldNotAddInAppNotificationsWhenNotUnique(NotificationType notificationType)
       throws SchedulerException {
     Curriculum theCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, "any specialty", false);

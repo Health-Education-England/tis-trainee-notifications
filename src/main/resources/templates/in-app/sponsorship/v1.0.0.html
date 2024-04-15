@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <title>Sponsorship</title>
+  </head>
+  <body>
+    <h1>In-App Notification</h1>
+    <h2>Subject</h2>
+    <th:block th:fragment="subject">Sponsorship</th:block>
+    <h2>Content</h2>
+    <th:block th:fragment="content">
+      <p>
+        This notification pertains to the following programme
+        <th:block th:text="${not #strings.isEmpty(programmeName)} ? ${programmeName} : _"
+          >(programme name missing)</th:block
+        >
+        starting on
+        <th:block th:text="${startDate} ? |${#temporals.format(startDate, 'dd MMMM yyyy')}| : _"
+          >(start date missing)</th:block
+        >.
+      </p>
+      <p>
+        If you require a Certificate of Sponsorship in order to apply for a Skilled Worker visa for this rotation, please follow this <a href="https://medical.hee.nhs.uk/medical-training-recruitment/medical-specialty-training/overseas-applicants/overseas-sponsorship-guidance/overseas-sponsorship-contact-details">link</a> for details on the application process. Should you have any questions that are not answered on this website, please follow your local office process.
+        <th:block: th:switch="${localOfficeContactType}">
+          <a th:case="url" th:href="${localOfficeContact}" th:text="${localOfficeContact}"></a>
+          <a
+            th:case="email"
+            th:href="|mailto:${localOfficeContact}|"
+            th:text="${localOfficeContact}"
+          ></a>
+          <th:block th:case="*"
+            >Contact your local deanery office for information on Sponsorship.</th:block
+          >
+        </th:block:>
+      </p>
+    </th:block>
+  </body>
+</html>
