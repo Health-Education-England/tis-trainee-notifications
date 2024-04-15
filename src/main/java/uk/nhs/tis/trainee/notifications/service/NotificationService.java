@@ -96,6 +96,7 @@ public class NotificationService implements Job {
   private final String referenceUrl;
   private final Scheduler scheduler;
   private final MessagingControllerService messagingControllerService;
+  private final List<String> notificationsWhitelist;
   protected final Integer immediateNotificationDelayMinutes;
 
   /**
@@ -111,13 +112,15 @@ public class NotificationService implements Job {
    *                                   profile information.
    * @param referenceUrl               The URL for the tis-trainee-reference service to use for
    *                                   local office information.
+   * @param notificationsWhitelist    The whitelist of (tester) trainee TIS IDs.
    */
   public NotificationService(EmailService emailService, RestTemplate restTemplate,
       Scheduler scheduler, MessagingControllerService messagingControllerService,
       @Value("${application.template-versions.form-updated.email}") String templateVersion,
       @Value("${service.trainee.url}") String serviceUrl,
       @Value("${service.reference.url}") String referenceUrl,
-      @Value("${application.immediate-notifications-delay-minutes}") Integer notificationDelay) {
+      @Value("${application.immediate-notifications-delay-minutes}") Integer notificationDelay,
+      @Value("${application.notifications-whitelist}") List<String> notificationsWhitelist) {
     this.emailService = emailService;
     this.restTemplate = restTemplate;
     this.scheduler = scheduler;
@@ -126,6 +129,7 @@ public class NotificationService implements Job {
     this.referenceUrl = referenceUrl;
     this.messagingControllerService = messagingControllerService;
     this.immediateNotificationDelayMinutes = notificationDelay;
+    this.notificationsWhitelist = notificationsWhitelist;
   }
 
   /**
@@ -144,6 +148,7 @@ public class NotificationService implements Job {
 
     // get job details according to notification type
     String personId = jobDetails.getString(PERSON_ID_FIELD);
+    boolean inWhitelist = notificationsWhitelist.contains(personId);
 
     TisReferenceInfo tisReferenceInfo = null;
     LocalDate startDate = null;
@@ -187,8 +192,9 @@ public class NotificationService implements Job {
       minimalPm.setPersonId(personId);
       minimalPm.setTisId(tisReferenceInfo.id());
       actuallySendEmail
-          = messagingControllerService.isValidRecipient(personId, MessageType.EMAIL)
-          && meetsCriteria(minimalPm, true, true);
+          = inWhitelist
+          || (messagingControllerService.isValidRecipient(personId, MessageType.EMAIL)
+          && meetsCriteria(minimalPm, true, true));
 
     } else if (notificationType == NotificationType.PLACEMENT_UPDATED_WEEK_12) {
 
@@ -198,8 +204,9 @@ public class NotificationService implements Job {
       tisReferenceInfo = new TisReferenceInfo(PLACEMENT,
           jobDetails.get(PlacementService.TIS_ID_FIELD).toString());
 
-      actuallySendEmail = messagingControllerService.isValidRecipient(personId, MessageType.EMAIL)
-          && messagingControllerService.isPlacementInPilot2024(personId, tisReferenceInfo.id());
+      actuallySendEmail = inWhitelist
+          || (messagingControllerService.isValidRecipient(personId, MessageType.EMAIL)
+          && messagingControllerService.isPlacementInPilot2024(personId, tisReferenceInfo.id()));
     }
 
     if (isActionableJob) {
@@ -315,7 +322,7 @@ public class NotificationService implements Job {
           userTraineeDetails.title(),
           userCognitoAccountDetails.familyName(),
           userCognitoAccountDetails.givenName(),
-          userTraineeDetails.gmcNumber().trim());
+          (userTraineeDetails.gmcNumber() != null ? userTraineeDetails.gmcNumber().trim() : null));
     } else if (userTraineeDetails != null) {
       //no TSS account or duplicate accounts in Cognito
       return new UserDetails(false,
@@ -323,7 +330,7 @@ public class NotificationService implements Job {
           userTraineeDetails.title(),
           userTraineeDetails.familyName(),
           userTraineeDetails.givenName(),
-          userTraineeDetails.gmcNumber().trim());
+          (userTraineeDetails.gmcNumber() != null ? userTraineeDetails.gmcNumber().trim() : null));
     } else {
       return null;
     }

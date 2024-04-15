@@ -75,6 +75,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.EnumSource.Mode;
+import org.junit.jupiter.params.provider.NullSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.quartz.JobDataMap;
@@ -106,6 +107,10 @@ class NotificationServiceTest {
   private static final String PERSON_ID = "person-id";
   private static final LocalDate START_DATE = LocalDate.now();
   private static final Integer NOTIFICATION_DELAY = 60;
+  private static final String WHITELIST_1 = "123";
+  private static final String WHITELIST_2 = "456";
+  private static final List<String> NOT_WHITELISTED = List.of(WHITELIST_1, WHITELIST_2);
+  private static final List<String> WHITELISTED = List.of(WHITELIST_1, WHITELIST_2, PERSON_ID);
 
   private static final String LOCAL_OFFICE = "local office";
   private static final String LOCAL_OFFICE_CONTACT = "local office contact";
@@ -132,6 +137,7 @@ class NotificationServiceTest {
   private JobDataMap placementJobDataMap;
 
   private NotificationService service;
+  private NotificationService serviceWhitelisted;
   private EmailService emailService;
   private RestTemplate restTemplate;
   private Scheduler scheduler;
@@ -176,7 +182,10 @@ class NotificationServiceTest {
 
     service = new NotificationService(emailService, restTemplate, scheduler,
         messagingControllerService,
-        TEMPLATE_VERSION, SERVICE_URL, REFERENCE_URL, NOTIFICATION_DELAY);
+        TEMPLATE_VERSION, SERVICE_URL, REFERENCE_URL, NOTIFICATION_DELAY, NOT_WHITELISTED);
+    serviceWhitelisted = new NotificationService(emailService, restTemplate, scheduler,
+        messagingControllerService,
+        TEMPLATE_VERSION, SERVICE_URL, REFERENCE_URL, NOTIFICATION_DELAY, WHITELISTED);
   }
 
   @Test
@@ -311,6 +320,50 @@ class NotificationServiceTest {
     service.execute(jobExecutionContext);
 
     verify(emailService).sendMessage(any(), any(), any(), any(), any(), any(), eq(true));
+    verify(jobExecutionContext).setResult(any());
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {true, false})
+  void shouldSendPlacementEmailWhenNotMatchBothCriteriaButInWhiteList(boolean apiResult)
+      throws MessagingException {
+    UserDetails userAccountDetails =
+        new UserDetails(
+            false, USER_EMAIL, USER_TITLE, USER_FAMILY_NAME, USER_GIVEN_NAME, USER_GMC);
+    when(jobExecutionContext.getJobDetail()).thenReturn(placementJobDetails);
+    when(emailService.getRecipientAccount(PERSON_ID)).thenReturn(userAccountDetails);
+    when(restTemplate.getForObject("the-url/api/trainee-profile/account-details/{tisId}",
+        UserDetails.class, Map.of(TIS_ID_FIELD, PERSON_ID))).thenReturn(userAccountDetails);
+    when(messagingControllerService.isValidRecipient(any(), any())).thenReturn(apiResult);
+    when(messagingControllerService.isPlacementInPilot2024(any(), any())).thenReturn(!apiResult);
+
+    serviceWhitelisted.execute(jobExecutionContext);
+
+    verify(emailService).sendMessage(any(), any(), any(), any(), any(), any(), eq(false));
+    verify(jobExecutionContext).setResult(any());
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {true, false})
+  void shouldSendProgrammeCreatedEmailWhenNotMatchAllCriteriaButInWhiteList(boolean apiResult)
+      throws MessagingException {
+    UserDetails userAccountDetails =
+        new UserDetails(
+            false, USER_EMAIL, USER_TITLE, USER_FAMILY_NAME, USER_GIVEN_NAME, USER_GMC);
+
+    when(jobExecutionContext.getJobDetail()).thenReturn(programmeJobDetails);
+    when(emailService.getRecipientAccount(PERSON_ID)).thenReturn(userAccountDetails);
+    when(restTemplate.getForObject("the-url/api/trainee-profile/account-details/{tisId}",
+        UserDetails.class, Map.of(TIS_ID_FIELD, PERSON_ID))).thenReturn(userAccountDetails);
+    when(messagingControllerService.isValidRecipient(any(), any())).thenReturn(apiResult);
+    when(messagingControllerService.isProgrammeMembershipNewStarter(any(), any()))
+        .thenReturn(!apiResult);
+    when(messagingControllerService.isProgrammeMembershipInPilot2024(any(), any()))
+        .thenReturn(apiResult);
+
+    serviceWhitelisted.execute(jobExecutionContext);
+
+    verify(emailService).sendMessage(any(), any(), any(), any(), any(), any(), eq(false));
     verify(jobExecutionContext).setResult(any());
   }
 
@@ -482,14 +535,16 @@ class NotificationServiceTest {
     verify(scheduler).deleteJob(expectedJobKey);
   }
 
-  @Test
-  void shouldMapUserDetailsWhenCognitoAndTssAccountsExist() {
+  @ParameterizedTest
+  @ValueSource(strings = {USER_GMC, "  " + USER_GMC,  USER_GMC + "  ",  "  " + USER_GMC + "  "})
+  @NullSource
+  void shouldMapUserDetailsWhenCognitoAndTssAccountsExist(String gmcNumber) {
     UserDetails cognitoAccountDetails =
         new UserDetails(
             true, COGNITO_EMAIL, null, COGNITO_FAMILY_NAME, COGNITO_GIVEN_NAME, null);
     UserDetails traineeProfileDetails =
         new UserDetails(
-            null, USER_EMAIL, USER_TITLE, USER_FAMILY_NAME, USER_GIVEN_NAME, USER_GMC);
+            null, USER_EMAIL, USER_TITLE, USER_FAMILY_NAME, USER_GIVEN_NAME, gmcNumber);
 
     UserDetails expectedResult =
         service.mapUserDetails(cognitoAccountDetails, traineeProfileDetails);
@@ -499,14 +554,22 @@ class NotificationServiceTest {
     assertThat("Unexpected title", expectedResult.title(), is(USER_TITLE));
     assertThat("Unexpected family name", expectedResult.familyName(), is(COGNITO_FAMILY_NAME));
     assertThat("Unexpected given name", expectedResult.givenName(), is(COGNITO_GIVEN_NAME));
-    assertThat("Unexpected gmc number", expectedResult.gmcNumber(), is(USER_GMC));
+    if (gmcNumber == null) {
+      assertThat("Unexpected gmc number.", expectedResult.gmcNumber(), is(nullValue()));
+      assertDoesNotThrow(() ->
+          service.mapUserDetails(cognitoAccountDetails, traineeProfileDetails));
+    } else {
+      assertThat("Unexpected gmc number.", expectedResult.gmcNumber(), is(USER_GMC));
+    }
   }
 
-  @Test
-  void shouldMapUserDetailsWhenCognitoAccountNotExist() {
+  @ParameterizedTest
+  @ValueSource(strings = {USER_GMC, "  " + USER_GMC,  USER_GMC + "  ",  "  " + USER_GMC + "  "})
+  @NullSource
+  void shouldMapUserDetailsWhenCognitoAccountNotExist(String gmcNumber) {
     UserDetails traineeProfileDetails =
         new UserDetails(
-            null, USER_EMAIL, USER_TITLE, USER_FAMILY_NAME, USER_GIVEN_NAME, USER_GMC);
+            null, USER_EMAIL, USER_TITLE, USER_FAMILY_NAME, USER_GIVEN_NAME, gmcNumber);
 
     UserDetails expectedResult = service.mapUserDetails(null, traineeProfileDetails);
 
@@ -515,7 +578,12 @@ class NotificationServiceTest {
     assertThat("Unexpected title", expectedResult.title(), is(USER_TITLE));
     assertThat("Unexpected family name", expectedResult.familyName(), is(USER_FAMILY_NAME));
     assertThat("Unexpected given name", expectedResult.givenName(), is(USER_GIVEN_NAME));
-    assertThat("Unexpected gmc number", expectedResult.gmcNumber(), is(USER_GMC));
+    if (gmcNumber == null) {
+      assertThat("Unexpected gmc number.", expectedResult.gmcNumber(), is(nullValue()));
+      assertDoesNotThrow(() -> service.mapUserDetails(null, traineeProfileDetails));
+    } else {
+      assertThat("Unexpected gmc number.", expectedResult.gmcNumber(), is(USER_GMC));
+    }
   }
 
   @Test
