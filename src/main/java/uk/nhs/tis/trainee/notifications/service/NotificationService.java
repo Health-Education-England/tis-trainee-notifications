@@ -192,8 +192,8 @@ public class NotificationService implements Job {
       minimalPm.setPersonId(personId);
       minimalPm.setTisId(tisReferenceInfo.id());
       actuallySendEmail
-          = inWhitelist ||
-          (messagingControllerService.isValidRecipient(personId, MessageType.EMAIL)
+          = inWhitelist
+          || (messagingControllerService.isValidRecipient(personId, MessageType.EMAIL)
           && meetsCriteria(minimalPm, true, true));
 
     } else if (notificationType == NotificationType.PLACEMENT_UPDATED_WEEK_12) {
@@ -204,8 +204,8 @@ public class NotificationService implements Job {
       tisReferenceInfo = new TisReferenceInfo(PLACEMENT,
           jobDetails.get(PlacementService.TIS_ID_FIELD).toString());
 
-      actuallySendEmail = inWhitelist ||
-          (messagingControllerService.isValidRecipient(personId, MessageType.EMAIL)
+      actuallySendEmail = inWhitelist
+          || (messagingControllerService.isValidRecipient(personId, MessageType.EMAIL)
           && messagingControllerService.isPlacementInPilot2024(personId, tisReferenceInfo.id()));
     }
 

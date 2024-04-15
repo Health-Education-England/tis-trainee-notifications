@@ -57,7 +57,6 @@ public class MessagingControllerService {
    * Initialise the service with the environmental variables that control message dispatch.
    *
    * @param restTemplate              The REST template.
-   * @param notificationsWhitelist    The whitelist of (tester) trainee TIS IDs.
    * @param inAppNotificationsEnabled Whether in-app notification messages should be sent.
    * @param emailNotificationsEnabled Whether email notification messages should be sent.
    */
