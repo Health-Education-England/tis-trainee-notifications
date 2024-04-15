@@ -265,16 +265,15 @@ public class ProgrammeMembershipService {
 
       String owner = programmeMembership.getManagingDeanery();
       List<Map<String, String>> contactList = notificationService.getOwnerContactList(owner);
-      String localOfficeContact = notificationService.getOwnerContact(contactList,
+      String localOfficeContactLtft = notificationService.getOwnerContact(contactList,
           LocalOfficeContactType.LTFT, LocalOfficeContactType.TSS_SUPPORT, "");
-      String localOfficeContactType = notificationService.getHrefTypeForContact(localOfficeContact);
+      String localOfficeContactTypeLtft = notificationService.getHrefTypeForContact(localOfficeContactLtft);
       createUniqueInAppNotification(programmeMembership, notificationsAlreadySent, LTFT,
           ltftVersion, Map.of(
-              LOCAL_OFFICE_CONTACT_FIELD, localOfficeContact,
-              LOCAL_OFFICE_CONTACT_TYPE_FIELD, localOfficeContactType));
+              LOCAL_OFFICE_CONTACT_FIELD, localOfficeContactLtft,
+              LOCAL_OFFICE_CONTACT_TYPE_FIELD, localOfficeContactTypeLtft));
 
-      List<Map<String, String>> contactListDeferral = notificationService.getOwnerContactList(owner);
-      String localOfficeContactDeferral = notificationService.getOwnerContact(contactListDeferral,
+      String localOfficeContactDeferral = notificationService.getOwnerContact(contactList,
           LocalOfficeContactType.DEFERRAL, LocalOfficeContactType.TSS_SUPPORT, "");
       String localOfficeContactTypeDeferral = notificationService.getHrefTypeForContact(localOfficeContactDeferral);
 
@@ -283,10 +282,14 @@ public class ProgrammeMembershipService {
               LOCAL_OFFICE_CONTACT_FIELD, localOfficeContactDeferral,
               LOCAL_OFFICE_CONTACT_TYPE_FIELD, localOfficeContactTypeDeferral));
 
+      String localOfficeContactSponsorship = notificationService.getOwnerContact(contactList,
+          LocalOfficeContactType.SPONSORSHIP, LocalOfficeContactType.TSS_SUPPORT, "");
+      String localOfficeContactTypeSponsorship =
+          notificationService.getHrefTypeForContact(localOfficeContactSponsorship);
       createUniqueInAppNotification(programmeMembership, notificationsAlreadySent, SPONSORSHIP,
           sponsorshipVersion, Map.of(
-              LOCAL_OFFICE_CONTACT_FIELD, localOfficeContact,
-              LOCAL_OFFICE_CONTACT_TYPE_FIELD, localOfficeContactType));
+              LOCAL_OFFICE_CONTACT_FIELD, localOfficeContactSponsorship,
+              LOCAL_OFFICE_CONTACT_TYPE_FIELD, localOfficeContactTypeSponsorship));
     }
   }
 

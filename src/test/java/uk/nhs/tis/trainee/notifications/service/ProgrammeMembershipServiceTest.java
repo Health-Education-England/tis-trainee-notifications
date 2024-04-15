@@ -41,6 +41,7 @@ import static uk.nhs.tis.trainee.notifications.model.NotificationType.DEFERRAL;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.INDEMNITY_INSURANCE;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.LTFT;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_CREATED;
+import static uk.nhs.tis.trainee.notifications.model.NotificationType.SPONSORSHIP;
 import static uk.nhs.tis.trainee.notifications.model.TisReferenceType.PROGRAMME_MEMBERSHIP;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.CONTACT_TYPE_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.PERSON_ID_FIELD;
@@ -334,7 +335,7 @@ class ProgrammeMembershipServiceTest {
       ltft@example.com | PROTOCOL_EMAIL
       https://example.com | ABSOLUTE_URL
       not a href | NON_HREF""")
-  void shouldIncludeContactDetailsInLtftInAppNotification(String contact, HrefType contactType)
+  void shouldIncludeContactDetailsInInAppNotification(String contact, HrefType contactType)
       throws SchedulerException {
     Curriculum theCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, "any specialty", true);
     ProgrammeMembership programmeMembership = new ProgrammeMembership();
@@ -353,6 +354,8 @@ class ProgrammeMembershipServiceTest {
     when(notificationService.getOwnerContactList(MANAGING_DEANERY)).thenReturn(contactList);
     when(notificationService.getOwnerContact(contactList, LocalOfficeContactType.LTFT,
         LocalOfficeContactType.TSS_SUPPORT, "")).thenReturn(contact);
+    when(notificationService.getOwnerContact(contactList, LocalOfficeContactType.SPONSORSHIP,
+        LocalOfficeContactType.TSS_SUPPORT, "")).thenReturn(contact);
     when(notificationService.getHrefTypeForContact(contact)).thenReturn(
         contactType.getHrefTypeName());
 
@@ -365,6 +368,8 @@ class ProgrammeMembershipServiceTest {
     ArgumentCaptor<Map<String, Object>> variablesCaptor = ArgumentCaptor.forClass(Map.class);
     verify(inAppService).createNotifications(eq(PERSON_ID), any(), eq(LTFT),
         eq(LTFT_VERSION), variablesCaptor.capture(), anyBoolean());
+    verify(inAppService).createNotifications(eq(PERSON_ID), any(), eq(SPONSORSHIP),
+        eq(SPONSORSHIP_VERSION), variablesCaptor.capture(), anyBoolean());
 
     Map<String, Object> variables = variablesCaptor.getValue();
     assertThat("Unexpected variable count.", variables.size(), is(4));
