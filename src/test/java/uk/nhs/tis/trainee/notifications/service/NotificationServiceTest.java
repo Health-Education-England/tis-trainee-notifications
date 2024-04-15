@@ -71,7 +71,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -90,7 +89,6 @@ import org.quartz.TriggerKey;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 import org.testcontainers.shaded.org.apache.commons.lang3.time.DateUtils;
-import software.amazon.awssdk.services.cognitoidentityprovider.model.UserNotFoundException;
 import uk.nhs.tis.trainee.notifications.dto.UserDetails;
 import uk.nhs.tis.trainee.notifications.model.History.TisReferenceInfo;
 import uk.nhs.tis.trainee.notifications.model.LocalOfficeContactType;
@@ -109,6 +107,10 @@ class NotificationServiceTest {
   private static final String PERSON_ID = "person-id";
   private static final LocalDate START_DATE = LocalDate.now();
   private static final Integer NOTIFICATION_DELAY = 60;
+  private static final String WHITELIST_1 = "123";
+  private static final String WHITELIST_2 = "456";
+  private static final List<String> NOT_WHITELISTED = List.of(WHITELIST_1, WHITELIST_2);
+  private static final List<String> WHITELISTED = List.of(WHITELIST_1, WHITELIST_2, PERSON_ID);
 
   private static final String LOCAL_OFFICE = "local office";
   private static final String LOCAL_OFFICE_CONTACT = "local office contact";
@@ -135,6 +137,7 @@ class NotificationServiceTest {
   private JobDataMap placementJobDataMap;
 
   private NotificationService service;
+  private NotificationService serviceWhitelisted;
   private EmailService emailService;
   private RestTemplate restTemplate;
   private Scheduler scheduler;
@@ -179,7 +182,10 @@ class NotificationServiceTest {
 
     service = new NotificationService(emailService, restTemplate, scheduler,
         messagingControllerService,
-        TEMPLATE_VERSION, SERVICE_URL, REFERENCE_URL, NOTIFICATION_DELAY);
+        TEMPLATE_VERSION, SERVICE_URL, REFERENCE_URL, NOTIFICATION_DELAY, NOT_WHITELISTED);
+    serviceWhitelisted = new NotificationService(emailService, restTemplate, scheduler,
+        messagingControllerService,
+        TEMPLATE_VERSION, SERVICE_URL, REFERENCE_URL, NOTIFICATION_DELAY, WHITELISTED);
   }
 
   @Test
@@ -314,6 +320,50 @@ class NotificationServiceTest {
     service.execute(jobExecutionContext);
 
     verify(emailService).sendMessage(any(), any(), any(), any(), any(), any(), eq(true));
+    verify(jobExecutionContext).setResult(any());
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {true, false})
+  void shouldSendPlacementEmailWhenNotMatchBothCriteriaButInWhiteList(boolean apiResult)
+      throws MessagingException {
+    UserDetails userAccountDetails =
+        new UserDetails(
+            false, USER_EMAIL, USER_TITLE, USER_FAMILY_NAME, USER_GIVEN_NAME, USER_GMC);
+    when(jobExecutionContext.getJobDetail()).thenReturn(placementJobDetails);
+    when(emailService.getRecipientAccount(PERSON_ID)).thenReturn(userAccountDetails);
+    when(restTemplate.getForObject("the-url/api/trainee-profile/account-details/{tisId}",
+        UserDetails.class, Map.of(TIS_ID_FIELD, PERSON_ID))).thenReturn(userAccountDetails);
+    when(messagingControllerService.isValidRecipient(any(), any())).thenReturn(apiResult);
+    when(messagingControllerService.isPlacementInPilot2024(any(), any())).thenReturn(!apiResult);
+
+    serviceWhitelisted.execute(jobExecutionContext);
+
+    verify(emailService).sendMessage(any(), any(), any(), any(), any(), any(), eq(false));
+    verify(jobExecutionContext).setResult(any());
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {true, false})
+  void shouldSendProgrammeCreatedEmailWhenNotMatchAllCriteriaButInWhiteList(boolean apiResult)
+      throws MessagingException {
+    UserDetails userAccountDetails =
+        new UserDetails(
+            false, USER_EMAIL, USER_TITLE, USER_FAMILY_NAME, USER_GIVEN_NAME, USER_GMC);
+
+    when(jobExecutionContext.getJobDetail()).thenReturn(programmeJobDetails);
+    when(emailService.getRecipientAccount(PERSON_ID)).thenReturn(userAccountDetails);
+    when(restTemplate.getForObject("the-url/api/trainee-profile/account-details/{tisId}",
+        UserDetails.class, Map.of(TIS_ID_FIELD, PERSON_ID))).thenReturn(userAccountDetails);
+    when(messagingControllerService.isValidRecipient(any(), any())).thenReturn(apiResult);
+    when(messagingControllerService.isProgrammeMembershipNewStarter(any(), any()))
+        .thenReturn(!apiResult);
+    when(messagingControllerService.isProgrammeMembershipInPilot2024(any(), any()))
+        .thenReturn(apiResult);
+
+    serviceWhitelisted.execute(jobExecutionContext);
+
+    verify(emailService).sendMessage(any(), any(), any(), any(), any(), any(), eq(false));
     verify(jobExecutionContext).setResult(any());
   }
 

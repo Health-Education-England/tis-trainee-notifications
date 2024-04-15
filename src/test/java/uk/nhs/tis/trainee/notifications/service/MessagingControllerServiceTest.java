@@ -40,9 +40,6 @@ import uk.nhs.tis.trainee.notifications.model.MessageType;
 class MessagingControllerServiceTest {
 
   private static final String SERVICE_URL = "the-url";
-  private static final String WHITELIST_1 = "123";
-  private static final String WHITELIST_2 = "456";
-  private static final List<String> WHITELISTED = List.of(WHITELIST_1, WHITELIST_2);
 
   private RestTemplate restTemplate;
   private MessagingControllerService service;
@@ -50,14 +47,7 @@ class MessagingControllerServiceTest {
   @BeforeEach
   void setUp() {
     restTemplate = mock(RestTemplate.class);
-    service = new MessagingControllerService(restTemplate, WHITELISTED, false, false, SERVICE_URL);
-  }
-
-  @ParameterizedTest
-  @EnumSource(MessageType.class)
-  void whitelistedShouldBeValidRecipients(MessageType messageType) {
-    assertThat("Unexpected isValidRecipient().",
-        service.isValidRecipient(WHITELIST_1, messageType), is(true));
+    service = new MessagingControllerService(restTemplate, false, false, SERVICE_URL);
   }
 
   @ParameterizedTest
@@ -69,11 +59,11 @@ class MessagingControllerServiceTest {
 
   @Test
   void nonWhitelistedShouldBeValidRecipientsIfNotificationsEnabled() {
-    service = new MessagingControllerService(restTemplate, WHITELISTED, true, false, SERVICE_URL);
+    service = new MessagingControllerService(restTemplate, true, false, SERVICE_URL);
     assertThat("Unexpected isValidRecipient().",
         service.isValidRecipient("some other id", MessageType.IN_APP), is(true));
 
-    service = new MessagingControllerService(restTemplate, WHITELISTED, false, true, SERVICE_URL);
+    service = new MessagingControllerService(restTemplate, false, true, SERVICE_URL);
     assertThat("Unexpected isValidRecipient().",
         service.isValidRecipient("some other id", MessageType.EMAIL), is(true));
   }
