@@ -70,6 +70,8 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -88,6 +90,7 @@ import org.quartz.TriggerKey;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 import org.testcontainers.shaded.org.apache.commons.lang3.time.DateUtils;
+import software.amazon.awssdk.services.cognitoidentityprovider.model.UserNotFoundException;
 import uk.nhs.tis.trainee.notifications.dto.UserDetails;
 import uk.nhs.tis.trainee.notifications.model.History.TisReferenceInfo;
 import uk.nhs.tis.trainee.notifications.model.LocalOfficeContactType;
@@ -534,6 +537,23 @@ class NotificationServiceTest {
     UserDetails expectedResult = service.mapUserDetails(null, null);
 
     assertThat("Unexpected user details", expectedResult, is(nullValue()));
+  }
+
+  @Test
+  void shouldNotFailToMapUserDetailsWhenGmcNumberIsNull() {
+    UserDetails traineeProfileDetails =
+        new UserDetails(
+            null, USER_EMAIL, USER_TITLE, USER_FAMILY_NAME, USER_GIVEN_NAME, null);
+
+    UserDetails expectedResult = service.mapUserDetails(null, traineeProfileDetails);
+    assertDoesNotThrow(() -> service.mapUserDetails(null, traineeProfileDetails));
+
+    assertThat("Unexpected isRegister", expectedResult.isRegistered(), is(false));
+    assertThat("Unexpected email", expectedResult.email(), is(USER_EMAIL));
+    assertThat("Unexpected title", expectedResult.title(), is(USER_TITLE));
+    assertThat("Unexpected family name", expectedResult.familyName(), is(USER_FAMILY_NAME));
+    assertThat("Unexpected given name", expectedResult.givenName(), is(USER_GIVEN_NAME));
+    assertThat("Unexpected gmc number", expectedResult.gmcNumber(), is(nullValue()));
   }
 
   @Test

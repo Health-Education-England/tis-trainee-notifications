@@ -163,8 +163,9 @@ public class NotificationService implements Job {
 
     String owner = jobDetails.getString(TEMPLATE_OWNER_FIELD);
     List<Map<String, String>> ownerContactList = getOwnerContactList(owner);
-    String contact = getOwnerContact(ownerContactList, LocalOfficeContactType.ONBOARDING_SUPPORT,
-        LocalOfficeContactType.TSS_SUPPORT);
+//    String contact = getOwnerContact(ownerContactList, LocalOfficeContactType.ONBOARDING_SUPPORT,
+//        LocalOfficeContactType.TSS_SUPPORT);
+    String contact = "local.office@nhs.uk";
     jobDetails.putIfAbsent(TEMPLATE_OWNER_CONTACT_FIELD, contact);
     jobDetails.putIfAbsent(TEMPLATE_CONTACT_HREF_FIELD, getHrefTypeForContact(contact));
     String website = getOwnerContact(ownerContactList, LocalOfficeContactType.LOCAL_OFFICE_WEBSITE,
@@ -283,18 +284,21 @@ public class NotificationService implements Job {
   public Date getScheduleDate(LocalDate startDate, int daysBeforeStart) {
     Date milestone;
     LocalDate milestoneDate = startDate.minusDays(daysBeforeStart);
-    if (!milestoneDate.isAfter(LocalDate.now())) {
-      // 'Missed' milestones: schedule to be sent soon, but not immediately
-      // in case of human editing 'jitter'.
-      milestone = Date.from(Instant.now()
-          .plus(immediateNotificationDelayMinutes, ChronoUnit.MINUTES));
-    } else {
-      // Future milestone.
-      milestone = Date.from(milestoneDate
-          .atStartOfDay()
-          .atZone(ZoneId.systemDefault())
-          .toInstant());
-    }
+//    if (!milestoneDate.isAfter(LocalDate.now())) {
+//      // 'Missed' milestones: schedule to be sent soon, but not immediately
+//      // in case of human editing 'jitter'.
+//      milestone = Date.from(Instant.now()
+//          .plus(immediateNotificationDelayMinutes, ChronoUnit.MINUTES));
+//    } else {
+//      // Future milestone.
+//      milestone = Date.from(milestoneDate
+//          .atStartOfDay()
+//          .atZone(ZoneId.systemDefault())
+//          .toInstant());
+//    }
+
+    milestone = Date.from(Instant.now()
+        .plus(immediateNotificationDelayMinutes, ChronoUnit.SECONDS));
     return milestone;
   }
 
@@ -315,7 +319,7 @@ public class NotificationService implements Job {
           userTraineeDetails.title(),
           userCognitoAccountDetails.familyName(),
           userCognitoAccountDetails.givenName(),
-          userTraineeDetails.gmcNumber().trim());
+          (userTraineeDetails.gmcNumber() != null? userTraineeDetails.gmcNumber().trim() : null));
     } else if (userTraineeDetails != null) {
       //no TSS account or duplicate accounts in Cognito
       return new UserDetails(false,
@@ -323,7 +327,7 @@ public class NotificationService implements Job {
           userTraineeDetails.title(),
           userTraineeDetails.familyName(),
           userTraineeDetails.givenName(),
-          userTraineeDetails.gmcNumber().trim());
+          (userTraineeDetails.gmcNumber() != null? userTraineeDetails.gmcNumber().trim() : null));
     } else {
       return null;
     }
