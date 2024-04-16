@@ -6,7 +6,7 @@
 <body>
 <h1>Email Message</h1>
 <h2>Subject</h2>
-<th:block th:fragment="subject">NHS England - <th:block th:text="${not #strings.isEmpty(localOfficeName)} ? ${localOfficeName} : 'your local deanery office'"></th:block> - Notification of Placement</th:block>
+<th:block th:fragment="subject">NHS England - <th:block th:text="${not #strings.isEmpty(localOfficeName)} ? ${localOfficeName} : 'Your Local Deanery Office'"></th:block> - Notification of Placement</th:block>
 <h2>Content</h2>
 <th:block th:fragment="content">
   <p th:if="${#strings.isEmpty(givenName) AND #strings.isEmpty(familyName)}">Dear Doctor,</p>
@@ -19,7 +19,7 @@
     We appreciate this must be a busy time for you but please set some time aside to read this letter as it contains some vital information regarding your training placement.
   </p>
   <p>
-    The NHS England team can now confirm your placement within a <b><span th:text="${not #strings.isEmpty(localOfficeName)} ? ${localOfficeName} : 'your local deanery office'"></span></b> programme. Please note Healthcare Education England is now part of NHS England. Our systems will be updated in due course.
+    The NHS England team can now confirm your placement within a programme of <b><span th:text="${not #strings.isEmpty(localOfficeName)} ? ${localOfficeName} : 'your local deanery office'"></span></b>. Please note Healthcare Education England is now part of NHS England. Our systems will be updated in due course.
   </p>
   <p>
     Please note your allocation and grade progression if appropriate will be subject to you receiving a satisfactory ARCP outcome, and your continued registration/licence to practise with the GMC for the duration of your training.
@@ -27,12 +27,12 @@
   <p><b>Accessing TIS Self-Service (TSS)</b></p>
   <th:block th:switch="${isRegistered}"
   ><p th:case="true">
-    We have a registered account for you on TIS Self-Service against the email address <b><span th:text="${email}"></span></b>. To access your upcoming placement details please log in to <a href="https://trainee.tis.nhs.uk/">TIS Self-Service</a>
+    We have a registered account for you on TIS Self-Service against the email address <b><span th:text="${email}"></span></b>. To access your upcoming placement details please log in to <a href="https://trainee.tis.nhs.uk/">TIS Self-Service</a>.
   </p>
   <p th:case="false">
     We have no TIS Self-Service account associated with your records. Please create one by clicking the link below.
-    Please ensure you use the email address we have against our records, which is: <b><span th:text="${email}"></span></b>.
-    <p><a href="https://trainee.tis.nhs.uk/">TIS Self-Service</a></p>
+    Please ensure you use the email address we have against our records, which is: <b><span th:text="${email}"></span></b>.<br/><br/>
+    <a href="https://trainee.tis.nhs.uk/">TIS Self-Service</a>
   </p>
   </th:block>
   <p>
