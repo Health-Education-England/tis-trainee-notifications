@@ -37,6 +37,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.SENT;
 import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.UNREAD;
+import static uk.nhs.tis.trainee.notifications.model.NotificationType.DEFERRAL;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.INDEMNITY_INSURANCE;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.LTFT;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_CREATED;
@@ -113,7 +114,7 @@ class ProgrammeMembershipServiceTest {
     inAppService = mock(InAppService.class);
     notificationService = mock(NotificationService.class);
     service = new ProgrammeMembershipService(historyService, inAppService, notificationService,
-        E_PORTFOLIO_VERSION, INDEMNITY_INSURANCE_VERSION, LTFT_VERSION,DEFERRAL_VERSION);
+        DEFERRAL_VERSION, E_PORTFOLIO_VERSION, INDEMNITY_INSURANCE_VERSION, LTFT_VERSION);
   }
 
   @ParameterizedTest
@@ -198,7 +199,9 @@ class ProgrammeMembershipServiceTest {
       INDEMNITY_INSURANCE | v2.3.4 | true
       INDEMNITY_INSURANCE | v2.3.4 | false
       LTFT | v3.4.5 | true
-      LTFT | v3.4.5 | false""")
+      LTFT | v3.4.5 | false
+      DEFERRAL | v4.5.6 | true
+      DEFERRAL | v4.5.6 | false""")
   void shouldAddInAppNotificationsWhenNotExcludedAndMeetsCriteria(NotificationType notificationType,
       String notificationVersion, boolean notifiablePm) throws SchedulerException {
     Curriculum theCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, "any specialty", false);
@@ -695,5 +698,27 @@ class ProgrammeMembershipServiceTest {
     JobDataMap jobDataMap = jobDataMapCaptor.getValue();
     assertThat("Unexpected CoJ synced at.", jobDataMap.get(COJ_SYNCED_FIELD),
         is(nullValue()));
+  }
+
+  @Test
+  void shouldIncludeDeferralInAppNotification() throws SchedulerException {
+    Curriculum theCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, "any specialty", true);
+    ProgrammeMembership programmeMembership = new ProgrammeMembership();
+    programmeMembership.setTisId(TIS_ID);
+    programmeMembership.setPersonId(PERSON_ID);
+    programmeMembership.setProgrammeName(PROGRAMME_NAME);
+    programmeMembership.setStartDate(START_DATE);
+    programmeMembership.setCurricula(List.of(theCurriculum));
+    programmeMembership.setConditionsOfJoining(new ConditionsOfJoining(Instant.MIN));
+
+    when(notificationService.meetsCriteria(programmeMembership, true, true)).thenReturn(true);
+    when(notificationService.getOwnerContact(any(), any(), any(), any())).thenReturn("");
+    when(notificationService.getHrefTypeForContact(any())).thenReturn("");
+
+    service.addNotifications(programmeMembership);
+
+    ArgumentCaptor<Map<String, Object>> variablesCaptor = ArgumentCaptor.forClass(Map.class);
+    verify(inAppService).createNotifications(eq(PERSON_ID), any(), eq(DEFERRAL),
+        eq(DEFERRAL_VERSION), variablesCaptor.capture(), anyBoolean());
   }
 }
