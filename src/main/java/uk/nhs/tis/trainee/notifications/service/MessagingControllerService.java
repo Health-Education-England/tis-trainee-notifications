@@ -48,6 +48,7 @@ public class MessagingControllerService {
   protected static final String API_PROGRAMME_MEMBERSHIP_NEW_STARTER
       = "/api/programme-membership/isnewstarter/{traineeTisId}/{programmeMembershipId}";
 
+  private final List<String> notificationsWhitelist;
   private final boolean inAppNotificationsEnabled;
   private final boolean emailNotificationsEnabled;
   private final RestTemplate restTemplate;
@@ -56,15 +57,18 @@ public class MessagingControllerService {
   /**
    * Initialise the service with the environmental variables that control message dispatch.
    *
+   * @param notificationsWhitelist The whitelist of (tester) trainee TIS IDs.
    * @param restTemplate              The REST template.
    * @param inAppNotificationsEnabled Whether in-app notification messages should be sent.
    * @param emailNotificationsEnabled Whether email notification messages should be sent.
    */
   public MessagingControllerService(RestTemplate restTemplate,
+      @Value("${application.notifications-whitelist}") List<String> notificationsWhitelist,
       @Value("${application.in-app.enabled}") boolean inAppNotificationsEnabled,
       @Value("${application.email.enabled}") boolean emailNotificationsEnabled,
       @Value("${service.trainee.url}") String serviceUrl) {
     this.restTemplate = restTemplate;
+    this.notificationsWhitelist = notificationsWhitelist;
     this.inAppNotificationsEnabled = inAppNotificationsEnabled;
     this.emailNotificationsEnabled = emailNotificationsEnabled;
     this.serviceUrl = serviceUrl;
@@ -80,10 +84,17 @@ public class MessagingControllerService {
    * @return true if the trainee could be sent the message, otherwise false.
    */
   public boolean isValidRecipient(String traineeTisId, MessageType messageType) {
-    return switch (messageType) {
-      case EMAIL -> emailNotificationsEnabled;
-      case IN_APP -> inAppNotificationsEnabled;
-    };
+
+    boolean inWhitelist = notificationsWhitelist.contains(traineeTisId);
+
+    if (inWhitelist) {
+      return true;
+    } else {
+      return switch (messageType) {
+        case EMAIL -> emailNotificationsEnabled;
+        case IN_APP -> inAppNotificationsEnabled;
+      };
+    }
   }
 
   /**
