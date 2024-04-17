@@ -51,7 +51,8 @@ public record History(
     Instant sentAt,
     Instant readAt,
     NotificationStatus status,
-    String statusDetail) {
+    String statusDetail,
+    Instant lastRetry) {
 
   /**
    * A representation of a notified recipient.
