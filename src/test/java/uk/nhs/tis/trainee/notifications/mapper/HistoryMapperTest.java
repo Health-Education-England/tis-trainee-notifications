@@ -50,7 +50,7 @@ class HistoryMapperTest {
   @EnumSource(NotificationStatus.class)
   void shouldUseExistingReadAtWhenPopulated(NotificationStatus status) {
     Instant existingReadAt = Instant.now().minus(Duration.ofDays(1));
-    History entity = new History(null, null, null, null, null, null, existingReadAt, null, null);
+    History entity = new History(null, null, null, null, null, null, existingReadAt, null, null, null);
 
     Instant readAt = mapper.calculateReadAt(entity, status);
     assertThat("Unexpected readAt timestamp.", readAt, is(existingReadAt));
@@ -59,7 +59,7 @@ class HistoryMapperTest {
   @ParameterizedTest
   @EnumSource(value = NotificationStatus.class, mode = Mode.EXCLUDE, names = "READ")
   void shouldNotGenerateReadAtWhenStatusNotReadAndNotPopulated(NotificationStatus status) {
-    History entity = new History(null, null, null, null, null, null, null, null, null);
+    History entity = new History(null, null, null, null, null, null, null, null, null, null);
 
     Instant readAt = mapper.calculateReadAt(entity, status);
     assertThat("Unexpected readAt timestamp.", readAt, nullValue());
@@ -67,7 +67,7 @@ class HistoryMapperTest {
 
   @Test
   void shouldGenerateReadAtWhenStatusReadAndNotPopulated() {
-    History entity = new History(null, null, null, null, null, null, null, null, null);
+    History entity = new History(null, null, null, null, null, null, null, null, null, null);
 
     Instant readAt = mapper.calculateReadAt(entity, NotificationStatus.READ);
     assertThat("Unexpected readAt timestamp.", readAt, notNullValue());
