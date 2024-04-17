@@ -267,10 +267,16 @@ public class ProgrammeMembershipService {
           ltftVersion, Map.of(
               LOCAL_OFFICE_CONTACT_FIELD, localOfficeContact,
               LOCAL_OFFICE_CONTACT_TYPE_FIELD, localOfficeContactType));
+
+      List<Map<String, String>> contactListDeferral = notificationService.getOwnerContactList(owner);
+      String localOfficeContactDeferral = notificationService.getOwnerContact(contactListDeferral,
+          LocalOfficeContactType.DEFERRAL, LocalOfficeContactType.TSS_SUPPORT, "");
+      String localOfficeContactTypeDeferral = notificationService.getHrefTypeForContact(localOfficeContactDeferral);
+
       createUniqueInAppNotification(programmeMembership, notificationsAlreadySent, DEFERRAL,
           deferralVersion, Map.of(
-              LOCAL_OFFICE_CONTACT_FIELD, localOfficeContact,
-              LOCAL_OFFICE_CONTACT_TYPE_FIELD, localOfficeContactType));
+              LOCAL_OFFICE_CONTACT_FIELD, localOfficeContactDeferral,
+              LOCAL_OFFICE_CONTACT_TYPE_FIELD, localOfficeContactTypeDeferral));
     }
   }
 

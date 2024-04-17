@@ -351,6 +351,10 @@ class ProgrammeMembershipServiceTest {
     when(notificationService.getHrefTypeForContact(contact)).thenReturn(
         contactType.getHrefTypeName());
 
+    when(notificationService.getOwnerContact(contactList, LocalOfficeContactType.DEFERRAL,
+        LocalOfficeContactType.TSS_SUPPORT, "")).thenReturn("Deferal");
+    when(notificationService.getHrefTypeForContact(any())).thenReturn(contactType.getHrefTypeName());
+
     service.addNotifications(programmeMembership);
 
     ArgumentCaptor<Map<String, Object>> variablesCaptor = ArgumentCaptor.forClass(Map.class);
@@ -700,8 +704,13 @@ class ProgrammeMembershipServiceTest {
         is(nullValue()));
   }
 
-  @Test
-  void shouldIncludeDeferralInAppNotification() throws SchedulerException {
+  @ParameterizedTest
+  @CsvSource(delimiter = '|', textBlock = """
+      deferral@example.com | PROTOCOL_EMAIL
+      https://example.com | ABSOLUTE_URL
+      not a href | NON_HREF""")
+  void shouldIncludeContactDetailsInDeferralInAppNotification(String contact, HrefType contactType)
+      throws SchedulerException {
     Curriculum theCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, "any specialty", true);
     ProgrammeMembership programmeMembership = new ProgrammeMembership();
     programmeMembership.setTisId(TIS_ID);
@@ -710,15 +719,36 @@ class ProgrammeMembershipServiceTest {
     programmeMembership.setStartDate(START_DATE);
     programmeMembership.setCurricula(List.of(theCurriculum));
     programmeMembership.setConditionsOfJoining(new ConditionsOfJoining(Instant.MIN));
+    programmeMembership.setManagingDeanery(MANAGING_DEANERY);
 
     when(notificationService.meetsCriteria(programmeMembership, true, true)).thenReturn(true);
-    when(notificationService.getOwnerContact(any(), any(), any(), any())).thenReturn("");
-    when(notificationService.getHrefTypeForContact(any())).thenReturn("");
+
+    List<Map<String, String>> contactList = List.of(
+        Map.of(CONTACT_TYPE_FIELD, LocalOfficeContactType.DEFERRAL.getContactTypeName()));
+    when(notificationService.getOwnerContact(contactList, LocalOfficeContactType.LTFT,
+        LocalOfficeContactType.TSS_SUPPORT, "")).thenReturn("LTFT");
+    when(notificationService.getHrefTypeForContact(any())).thenReturn(contactType.getHrefTypeName());
+
+    when(notificationService.getOwnerContactList(MANAGING_DEANERY)).thenReturn(contactList);
+    when(notificationService.getOwnerContact(contactList, LocalOfficeContactType.DEFERRAL,
+        LocalOfficeContactType.TSS_SUPPORT, "")).thenReturn(contact);
+    when(notificationService.getHrefTypeForContact(contact)).thenReturn(
+        contactType.getHrefTypeName());
 
     service.addNotifications(programmeMembership);
 
     ArgumentCaptor<Map<String, Object>> variablesCaptor = ArgumentCaptor.forClass(Map.class);
     verify(inAppService).createNotifications(eq(PERSON_ID), any(), eq(DEFERRAL),
         eq(DEFERRAL_VERSION), variablesCaptor.capture(), anyBoolean());
+
+    Map<String, Object> variables = variablesCaptor.getValue();
+    assertThat("Unexpected variable count.", variables.size(), is(4));
+    assertThat("Unexpected programme name.", variables.get(PROGRAMME_NAME_FIELD),
+        is(PROGRAMME_NAME));
+    assertThat("Unexpected start date.", variables.get(START_DATE_FIELD), is(START_DATE));
+    assertThat("Unexpected local office contact.", variables.get(LOCAL_OFFICE_CONTACT_FIELD),
+        is(contact));
+    assertThat("Unexpected local office contact type.",
+        variables.get(LOCAL_OFFICE_CONTACT_TYPE_FIELD), is(contactType.getHrefTypeName()));
   }
 }
