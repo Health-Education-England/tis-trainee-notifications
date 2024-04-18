@@ -92,8 +92,11 @@ public class ProgrammeMembershipService {
    * @param historyService            The history service to use.
    * @param inAppService              The in-app service to use.
    * @param notificationService       The notification service to use.
+   * @param deferralVersion           The deferral version.
    * @param eportfolioVersion         The ePortfolio version.
    * @param indemnityInsuranceVersion The indemnity insurance version.
+   * @param ltftVersion               The LTFT version.
+   * @param sponsorshipVersion        The sponsorship version.
    */
   public ProgrammeMembershipService(HistoryService historyService, InAppService inAppService,
       NotificationService notificationService,
@@ -254,9 +257,11 @@ public class ProgrammeMembershipService {
     boolean meetsCriteria = notificationService.meetsCriteria(programmeMembership, true, true);
 
     if (meetsCriteria) {
+      // E_PORTFOLIO
       createUniqueInAppNotification(programmeMembership, notificationsAlreadySent, E_PORTFOLIO,
           eportfolioVersion, Map.of());
 
+      // INDEMNITY_INSURANCE
       boolean hasBlockIndemnity = programmeMembership.getCurricula().stream()
           .anyMatch(Curriculum::curriculumSpecialtyBlockIndemnity);
       createUniqueInAppNotification(programmeMembership, notificationsAlreadySent,
@@ -265,23 +270,28 @@ public class ProgrammeMembershipService {
 
       String owner = programmeMembership.getManagingDeanery();
       List<Map<String, String>> contactList = notificationService.getOwnerContactList(owner);
+
+      // LTFT
       String localOfficeContactLtft = notificationService.getOwnerContact(contactList,
           LocalOfficeContactType.LTFT, LocalOfficeContactType.TSS_SUPPORT, "");
-      String localOfficeContactTypeLtft = notificationService.getHrefTypeForContact(localOfficeContactLtft);
+      String localOfficeContactTypeLtft =
+          notificationService.getHrefTypeForContact(localOfficeContactLtft);
       createUniqueInAppNotification(programmeMembership, notificationsAlreadySent, LTFT,
           ltftVersion, Map.of(
               LOCAL_OFFICE_CONTACT_FIELD, localOfficeContactLtft,
               LOCAL_OFFICE_CONTACT_TYPE_FIELD, localOfficeContactTypeLtft));
 
+      // DEFERRAL
       String localOfficeContactDeferral = notificationService.getOwnerContact(contactList,
           LocalOfficeContactType.DEFERRAL, LocalOfficeContactType.TSS_SUPPORT, "");
-      String localOfficeContactTypeDeferral = notificationService.getHrefTypeForContact(localOfficeContactDeferral);
-
+      String localOfficeContactTypeDeferral =
+          notificationService.getHrefTypeForContact(localOfficeContactDeferral);
       createUniqueInAppNotification(programmeMembership, notificationsAlreadySent, DEFERRAL,
           deferralVersion, Map.of(
               LOCAL_OFFICE_CONTACT_FIELD, localOfficeContactDeferral,
               LOCAL_OFFICE_CONTACT_TYPE_FIELD, localOfficeContactTypeDeferral));
 
+      // SPONSORSHIP
       String localOfficeContactSponsorship = notificationService.getOwnerContact(contactList,
           LocalOfficeContactType.SPONSORSHIP, LocalOfficeContactType.TSS_SUPPORT, "");
       String localOfficeContactTypeSponsorship =
