@@ -38,7 +38,9 @@ import static org.mockito.Mockito.when;
 import static uk.nhs.tis.trainee.notifications.model.MessageType.EMAIL;
 import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.FAILED;
 import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.SENT;
+import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_CREATED;
 import static uk.nhs.tis.trainee.notifications.model.TisReferenceType.PLACEMENT;
+import static uk.nhs.tis.trainee.notifications.model.TisReferenceType.PROGRAMME_MEMBERSHIP;
 
 import jakarta.activation.DataHandler;
 import jakarta.mail.Address;
@@ -59,10 +61,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.params.provider.EnumSource.Mode;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.mockito.ArgumentCaptor;
-import org.slf4j.Logger;
-import org.slf4j.Marker;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.thymeleaf.context.Context;
 import software.amazon.awssdk.services.cognitoidentityprovider.model.UserNotFoundException;
@@ -71,6 +72,7 @@ import uk.nhs.tis.trainee.notifications.model.History;
 import uk.nhs.tis.trainee.notifications.model.History.RecipientInfo;
 import uk.nhs.tis.trainee.notifications.model.History.TemplateInfo;
 import uk.nhs.tis.trainee.notifications.model.History.TisReferenceInfo;
+import uk.nhs.tis.trainee.notifications.model.MessageType;
 import uk.nhs.tis.trainee.notifications.model.NotificationType;
 import uk.nhs.tis.trainee.notifications.model.TisReferenceType;
 
@@ -413,7 +415,8 @@ class EmailServiceTest {
     Instant sentAt = Instant.MIN;
 
     ObjectId notificationId = ObjectId.get();
-    History toResend = new History(notificationId, tisReferenceInfo, notificationType, recipientInfo,
+    History toResend = new History(notificationId, tisReferenceInfo, notificationType,
+        recipientInfo,
         templateInfo, sentAt, null, FAILED, "bounced", null);
     service.resendMessage(toResend, "newemailaddress");
 
@@ -445,6 +448,31 @@ class EmailServiceTest {
     Map<String, Object> storedVariables = templateInfo.variables();
     assertThat("Unexpected template variable count.", storedVariables.size(), is(1));
     assertThat("Unexpected template variable.", storedVariables.get("key1"), is("value1"));
+  }
+
+  @ParameterizedTest
+  @EnumSource(value = MessageType.class, mode = Mode.EXCLUDE, names = "EMAIL")
+  void shouldNotResendNonEmailMessageTypes(MessageType messageType)
+      throws MessagingException {
+    when(userAccountService.getUserDetails(USER_ID)).thenReturn(
+        new UserDetails(true, RECIPIENT, "Mr", "Gilliam",
+            "Anthony", GMC));
+    String templateVersion = "v1.2.3";
+    Map<String, Object> variables = new HashMap<>();
+    variables.put("key1", "value1");
+    TemplateInfo templateInfo = new TemplateInfo(PROGRAMME_CREATED.getTemplateName(),
+        templateVersion, variables);
+    TisReferenceInfo tisReferenceInfo = new TisReferenceInfo(REFERENCE_TABLE, REFERENCE_KEY);
+    RecipientInfo recipientInfo = new RecipientInfo(TRAINEE_ID, messageType, RECIPIENT);
+    Instant sentAt = Instant.MIN;
+
+    ObjectId notificationId = ObjectId.get();
+    History toResend = new History(notificationId, tisReferenceInfo, PROGRAMME_CREATED,
+        recipientInfo, templateInfo, sentAt, null, FAILED, "bounced", null);
+    service.resendMessage(toResend, "newemailaddress");
+
+    verify(mailSender, never()).send(any(MimeMessage.class));
+    verify(historyService, never()).save(any());
   }
 
   @Test
