@@ -35,6 +35,7 @@ public enum NotificationType {
 
   COJ_CONFIRMATION("coj-confirmation"),
   CREDENTIAL_REVOKED("credential-revoked"),
+  DEFERRAL("deferral"),
   E_PORTFOLIO("e-portfolio"),
   FORM_UPDATED("form-updated"),
   INDEMNITY_INSURANCE("indemnity-insurance"),
