@@ -167,6 +167,17 @@ public class HistoryService {
   }
 
   /**
+   * Final all historic notifications for a given Trainee with a Failed status.
+   *
+   * @param traineeId The ID of the trainee to get notifications for.
+   * @return The found notifications, empty if none found.
+   */
+  public List<History> findAllFailedForTrainee(String traineeId) {
+    return repository.findAllByRecipient_IdAndStatus(traineeId,
+        NotificationStatus.FAILED.name());
+  }
+
+  /**
    * Convert a history entity to an equivalent DTO, handles in-app subject text.
    *
    * @param history The history entity to map.

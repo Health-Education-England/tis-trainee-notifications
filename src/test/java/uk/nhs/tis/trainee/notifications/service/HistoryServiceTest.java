@@ -36,8 +36,10 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static uk.nhs.tis.trainee.notifications.model.MessageType.EMAIL;
 import static uk.nhs.tis.trainee.notifications.model.MessageType.IN_APP;
+import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.FAILED;
 import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.SENT;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.COJ_CONFIRMATION;
+import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_CREATED;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -424,6 +426,57 @@ class HistoryServiceTest {
     assertThat("Unexpected history contact.", historyDto2.contact(), is(TRAINEE_CONTACT));
     assertThat("Unexpected history sent at.", historyDto2.sentAt(), is(Instant.MAX));
     assertThat("Unexpected history read at.", historyDto2.readAt(), is(Instant.MIN));
+  }
+
+  @Test
+  void shouldFindNoFailedHistoryForTraineeWhenFailedNotificationsNotExist() {
+    when(repository.findAllByRecipient_IdAndStatus(TRAINEE_ID, FAILED.name()))
+        .thenReturn(List.of());
+
+    List<History> failed = service.findAllFailedForTrainee(TRAINEE_ID);
+
+    assertThat("Unexpected failed count.", failed.size(), is(0));
+  }
+
+  @Test
+  void shouldFindFailedHistoryForTraineeWhenFailedNotificationsExist() {
+    RecipientInfo recipientInfo = new RecipientInfo(TRAINEE_ID, EMAIL, TRAINEE_CONTACT);
+    TemplateInfo templateInfo = new TemplateInfo(TEMPLATE_NAME, TEMPLATE_VERSION,
+        TEMPLATE_VARIABLES);
+    TisReferenceInfo tisReferenceInfo = new TisReferenceInfo(TIS_REFERENCE_TYPE, TIS_REFERENCE_ID);
+
+    ObjectId id1 = ObjectId.get();
+    History history1 = new History(id1, tisReferenceInfo, PROGRAMME_CREATED, recipientInfo,
+        templateInfo, Instant.MIN, Instant.MAX, FAILED, null, Instant.MAX);
+
+    when(repository.findAllByRecipient_IdAndStatus(TRAINEE_ID, FAILED.name()))
+        .thenReturn(List.of(history1));
+
+    List<History> failures = service.findAllFailedForTrainee(TRAINEE_ID);
+
+    assertThat("Unexpected failed history count.", failures.size(), is(1));
+
+    History failed1 = failures.get(0);
+    assertThat("Unexpected failed history id.", failed1.id(), is(id1));
+    TisReferenceInfo referenceInfo = failed1.tisReference();
+    assertThat("Unexpected failed history TIS reference type.", referenceInfo.type(),
+        is(TIS_REFERENCE_TYPE));
+    assertThat("Unexpected failed history TIS reference id.", referenceInfo.id(),
+        is(TIS_REFERENCE_ID));
+    assertThat("Unexpected failed history notification type.", referenceInfo.type(),
+        is(TIS_REFERENCE_TYPE));
+    RecipientInfo recipientInfo1 = failed1.recipient();
+    assertThat("Unexpected failed history contact.", recipientInfo1.contact(),
+        is(TRAINEE_CONTACT));
+    assertThat("Unexpected failed history message type.", recipientInfo1.type(),
+        is(EMAIL));
+    assertThat("Unexpected failed history contact id.", recipientInfo1.id(),
+        is(TRAINEE_ID));
+    assertThat("Unexpected failed history type.", failed1.type(), is(PROGRAMME_CREATED));
+    assertThat("Unexpected failed history sent at.", failed1.sentAt(), is(Instant.MIN));
+    assertThat("Unexpected failed history read at.", failed1.readAt(), is(Instant.MAX));
+    assertThat("Unexpected failed history status.", failed1.status(), is(FAILED));
+    assertThat("Unexpected failed history last retry.", failed1.lastRetry(), is(Instant.MAX));
   }
 
   @ParameterizedTest

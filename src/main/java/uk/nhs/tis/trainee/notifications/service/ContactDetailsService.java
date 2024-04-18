@@ -28,8 +28,6 @@ import org.springframework.stereotype.Service;
 import uk.nhs.tis.trainee.notifications.model.ContactDetails;
 import uk.nhs.tis.trainee.notifications.model.History;
 import uk.nhs.tis.trainee.notifications.model.MessageType;
-import uk.nhs.tis.trainee.notifications.model.NotificationStatus;
-import uk.nhs.tis.trainee.notifications.repository.HistoryRepository;
 
 /**
  * A service providing functionality for contact detail changes.
@@ -38,11 +36,11 @@ import uk.nhs.tis.trainee.notifications.repository.HistoryRepository;
 @Service
 public class ContactDetailsService {
 
-  private HistoryRepository historyRepository;
+  private HistoryService historyService;
   private EmailService emailService;
 
-  public ContactDetailsService(HistoryRepository historyRepository, EmailService emailService) {
-    this.historyRepository = historyRepository;
+  public ContactDetailsService(HistoryService historyService, EmailService emailService) {
+    this.historyService = historyService;
     this.emailService = emailService;
   }
 
@@ -53,8 +51,7 @@ public class ContactDetailsService {
    */
   public void updateContactDetails(ContactDetails contactDetails) {
     List<History> failedMessages
-        = historyRepository.findAllByRecipient_IdAndStatus(contactDetails.getTisId(),
-        NotificationStatus.FAILED.name());
+        = historyService.findAllFailedForTrainee(contactDetails.getTisId());
     List<History> onesToResend = failedMessages.stream()
         .filter(h -> !h.recipient().contact().equalsIgnoreCase(contactDetails.getEmail()))
         .filter(h -> h.recipient().type() == MessageType.EMAIL)
