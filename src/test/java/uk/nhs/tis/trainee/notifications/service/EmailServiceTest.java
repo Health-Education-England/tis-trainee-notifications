@@ -36,6 +36,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static uk.nhs.tis.trainee.notifications.model.MessageType.EMAIL;
+import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.FAILED;
 import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.SENT;
 import static uk.nhs.tis.trainee.notifications.model.TisReferenceType.PLACEMENT;
 
@@ -47,6 +48,7 @@ import jakarta.mail.internet.MimeMessage;
 import jakarta.mail.internet.MimeMessage.RecipientType;
 import java.io.IOException;
 import java.net.URI;
+import java.time.Instant;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -59,6 +61,8 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.mockito.ArgumentCaptor;
+import org.slf4j.Logger;
+import org.slf4j.Marker;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.thymeleaf.context.Context;
 import software.amazon.awssdk.services.cognitoidentityprovider.model.UserNotFoundException;
@@ -390,6 +394,57 @@ class EmailServiceTest {
     assertThat("Unexpected template variable.", storedVariables.get("familyName"),
         is("Gilliam"));
     assertThat("Unexpected template variable.", storedVariables.get("domain"), is(APP_DOMAIN));
+  }
+
+  @ParameterizedTest
+  @EnumSource(NotificationType.class)
+  void shouldUpdateHistoryWhenMessageResent(NotificationType notificationType)
+      throws MessagingException {
+    when(userAccountService.getUserDetails(USER_ID)).thenReturn(
+        new UserDetails(true, RECIPIENT, "Mr", "Gilliam",
+            "Anthony", GMC));
+    String templateVersion = "v1.2.3";
+    Map<String, Object> variables = new HashMap<>();
+    variables.put("key1", "value1");
+    TemplateInfo templateInfo = new TemplateInfo(notificationType.getTemplateName(),
+        templateVersion, variables);
+    TisReferenceInfo tisReferenceInfo = new TisReferenceInfo(REFERENCE_TABLE, REFERENCE_KEY);
+    RecipientInfo recipientInfo = new RecipientInfo(TRAINEE_ID, EMAIL, RECIPIENT);
+    Instant sentAt = Instant.MIN;
+
+    ObjectId notificationId = ObjectId.get();
+    History toResend = new History(notificationId, tisReferenceInfo, notificationType, recipientInfo,
+        templateInfo, sentAt, null, FAILED, "bounced", null);
+    service.resendMessage(toResend, "newemailaddress");
+
+    ArgumentCaptor<History> historyCaptor = ArgumentCaptor.forClass(History.class);
+    verify(historyService).save(historyCaptor.capture());
+
+    History history = historyCaptor.getValue();
+    assertThat("Unexpected notification id.", history.id(), is(notificationId));
+    assertThat("Unexpected notification type.", history.type(), is(notificationType));
+    assertThat("Unexpected sent at.", history.sentAt(), is(sentAt));
+    assertThat("Unexpected status.", history.status(), is(SENT));
+    assertThat("Unexpected status detail.", history.statusDetail(), nullValue());
+    assertThat("Unexpected last retry.", history.lastRetry(), notNullValue());
+
+    RecipientInfo recipient = history.recipient();
+    assertThat("Unexpected recipient id.", recipient.id(), is(TRAINEE_ID));
+    assertThat("Unexpected message type.", recipient.type(), is(EMAIL));
+    assertThat("Unexpected contact.", recipient.contact(), is("newemailaddress"));
+
+    TisReferenceInfo tisReference = history.tisReference();
+    assertThat("Unexpected reference table.", tisReference.type(), is(REFERENCE_TABLE));
+    assertThat("Unexpected reference id key.", tisReference.id(), is(REFERENCE_KEY));
+
+    TemplateInfo savedTemplateInfo = history.template();
+    assertThat("Unexpected template name.", savedTemplateInfo.name(),
+        is(notificationType.getTemplateName()));
+    assertThat("Unexpected template version.", savedTemplateInfo.version(), is(templateVersion));
+
+    Map<String, Object> storedVariables = templateInfo.variables();
+    assertThat("Unexpected template variable count.", storedVariables.size(), is(1));
+    assertThat("Unexpected template variable.", storedVariables.get("key1"), is("value1"));
   }
 
   @Test

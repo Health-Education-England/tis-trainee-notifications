@@ -159,19 +159,21 @@ public class EmailService {
         toResend.template().version());
     log.info("Sending template {} to {}.", templateName, updatedEmailAddress);
     ObjectId notificationId = toResend.id();
+    Map<String, Object> resendVariables = new HashMap<>(Map.copyOf(toResend.template().variables()));
+    resendVariables.putIfAbsent("originallySentOn", toResend.sentAt());
 
     MimeMessageHelper helper = buildMessageHelper(updatedEmailAddress, templateName,
-        toResend.template().variables(), notificationId);
+        resendVariables, notificationId);
 
     //local testing, remove:
-    try {
-      log.info("For now, just logging mail to '{}' with subject '{}' and content '{}'",
-          updatedEmailAddress,
-          helper.getMimeMessage().getSubject(), helper.getMimeMessage().getContent().toString());
-    } catch (IOException e) {
-      log.info("This is unexpected");
-    }
-    //mailSender.send(helper.getMimeMessage());
+//    try {
+//      log.info("For now, just logging mail to '{}' with subject '{}' and content '{}'",
+//          updatedEmailAddress,
+//          helper.getMimeMessage().getSubject(), helper.getMimeMessage().getContent().toString());
+//    } catch (IOException e) {
+//      log.info("This is unexpected");
+//    }
+    mailSender.send(helper.getMimeMessage());
 
     //update history entry
     TemplateInfo updatedTemplateInfo = new TemplateInfo(toResend.type().getTemplateName(),

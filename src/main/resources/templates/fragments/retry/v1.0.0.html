@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+  <title>Retry</title>
+</head>
+<body>
+<span th:if="${!#strings.isEmpty(originallySentOn)}"><hr
+><i>This is a copy of an email sent<span
+    th:text="${originallySentOn} ? | on ${#temporals.format(originallySentOn, 'dd MMMM yyyy')}| : _"
+></span
+> that may have failed to reach you.</i><hr></span>
+</body>
+</html>
