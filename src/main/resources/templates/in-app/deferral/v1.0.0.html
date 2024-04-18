@@ -28,17 +28,20 @@
   <p>
     Doctors in training wishing to defer must apply. Please follow your local office process.
     <th:block: th:switch="${localOfficeContactType}">
-      <a th:case="url" th:href="${localOfficeContact}" th:text="${localOfficeContact}"></a>
-      <a
-        th:case="email"
-        th:href="|mailto:${localOfficeContact}|"
-        th:text="${localOfficeContact}"
-      ></a>
-      <th:block th:case="*"
-      >Contact your local deanery office for information on the deferral process.</th:block
+      <th:block th:case="NON_HREF"
+      >Contact your local deanery office for information on Deferral.</th:block
       >
+      <th:block th:case="*"
+      >Please click on the following link for details on the Deferral process.
+        <a
+          th:href="${localOfficeContactType} == 'email' ? |mailto:${localOfficeContact}| : ${localOfficeContact}"
+          th:text="${localOfficeContact}"
+        ></a
+        ></th:block>
     </th:block:>
   </p>
 </th:block>
 </body>
 </html>
+
+
