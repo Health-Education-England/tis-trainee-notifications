@@ -27,6 +27,7 @@ import static uk.nhs.tis.trainee.notifications.model.NotificationType.E_PORTFOLI
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.INDEMNITY_INSURANCE;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.LTFT;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_CREATED;
+import static uk.nhs.tis.trainee.notifications.model.NotificationType.SPONSORSHIP;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.PERSON_ID_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.TEMPLATE_NOTIFICATION_TYPE_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.TEMPLATE_OWNER_FIELD;
@@ -83,6 +84,7 @@ public class ProgrammeMembershipService {
   private final String eportfolioVersion;
   private final String indemnityInsuranceVersion;
   private final String ltftVersion;
+  private final String sponsorshipVersion;
 
   /**
    * Initialise the programme membership service.
@@ -90,8 +92,11 @@ public class ProgrammeMembershipService {
    * @param historyService            The history service to use.
    * @param inAppService              The in-app service to use.
    * @param notificationService       The notification service to use.
+   * @param deferralVersion           The deferral version.
    * @param eportfolioVersion         The ePortfolio version.
    * @param indemnityInsuranceVersion The indemnity insurance version.
+   * @param ltftVersion               The LTFT version.
+   * @param sponsorshipVersion        The sponsorship version.
    */
   public ProgrammeMembershipService(HistoryService historyService, InAppService inAppService,
       NotificationService notificationService,
@@ -99,7 +104,8 @@ public class ProgrammeMembershipService {
       @Value("${application.template-versions.e-portfolio.in-app}") String eportfolioVersion,
       @Value("${application.template-versions.indemnity-insurance.in-app}")
       String indemnityInsuranceVersion,
-      @Value("${application.template-versions.less-than-full-time.in-app}") String ltftVersion) {
+      @Value("${application.template-versions.less-than-full-time.in-app}") String ltftVersion,
+      @Value("${application.template-versions.sponsorship.in-app}") String sponsorshipVersion) {
     this.historyService = historyService;
     this.inAppService = inAppService;
     this.notificationService = notificationService;
@@ -107,6 +113,7 @@ public class ProgrammeMembershipService {
     this.eportfolioVersion = eportfolioVersion;
     this.indemnityInsuranceVersion = indemnityInsuranceVersion;
     this.ltftVersion = ltftVersion;
+    this.sponsorshipVersion = sponsorshipVersion;
   }
 
   /**
@@ -158,6 +165,7 @@ public class ProgrammeMembershipService {
     notificationTypes.add(E_PORTFOLIO);
     notificationTypes.add(INDEMNITY_INSURANCE);
     notificationTypes.add(LTFT);
+    notificationTypes.add(SPONSORSHIP);
 
     for (NotificationType milestone : notificationTypes) {
       Optional<HistoryDto> sentItem = correspondence.stream()
@@ -249,9 +257,11 @@ public class ProgrammeMembershipService {
     boolean meetsCriteria = notificationService.meetsCriteria(programmeMembership, true, true);
 
     if (meetsCriteria) {
+      // E_PORTFOLIO
       createUniqueInAppNotification(programmeMembership, notificationsAlreadySent, E_PORTFOLIO,
           eportfolioVersion, Map.of());
 
+      // INDEMNITY_INSURANCE
       boolean hasBlockIndemnity = programmeMembership.getCurricula().stream()
           .anyMatch(Curriculum::curriculumSpecialtyBlockIndemnity);
       createUniqueInAppNotification(programmeMembership, notificationsAlreadySent,
@@ -260,23 +270,36 @@ public class ProgrammeMembershipService {
 
       String owner = programmeMembership.getManagingDeanery();
       List<Map<String, String>> contactList = notificationService.getOwnerContactList(owner);
-      String localOfficeContact = notificationService.getOwnerContact(contactList,
+
+      // LTFT
+      String localOfficeContactLtft = notificationService.getOwnerContact(contactList,
           LocalOfficeContactType.LTFT, LocalOfficeContactType.TSS_SUPPORT, "");
-      String localOfficeContactType = notificationService.getHrefTypeForContact(localOfficeContact);
+      String localOfficeContactTypeLtft =
+          notificationService.getHrefTypeForContact(localOfficeContactLtft);
       createUniqueInAppNotification(programmeMembership, notificationsAlreadySent, LTFT,
           ltftVersion, Map.of(
-              LOCAL_OFFICE_CONTACT_FIELD, localOfficeContact,
-              LOCAL_OFFICE_CONTACT_TYPE_FIELD, localOfficeContactType));
+              LOCAL_OFFICE_CONTACT_FIELD, localOfficeContactLtft,
+              LOCAL_OFFICE_CONTACT_TYPE_FIELD, localOfficeContactTypeLtft));
 
-      List<Map<String, String>> contactListDeferral = notificationService.getOwnerContactList(owner);
-      String localOfficeContactDeferral = notificationService.getOwnerContact(contactListDeferral,
+      // DEFERRAL
+      String localOfficeContactDeferral = notificationService.getOwnerContact(contactList,
           LocalOfficeContactType.DEFERRAL, LocalOfficeContactType.TSS_SUPPORT, "");
-      String localOfficeContactTypeDeferral = notificationService.getHrefTypeForContact(localOfficeContactDeferral);
-
+      String localOfficeContactTypeDeferral =
+          notificationService.getHrefTypeForContact(localOfficeContactDeferral);
       createUniqueInAppNotification(programmeMembership, notificationsAlreadySent, DEFERRAL,
           deferralVersion, Map.of(
               LOCAL_OFFICE_CONTACT_FIELD, localOfficeContactDeferral,
               LOCAL_OFFICE_CONTACT_TYPE_FIELD, localOfficeContactTypeDeferral));
+
+      // SPONSORSHIP
+      String localOfficeContactSponsorship = notificationService.getOwnerContact(contactList,
+          LocalOfficeContactType.SPONSORSHIP, LocalOfficeContactType.TSS_SUPPORT, "");
+      String localOfficeContactTypeSponsorship =
+          notificationService.getHrefTypeForContact(localOfficeContactSponsorship);
+      createUniqueInAppNotification(programmeMembership, notificationsAlreadySent, SPONSORSHIP,
+          sponsorshipVersion, Map.of(
+              LOCAL_OFFICE_CONTACT_FIELD, localOfficeContactSponsorship,
+              LOCAL_OFFICE_CONTACT_TYPE_FIELD, localOfficeContactTypeSponsorship));
     }
   }
 

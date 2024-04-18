@@ -43,6 +43,8 @@ application:
       in-app: v1.0.0
     less-than-full-time:
       in-app: v1.0.0
+    sponsorship:
+      in-app: v1.0.0
     welcome:
       in-app: v1.0.0
   timezone: Europe/London
