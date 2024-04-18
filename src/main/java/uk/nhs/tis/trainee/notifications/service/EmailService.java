@@ -176,14 +176,6 @@ public class EmailService {
       MimeMessageHelper helper = buildMessageHelper(updatedEmailAddress, templateName,
           resendVariables, notificationId);
 
-      //local testing, remove: /*
-      /*try {
-        log.info("For now, just logging mail to '{}' with subject '{}' and content '{}'",
-            updatedEmailAddress,
-            helper.getMimeMessage().getSubject(), helper.getMimeMessage().getContent().toString());
-      } catch (IOException e) {
-        log.info("This is unexpected");
-      }*/
       mailSender.send(helper.getMimeMessage());
 
       //update history entry
