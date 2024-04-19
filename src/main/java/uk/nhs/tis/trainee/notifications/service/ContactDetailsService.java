@@ -53,8 +53,8 @@ public class ContactDetailsService {
     List<History> failedMessages
         = historyService.findAllFailedForTrainee(contactDetails.getTisId());
     List<History> onesToResend = failedMessages.stream()
-        .filter(h -> !h.recipient().contact().equalsIgnoreCase(contactDetails.getEmail()))
         .filter(h -> h.recipient().type() == MessageType.EMAIL)
+        .filter(h -> !h.recipient().contact().equalsIgnoreCase(contactDetails.getEmail()))
         .toList();
     log.info("There are {} failed emails to retry for trainee {} with updated email address",
         onesToResend.size(), contactDetails.getTisId());

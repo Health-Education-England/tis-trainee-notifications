@@ -25,6 +25,7 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -522,5 +523,16 @@ class EmailServiceTest {
 
     verify(mailSender).send((MimeMessage) any());
     verify(historyService).save(any());
+  }
+
+  @Test
+  void shouldNotThrowExceptionFromUnexpectedContent() throws IOException, MessagingException {
+    MimeMessage mimeMessage = mock(MimeMessage.class);
+    when(mailSender.createMimeMessage()).thenReturn(mimeMessage);
+
+    when(mimeMessage.getContent()).thenThrow(IOException.class);
+
+    assertDoesNotThrow(() -> service.sendMessage(TRAINEE_ID, RECIPIENT, NOTIFICATION_TYPE,
+        "v1.2.3", new HashMap<>(), null, true));
   }
 }
