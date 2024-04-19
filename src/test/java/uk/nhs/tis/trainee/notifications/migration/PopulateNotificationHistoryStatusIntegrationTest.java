@@ -62,7 +62,7 @@ class PopulateNotificationHistoryStatusIntegrationTest {
   @Test
   void shouldMigrateHistoryWithEmptyStatus() {
     History history = new History(null, null, COJ_CONFIRMATION, null, null, Instant.now(),
-        Instant.now().plus(Duration.ofDays(1)), null, null);
+        Instant.now().plus(Duration.ofDays(1)), null, null, null);
     history = mongoTemplate.save(history);
 
     migrator.migrate();
@@ -76,7 +76,7 @@ class PopulateNotificationHistoryStatusIntegrationTest {
   @Test
   void shouldNotMigrateHistoryWithPopulatedStatus() {
     History history = new History(null, null, COJ_CONFIRMATION, null, null, Instant.now(),
-        Instant.now().plus(Duration.ofDays(1)), FAILED, null);
+        Instant.now().plus(Duration.ofDays(1)), FAILED, null, null);
     history = mongoTemplate.save(history);
 
     migrator.migrate();

@@ -25,6 +25,7 @@ import static uk.nhs.tis.trainee.notifications.model.MessageType.EMAIL;
 
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
+import java.io.IOException;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
@@ -120,8 +121,89 @@ public class EmailService {
   public void sendMessage(String traineeId, String recipient, NotificationType notificationType,
       String templateVersion, Map<String, Object> templateVariables,
       TisReferenceInfo tisReferenceInfo, boolean doNotSendJustLog) throws MessagingException {
+
     String templateName = templateService.getTemplatePath(EMAIL, notificationType, templateVersion);
     log.info("Sending template {} to {}.", templateName, recipient);
+    ObjectId notificationId = ObjectId.get();
+
+    MimeMessageHelper helper = buildMessageHelper(recipient, templateName, templateVariables,
+        notificationId);
+
+    if (!doNotSendJustLog) {
+      mailSender.send(helper.getMimeMessage());
+
+      // Store the notification history.
+      RecipientInfo recipientInfo = new RecipientInfo(traineeId, EMAIL, recipient);
+      TemplateInfo templateInfo = new TemplateInfo(notificationType.getTemplateName(),
+          templateVersion, templateVariables);
+      History history = new History(notificationId, tisReferenceInfo, notificationType,
+          recipientInfo, templateInfo, Instant.now(), null, NotificationStatus.SENT, null, null);
+      historyService.save(history);
+
+      log.info("Sent template {} to {}.", templateName, recipient);
+    } else {
+      try {
+        log.info("For now, just logging mail to '{}' with subject '{}' and content '{}'", recipient,
+            helper.getMimeMessage().getSubject(), helper.getMimeMessage().getContent().toString());
+      } catch (IOException e) {
+        //should not happen
+        log.info("For now, just logging mail to '{}' with subject '{}' and unparseable content",
+            recipient, helper.getMimeMessage().getSubject());
+      }
+    }
+  }
+
+  /**
+   * Resend the message for the given history item and update it with the new details.
+   *
+   * @param toResend            The history item that should be resent.
+   * @param updatedEmailAddress The updated email address to use.
+   * @throws MessagingException When the message could not be sent.
+   */
+  public void resendMessage(History toResend, String updatedEmailAddress)
+      throws MessagingException {
+    if (toResend.recipient().type() != EMAIL) {
+      log.warn("Cannot resend non-email history item {}", toResend);
+    } else {
+      String templateName = templateService.getTemplatePath(EMAIL, toResend.type(),
+          toResend.template().version());
+      log.info("Sending template {} to {}.", templateName, updatedEmailAddress);
+      ObjectId notificationId = toResend.id();
+      Map<String, Object> resendVariables = new HashMap<>(
+          Map.copyOf(toResend.template().variables()));
+      resendVariables.putIfAbsent("originallySentOn", toResend.sentAt());
+
+      MimeMessageHelper helper = buildMessageHelper(updatedEmailAddress, templateName,
+          resendVariables, notificationId);
+
+      mailSender.send(helper.getMimeMessage());
+
+      //update history entry
+      TemplateInfo updatedTemplateInfo = new TemplateInfo(toResend.type().getTemplateName(),
+          toResend.template().version(), toResend.template().variables());
+      RecipientInfo updatedRecipientInfo = new RecipientInfo(toResend.recipient().id(),
+          toResend.recipient().type(), updatedEmailAddress);
+      History updatedHistory = new History(notificationId, toResend.tisReference(), toResend.type(),
+          updatedRecipientInfo, updatedTemplateInfo, toResend.sentAt(), toResend.readAt(),
+          NotificationStatus.SENT, null, Instant.now());
+      historyService.save(updatedHistory);
+
+      log.info("Sent template {} to {}.", templateName, updatedEmailAddress);
+    }
+  }
+
+  /**
+   * Build the Mime message helper object with the populated template as content.
+   *
+   * @param recipient         Where the email should be sent.
+   * @param templateName      The versioned template name.
+   * @param templateVariables The variables to pass to the template
+   * @param notificationId    The notification ID to set in the email header
+   * @return The build Mime message helper
+   * @throws MessagingException if there is an error populating the helper.
+   */
+  private MimeMessageHelper buildMessageHelper(String recipient, String templateName,
+      Map<String, Object> templateVariables, ObjectId notificationId) throws MessagingException {
 
     // Add the application domain for any templates with hyperlinks.
     templateVariables.putIfAbsent("domain", appDomain);
@@ -133,7 +215,6 @@ public class EmailService {
         templateContext);
 
     MimeMessage mimeMessage = mailSender.createMimeMessage();
-    ObjectId notificationId = ObjectId.get();
     mimeMessage.addHeader("NotificationId", notificationId.toString());
 
     MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, StandardCharsets.UTF_8.name());
@@ -142,22 +223,7 @@ public class EmailService {
     helper.setSubject(subject);
     helper.setText(content, true);
 
-    if (!doNotSendJustLog) {
-      mailSender.send(helper.getMimeMessage());
-
-      // Store the notification history.
-      RecipientInfo recipientInfo = new RecipientInfo(traineeId, EMAIL, recipient);
-      TemplateInfo templateInfo = new TemplateInfo(notificationType.getTemplateName(),
-          templateVersion, templateVariables);
-      History history = new History(notificationId, tisReferenceInfo, notificationType,
-          recipientInfo, templateInfo, Instant.now(), null, NotificationStatus.SENT, null);
-      historyService.save(history);
-
-      log.info("Sent template {} to {}.", templateName, recipient);
-    } else {
-      log.info("For now, just logging mail to '{}' with subject '{}' and content '{}'", recipient,
-          subject, content);
-    }
+    return helper;
   }
 
   /**

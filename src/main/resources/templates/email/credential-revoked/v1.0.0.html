@@ -10,6 +10,7 @@
     <th:block th:fragment="subject">Your <th:block th:text="${not #strings.isEmpty(credentialType)} ? ${credentialType} : _">DSP</th:block> credential was revoked</th:block>
     <h2>Content</h2>
     <th:block th:fragment="content">
+      <div th:replace="fragments/retry/v1.0.0 :: body"></div>
       <p th:replace="~{fragments/greeting/v1.0.0 :: p}"></p>
       <p>
         You previously issued a <span th:text="${not #strings.isEmpty(credentialType)} ? ${credentialType} : _"></span> DSP credential<span

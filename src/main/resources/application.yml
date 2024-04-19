@@ -22,6 +22,7 @@ application:
     account-confirmed: ${ACCOUNT_CONFIRMED_QUEUE}
     coj-received: ${COJ_RECEIVED_QUEUE}
     credential-revoked: ${CREDENTIAL_REVOKED_QUEUE}
+    contact-details-updated: ${CONTACT_DETAILS_UPDATED_QUEUE}
     email-failure: ${EMAIL_FAILURE_QUEUE}
     form-updated: ${FORM_UPDATED_QUEUE}
     placement-updated: ${PLACEMENT_UPDATED_QUEUE}

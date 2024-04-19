@@ -67,7 +67,7 @@ public class InAppService {
 
     History history = new History(null, tisReference, notificationType, recipient, template,
         Instant.now(),
-        null, UNREAD, null);
+        null, UNREAD, null, null);
     if (!doNotStoreJustLog) {
       historyService.save(history);
     } else {

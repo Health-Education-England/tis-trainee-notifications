@@ -9,6 +9,7 @@
 <th:block th:fragment="subject">NHS England - <th:block th:text="${not #strings.isEmpty(localOfficeName)} ? ${localOfficeName} : 'Your Local Deanery Office'"></th:block> - Notification of Placement</th:block>
 <h2>Content</h2>
 <th:block th:fragment="content">
+  <div th:replace="fragments/retry/v1.0.0 :: body"></div>
   <p th:if="${#strings.isEmpty(givenName) AND #strings.isEmpty(familyName)}">Dear Doctor,</p>
   <p th:if="${not (#strings.isEmpty(givenName) OR #strings.isEmpty(familyName))}">Dear <span th:text="${not #strings.isEmpty(title)} ? ${title} : 'Dr'"></span> <span th:text="${not #strings.isEmpty(givenName)} ? ${givenName} : _"></span> <span th:text="${not #strings.isEmpty(familyName)} ? ${familyName} : _"></span>,</p>
   <p>GMC <th:block th:text="${not #strings.isEmpty(gmcNumber)} ? ${gmcNumber} : _">UNKNOWN</th:block><th:block th:if="${#strings.isEmpty(isValidGmc) OR not isValidGmc}"> - We don't have a confirmed GMC no. please contact your local office to update this.</th:block></p>
