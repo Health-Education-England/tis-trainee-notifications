@@ -6,7 +6,7 @@
 <body>
 <h1>Email Message</h1>
 <h2>Subject</h2>
-<th:block th:fragment="subject">NHS England - <th:block th:text="${not #strings.isEmpty(localOfficeName)} ? ${localOfficeName} : 'Your Local Deanery Office'"></th:block> - Notification of Placement</th:block>
+<th:block th:fragment="subject">NHS England - <th:block th:text="${not #strings.isEmpty(localOfficeName)} ? ${localOfficeName} : 'your local office'"></th:block> - Notification of Placement</th:block>
 <h2>Content</h2>
 <th:block th:fragment="content">
   <div th:replace="fragments/retry/v1.0.0 :: body"></div>
@@ -20,7 +20,7 @@
     We appreciate this must be a busy time for you but please set some time aside to read this letter as it contains some vital information regarding your training placement.
   </p>
   <p>
-    The NHS England team can now confirm your placement within a programme of <b><span th:text="${not #strings.isEmpty(localOfficeName)} ? ${localOfficeName} : 'your local deanery office'"></span></b>. Please note Healthcare Education England is now part of NHS England. Our systems will be updated in due course.
+    The NHS England team can now confirm your placement within a programme of <b><span th:text="${not #strings.isEmpty(localOfficeName)} ? ${localOfficeName} : 'your local office'"></span></b>. Please note Healthcare Education England is now part of NHS England. Our systems will be updated in due course.
   </p>
   <p>
     Please note your allocation and grade progression if appropriate will be subject to you receiving a satisfactory ARCP outcome, and your continued registration/licence to practise with the GMC for the duration of your training.
@@ -65,6 +65,7 @@
   <p>
     NHS England
   </p>
+  <div th:replace="fragments/disclaimer/v1.0.0 :: body"></div>
 </th:block>
 </body>
 </html>
