@@ -26,8 +26,11 @@ import static uk.nhs.tis.trainee.notifications.model.MessageType.EMAIL;
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
 import java.io.IOException;
+import java.math.BigInteger;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
@@ -203,10 +206,12 @@ public class EmailService {
    * @throws MessagingException if there is an error populating the helper.
    */
   private MimeMessageHelper buildMessageHelper(String recipient, String templateName,
-      Map<String, Object> templateVariables, ObjectId notificationId) throws MessagingException {
+      Map<String, Object> templateVariables, ObjectId notificationId)
+      throws MessagingException {
 
     // Add the application domain for any templates with hyperlinks.
     templateVariables.putIfAbsent("domain", appDomain);
+    templateVariables.putIfAbsent("hashedEmail", createMD5Hash(recipient));
 
     Context templateContext = templateService.buildContext(templateVariables);
     final String subject = templateService.process(templateName, Set.of("subject"),
@@ -241,5 +246,36 @@ public class EmailService {
       default ->
           throw new IllegalArgumentException("Multiple user accounts found for the given ID.");
     };
+  }
+
+  /**
+   * Create an MD5 hash of a given string.
+   *
+   * @param input The string to hash.
+   * @return The MD5 hash, or a fixed default if MD5 is not available.
+   */
+  public String createMD5Hash(final String input) {
+    try {
+      MessageDigest md = MessageDigest.getInstance("MD5");
+      byte[] messageDigest = md.digest(input.getBytes());
+      return convertToHex(messageDigest);
+    } catch (NoSuchAlgorithmException e) {
+      return "0".repeat(32); //default hash
+    }
+  }
+
+  /**
+   * Helper function to convert an array of bytes into a hexadecimal encoded string.
+   *
+   * @param messageDigest The array of bytes to convert.
+   * @return The hex string.
+   */
+  private String convertToHex(final byte[] messageDigest) {
+    BigInteger bigint = new BigInteger(1, messageDigest);
+    String hexText = bigint.toString(16);
+    while (hexText.length() < 32) {
+      hexText = "0".concat(hexText);
+    }
+    return hexText;
   }
 }

@@ -328,7 +328,7 @@ class FormListenerIntegrationTest {
     assertThat("Unexpected template version.", templateInfo.version(), is(templateVersion));
 
     Map<String, Object> storedVariables = templateInfo.variables();
-    assertThat("Unexpected template variable count.", storedVariables.size(), is(7));
+    assertThat("Unexpected template variable count.", storedVariables.size(), is(8));
     assertThat("Unexpected template variable.", storedVariables.get("familyName"), is(FAMILY_NAME));
     assertThat("Unexpected template variable.", storedVariables.get("lifecycleState"),
         is(FORM_SUBMITTED));

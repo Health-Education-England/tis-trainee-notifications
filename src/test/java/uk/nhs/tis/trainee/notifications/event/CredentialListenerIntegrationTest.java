@@ -444,7 +444,7 @@ class CredentialListenerIntegrationTest {
     assertThat("Unexpected template version.", templateInfo.version(), is(templateVersion));
 
     Map<String, Object> storedVariables = templateInfo.variables();
-    assertThat("Unexpected template variable count.", storedVariables.size(), is(5));
+    assertThat("Unexpected template variable count.", storedVariables.size(), is(6));
     assertThat("Unexpected template variable.", storedVariables.get("familyName"),
         is(FAMILY_NAME));
     assertThat("Unexpected template variable.", storedVariables.get("credentialType"),

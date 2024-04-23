@@ -132,7 +132,7 @@ class EmailServiceIntegrationTest {
     Document content = Jsoup.parse((String) message.getContent());
     Element body = content.body();
 
-    Element greeting = body.children().get(0);
+    Element greeting = body.children().get(getGreetingElementIndex(notificationType));
     assertThat("Unexpected element tag.", greeting.tagName(), is("p"));
     assertThat("Unexpected greeting.", greeting.text(), is("Dear Doctor,"));
   }
@@ -155,11 +155,11 @@ class EmailServiceIntegrationTest {
     Element body = content.body();
 
     if (notificationType.equals(NotificationType.PLACEMENT_UPDATED_WEEK_12)) {
-      Element greeting = body.children().get(0);
+      Element greeting = body.children().get(getGreetingElementIndex(notificationType));
       assertThat("Unexpected element tag.", greeting.tagName(), is("p"));
       assertThat("Unexpected greeting.", greeting.text(), is("Dear Dr Anthony Gilliam,"));
     } else {
-      Element greeting = body.children().get(0);
+      Element greeting = body.children().get(getGreetingElementIndex(notificationType));
       assertThat("Unexpected element tag.", greeting.tagName(), is("p"));
       assertThat("Unexpected greeting.", greeting.text(), is("Dear Dr Gilliam,"));
     }
@@ -184,13 +184,22 @@ class EmailServiceIntegrationTest {
     Element body = content.body();
 
     if (notificationType.equals(NotificationType.PLACEMENT_UPDATED_WEEK_12)) {
-      Element greeting = body.children().get(0);
+      Element greeting = body.children().get(getGreetingElementIndex(notificationType));
       assertThat("Unexpected element tag.", greeting.tagName(), is("p"));
       assertThat("Unexpected greeting.", greeting.text(), is("Dear Dr Anthony Maillig,"));
     } else {
-      Element greeting = body.children().get(0);
+      Element greeting = body.children().get(getGreetingElementIndex(notificationType));
       assertThat("Unexpected element tag.", greeting.tagName(), is("p"));
       assertThat("Unexpected greeting.", greeting.text(), is("Dear Dr Maillig,"));
     }
+  }
+
+  int getGreetingElementIndex(NotificationType notificationType) {
+    int greetingElement = 0;
+    if (notificationType.equals(NotificationType.PLACEMENT_UPDATED_WEEK_12)
+        || notificationType.equals(NotificationType.PROGRAMME_CREATED)) {
+      greetingElement = 1; //because of logo above it
+    }
+    return greetingElement;
   }
 }

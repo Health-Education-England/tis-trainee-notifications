@@ -379,7 +379,7 @@ class ConditionsOfJoiningListenerIntegrationTest {
     assertThat("Unexpected template version.", templateInfo.version(), is(templateVersion));
 
     Map<String, Object> storedVariables = templateInfo.variables();
-    assertThat("Unexpected template variable count.", storedVariables.size(), is(4));
+    assertThat("Unexpected template variable count.", storedVariables.size(), is(5));
     assertThat("Unexpected template variable.", storedVariables.get("familyName"), is(FAMILY_NAME));
     assertThat("Unexpected template variable.", storedVariables.get("syncedAt"), is(SYNCED_AT));
     assertThat("Unexpected template variable.", storedVariables.get("domain"),

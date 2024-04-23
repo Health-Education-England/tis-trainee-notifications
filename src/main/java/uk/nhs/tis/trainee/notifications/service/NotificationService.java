@@ -74,7 +74,7 @@ public class NotificationService implements Job {
   protected static final String API_GET_OWNER_CONTACT
       = "/api/local-office-contact-by-lo-name/{localOfficeName}";
   protected static final String DEFAULT_NO_CONTACT_MESSAGE
-      = "your local deanery office";
+      = "your local office";
 
   public static final String API_TRAINEE_DETAILS = "/api/trainee-profile/account-details/{tisId}";
   private static final String TRIGGER_ID_PREFIX = "trigger-";
