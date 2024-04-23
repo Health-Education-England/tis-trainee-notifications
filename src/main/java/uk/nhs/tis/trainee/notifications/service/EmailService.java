@@ -36,6 +36,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.logging.log4j.util.Strings;
 import org.bson.types.ObjectId;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
@@ -217,11 +218,12 @@ public class EmailService {
     MimeMessage mimeMessage = mailSender.createMimeMessage();
     mimeMessage.addHeader("NotificationId", notificationId.toString());
 
-    MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, StandardCharsets.UTF_8.name());
+    MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, true, StandardCharsets.UTF_8.name());
     helper.setTo(recipient);
     helper.setFrom(sender);
     helper.setSubject(subject);
     helper.setText(content, true);
+    helper.addInline("heeLogo", new ClassPathResource("templates/img/Health_Education_England_logo.png"));
 
     return helper;
   }

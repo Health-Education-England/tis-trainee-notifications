@@ -41,11 +41,11 @@ import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.FAILED;
 import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.SENT;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_CREATED;
 import static uk.nhs.tis.trainee.notifications.model.TisReferenceType.PLACEMENT;
-import static uk.nhs.tis.trainee.notifications.model.TisReferenceType.PROGRAMME_MEMBERSHIP;
 
 import jakarta.activation.DataHandler;
 import jakarta.mail.Address;
 import jakarta.mail.MessagingException;
+import jakarta.mail.Multipart;
 import jakarta.mail.Session;
 import jakarta.mail.internet.MimeMessage;
 import jakarta.mail.internet.MimeMessage.RecipientType;
@@ -296,7 +296,9 @@ class EmailServiceTest {
     verify(mailSender).send(messageCaptor.capture());
 
     MimeMessage message = messageCaptor.getValue();
-    assertThat("Unexpected content.", message.getContent(), is(template));
+    Multipart multipart = (Multipart) message.getContent();
+    assertThat("Unexpected text content.", multipart.getBodyPart(0).getContent(), is(template));
+    assertThat("Unexpected image content.", multipart.getBodyPart(1).getContentType(), is(template));
 
     DataHandler dataHandler = message.getDataHandler();
     assertThat("Unexpected content type.", dataHandler.getContentType(),
