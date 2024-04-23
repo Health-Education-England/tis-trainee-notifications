@@ -26,8 +26,11 @@ import static uk.nhs.tis.trainee.notifications.model.MessageType.EMAIL;
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
 import java.io.IOException;
+import java.math.BigInteger;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
@@ -36,7 +39,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.logging.log4j.util.Strings;
 import org.bson.types.ObjectId;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.core.io.ClassPathResource;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
@@ -204,10 +206,12 @@ public class EmailService {
    * @throws MessagingException if there is an error populating the helper.
    */
   private MimeMessageHelper buildMessageHelper(String recipient, String templateName,
-      Map<String, Object> templateVariables, ObjectId notificationId) throws MessagingException {
+      Map<String, Object> templateVariables, ObjectId notificationId)
+      throws MessagingException {
 
     // Add the application domain for any templates with hyperlinks.
     templateVariables.putIfAbsent("domain", appDomain);
+    templateVariables.putIfAbsent("hashedEmail", createMD5Hash(recipient));
 
     Context templateContext = templateService.buildContext(templateVariables);
     final String subject = templateService.process(templateName, Set.of("subject"),
@@ -218,12 +222,11 @@ public class EmailService {
     MimeMessage mimeMessage = mailSender.createMimeMessage();
     mimeMessage.addHeader("NotificationId", notificationId.toString());
 
-    MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, true, StandardCharsets.UTF_8.name());
+    MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, StandardCharsets.UTF_8.name());
     helper.setTo(recipient);
     helper.setFrom(sender);
     helper.setSubject(subject);
     helper.setText(content, true);
-    helper.addInline("heeLogo", new ClassPathResource("templates/img/Health_Education_England_logo.png"));
 
     return helper;
   }
@@ -243,5 +246,36 @@ public class EmailService {
       default ->
           throw new IllegalArgumentException("Multiple user accounts found for the given ID.");
     };
+  }
+
+  /**
+   * Create an MD5 hash of a given string.
+   *
+   * @param input The string to hash.
+   * @return The MD5 hash, or a fixed default if MD5 is not available.
+   */
+  public String createMD5Hash(final String input) {
+    try {
+      MessageDigest md = MessageDigest.getInstance("MD5");
+      byte[] messageDigest = md.digest(input.getBytes());
+      return convertToHex(messageDigest);
+    } catch (NoSuchAlgorithmException e) {
+      return "0".repeat(32); //default hash
+    }
+  }
+
+  /**
+   * Helper function to convert an array of bytes into a hexadecimal encoded string.
+   *
+   * @param messageDigest The array of bytes to convert.
+   * @return The hex string.
+   */
+  private String convertToHex(final byte[] messageDigest) {
+    BigInteger bigint = new BigInteger(1, messageDigest);
+    String hexText = bigint.toString(16);
+    while (hexText.length() < 32) {
+      hexText = "0".concat(hexText);
+    }
+    return hexText;
   }
 }

@@ -30,6 +30,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -45,12 +46,13 @@ import static uk.nhs.tis.trainee.notifications.model.TisReferenceType.PLACEMENT;
 import jakarta.activation.DataHandler;
 import jakarta.mail.Address;
 import jakarta.mail.MessagingException;
-import jakarta.mail.Multipart;
 import jakarta.mail.Session;
 import jakarta.mail.internet.MimeMessage;
 import jakarta.mail.internet.MimeMessage.RecipientType;
 import java.io.IOException;
 import java.net.URI;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
 import java.util.HashMap;
 import java.util.List;
@@ -65,6 +67,8 @@ import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.EnumSource.Mode;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.mockito.ArgumentCaptor;
+import org.mockito.MockedStatic;
+import org.mockito.Mockito;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.thymeleaf.context.Context;
 import software.amazon.awssdk.services.cognitoidentityprovider.model.UserNotFoundException;
@@ -233,6 +237,21 @@ class EmailServiceTest {
   }
 
   @Test
+  void shouldIncludeHashedEmailInTemplateProperties() throws MessagingException {
+    service.sendMessageToExistingUser(TRAINEE_ID, NOTIFICATION_TYPE, "",
+        Map.of(), null);
+
+    ArgumentCaptor<Context> contextCaptor = ArgumentCaptor.forClass(Context.class);
+    verify(templateService, atLeastOnce()).process(any(), any(), contextCaptor.capture());
+
+    String expectedHashedEmail = service.createMD5Hash(RECIPIENT);
+
+    Context context = contextCaptor.getValue();
+    assertThat("Unexpected hashed email.", context.getVariable("hashedEmail"),
+        is(expectedHashedEmail));
+  }
+
+  @Test
   void shouldSendMessageToUserAccountEmail() throws MessagingException {
     when(userAccountService.getUserDetails(USER_ID)).thenReturn(
         new UserDetails(true, "anthony.gilliam@tis.nhs.uk", "", "",
@@ -296,9 +315,7 @@ class EmailServiceTest {
     verify(mailSender).send(messageCaptor.capture());
 
     MimeMessage message = messageCaptor.getValue();
-    Multipart multipart = (Multipart) message.getContent();
-    assertThat("Unexpected text content.", multipart.getBodyPart(0).getContent(), is(template));
-    assertThat("Unexpected image content.", multipart.getBodyPart(1).getContentType(), is(template));
+    assertThat("Unexpected text content.", message.getContent(), is(template));
 
     DataHandler dataHandler = message.getDataHandler();
     assertThat("Unexpected content type.", dataHandler.getContentType(),
@@ -394,7 +411,7 @@ class EmailServiceTest {
     assertThat("Unexpected template version.", templateInfo.version(), is(templateVersion));
 
     Map<String, Object> storedVariables = templateInfo.variables();
-    assertThat("Unexpected template variable count.", storedVariables.size(), is(4));
+    assertThat("Unexpected template variable count.", storedVariables.size(), is(5));
     assertThat("Unexpected template variable.", storedVariables.get("key1"), is("value1"));
     assertThat("Unexpected template variable.", storedVariables.get("familyName"),
         is("Gilliam"));
@@ -536,5 +553,16 @@ class EmailServiceTest {
 
     assertDoesNotThrow(() -> service.sendMessage(TRAINEE_ID, RECIPIENT, NOTIFICATION_TYPE,
         "v1.2.3", new HashMap<>(), null, true));
+  }
+
+  @Test
+  void shouldUseDefaultHashIfMd5NotAvailable() {
+   MockedStatic<MessageDigest> mockedMessageDigest = Mockito.mockStatic(MessageDigest.class);
+   mockedMessageDigest.when(() -> MessageDigest.getInstance(any()))
+       .thenThrow(new NoSuchAlgorithmException("error"));
+
+   String hash = service.createMD5Hash("some input");
+   assertThat("Unexpected default hash.", hash, is("00000000000000000000000000000000"));
+   mockedMessageDigest.close();
   }
 }

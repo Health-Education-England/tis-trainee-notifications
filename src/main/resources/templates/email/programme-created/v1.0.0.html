@@ -12,7 +12,7 @@
 <h2>Content</h2>
 <th:block th:fragment="content">
   <div th:replace="fragments/retry/v1.0.0 :: body"></div>
-  <div style="text-align:right"><img style="margin-right:25px" src='cid:heeLogo' alt="HEE logo"/></div>
+  <div style="text-align:right"><img style="margin-right:25px" th:src='@{templates/images/nhse-logo.png}' alt="NHS England logo"/></div>
   <div th:replace="fragments/greeting/v1.0.0 :: body"></div>
   <p>Congratulations on your appointment to the <span
       th:text="${not #strings.isEmpty(programmeName)} ? ${programmeName} : 'programme'"></span> Programme in <span
@@ -72,6 +72,13 @@
   <p>Workforce, Training and Education</p>
   <p>NHS England</p>
   <div th:replace="fragments/disclaimer/v1.0.0 :: body"></div>
+  <hr>
+  <div>
+    <p>Did you find the content of this New starter email useful? <a th:href="'https://docs.google.com/forms/d/e/1FAIpQLSfdHBQZNVrFfycyYzTB0yrM6SWawZF4Aq3OnNwvSzWdFtPnkQ/formResponse?usp=pp_url&entry.424677117=Yes&entry.1732442592=' + ${hashedEmail} + '&submit=Submit'"
+    ><img th:src='@{templates/images/thumbs-up.png}' alt="thumbs up"/></a>&nbsp;<a th:href="'https://docs.google.com/forms/d/e/1FAIpQLSfdHBQZNVrFfycyYzTB0yrM6SWawZF4Aq3OnNwvSzWdFtPnkQ/formResponse?usp=pp_url&entry.424677117=No&entry.1732442592=' + ${hashedEmail} + '&submit=Submit'"
+    ><img th:src='@{templates/images/thumbs-down.png}' alt="thumbs down"/></a>.</p>
+    <p>If you would like to offer further feedback, please complete the <a href="https://forms.gle/a4HABm3fVBtgcB3K7">short survey</a>.</p>
+  </div>
 </th:block>
 </body>
 </html>
