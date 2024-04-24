@@ -21,6 +21,8 @@
 
 package uk.nhs.tis.trainee.notifications.service;
 
+import java.time.Duration;
+import java.time.Instant;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
@@ -57,6 +59,7 @@ public class UserAccountService {
   private final CognitoIdentityProviderClient cognitoClient;
   private final String userPoolId;
   private final Cache cache;
+  private Instant lastUserCaching = null;
 
   UserAccountService(CognitoIdentityProviderClient cognitoClient,
       @Value("${application.cognito.user-pool-id}") String userPoolId, CacheManager cacheManager) {
@@ -74,7 +77,13 @@ public class UserAccountService {
   @Cacheable(cacheNames = USER_ID_CACHE, unless = "#result.isEmpty()")
   public Set<String> getUserAccountIds(String personId) {
     log.info("User account not found in the cache.");
-    cacheAllUserAccountIds();
+
+    // Skip caching if we already cached in the last fifteen minutes.
+    if (lastUserCaching == null || lastUserCaching.plus(Duration.ofMinutes(15))
+        .isBefore(Instant.now())) {
+      cacheAllUserAccountIds();
+      lastUserCaching = Instant.now();
+    }
 
     Set<String> userAccountIds = cache.get(personId, Set.class);
     return userAccountIds != null ? userAccountIds : Set.of();

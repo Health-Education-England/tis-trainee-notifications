@@ -28,6 +28,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -182,6 +183,21 @@ class UserAccountServiceTest {
     Set<String> userAccountIds = service.getUserAccountIds(PERSON_ID_1);
 
     assertThat("Unexpected user IDs count.", userAccountIds.size(), is(0));
+  }
+
+  @Test
+  void shouldNotImmediatelyRepeatBuildingUserIdCache() {
+    // The response is mocked instead of constructed due to embedded pagination handling.
+    ListUsersIterable responses = mock(ListUsersIterable.class);
+    when(cognitoClient.listUsersPaginator(any(ListUsersRequest.class))).thenReturn(responses);
+
+    SdkIterable<UserType> users = mock(SdkIterable.class);
+    when(responses.users()).thenReturn(users);
+
+    service.getUserAccountIds(PERSON_ID_1);
+    service.getUserAccountIds(PERSON_ID_2);
+
+    verify(cognitoClient, times(1)).listUsersPaginator(any(ListUsersRequest.class));
   }
 
   @Test

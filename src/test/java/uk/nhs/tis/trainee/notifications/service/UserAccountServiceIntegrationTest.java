@@ -42,6 +42,8 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
+import org.springframework.test.annotation.DirtiesContext;
+import org.springframework.test.annotation.DirtiesContext.ClassMode;
 import org.springframework.test.context.ActiveProfiles;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import software.amazon.awssdk.core.pagination.sync.SdkIterable;
@@ -56,6 +58,7 @@ import uk.nhs.tis.trainee.notifications.config.MongoConfiguration;
 @ActiveProfiles({"redis", "test"})
 @Testcontainers(disabledWithoutDocker = true)
 @ExtendWith(MockitoExtension.class)
+@DirtiesContext(classMode = ClassMode.AFTER_EACH_TEST_METHOD)
 class UserAccountServiceIntegrationTest {
 
   private static final String PERSON_ID = "40";
