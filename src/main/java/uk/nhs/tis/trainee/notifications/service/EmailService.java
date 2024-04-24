@@ -252,16 +252,18 @@ public class EmailService {
    * Create an MD5 hash of a given string.
    *
    * @param input The string to hash.
-   * @return The MD5 hash, or a fixed default if MD5 is not available.
+   * @return The MD5 hash, or a fixed default if MD5 is not available or the input is null.
    */
   public String createMD5Hash(final String input) {
-    try {
-      MessageDigest md = MessageDigest.getInstance("MD5");
-      byte[] messageDigest = md.digest(input.getBytes());
-      return convertToHex(messageDigest);
-    } catch (NoSuchAlgorithmException e) {
-      return "0".repeat(32); //default hash
+    if (input != null) {
+      try {
+        MessageDigest md = MessageDigest.getInstance("MD5");
+        byte[] messageDigest = md.digest(input.getBytes());
+        return convertToHex(messageDigest);
+      } catch (NoSuchAlgorithmException ignored) {
+      }
     }
+    return "0".repeat(32); //default hash
   }
 
   /**
