@@ -30,7 +30,6 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.atLeastOnce;
-import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -92,6 +91,7 @@ class EmailServiceTest {
   private static final URI APP_DOMAIN = URI.create("local.notifications.com");
   private static final TisReferenceType REFERENCE_TABLE = PLACEMENT;
   private static final String REFERENCE_KEY = "the-key";
+  private static final String DEFAULT_EMAIL_HASH = "00000000000000000000000000000000";
 
   private EmailService service;
   private UserAccountService userAccountService;
@@ -562,7 +562,13 @@ class EmailServiceTest {
        .thenThrow(new NoSuchAlgorithmException("error"));
 
    String hash = service.createMD5Hash("some input");
-   assertThat("Unexpected default hash.", hash, is("00000000000000000000000000000000"));
+   assertThat("Unexpected default hash.", hash, is(DEFAULT_EMAIL_HASH));
    mockedMessageDigest.close();
+  }
+
+  @Test
+  void shouldUseDefaultHashIfInputIsNull() {
+    String hash = service.createMD5Hash(null);
+    assertThat("Unexpected default hash.", hash, is(DEFAULT_EMAIL_HASH));
   }
 }
