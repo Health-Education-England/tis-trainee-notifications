@@ -21,7 +21,12 @@
         >.
       </p>
       <p>
-        If you require a Certificate of Sponsorship in order to apply for a Skilled Worker visa for this rotation, please follow this <a href="https://medical.hee.nhs.uk/medical-training-recruitment/medical-specialty-training/overseas-applicants/overseas-sponsorship-guidance/overseas-sponsorship-contact-details">link</a> for details on the application process. Should you have any questions that are not answered on this website,
+        If you require a Certificate of Sponsorship in order to apply for a Skilled Worker visa for this rotation, please follow this
+        <a
+          href="https://medical.hee.nhs.uk/medical-training-recruitment/medical-specialty-training/overseas-applicants/overseas-sponsorship-guidance/overseas-sponsorship-contact-details"
+          th:target="_blank"
+        >link</a>
+        for details on the application process. Should you have any questions that are not answered on this website,
         <th:block: th:switch="${localOfficeContactType}">
           <th:block th:case="NON_HREF"
           > please contact your local office for information on Sponsorship.</th:block
@@ -31,6 +36,7 @@
             <a
               th:href="${localOfficeContactType} == 'email' ? |mailto:${localOfficeContact}| : ${localOfficeContact}"
               th:text="${localOfficeContact}"
+              th:target="_blank"
             ></a
             ></th:block>
         </th:block:>
