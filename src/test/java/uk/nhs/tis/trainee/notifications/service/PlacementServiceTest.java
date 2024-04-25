@@ -88,7 +88,7 @@ class PlacementServiceTest {
     historyService = mock(HistoryService.class);
     notificationService = mock(NotificationService.class);
     restTemplate = mock(RestTemplate.class);
-    service = new PlacementService(historyService, notificationService);
+    service = new PlacementService(historyService, notificationService, ZoneId.of("Europe/London"));
   }
 
   @ParameterizedTest
@@ -96,6 +96,7 @@ class PlacementServiceTest {
   void shouldNotExcludePlacementWithInPostPlacementType(String placementType) {
     Placement placement = new Placement();
     placement.setPlacementType(placementType);
+    placement.setStartDate(START_DATE);
 
     boolean isExcluded = service.isExcluded(placement);
 
@@ -103,9 +104,31 @@ class PlacementServiceTest {
   }
 
   @Test
+  void shouldExcludePlacementWithNoStartDate() {
+    Placement placement = new Placement();
+    placement.setPlacementType(IN_POST);
+
+    boolean isExcluded = service.isExcluded(placement);
+
+    assertThat("Unexpected excluded value.", isExcluded, is(true));
+  }
+
+  @Test
+  void shouldExcludePlacementThatIsNotFuture() {
+    Placement placement = new Placement();
+    placement.setPlacementType(IN_POST);
+    placement.setStartDate(LocalDate.now().minusYears(1));
+
+    boolean isExcluded = service.isExcluded(placement);
+
+    assertThat("Unexpected excluded value.", isExcluded, is(true));
+  }
+
+  @Test
   void shouldExcludePlacementNotWithInPostPlacementType() {
     Placement placement = new Placement();
     placement.setPlacementType(EXCLUDED_PLACEMENT_TYPE);
+    placement.setStartDate(START_DATE);
 
     boolean isExcluded = service.isExcluded(placement);
 
@@ -114,7 +137,10 @@ class PlacementServiceTest {
 
   @Test
   void shouldExcludePlacementWithoutPlacementType() {
-    boolean isExcluded = service.isExcluded(new Placement());
+    Placement placement = new Placement();
+    placement.setStartDate(START_DATE);
+
+    boolean isExcluded = service.isExcluded(placement);
 
     assertThat("Unexpected excluded value.", isExcluded, is(true));
   }

@@ -55,6 +55,7 @@ import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipServic
 
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Date;
@@ -116,8 +117,8 @@ class ProgrammeMembershipServiceTest {
     inAppService = mock(InAppService.class);
     notificationService = mock(NotificationService.class);
     service = new ProgrammeMembershipService(historyService, inAppService, notificationService,
-        DEFERRAL_VERSION, E_PORTFOLIO_VERSION, INDEMNITY_INSURANCE_VERSION, LTFT_VERSION,
-        SPONSORSHIP_VERSION);
+        ZoneId.of("Europe/London"), DEFERRAL_VERSION, E_PORTFOLIO_VERSION,
+        INDEMNITY_INSURANCE_VERSION, LTFT_VERSION, SPONSORSHIP_VERSION);
   }
 
   @ParameterizedTest
@@ -125,6 +126,7 @@ class ProgrammeMembershipServiceTest {
   void shouldNotExcludePmWithMedicalSubtypeAndNoExcludedSpecialties(String subtype) {
     Curriculum theCurriculum = new Curriculum(subtype, "some-specialty", false);
     ProgrammeMembership programmeMembership = new ProgrammeMembership();
+    programmeMembership.setStartDate(START_DATE);
     programmeMembership.setCurricula(List.of(theCurriculum, IGNORED_CURRICULUM));
 
     boolean isExcluded = service.isExcluded(programmeMembership);
@@ -133,9 +135,33 @@ class ProgrammeMembershipServiceTest {
   }
 
   @Test
+  void shouldExcludePmThatHasNoStartDate() {
+    Curriculum theCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, "some-specialty", false);
+    ProgrammeMembership programmeMembership = new ProgrammeMembership();
+    programmeMembership.setCurricula(List.of(theCurriculum, IGNORED_CURRICULUM));
+
+    boolean isExcluded = service.isExcluded(programmeMembership);
+
+    assertThat("Unexpected excluded value.", isExcluded, is(true));
+  }
+
+  @Test
+  void shouldExcludePmThatIsNotFuture() {
+    Curriculum theCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, "some-specialty", false);
+    ProgrammeMembership programmeMembership = new ProgrammeMembership();
+    programmeMembership.setStartDate(LocalDate.now().minusYears(1));
+    programmeMembership.setCurricula(List.of(theCurriculum, IGNORED_CURRICULUM));
+
+    boolean isExcluded = service.isExcluded(programmeMembership);
+
+    assertThat("Unexpected excluded value.", isExcluded, is(true));
+  }
+
+  @Test
   void shouldExcludePmWithNoMedicalSubtype() {
     List<Curriculum> curricula = List.of(IGNORED_CURRICULUM);
     ProgrammeMembership programmeMembership = new ProgrammeMembership();
+    programmeMembership.setStartDate(START_DATE);
     programmeMembership.setCurricula(curricula);
 
     boolean isExcluded = service.isExcluded(programmeMembership);
@@ -147,6 +173,7 @@ class ProgrammeMembershipServiceTest {
   @NullAndEmptySource
   void shouldExcludePmWithNoCurricula(List<Curriculum> curricula) {
     ProgrammeMembership programmeMembership = new ProgrammeMembership();
+    programmeMembership.setStartDate(START_DATE);
     programmeMembership.setCurricula(curricula);
 
     boolean isExcluded = service.isExcluded(programmeMembership);
@@ -160,6 +187,7 @@ class ProgrammeMembershipServiceTest {
     Curriculum theCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, specialty, false);
     Curriculum anotherCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, "some-specialty", false);
     ProgrammeMembership programmeMembership = new ProgrammeMembership();
+    programmeMembership.setStartDate(START_DATE);
     programmeMembership.setCurricula(List.of(theCurriculum, anotherCurriculum));
 
     boolean isExcluded = service.isExcluded(programmeMembership);
@@ -172,6 +200,7 @@ class ProgrammeMembershipServiceTest {
     Curriculum theCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, EXCLUDE_SPECIALTY_1, false);
     ProgrammeMembership programmeMembership = new ProgrammeMembership();
     programmeMembership.setTisId(TIS_ID);
+    programmeMembership.setStartDate(START_DATE);
     programmeMembership.setCurricula(List.of(theCurriculum));
 
     service.addNotifications(programmeMembership);
@@ -187,6 +216,7 @@ class ProgrammeMembershipServiceTest {
     Curriculum theCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, EXCLUDE_SPECIALTY_1, false);
     ProgrammeMembership programmeMembership = new ProgrammeMembership();
     programmeMembership.setTisId(TIS_ID);
+    programmeMembership.setStartDate(START_DATE);
     programmeMembership.setCurricula(List.of(theCurriculum));
 
     service.addNotifications(programmeMembership);

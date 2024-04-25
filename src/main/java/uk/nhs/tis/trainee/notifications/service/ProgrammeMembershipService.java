@@ -34,6 +34,7 @@ import static uk.nhs.tis.trainee.notifications.service.NotificationService.TEMPL
 
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.Date;
 import java.util.EnumMap;
 import java.util.HashMap;
@@ -80,6 +81,8 @@ public class ProgrammeMembershipService {
   private final InAppService inAppService;
   private final NotificationService notificationService;
 
+  private final ZoneId timezone;
+
   private final String deferralVersion;
   private final String eportfolioVersion;
   private final String indemnityInsuranceVersion;
@@ -99,7 +102,7 @@ public class ProgrammeMembershipService {
    * @param sponsorshipVersion        The sponsorship version.
    */
   public ProgrammeMembershipService(HistoryService historyService, InAppService inAppService,
-      NotificationService notificationService,
+      NotificationService notificationService, @Value("${application.timezone}") ZoneId timezone,
       @Value("${application.template-versions.deferral.in-app}") String deferralVersion,
       @Value("${application.template-versions.e-portfolio.in-app}") String eportfolioVersion,
       @Value("${application.template-versions.indemnity-insurance.in-app}")
@@ -109,6 +112,7 @@ public class ProgrammeMembershipService {
     this.historyService = historyService;
     this.inAppService = inAppService;
     this.notificationService = notificationService;
+    this.timezone = timezone;
     this.deferralVersion = deferralVersion;
     this.eportfolioVersion = eportfolioVersion;
     this.indemnityInsuranceVersion = indemnityInsuranceVersion;
@@ -130,6 +134,11 @@ public class ProgrammeMembershipService {
    * @return true if the programme membership is excluded.
    */
   public boolean isExcluded(ProgrammeMembership programmeMembership) {
+    LocalDate startDate = programmeMembership.getStartDate();
+    if (startDate == null || startDate.isBefore(LocalDate.now(timezone))) {
+      return true;
+    }
+
     List<Curriculum> curricula = programmeMembership.getCurricula();
     if (curricula == null) {
       return true;
