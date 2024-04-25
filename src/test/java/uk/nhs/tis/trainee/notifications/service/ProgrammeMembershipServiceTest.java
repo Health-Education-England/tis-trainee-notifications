@@ -99,6 +99,10 @@ class ProgrammeMembershipServiceTest {
 
   private static final Curriculum IGNORED_CURRICULUM
       = new Curriculum("some-subtype", "some-specialty", false);
+  private static final Curriculum MISSING_CURRICULUM_SUBTYPE
+      = new Curriculum(MEDICAL_CURRICULUM_1, null, false);
+  private static final Curriculum MISSING_CURRICULUM_SPECIALTY
+      = new Curriculum(null, "some-specialty", false);
 
   private static final String E_PORTFOLIO_VERSION = "v1.2.3";
   private static final String INDEMNITY_INSURANCE_VERSION = "v2.3.4";
@@ -174,6 +178,28 @@ class ProgrammeMembershipServiceTest {
   void shouldExcludePmWithNoCurricula(List<Curriculum> curricula) {
     ProgrammeMembership programmeMembership = new ProgrammeMembership();
     programmeMembership.setStartDate(START_DATE);
+    programmeMembership.setCurricula(curricula);
+
+    boolean isExcluded = service.isExcluded(programmeMembership);
+
+    assertThat("Unexpected excluded value.", isExcluded, is(true));
+  }
+
+  @Test
+  void shouldExcludePmWithNoCurriculumSubtype() {
+    List<Curriculum> curricula = List.of(MISSING_CURRICULUM_SUBTYPE);
+    ProgrammeMembership programmeMembership = new ProgrammeMembership();
+    programmeMembership.setCurricula(curricula);
+
+    boolean isExcluded = service.isExcluded(programmeMembership);
+
+    assertThat("Unexpected excluded value.", isExcluded, is(true));
+  }
+
+  @Test
+  void shouldExcludePmWithNoCurriculumSpecialty() {
+    List<Curriculum> curricula = List.of(MISSING_CURRICULUM_SPECIALTY);
+    ProgrammeMembership programmeMembership = new ProgrammeMembership();
     programmeMembership.setCurricula(curricula);
 
     boolean isExcluded = service.isExcluded(programmeMembership);
