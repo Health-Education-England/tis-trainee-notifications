@@ -36,12 +36,8 @@ import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
 import org.quartz.JobDataMap;
 import org.quartz.SchedulerException;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestClientException;
-import org.springframework.web.client.RestTemplate;
 import uk.nhs.tis.trainee.notifications.dto.HistoryDto;
-import uk.nhs.tis.trainee.notifications.model.LocalOfficeContactType;
 import uk.nhs.tis.trainee.notifications.model.NotificationType;
 import uk.nhs.tis.trainee.notifications.model.Placement;
 import uk.nhs.tis.trainee.notifications.model.TisReferenceType;
@@ -164,7 +160,7 @@ public class PlacementService {
         // Note the status of the trainee will be retrieved when the job is executed, as will
         // their name and email address, and the contact details of the owner LO, not now.
 
-        String jobId = PLACEMENT_UPDATED_WEEK_12 + "-" + placement.getTisId();
+        String jobId = notificationService.getQuartzJobId(PLACEMENT_UPDATED_WEEK_12, placement);
         try {
           notificationService.scheduleNotification(jobId, jobDataMap, when);
         } catch (SchedulerException e) {
@@ -183,7 +179,7 @@ public class PlacementService {
    */
   public void deleteNotifications(Placement placement)
       throws SchedulerException {
-    String jobId = PLACEMENT_UPDATED_WEEK_12 + "-" + placement.getTisId();
+    String jobId = notificationService.getQuartzJobId(PLACEMENT_UPDATED_WEEK_12, placement);
     notificationService.removeNotification(jobId); //remove existing notification if it exists
   }
 

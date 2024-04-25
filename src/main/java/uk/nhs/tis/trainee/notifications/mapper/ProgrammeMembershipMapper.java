@@ -51,6 +51,7 @@ public interface ProgrammeMembershipMapper {
   @Mapping(target = "curricula", source = "recordData.curricula")
   @Mapping(target = "tisId", source = "recordData.tisId")
   @Mapping(target = "startDate", source = "recordData.startDate")
+  @Mapping(target = "endDate", source = "recordData.endDate")
   ProgrammeMembership toEntity(Map<String, String> recordData);
 
   /**

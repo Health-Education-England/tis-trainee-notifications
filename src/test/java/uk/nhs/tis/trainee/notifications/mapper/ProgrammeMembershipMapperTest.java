@@ -41,6 +41,7 @@ class ProgrammeMembershipMapperTest {
 
   private static final String TIS_ID = "123";
   private static final LocalDate START_DATE = LocalDate.now();
+  private static final LocalDate END_DATE = LocalDate.MAX;
   private static final String CURRICULUM_SUB_TYPE = "sub-type";
   private static final String CURRICULUM_SPECIALTY = "specialty";
   private static final Instant COJ_SYNCED_AT = Instant.now();
@@ -58,6 +59,7 @@ class ProgrammeMembershipMapperTest {
     ProgrammeMembership programmeMembership = new ProgrammeMembership();
     programmeMembership.setTisId(TIS_ID);
     programmeMembership.setStartDate(START_DATE);
+    programmeMembership.setEndDate(END_DATE);
     Curriculum curriculum = new Curriculum(CURRICULUM_SUB_TYPE, CURRICULUM_SPECIALTY, false);
     programmeMembership.setCurricula(List.of(curriculum));
 
@@ -65,6 +67,7 @@ class ProgrammeMembershipMapperTest {
 
     assertThat("Unexpected Tis Id.", returnedPm.getTisId(), is(TIS_ID));
     assertThat("Unexpected start date.", returnedPm.getStartDate(), is(START_DATE));
+    assertThat("Unexpected end date.", returnedPm.getEndDate(), is(END_DATE));
     assertThat("Unexpected curricula.", returnedPm.getCurricula(), is(List.of(curriculum)));
     assertThat("Unexpected Conditions of joining.", returnedPm.getConditionsOfJoining(),
         is(new ConditionsOfJoining(COJ_SYNCED_AT)));
@@ -79,6 +82,7 @@ class ProgrammeMembershipMapperTest {
     Map<String, String> dataMap = new HashMap<>();
     dataMap.put("tisId", TIS_ID);
     dataMap.put("startDate", START_DATE.toString());
+    dataMap.put("endDate", END_DATE.toString());
     dataMap.put("another-pm-property", "some value");
     dataMap.put("curricula",
         "[{\"curriculumSubType\": \"" + CURRICULUM_SUB_TYPE + "\", "

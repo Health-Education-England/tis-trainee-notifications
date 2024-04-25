@@ -32,6 +32,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -95,6 +96,8 @@ class ProgrammeMembershipServiceTest {
   private static final String MANAGING_DEANERY = "the local office";
   private static final LocalDate START_DATE = LocalDate.now().plusYears(1);
   //set a year in the future to allow all notifications to be scheduled
+  private static final LocalDate END_DATE = START_DATE.plusYears(1);
+  private static final String JOB_ID = "some jobId";
 
   private static final Curriculum IGNORED_CURRICULUM
       = new Curriculum("some-subtype", "some-specialty", false);
@@ -125,6 +128,19 @@ class ProgrammeMembershipServiceTest {
   void shouldNotExcludePmWithMedicalSubtypeAndNoExcludedSpecialties(String subtype) {
     Curriculum theCurriculum = new Curriculum(subtype, "some-specialty", false);
     ProgrammeMembership programmeMembership = new ProgrammeMembership();
+    programmeMembership.setEndDate(END_DATE);
+    programmeMembership.setCurricula(List.of(theCurriculum, IGNORED_CURRICULUM));
+
+    boolean isExcluded = service.isExcluded(programmeMembership);
+
+    assertThat("Unexpected excluded value.", isExcluded, is(false));
+  }
+
+  @Test
+  void shouldNotExcludePmWithMedicalSubtypeAndNullSpecialty() {
+    Curriculum theCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, null, false);
+    ProgrammeMembership programmeMembership = new ProgrammeMembership();
+    programmeMembership.setEndDate(END_DATE);
     programmeMembership.setCurricula(List.of(theCurriculum, IGNORED_CURRICULUM));
 
     boolean isExcluded = service.isExcluded(programmeMembership);
@@ -136,6 +152,20 @@ class ProgrammeMembershipServiceTest {
   void shouldExcludePmWithNoMedicalSubtype() {
     List<Curriculum> curricula = List.of(IGNORED_CURRICULUM);
     ProgrammeMembership programmeMembership = new ProgrammeMembership();
+    programmeMembership.setEndDate(END_DATE);
+    programmeMembership.setCurricula(curricula);
+
+    boolean isExcluded = service.isExcluded(programmeMembership);
+
+    assertThat("Unexpected excluded value.", isExcluded, is(true));
+  }
+
+  @Test
+  void shouldExcludePmWithNullSubtype() {
+    Curriculum theCurriculum = new Curriculum(null, "some-specialty", false);
+    List<Curriculum> curricula = List.of(theCurriculum);
+    ProgrammeMembership programmeMembership = new ProgrammeMembership();
+    programmeMembership.setEndDate(END_DATE);
     programmeMembership.setCurricula(curricula);
 
     boolean isExcluded = service.isExcluded(programmeMembership);
@@ -147,6 +177,7 @@ class ProgrammeMembershipServiceTest {
   @NullAndEmptySource
   void shouldExcludePmWithNoCurricula(List<Curriculum> curricula) {
     ProgrammeMembership programmeMembership = new ProgrammeMembership();
+    programmeMembership.setEndDate(END_DATE);
     programmeMembership.setCurricula(curricula);
 
     boolean isExcluded = service.isExcluded(programmeMembership);
@@ -160,7 +191,20 @@ class ProgrammeMembershipServiceTest {
     Curriculum theCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, specialty, false);
     Curriculum anotherCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, "some-specialty", false);
     ProgrammeMembership programmeMembership = new ProgrammeMembership();
+    programmeMembership.setEndDate(END_DATE);
     programmeMembership.setCurricula(List.of(theCurriculum, anotherCurriculum));
+
+    boolean isExcluded = service.isExcluded(programmeMembership);
+
+    assertThat("Unexpected excluded value.", isExcluded, is(true));
+  }
+
+  @Test
+  void shouldExcludePastPm() {
+    Curriculum theCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, "some-specialty", false);
+    ProgrammeMembership programmeMembership = new ProgrammeMembership();
+    programmeMembership.setEndDate(LocalDate.now().minusDays(1));
+    programmeMembership.setCurricula(List.of(theCurriculum));
 
     boolean isExcluded = service.isExcluded(programmeMembership);
 
@@ -173,13 +217,35 @@ class ProgrammeMembershipServiceTest {
     ProgrammeMembership programmeMembership = new ProgrammeMembership();
     programmeMembership.setTisId(TIS_ID);
     programmeMembership.setCurricula(List.of(theCurriculum));
+    when(notificationService.getQuartzJobId(any(), (ProgrammeMembership) any()))
+        .thenReturn(JOB_ID);
 
     service.addNotifications(programmeMembership);
 
+    ArgumentCaptor<NotificationType> typeCaptor = ArgumentCaptor.forClass(NotificationType.class);
+    ArgumentCaptor<ProgrammeMembership> pmCaptor = ArgumentCaptor.forClass(
+        ProgrammeMembership.class);
+
+    int expectedDeleteCount = NotificationType.getProgrammeUpdateNotificationTypes().size();
+    verify(notificationService, times(expectedDeleteCount))
+        .getQuartzJobId(typeCaptor.capture(), pmCaptor.capture());
+
+    verify(notificationService, times(expectedDeleteCount))
+        .removeNotification(JOB_ID);
+
+    List<NotificationType> capturedRemovedTypes = typeCaptor.getAllValues();
+    assertThat(capturedRemovedTypes.size(), is(expectedDeleteCount));
     for (NotificationType milestone : NotificationType.getProgrammeUpdateNotificationTypes()) {
-      String jobId = milestone.toString() + "-" + TIS_ID;
-      verify(notificationService).removeNotification(jobId);
+      assertThat("Unexpected notification type to remove.",
+          capturedRemovedTypes.contains(milestone),
+          is(true));
     }
+
+    List<ProgrammeMembership> capturedPms = pmCaptor.getAllValues();
+    assertThat(capturedPms.size(), is(expectedDeleteCount));
+    capturedPms.forEach(
+        pm -> assertThat("Unexpected removed programme membership notification.", pm,
+            is(programmeMembership)));
   }
 
   @Test
@@ -447,6 +513,9 @@ class ProgrammeMembershipServiceTest {
 
     when(notificationService.getScheduleDate(LocalDate.now(), 1))
         .thenReturn(expectedWhen);
+    when(notificationService.getQuartzJobId(PROGRAMME_CREATED, programmeMembership))
+        .thenReturn(JOB_ID);
+
     service.addNotifications(programmeMembership);
 
     ArgumentCaptor<String> stringCaptor = ArgumentCaptor.forClass(String.class);
@@ -460,8 +529,7 @@ class ProgrammeMembershipServiceTest {
 
     //verify the details of the notification added
     String jobId = stringCaptor.getValue();
-    String expectedJobId = PROGRAMME_CREATED + "-" + TIS_ID;
-    assertThat("Unexpected job id.", jobId, is(expectedJobId));
+    assertThat("Unexpected job id.", jobId, is(JOB_ID));
 
     JobDataMap jobDataMap = jobDataMapCaptor.getValue();
     assertThat("Unexpected tisId.", jobDataMap.get(TIS_ID_FIELD), is(TIS_ID));
@@ -684,12 +752,35 @@ class ProgrammeMembershipServiceTest {
     ProgrammeMembership programmeMembership = new ProgrammeMembership();
     programmeMembership.setTisId(TIS_ID);
 
+    when(notificationService.getQuartzJobId(any(), (ProgrammeMembership) any()))
+        .thenReturn(JOB_ID);
+
     service.deleteNotifications(programmeMembership);
 
+    ArgumentCaptor<NotificationType> typeCaptor = ArgumentCaptor.forClass(NotificationType.class);
+    ArgumentCaptor<ProgrammeMembership> pmCaptor = ArgumentCaptor.forClass(
+        ProgrammeMembership.class);
+
+    int expectedDeleteCount = NotificationType.getProgrammeUpdateNotificationTypes().size();
+    verify(notificationService, times(expectedDeleteCount))
+        .getQuartzJobId(typeCaptor.capture(), pmCaptor.capture());
+
+    verify(notificationService, times(expectedDeleteCount))
+        .removeNotification(JOB_ID);
+
+    List<NotificationType> capturedRemovedTypes = typeCaptor.getAllValues();
+    assertThat(capturedRemovedTypes.size(), is(expectedDeleteCount));
     for (NotificationType milestone : NotificationType.getProgrammeUpdateNotificationTypes()) {
-      String jobId = milestone.toString() + "-" + TIS_ID;
-      verify(notificationService).removeNotification(jobId);
+      assertThat("Unexpected notification type to remove.",
+          capturedRemovedTypes.contains(milestone),
+          is(true));
     }
+
+    List<ProgrammeMembership> capturedPms = pmCaptor.getAllValues();
+    assertThat(capturedPms.size(), is(expectedDeleteCount));
+    capturedPms.forEach(pm
+        -> assertThat("Unexpected removed programme membership notification.", pm,
+        is(programmeMembership)));
   }
 
   @Test

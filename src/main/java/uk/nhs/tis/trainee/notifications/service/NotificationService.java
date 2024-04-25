@@ -62,6 +62,7 @@ import uk.nhs.tis.trainee.notifications.model.History.TisReferenceInfo;
 import uk.nhs.tis.trainee.notifications.model.LocalOfficeContactType;
 import uk.nhs.tis.trainee.notifications.model.MessageType;
 import uk.nhs.tis.trainee.notifications.model.NotificationType;
+import uk.nhs.tis.trainee.notifications.model.Placement;
 import uk.nhs.tis.trainee.notifications.model.ProgrammeMembership;
 
 /**
@@ -112,7 +113,7 @@ public class NotificationService implements Job {
    *                                   profile information.
    * @param referenceUrl               The URL for the tis-trainee-reference service to use for
    *                                   local office information.
-   * @param notificationsWhitelist    The whitelist of (tester) trainee TIS IDs.
+   * @param notificationsWhitelist     The whitelist of (tester) trainee TIS IDs.
    */
   public NotificationService(EmailService emailService, RestTemplate restTemplate,
       Scheduler scheduler, MessagingControllerService messagingControllerService,
@@ -430,6 +431,39 @@ public class NotificationService implements Job {
       return false;
     }
     return (gmcNumber.length() == 7 && StringUtils.isNumeric(gmcNumber));
+  }
+
+  /**
+   * Get a quartz jobId for a given programme membership and notification type.
+   *
+   * @param notificationType    The notification type.
+   * @param programmeMembership The programme membership.
+   * @return The jobId string, or null if the parameters contain a null value.
+   */
+  public String getQuartzJobId(NotificationType notificationType,
+      ProgrammeMembership programmeMembership) {
+    if (notificationType != null && programmeMembership != null
+        && programmeMembership.getTisId() != null) {
+      return notificationType + "-" + programmeMembership.getTisId();
+    } else {
+      return null;
+    }
+  }
+
+  /**
+   * Get a quartz jobId for a given placement and notification type.
+   *
+   * @param notificationType The notification type.
+   * @param placement        The placement.
+   * @return The jobId string, or null if the parameters contain a null value.
+   */
+  public String getQuartzJobId(NotificationType notificationType, Placement placement) {
+    if (notificationType != null && placement != null
+        && placement.getTisId() != null) {
+      return notificationType + "-" + placement.getTisId();
+    } else {
+      return null;
+    }
   }
 
   /**

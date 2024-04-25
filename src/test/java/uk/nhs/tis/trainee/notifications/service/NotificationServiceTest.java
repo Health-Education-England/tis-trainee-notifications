@@ -94,6 +94,7 @@ import uk.nhs.tis.trainee.notifications.model.History.TisReferenceInfo;
 import uk.nhs.tis.trainee.notifications.model.LocalOfficeContactType;
 import uk.nhs.tis.trainee.notifications.model.MessageType;
 import uk.nhs.tis.trainee.notifications.model.NotificationType;
+import uk.nhs.tis.trainee.notifications.model.Placement;
 import uk.nhs.tis.trainee.notifications.model.ProgrammeMembership;
 
 class NotificationServiceTest {
@@ -932,5 +933,42 @@ class NotificationServiceTest {
     boolean isValidGmc = service.isValidGmc(null);
 
     assertThat("Unexpected validate GMC result.", isValidGmc, is(false));
+  }
+
+  @ParameterizedTest
+  @NullSource
+  @EnumSource(value = NotificationType.class, mode = Mode.INCLUDE,
+      names = {"PLACEMENT_UPDATED_WEEK_12"})
+  void shouldReturnExpectedPlacementQuartzJobId(NotificationType notificationType) {
+    Placement placement = new Placement();
+    placement.setTisId(TIS_ID);
+
+    String jobId = service.getQuartzJobId(notificationType, placement);
+    String jobId2 = service.getQuartzJobId(notificationType, (Placement) null);
+
+    if (notificationType == null) {
+      assertThat("Unexpected quartz job id", jobId, is(nullValue()));
+    } else {
+      assertThat("Unexpected quartz job id", jobId, is(notificationType + "-" + TIS_ID));
+    }
+    assertThat("Unexpected quartz job id", jobId2, is(nullValue()));
+  }
+
+  @ParameterizedTest
+  @NullSource
+  @EnumSource(value = NotificationType.class, mode = Mode.INCLUDE, names = {"PROGRAMME_CREATED"})
+  void shouldReturnExpectedProgrammeMembershipQuartzJobId(NotificationType notificationType) {
+    ProgrammeMembership programmeMembership = new ProgrammeMembership();
+    programmeMembership.setTisId(TIS_ID);
+
+    String jobId = service.getQuartzJobId(notificationType, programmeMembership);
+    String jobId2 = service.getQuartzJobId(notificationType, (ProgrammeMembership) null);
+
+    if (notificationType == null) {
+      assertThat("Unexpected quartz job id", jobId, is(nullValue()));
+    } else {
+      assertThat("Unexpected quartz job id", jobId, is(notificationType + "-" + TIS_ID));
+    }
+    assertThat("Unexpected quartz job id", jobId2, is(nullValue()));
   }
 }

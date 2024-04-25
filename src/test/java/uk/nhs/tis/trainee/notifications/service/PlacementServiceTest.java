@@ -30,6 +30,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.SENT;
@@ -60,6 +61,7 @@ import uk.nhs.tis.trainee.notifications.model.History.TisReferenceInfo;
 import uk.nhs.tis.trainee.notifications.model.MessageType;
 import uk.nhs.tis.trainee.notifications.model.NotificationType;
 import uk.nhs.tis.trainee.notifications.model.Placement;
+import uk.nhs.tis.trainee.notifications.model.ProgrammeMembership;
 import uk.nhs.tis.trainee.notifications.model.TisReferenceType;
 
 class PlacementServiceTest {
@@ -70,6 +72,7 @@ class PlacementServiceTest {
   private static final String In_POST_ACTING_UP = "In Post - Acting up";
   private static final String IN_POST_EXTENSION = "In Post - Extension";
   private static final String EXCLUDED_PLACEMENT_TYPE = "RANDOM TYPE";
+  private static final String JOB_ID = "some jobId";
 
   private static final String TIS_ID = "123";
   private static final String OWNER = "North West";
@@ -131,11 +134,21 @@ class PlacementServiceTest {
     localOfficeContacts.add(Map.of("contact", OWNER_CONTACT));
     when(restTemplate.getForObject(SERVICE_URL, List.class,
         Map.of(TEMPLATE_OWNER_FIELD, "North West"))).thenReturn(localOfficeContacts);
+    when(notificationService.getQuartzJobId(any(), (Placement) any()))
+        .thenReturn(JOB_ID);
 
     service.addNotifications(placement);
 
-    String jobId = PLACEMENT_UPDATED_WEEK_12 + "-" + TIS_ID;
-    verify(notificationService).removeNotification(jobId);
+    ArgumentCaptor<NotificationType> typeCaptor = ArgumentCaptor.forClass(NotificationType.class);
+    ArgumentCaptor<Placement> placementCaptor = ArgumentCaptor.forClass(Placement.class);
+
+    verify(notificationService, times(2))
+        .getQuartzJobId(typeCaptor.capture(), placementCaptor.capture());
+
+    verify(notificationService).removeNotification(JOB_ID);
+    List<NotificationType> capturedTypes = typeCaptor.getAllValues();
+    capturedTypes.forEach(
+        n -> assertThat("Unexpected notification type.", n, is(PLACEMENT_UPDATED_WEEK_12)));
   }
 
   @Test
@@ -196,6 +209,9 @@ class PlacementServiceTest {
     when(notificationService
         .getScheduleDate(START_DATE, service.getNotificationDaysBeforeStart(milestone)))
         .thenReturn(expectedWhen);
+    when(notificationService.getQuartzJobId(any(), (Placement) any()))
+        .thenReturn(JOB_ID);
+
     service.addNotifications(placement);
 
     ArgumentCaptor<String> stringCaptor = ArgumentCaptor.forClass(String.class);
@@ -209,8 +225,7 @@ class PlacementServiceTest {
 
     //verify the details of the last notification added
     String jobId = stringCaptor.getValue();
-    String expectedJobId = milestone + "-" + TIS_ID;
-    assertThat("Unexpected job id.", jobId, is(expectedJobId));
+    assertThat("Unexpected job id.", jobId, is(JOB_ID));
 
     JobDataMap jobDataMap = jobDataMapCaptor.getValue();
     assertThat("Unexpected tisId.", jobDataMap.get(TIS_ID_FIELD), is(TIS_ID));
@@ -422,10 +437,12 @@ class PlacementServiceTest {
     Placement placement = new Placement();
     placement.setTisId(TIS_ID);
 
-    service.deleteNotifications(placement);
+    when(notificationService.getQuartzJobId(any(), (Placement) any()))
+        .thenReturn(JOB_ID);
 
-    String jobId = PLACEMENT_UPDATED_WEEK_12 + "-" + TIS_ID;
-    verify(notificationService).removeNotification(jobId);
+    service.deleteNotifications(placement);
+    
+    verify(notificationService).removeNotification(JOB_ID);
   }
 
   @Test

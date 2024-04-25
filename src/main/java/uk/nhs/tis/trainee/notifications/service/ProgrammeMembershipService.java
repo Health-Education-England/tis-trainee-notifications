@@ -135,11 +135,21 @@ public class ProgrammeMembershipService {
       return true;
     }
 
+    //exclude completed programme memberships
+    if (programmeMembership.getEndDate() != null
+        && programmeMembership.getEndDate().isBefore(LocalDate.now())) {
+      log.info("Programme membership {} ended on {} so it is excluded.",
+          programmeMembership.getTisId(), programmeMembership.getEndDate());
+      return true;
+    }
+
     boolean hasMedicalSubType = curricula.stream()
+        .filter(c -> c.curriculumSubType() != null)
         .map(c -> c.curriculumSubType().toUpperCase())
         .anyMatch(INCLUDE_CURRICULUM_SUBTYPES::contains);
 
     boolean hasExcludedSpecialty = curricula.stream()
+        .filter(c -> c.curriculumSpecialty() != null)
         .map(c -> c.curriculumSpecialty().toUpperCase())
         .anyMatch(EXCLUDE_CURRICULUM_SPECIALTIES::contains);
 
@@ -235,7 +245,7 @@ public class ProgrammeMembershipService {
       // Note the status of the trainee will be retrieved when the job is executed, as will
       // their name and email address and LO contact details, not now.
 
-      String jobId = milestone + "-" + programmeMembership.getTisId();
+      String jobId = notificationService.getQuartzJobId(milestone, programmeMembership);
       try {
         notificationService.scheduleNotification(jobId, jobDataMap, when);
       } catch (SchedulerException e) {
@@ -345,7 +355,7 @@ public class ProgrammeMembershipService {
 
     for (NotificationType milestone : NotificationType.getProgrammeUpdateNotificationTypes()) {
 
-      String jobId = milestone.toString() + "-" + programmeMembership.getTisId();
+      String jobId = notificationService.getQuartzJobId(milestone, programmeMembership);
       notificationService.removeNotification(jobId); //remove existing notification if it exists
     }
   }
