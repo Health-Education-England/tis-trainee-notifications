@@ -28,6 +28,7 @@ import static uk.nhs.tis.trainee.notifications.service.NotificationService.TEMPL
 
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.Date;
 import java.util.EnumMap;
 import java.util.List;
@@ -38,10 +39,7 @@ import org.quartz.JobDataMap;
 import org.quartz.SchedulerException;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestClientException;
-import org.springframework.web.client.RestTemplate;
 import uk.nhs.tis.trainee.notifications.dto.HistoryDto;
-import uk.nhs.tis.trainee.notifications.model.LocalOfficeContactType;
 import uk.nhs.tis.trainee.notifications.model.NotificationType;
 import uk.nhs.tis.trainee.notifications.model.Placement;
 import uk.nhs.tis.trainee.notifications.model.TisReferenceType;
@@ -65,6 +63,7 @@ public class PlacementService {
 
   private final HistoryService historyService;
   private final NotificationService notificationService;
+  private final ZoneId timezone;
 
   /**
    * Initialise the Placement Service.
@@ -73,9 +72,10 @@ public class PlacementService {
    * @param notificationService The notification Service to use.
    */
   public PlacementService(HistoryService historyService,
-      NotificationService notificationService) {
+      NotificationService notificationService, @Value("${application.timezone}") ZoneId timezone) {
     this.historyService = historyService;
     this.notificationService = notificationService;
+    this.timezone = timezone;
   }
 
   /**
@@ -90,6 +90,11 @@ public class PlacementService {
    * @return true if the placement is excluded.
    */
   public boolean isExcluded(Placement placement) {
+    LocalDate startDate = placement.getStartDate();
+    if (startDate == null || startDate.isBefore(LocalDate.now(timezone))) {
+      return true;
+    }
+
     if (placement.getPlacementType() == null) {
       return true; //should not happen, but some legacy data has no placement type set.
     }
@@ -192,7 +197,7 @@ public class PlacementService {
    *
    * @param notificationType The notification type.
    * @return The number of days before the placement start for the notification, or null if not a
-   *     placement update notification type.
+   * placement update notification type.
    */
   public Integer getNotificationDaysBeforeStart(NotificationType notificationType) {
     if (notificationType.equals(PLACEMENT_UPDATED_WEEK_12)) {
