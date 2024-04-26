@@ -57,6 +57,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
+import software.amazon.awssdk.services.cognitoidentityprovider.model.UserNotFoundException;
 import uk.nhs.tis.trainee.notifications.dto.UserDetails;
 import uk.nhs.tis.trainee.notifications.model.History.TisReferenceInfo;
 import uk.nhs.tis.trainee.notifications.model.LocalOfficeContactType;
@@ -366,8 +367,7 @@ public class NotificationService implements Job {
   private UserDetails getCognitoAccountDetails(String email) {
     try {
       return emailService.getRecipientAccountByEmail(email);
-    } catch (IllegalArgumentException e) {
-      //no TSS account or duplicate accounts
+    } catch (UserNotFoundException e) {
       return null;
     }
   }

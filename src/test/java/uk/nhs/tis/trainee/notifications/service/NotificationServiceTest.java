@@ -89,6 +89,7 @@ import org.quartz.TriggerKey;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 import org.testcontainers.shaded.org.apache.commons.lang3.time.DateUtils;
+import software.amazon.awssdk.services.cognitoidentityprovider.model.UserNotFoundException;
 import uk.nhs.tis.trainee.notifications.dto.UserDetails;
 import uk.nhs.tis.trainee.notifications.model.History.TisReferenceInfo;
 import uk.nhs.tis.trainee.notifications.model.LocalOfficeContactType;
@@ -262,8 +263,7 @@ class NotificationServiceTest {
     when(restTemplate.getForObject("the-url/api/trainee-profile/account-details/{tisId}",
         UserDetails.class, Map.of(TIS_ID_FIELD, PERSON_ID))).thenReturn(userAccountDetails);
 
-    when(emailService.getRecipientAccountByEmail(any())).thenThrow(
-        new IllegalArgumentException("error"));
+    when(emailService.getRecipientAccountByEmail(any())).thenThrow(UserNotFoundException.class);
 
     assertDoesNotThrow(() -> service.execute(jobExecutionContext));
 
