@@ -174,7 +174,7 @@ class PlacementServiceTest {
 
     service.addNotifications(placement);
 
-    verify(notificationService, never()).scheduleNotification(any(), any(), any());
+    verify(notificationService, never()).scheduleNotification(any(), any());
   }
 
   @Test
@@ -186,7 +186,7 @@ class PlacementServiceTest {
 
     service.addNotifications(placement);
 
-    verify(notificationService, never()).scheduleNotification(any(), any(), any());
+    verify(notificationService, never()).scheduleNotification(any(), any());
   }
 
   @Test
@@ -199,7 +199,7 @@ class PlacementServiceTest {
 
     service.addNotifications(placement);
 
-    verify(notificationService, never()).scheduleNotification(any(), any(), any());
+    verify(notificationService, never()).scheduleNotification(any(), any());
   }
 
   @Test
@@ -229,8 +229,7 @@ class PlacementServiceTest {
     ArgumentCaptor<Date> dateCaptor = ArgumentCaptor.forClass(Date.class);
     verify(notificationService).scheduleNotification(
         stringCaptor.capture(),
-        jobDataMapCaptor.capture(),
-        dateCaptor.capture()
+        jobDataMapCaptor.capture()
     );
 
     //verify the details of the last notification added
@@ -273,7 +272,7 @@ class PlacementServiceTest {
     service.addNotifications(placement);
 
     verify(notificationService)
-        .scheduleNotification(any(), any(), any());
+        .scheduleNotification(any(), any());
   }
 
   @Test
@@ -297,7 +296,7 @@ class PlacementServiceTest {
 
     service.addNotifications(placement);
 
-    verify(notificationService).scheduleNotification(any(), any(), any());
+    verify(notificationService).scheduleNotification(any(), any());
   }
 
   @Test
@@ -321,7 +320,7 @@ class PlacementServiceTest {
 
     service.addNotifications(placement);
 
-    verify(notificationService).scheduleNotification(any(), any(), any());
+    verify(notificationService).scheduleNotification(any(), any());
   }
 
   @Test
@@ -345,7 +344,7 @@ class PlacementServiceTest {
 
     service.addNotifications(placement);
 
-    verify(notificationService, never()).scheduleNotification(any(), any(), any());
+    verify(notificationService, never()).scheduleNotification(any(), any());
   }
 
   @Test
@@ -369,8 +368,7 @@ class PlacementServiceTest {
     ArgumentCaptor<Date> dateCaptor = ArgumentCaptor.forClass(Date.class);
     verify(notificationService).scheduleNotification(
         any(),
-        any(),
-        dateCaptor.capture()
+        any()
     );
 
     Date when = dateCaptor.getValue();
@@ -424,7 +422,7 @@ class PlacementServiceTest {
 
     service.addNotifications(placement);
 
-    verify(notificationService).scheduleNotification(any(), any(), any());
+    verify(notificationService).scheduleNotification(any(), any());
   }
 
   @Test
@@ -437,7 +435,7 @@ class PlacementServiceTest {
     placement.setPlacementType(IN_POST);
 
     doThrow(new SchedulerException())
-        .when(notificationService).scheduleNotification(any(), any(), any());
+        .when(notificationService).scheduleNotification(any(), any());
 
     assertThrows(SchedulerException.class,
         () -> service.addNotifications(placement));

@@ -439,7 +439,7 @@ class NotificationServiceTest {
         .atZone(ZoneId.systemDefault())
         .toInstant());
 
-    service.scheduleNotification(jobId, programmeJobDataMap, when);
+    service.scheduleNotification(jobId, programmeJobDataMap);
 
     ArgumentCaptor<JobDetail> jobDetailCaptor = ArgumentCaptor.forClass(JobDetail.class);
     ArgumentCaptor<Trigger> triggerCaptor = ArgumentCaptor.forClass(Trigger.class);
@@ -461,7 +461,7 @@ class NotificationServiceTest {
         .atZone(ZoneId.systemDefault())
         .toInstant());
 
-    service.scheduleNotification(jobId, placementJobDataMap, when);
+    service.scheduleNotification(jobId, placementJobDataMap);
 
     ArgumentCaptor<JobDetail> jobDetailCaptor = ArgumentCaptor.forClass(JobDetail.class);
     ArgumentCaptor<Trigger> triggerCaptor = ArgumentCaptor.forClass(Trigger.class);

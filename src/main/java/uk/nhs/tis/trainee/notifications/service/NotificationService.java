@@ -112,7 +112,7 @@ public class NotificationService implements Job {
    *                                   profile information.
    * @param referenceUrl               The URL for the tis-trainee-reference service to use for
    *                                   local office information.
-   * @param notificationsWhitelist    The whitelist of (tester) trainee TIS IDs.
+   * @param notificationsWhitelist     The whitelist of (tester) trainee TIS IDs.
    */
   public NotificationService(EmailService emailService, RestTemplate restTemplate,
       Scheduler scheduler, MessagingControllerService messagingControllerService,
@@ -133,18 +133,17 @@ public class NotificationService implements Job {
   }
 
   /**
-   * Execute a given notification job.
+   * Process a scheduled or immediate job.
    *
-   * @param jobExecutionContext The job execution context.
+   * @param jobKey     The descriptive job identifier.
+   * @param jobDetails The job details.
+   * @return the result map with status details if successful.
    */
-  @Override
-  public void execute(JobExecutionContext jobExecutionContext) {
+  private Map<String, String> processJob(String jobKey, JobDataMap jobDetails) {
     boolean isActionableJob = false; //default to ignore jobs
     boolean actuallySendEmail = false; //default to logging email only
     String jobName = "";
-    String jobKey = jobExecutionContext.getJobDetail().getKey().toString();
     Map<String, String> result = new HashMap<>();
-    JobDataMap jobDetails = jobExecutionContext.getJobDetail().getJobDataMap();
 
     // get job details according to notification type
     String personId = jobDetails.getString(PERSON_ID_FIELD);
@@ -231,11 +230,36 @@ public class NotificationService implements Job {
             templateVersion);
         Instant processedOn = Instant.now();
         result.put("status", "sent " + processedOn.toString());
-        jobExecutionContext.setResult(result);
       } else {
         log.info("No notification could be sent, no TSS details found for tisId {}", personId);
       }
     }
+    return result;
+  }
+
+  /**
+   * Execute a given scheduled notification job.
+   *
+   * @param jobExecutionContext The job execution context.
+   */
+  @Override
+  public void execute(JobExecutionContext jobExecutionContext) {
+    String jobKey = jobExecutionContext.getJobDetail().getKey().toString();
+    JobDataMap jobDetails = jobExecutionContext.getJobDetail().getJobDataMap();
+    Map<String, String> result = processJob(jobKey, jobDetails);
+    if (result.get("status") != null) {
+      jobExecutionContext.setResult(result);
+    }
+  }
+
+  /**
+   * Execute an immediate (non-scheduled) job.
+   *
+   * @param jobId      The descriptive job identifier.
+   * @param jobDetails The job details.
+   */
+  public void executeImmediately(String jobId, JobDataMap jobDetails) {
+    processJob(jobId, jobDetails); //throw away the result
   }
 
   /**
@@ -244,10 +268,9 @@ public class NotificationService implements Job {
    * @param jobId      The job id. This must be unique for programme membership / placement and
    *                   notification milestone.
    * @param jobDataMap The map of job data.
-   * @param when       The date to schedule the notification to be sent.
    * @throws SchedulerException if the job could not be scheduled.
    */
-  public void scheduleNotification(String jobId, JobDataMap jobDataMap, Date when)
+  public void scheduleNotification(String jobId, JobDataMap jobDataMap)
       throws SchedulerException {
     JobDetail job = newJob(NotificationService.class)
         .withIdentity(jobId)
@@ -257,7 +280,6 @@ public class NotificationService implements Job {
 
     Trigger trigger = newTrigger()
         .withIdentity(TRIGGER_ID_PREFIX + jobId)
-        .startAt(when)
         .build();
 
     Date scheduledDate = scheduler.scheduleJob(job, trigger);

@@ -171,7 +171,7 @@ public class PlacementService {
 
         String jobId = PLACEMENT_UPDATED_WEEK_12 + "-" + placement.getTisId();
         try {
-          notificationService.scheduleNotification(jobId, jobDataMap, when);
+          notificationService.scheduleNotification(jobId, jobDataMap);
         } catch (SchedulerException e) {
           log.error("Failed to schedule notification {}: {}", jobId, e.toString());
           throw (e); //to allow message to be requeue-ed
