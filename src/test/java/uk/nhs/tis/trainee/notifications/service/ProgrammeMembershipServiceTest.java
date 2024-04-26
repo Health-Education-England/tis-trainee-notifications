@@ -484,7 +484,7 @@ class ProgrammeMembershipServiceTest {
     ArgumentCaptor<Date> dateCaptor = ArgumentCaptor.forClass(Date.class);
 
 
-    verify(notificationService).scheduleNotification(
+    verify(notificationService).processJob(
         stringCaptor.capture(),
         jobDataMapCaptor.capture()
     );
@@ -557,7 +557,7 @@ class ProgrammeMembershipServiceTest {
 
     service.addNotifications(programmeMembership);
 
-    verify(notificationService).scheduleNotification(any(), any());
+    verify(notificationService).processJob(any(), any());
   }
 
   @Test
@@ -582,7 +582,7 @@ class ProgrammeMembershipServiceTest {
 
     service.addNotifications(programmeMembership);
 
-    verify(notificationService).scheduleNotification(any(), any());
+    verify(notificationService).processJob(any(), any());
   }
 
   @Test
@@ -607,7 +607,7 @@ class ProgrammeMembershipServiceTest {
 
     service.addNotifications(programmeMembership);
 
-    verify(notificationService).scheduleNotification(any(), any());
+    verify(notificationService).processJob(any(), any());
   }
 
   @Test
@@ -658,11 +658,11 @@ class ProgrammeMembershipServiceTest {
 
     service.addNotifications(programmeMembership);
 
-    verify(notificationService).scheduleNotification(any(), any());
+    verify(notificationService).processJob(any(), any());
   }
 
   @Test
-  void shouldRethrowSchedulerExceptions() throws SchedulerException {
+  void shouldNeverThrowExceptions() throws SchedulerException {
     Curriculum theCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, "any specialty", false);
     ProgrammeMembership programmeMembership = new ProgrammeMembership();
     programmeMembership.setTisId(TIS_ID);
@@ -674,8 +674,7 @@ class ProgrammeMembershipServiceTest {
     doThrow(new SchedulerException())
         .when(notificationService).scheduleNotification(any(), any());
 
-    assertThrows(SchedulerException.class,
-        () -> service.addNotifications(programmeMembership));
+    assertDoesNotThrow(() -> service.addNotifications(programmeMembership));
   }
 
   @Test
@@ -704,7 +703,7 @@ class ProgrammeMembershipServiceTest {
     service.addNotifications(programmeMembership);
 
     ArgumentCaptor<JobDataMap> jobDataMapCaptor = ArgumentCaptor.forClass(JobDataMap.class);
-    verify(notificationService).scheduleNotification(any(), jobDataMapCaptor.capture());
+    verify(notificationService).processJob(any(), jobDataMapCaptor.capture());
 
     //verify the details of the job scheduled
     JobDataMap jobDataMap = jobDataMapCaptor.getValue();

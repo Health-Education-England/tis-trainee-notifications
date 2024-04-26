@@ -253,16 +253,6 @@ public class NotificationService implements Job {
   }
 
   /**
-   * Execute an immediate (non-scheduled) job.
-   *
-   * @param jobId      The descriptive job identifier.
-   * @param jobDetails The job details.
-   */
-  public void executeImmediately(String jobId, JobDataMap jobDetails) {
-    processJob(jobId, jobDetails); //throw away the result
-  }
-
-  /**
    * Schedule a notification.
    *
    * @param jobId      The job id. This must be unique for programme membership / placement and
