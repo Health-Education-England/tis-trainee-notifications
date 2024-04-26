@@ -57,6 +57,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
+import software.amazon.awssdk.services.cognitoidentityprovider.model.UserNotFoundException;
 import uk.nhs.tis.trainee.notifications.dto.UserDetails;
 import uk.nhs.tis.trainee.notifications.model.History.TisReferenceInfo;
 import uk.nhs.tis.trainee.notifications.model.LocalOfficeContactType;
@@ -112,7 +113,7 @@ public class NotificationService implements Job {
    *                                   profile information.
    * @param referenceUrl               The URL for the tis-trainee-reference service to use for
    *                                   local office information.
-   * @param notificationsWhitelist    The whitelist of (tester) trainee TIS IDs.
+   * @param notificationsWhitelist     The whitelist of (tester) trainee TIS IDs.
    */
   public NotificationService(EmailService emailService, RestTemplate restTemplate,
       Scheduler scheduler, MessagingControllerService messagingControllerService,
@@ -133,18 +134,17 @@ public class NotificationService implements Job {
   }
 
   /**
-   * Execute a given notification job.
+   * Process a job now.
    *
-   * @param jobExecutionContext The job execution context.
+   * @param jobKey     The descriptive job identifier.
+   * @param jobDetails The job details.
+   * @return the result map with status details if successful.
    */
-  @Override
-  public void execute(JobExecutionContext jobExecutionContext) {
+  public Map<String, String> executeNow(String jobKey, JobDataMap jobDetails) {
     boolean isActionableJob = false; //default to ignore jobs
     boolean actuallySendEmail = false; //default to logging email only
     String jobName = "";
-    String jobKey = jobExecutionContext.getJobDetail().getKey().toString();
     Map<String, String> result = new HashMap<>();
-    JobDataMap jobDetails = jobExecutionContext.getJobDetail().getJobDataMap();
 
     // get job details according to notification type
     String personId = jobDetails.getString(PERSON_ID_FIELD);
@@ -153,8 +153,15 @@ public class NotificationService implements Job {
     TisReferenceInfo tisReferenceInfo = null;
     LocalDate startDate = null;
 
-    UserDetails userCognitoAccountDetails = getCognitoAccountDetails(personId);
     UserDetails userTraineeDetails = getTraineeDetails(personId);
+
+    if (userTraineeDetails == null) {
+      String message = String.format(
+          "The requested notification is for unknown or unavailable trainee '%s'.", personId);
+      throw new IllegalArgumentException(message);
+    }
+
+    UserDetails userCognitoAccountDetails = getCognitoAccountDetails(userTraineeDetails.email());
     UserDetails userAccountDetails = mapUserDetails(userCognitoAccountDetails, userTraineeDetails);
 
     if (userAccountDetails != null) {
@@ -231,10 +238,25 @@ public class NotificationService implements Job {
             templateVersion);
         Instant processedOn = Instant.now();
         result.put("status", "sent " + processedOn.toString());
-        jobExecutionContext.setResult(result);
       } else {
         log.info("No notification could be sent, no TSS details found for tisId {}", personId);
       }
+    }
+    return result;
+  }
+
+  /**
+   * Execute a given scheduled notification job.
+   *
+   * @param jobExecutionContext The job execution context.
+   */
+  @Override
+  public void execute(JobExecutionContext jobExecutionContext) {
+    String jobKey = jobExecutionContext.getJobDetail().getKey().toString();
+    JobDataMap jobDetails = jobExecutionContext.getJobDetail().getJobDataMap();
+    Map<String, String> result = executeNow(jobKey, jobDetails);
+    if (result.get("status") != null) {
+      jobExecutionContext.setResult(result);
     }
   }
 
@@ -339,14 +361,13 @@ public class NotificationService implements Job {
   /**
    * Get the user account details from Cognito if they have signed-up to TIS Self-Service.
    *
-   * @param personId The person ID to search for.
+   * @param email The person ID to search for.
    * @return The user account details, or null if not found or duplicate.
    */
-  private UserDetails getCognitoAccountDetails(String personId) {
+  private UserDetails getCognitoAccountDetails(String email) {
     try {
-      return emailService.getRecipientAccount(personId);
-    } catch (IllegalArgumentException e) {
-      //no TSS account or duplicate accounts
+      return emailService.getRecipientAccountByEmail(email);
+    } catch (UserNotFoundException e) {
       return null;
     }
   }
@@ -504,7 +525,7 @@ public class NotificationService implements Job {
    *
    * @param contact The contact string, expected to be either an email address or a URL.
    * @return "email" if it looks like an email address, "url" if it looks like a URL, and "NOT_HREF"
-   *     otherwise.
+   * otherwise.
    */
   protected String getHrefTypeForContact(String contact) {
     try {

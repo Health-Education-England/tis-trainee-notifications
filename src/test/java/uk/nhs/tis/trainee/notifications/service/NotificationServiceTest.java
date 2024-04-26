@@ -89,6 +89,7 @@ import org.quartz.TriggerKey;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 import org.testcontainers.shaded.org.apache.commons.lang3.time.DateUtils;
+import software.amazon.awssdk.services.cognitoidentityprovider.model.UserNotFoundException;
 import uk.nhs.tis.trainee.notifications.dto.UserDetails;
 import uk.nhs.tis.trainee.notifications.model.History.TisReferenceInfo;
 import uk.nhs.tis.trainee.notifications.model.LocalOfficeContactType;
@@ -194,7 +195,7 @@ class NotificationServiceTest {
         new UserDetails(
             true, USER_EMAIL, USER_TITLE, USER_FAMILY_NAME, USER_GIVEN_NAME, USER_GMC);
     when(jobExecutionContext.getJobDetail()).thenReturn(programmeJobDetails);
-    when(emailService.getRecipientAccount(PERSON_ID)).thenReturn(userAccountDetails);
+    when(emailService.getRecipientAccountByEmail(USER_EMAIL)).thenReturn(userAccountDetails);
     when(restTemplate.getForObject("the-url/api/trainee-profile/account-details/{tisId}",
         UserDetails.class, Map.of(TIS_ID_FIELD, PERSON_ID))).thenReturn(userAccountDetails);
     when(messagingControllerService.isValidRecipient(PERSON_ID, MessageType.EMAIL))
@@ -214,7 +215,7 @@ class NotificationServiceTest {
             true, USER_EMAIL, USER_TITLE, USER_FAMILY_NAME, USER_GIVEN_NAME, USER_GMC);
 
     when(jobExecutionContext.getJobDetail()).thenReturn(placementJobDetails);
-    when(emailService.getRecipientAccount(PERSON_ID)).thenReturn(userAccountDetails);
+    when(emailService.getRecipientAccountByEmail(USER_EMAIL)).thenReturn(userAccountDetails);
     when(restTemplate.getForObject("the-url/api/trainee-profile/account-details/{tisId}",
         UserDetails.class, Map.of(TIS_ID_FIELD, PERSON_ID))).thenReturn(userAccountDetails);
     when(messagingControllerService.isValidRecipient(PERSON_ID, MessageType.EMAIL))
@@ -228,35 +229,45 @@ class NotificationServiceTest {
   }
 
   @Test
-  void shouldNotSetResultWhenUserDetailsCannotBeFound() {
+  void shouldThrowExceptionWhenUserDetailsCannotBeFound() {
     when(jobExecutionContext.getJobDetail()).thenReturn(programmeJobDetails);
 
-    when(emailService.getRecipientAccount(any())).thenReturn(null);
+    when(emailService.getRecipientAccountByEmail(any())).thenReturn(null);
     when(restTemplate.getForObject(any(), any(), anyMap())).thenReturn(null);
 
-    service.execute(jobExecutionContext);
+    assertThrows(IllegalArgumentException.class, () -> service.execute(jobExecutionContext));
 
     verify(jobExecutionContext, never()).setResult(any());
   }
 
   @Test
-  void shouldHandleRestClientExceptions() {
+  void shouldThrowExceptionWhenRestClientExceptions() {
     when(jobExecutionContext.getJobDetail()).thenReturn(programmeJobDetails);
 
-    when(emailService.getRecipientAccount(any())).thenThrow(new IllegalArgumentException("error"));
+    when(emailService.getRecipientAccountByEmail(any())).thenThrow(
+        new IllegalArgumentException("error"));
     when(restTemplate.getForObject(any(), any(), anyMap()))
         .thenThrow(new RestClientException("error"));
 
-    assertDoesNotThrow(() -> service.execute(jobExecutionContext));
+    assertThrows(IllegalArgumentException.class, () -> service.execute(jobExecutionContext));
+
+    verify(jobExecutionContext, never()).setResult(any());
   }
 
   @Test
   void shouldHandleCognitoExceptions() {
     when(jobExecutionContext.getJobDetail()).thenReturn(programmeJobDetails);
 
-    when(emailService.getRecipientAccount(any())).thenThrow(new IllegalArgumentException("error"));
+    UserDetails userAccountDetails = new UserDetails(false, USER_EMAIL, USER_TITLE,
+        USER_FAMILY_NAME, USER_GIVEN_NAME, USER_GMC);
+    when(restTemplate.getForObject("the-url/api/trainee-profile/account-details/{tisId}",
+        UserDetails.class, Map.of(TIS_ID_FIELD, PERSON_ID))).thenReturn(userAccountDetails);
+
+    when(emailService.getRecipientAccountByEmail(any())).thenThrow(UserNotFoundException.class);
 
     assertDoesNotThrow(() -> service.execute(jobExecutionContext));
+
+    verify(jobExecutionContext).setResult(any());
   }
 
   @Test
@@ -267,7 +278,7 @@ class NotificationServiceTest {
     when(restTemplate.getForObject("the-url/api/trainee-profile/account-details/{tisId}",
         UserDetails.class, Map.of(TIS_ID_FIELD, PERSON_ID))).thenReturn(userAccountDetails);
     when(jobExecutionContext.getJobDetail()).thenReturn(programmeJobDetails);
-    when(emailService.getRecipientAccount(PERSON_ID)).thenReturn(userAccountDetails);
+    when(emailService.getRecipientAccountByEmail(USER_EMAIL)).thenReturn(userAccountDetails);
     when(messagingControllerService.isValidRecipient(PERSON_ID, MessageType.EMAIL))
         .thenReturn(true);
     when(messagingControllerService.isProgrammeMembershipNewStarter(PERSON_ID, TIS_ID))
@@ -287,7 +298,7 @@ class NotificationServiceTest {
         new UserDetails(
             false, USER_EMAIL, USER_TITLE, USER_FAMILY_NAME, USER_GIVEN_NAME, USER_GMC);
     when(jobExecutionContext.getJobDetail()).thenReturn(placementJobDetails);
-    when(emailService.getRecipientAccount(PERSON_ID)).thenReturn(userAccountDetails);
+    when(emailService.getRecipientAccountByEmail(USER_EMAIL)).thenReturn(userAccountDetails);
     when(restTemplate.getForObject("the-url/api/trainee-profile/account-details/{tisId}",
         UserDetails.class, Map.of(TIS_ID_FIELD, PERSON_ID))).thenReturn(userAccountDetails);
     when(messagingControllerService.isValidRecipient(any(), any())).thenReturn(apiResult);
@@ -308,7 +319,7 @@ class NotificationServiceTest {
             false, USER_EMAIL, USER_TITLE, USER_FAMILY_NAME, USER_GIVEN_NAME, USER_GMC);
 
     when(jobExecutionContext.getJobDetail()).thenReturn(programmeJobDetails);
-    when(emailService.getRecipientAccount(PERSON_ID)).thenReturn(userAccountDetails);
+    when(emailService.getRecipientAccountByEmail(USER_EMAIL)).thenReturn(userAccountDetails);
     when(restTemplate.getForObject("the-url/api/trainee-profile/account-details/{tisId}",
         UserDetails.class, Map.of(TIS_ID_FIELD, PERSON_ID))).thenReturn(userAccountDetails);
     when(messagingControllerService.isValidRecipient(any(), any())).thenReturn(apiResult);
@@ -331,7 +342,7 @@ class NotificationServiceTest {
         new UserDetails(
             false, USER_EMAIL, USER_TITLE, USER_FAMILY_NAME, USER_GIVEN_NAME, USER_GMC);
     when(jobExecutionContext.getJobDetail()).thenReturn(placementJobDetails);
-    when(emailService.getRecipientAccount(PERSON_ID)).thenReturn(userAccountDetails);
+    when(emailService.getRecipientAccountByEmail(USER_EMAIL)).thenReturn(userAccountDetails);
     when(restTemplate.getForObject("the-url/api/trainee-profile/account-details/{tisId}",
         UserDetails.class, Map.of(TIS_ID_FIELD, PERSON_ID))).thenReturn(userAccountDetails);
     when(messagingControllerService.isValidRecipient(any(), any())).thenReturn(apiResult);
@@ -352,7 +363,7 @@ class NotificationServiceTest {
             false, USER_EMAIL, USER_TITLE, USER_FAMILY_NAME, USER_GIVEN_NAME, USER_GMC);
 
     when(jobExecutionContext.getJobDetail()).thenReturn(programmeJobDetails);
-    when(emailService.getRecipientAccount(PERSON_ID)).thenReturn(userAccountDetails);
+    when(emailService.getRecipientAccountByEmail(USER_EMAIL)).thenReturn(userAccountDetails);
     when(restTemplate.getForObject("the-url/api/trainee-profile/account-details/{tisId}",
         UserDetails.class, Map.of(TIS_ID_FIELD, PERSON_ID))).thenReturn(userAccountDetails);
     when(messagingControllerService.isValidRecipient(any(), any())).thenReturn(apiResult);
@@ -374,7 +385,7 @@ class NotificationServiceTest {
             false, USER_EMAIL, USER_TITLE, USER_FAMILY_NAME, USER_GIVEN_NAME, USER_GMC);
 
     when(jobExecutionContext.getJobDetail()).thenReturn(placementJobDetails);
-    when(emailService.getRecipientAccount(PERSON_ID)).thenReturn(userAccountDetails);
+    when(emailService.getRecipientAccountByEmail(USER_EMAIL)).thenReturn(userAccountDetails);
     when(restTemplate.getForObject("the-url/api/trainee-profile/account-details/{tisId}",
         UserDetails.class, Map.of(TIS_ID_FIELD, PERSON_ID))).thenReturn(userAccountDetails);
     when(messagingControllerService.isValidRecipient(any(), any())).thenReturn(true);
@@ -393,7 +404,7 @@ class NotificationServiceTest {
             false, USER_EMAIL, USER_TITLE, USER_FAMILY_NAME, USER_GIVEN_NAME, USER_GMC);
 
     when(jobExecutionContext.getJobDetail()).thenReturn(programmeJobDetails);
-    when(emailService.getRecipientAccount(PERSON_ID)).thenReturn(userAccountDetails);
+    when(emailService.getRecipientAccountByEmail(USER_EMAIL)).thenReturn(userAccountDetails);
     when(restTemplate.getForObject("the-url/api/trainee-profile/account-details/{tisId}",
         UserDetails.class, Map.of(TIS_ID_FIELD, PERSON_ID))).thenReturn(userAccountDetails);
     when(messagingControllerService.isValidRecipient(any(), any())).thenReturn(true);
@@ -418,7 +429,7 @@ class NotificationServiceTest {
 
     programmeJobDetails.getJobDataMap().put(TEMPLATE_NOTIFICATION_TYPE_FIELD, notificationType);
     when(jobExecutionContext.getJobDetail()).thenReturn(programmeJobDetails);
-    when(emailService.getRecipientAccount(PERSON_ID)).thenReturn(userAccountDetails);
+    when(emailService.getRecipientAccountByEmail(USER_EMAIL)).thenReturn(userAccountDetails);
     when(restTemplate.getForObject("the-url/api/trainee-profile/account-details/{tisId}",
         UserDetails.class, Map.of(TIS_ID_FIELD, PERSON_ID))).thenReturn(userAccountDetails);
 
@@ -480,7 +491,7 @@ class NotificationServiceTest {
             false, USER_EMAIL, USER_TITLE, USER_FAMILY_NAME, USER_GIVEN_NAME, USER_GMC);
 
     when(jobExecutionContext.getJobDetail()).thenReturn(programmeJobDetails);
-    when(emailService.getRecipientAccount(PERSON_ID)).thenReturn(userAccountDetails);
+    when(emailService.getRecipientAccountByEmail(USER_EMAIL)).thenReturn(userAccountDetails);
     when(restTemplate.getForObject("the-url/api/trainee-profile/account-details/{tisId}",
         UserDetails.class, Map.of(TIS_ID_FIELD, PERSON_ID))).thenReturn(userAccountDetails);
     when(messagingControllerService.isValidRecipient(any(), any())).thenReturn(true);
@@ -536,7 +547,7 @@ class NotificationServiceTest {
   }
 
   @ParameterizedTest
-  @ValueSource(strings = {USER_GMC, "  " + USER_GMC,  USER_GMC + "  ",  "  " + USER_GMC + "  "})
+  @ValueSource(strings = {USER_GMC, "  " + USER_GMC, USER_GMC + "  ", "  " + USER_GMC + "  "})
   @NullSource
   void shouldMapUserDetailsWhenCognitoAndTssAccountsExist(String gmcNumber) {
     UserDetails cognitoAccountDetails =
@@ -564,7 +575,7 @@ class NotificationServiceTest {
   }
 
   @ParameterizedTest
-  @ValueSource(strings = {USER_GMC, "  " + USER_GMC,  USER_GMC + "  ",  "  " + USER_GMC + "  "})
+  @ValueSource(strings = {USER_GMC, "  " + USER_GMC, USER_GMC + "  ", "  " + USER_GMC + "  "})
   @NullSource
   void shouldMapUserDetailsWhenCognitoAccountNotExist(String gmcNumber) {
     UserDetails traineeProfileDetails =

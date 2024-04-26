@@ -43,6 +43,7 @@ import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
 import org.thymeleaf.context.Context;
+import software.amazon.awssdk.services.cognitoidentityprovider.model.UserNotFoundException;
 import uk.nhs.tis.trainee.notifications.dto.UserDetails;
 import uk.nhs.tis.trainee.notifications.model.History;
 import uk.nhs.tis.trainee.notifications.model.History.RecipientInfo;
@@ -229,6 +230,17 @@ public class EmailService {
     helper.setText(content, true);
 
     return helper;
+  }
+
+  /**
+   * Get the user account for the given trainee email.
+   *
+   * @param email The trainee email to get the account for.
+   * @return The found account.
+   * @throws UserNotFoundException if the user account could not be found.
+   */
+  public UserDetails getRecipientAccountByEmail(String email) throws UserNotFoundException {
+    return userAccountService.getUserDetails(email);
   }
 
   /**
