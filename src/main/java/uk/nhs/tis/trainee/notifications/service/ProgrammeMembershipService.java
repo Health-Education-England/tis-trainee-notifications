@@ -217,12 +217,11 @@ public class ProgrammeMembershipService {
    *
    * @param programmeMembership      The updated programme membership.
    * @param notificationsAlreadySent Previously sent notifications.
-   * @throws SchedulerException if any one of the notification jobs could not be scheduled.
    */
   private void createDirectNotifications(ProgrammeMembership programmeMembership,
-      Map<NotificationType, Instant> notificationsAlreadySent) throws SchedulerException {
+      Map<NotificationType, Instant> notificationsAlreadySent) {
 
-    NotificationType milestone = PROGRAMME_CREATED; //do not schedule other programme notifications
+    NotificationType milestone = PROGRAMME_CREATED; //do not handle other programme notifications
     boolean shouldSchedule = shouldScheduleNotification(milestone, notificationsAlreadySent);
 
     if (shouldSchedule) {
@@ -240,10 +239,10 @@ public class ProgrammeMembershipService {
             programmeMembership.getConditionsOfJoining().syncedAt());
       }
       // Note the status of the trainee will be retrieved when the job is executed, as will
-      // their name and email address and LO contact details, not now.
+      // their name and email address and LO contact details.
 
       String jobId = milestone + "-" + programmeMembership.getTisId();
-      notificationService.executeImmediately(jobId, jobDataMap);
+      notificationService.executeNow(jobId, jobDataMap);
     }
   }
 

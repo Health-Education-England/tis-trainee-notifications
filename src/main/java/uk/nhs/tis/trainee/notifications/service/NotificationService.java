@@ -133,13 +133,13 @@ public class NotificationService implements Job {
   }
 
   /**
-   * Process a scheduled or immediate job.
+   * Process a job now.
    *
    * @param jobKey     The descriptive job identifier.
    * @param jobDetails The job details.
    * @return the result map with status details if successful.
    */
-  private Map<String, String> processJob(String jobKey, JobDataMap jobDetails) {
+  public Map<String, String> executeNow(String jobKey, JobDataMap jobDetails) {
     boolean isActionableJob = false; //default to ignore jobs
     boolean actuallySendEmail = false; //default to logging email only
     String jobName = "";
@@ -246,22 +246,11 @@ public class NotificationService implements Job {
   public void execute(JobExecutionContext jobExecutionContext) {
     String jobKey = jobExecutionContext.getJobDetail().getKey().toString();
     JobDataMap jobDetails = jobExecutionContext.getJobDetail().getJobDataMap();
-    Map<String, String> result = processJob(jobKey, jobDetails);
+    Map<String, String> result = executeNow(jobKey, jobDetails);
     if (result.get("status") != null) {
       jobExecutionContext.setResult(result);
     }
   }
-
-  /**
-   * Execute an immediate (non-scheduled) job.
-   *
-   * @param jobId      The descriptive job identifier.
-   * @param jobDetails The job details.
-   */
-  public void executeImmediately(String jobId, JobDataMap jobDetails) {
-    processJob(jobId, jobDetails); //throw away the result
-  }
-
 
   /**
    * Schedule a notification.
