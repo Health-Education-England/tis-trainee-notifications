@@ -232,6 +232,16 @@ public class EmailService {
   }
 
   /**
+   * Get the user account for the given trainee email.
+   *
+   * @param email The trainee email to get the account for.
+   * @return The found account.
+   */
+  public UserDetails getRecipientAccountByEmail(String email) {
+    return userAccountService.getUserDetails(email);
+  }
+
+  /**
    * Get the user account for the given trainee ID.
    *
    * @param traineeId The trainee ID to get the account for.
