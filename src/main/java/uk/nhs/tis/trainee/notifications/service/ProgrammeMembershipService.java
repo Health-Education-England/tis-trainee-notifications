@@ -150,16 +150,10 @@ public class ProgrammeMembershipService {
         .anyMatch(INCLUDE_CURRICULUM_SUBTYPES::contains);
 
     boolean hasExcludedSpecialty = curricula.stream()
-        .filter(c -> c.curriculumSpecialty() != null)
         .map(c -> c.curriculumSpecialty().toUpperCase())
         .anyMatch(EXCLUDE_CURRICULUM_SPECIALTIES::contains);
 
-    boolean hasSomeNonNullSpecialties = curricula.stream()
-        .anyMatch(c -> c.curriculumSpecialty() != null);
-
-    boolean excludedSpecialty = hasExcludedSpecialty || !hasSomeNonNullSpecialties;
-
-    return !hasMedicalSubType || excludedSpecialty;
+    return !hasMedicalSubType || hasExcludedSpecialty;
   }
 
   /**

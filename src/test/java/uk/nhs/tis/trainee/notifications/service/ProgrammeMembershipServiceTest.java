@@ -207,16 +207,14 @@ class ProgrammeMembershipServiceTest {
     assertThat("Unexpected excluded value.", isExcluded, is(true));
   }
 
-  @Test
-  void shouldNotExcludePmWithMedicalSubtypeAndSomeNonNullSpecialty() {
+  @Test()
+  void shouldThrowExceptionIfPmHasNullSpecialty() {
     Curriculum nullCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, null, false);
-    Curriculum notNullCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, "some specialty", false);
     ProgrammeMembership programmeMembership = new ProgrammeMembership();
     programmeMembership.setStartDate(START_DATE);
-    programmeMembership.setCurricula(List.of(nullCurriculum, notNullCurriculum));
+    programmeMembership.setCurricula(List.of(nullCurriculum, nullCurriculum));
 
-    boolean isExcluded = service.isExcluded(programmeMembership);
-    assertThat("Unexpected excluded value.", isExcluded, is(false));
+    assertThrows(NullPointerException.class, () -> service.isExcluded(programmeMembership));
   }
 
   @Test
