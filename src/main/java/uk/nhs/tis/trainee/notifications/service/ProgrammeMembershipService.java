@@ -145,6 +145,7 @@ public class ProgrammeMembershipService {
     }
 
     boolean hasMedicalSubType = curricula.stream()
+        .filter(c -> c.curriculumSubType() != null)
         .map(c -> c.curriculumSubType().toUpperCase())
         .anyMatch(INCLUDE_CURRICULUM_SUBTYPES::contains);
 
