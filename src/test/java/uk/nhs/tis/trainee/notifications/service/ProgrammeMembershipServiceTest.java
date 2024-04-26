@@ -169,6 +169,18 @@ class ProgrammeMembershipServiceTest {
     assertThat("Unexpected excluded value.", isExcluded, is(true));
   }
 
+  @Test
+  void shouldExcludePmWithNullSubtype() {
+    Curriculum theCurriculum = new Curriculum(null, "some-specialty", false);
+    List<Curriculum> curricula = List.of(theCurriculum);
+    ProgrammeMembership programmeMembership = new ProgrammeMembership();
+    programmeMembership.setStartDate(START_DATE);
+    programmeMembership.setCurricula(curricula);
+
+    boolean isExcluded = service.isExcluded(programmeMembership);
+    assertThat("Unexpected excluded value.", isExcluded, is(true));
+  }
+
   @ParameterizedTest
   @NullAndEmptySource
   void shouldExcludePmWithNoCurricula(List<Curriculum> curricula) {
@@ -193,6 +205,18 @@ class ProgrammeMembershipServiceTest {
     boolean isExcluded = service.isExcluded(programmeMembership);
 
     assertThat("Unexpected excluded value.", isExcluded, is(true));
+  }
+
+  @Test
+  void shouldNotExcludePmWithMedicalSubtypeAndSomeNonNullSpecialty() {
+    Curriculum nullCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, null, false);
+    Curriculum notNullCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, "some specialty", false);
+    ProgrammeMembership programmeMembership = new ProgrammeMembership();
+    programmeMembership.setStartDate(START_DATE);
+    programmeMembership.setCurricula(List.of(nullCurriculum, notNullCurriculum));
+
+    boolean isExcluded = service.isExcluded(programmeMembership);
+    assertThat("Unexpected excluded value.", isExcluded, is(false));
   }
 
   @Test

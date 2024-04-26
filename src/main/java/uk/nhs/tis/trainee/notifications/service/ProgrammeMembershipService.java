@@ -145,14 +145,21 @@ public class ProgrammeMembershipService {
     }
 
     boolean hasMedicalSubType = curricula.stream()
+        .filter(c -> c.curriculumSubType() != null)
         .map(c -> c.curriculumSubType().toUpperCase())
         .anyMatch(INCLUDE_CURRICULUM_SUBTYPES::contains);
 
     boolean hasExcludedSpecialty = curricula.stream()
+        .filter(c -> c.curriculumSpecialty() != null)
         .map(c -> c.curriculumSpecialty().toUpperCase())
         .anyMatch(EXCLUDE_CURRICULUM_SPECIALTIES::contains);
 
-    return !hasMedicalSubType || hasExcludedSpecialty;
+    boolean hasSomeNonNullSpecialties = curricula.stream()
+        .anyMatch(c -> c.curriculumSpecialty() != null);
+
+    boolean excludedSpecialty = hasExcludedSpecialty || !hasSomeNonNullSpecialties;
+
+    return !hasMedicalSubType || excludedSpecialty;
   }
 
   /**
