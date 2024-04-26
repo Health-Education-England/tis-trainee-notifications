@@ -112,7 +112,7 @@ public class NotificationService implements Job {
    *                                   profile information.
    * @param referenceUrl               The URL for the tis-trainee-reference service to use for
    *                                   local office information.
-   * @param notificationsWhitelist    The whitelist of (tester) trainee TIS IDs.
+   * @param notificationsWhitelist     The whitelist of (tester) trainee TIS IDs.
    */
   public NotificationService(EmailService emailService, RestTemplate restTemplate,
       Scheduler scheduler, MessagingControllerService messagingControllerService,
@@ -153,8 +153,15 @@ public class NotificationService implements Job {
     TisReferenceInfo tisReferenceInfo = null;
     LocalDate startDate = null;
 
-    UserDetails userCognitoAccountDetails = getCognitoAccountDetails(personId);
     UserDetails userTraineeDetails = getTraineeDetails(personId);
+
+    if (userTraineeDetails == null) {
+      String message = String.format(
+          "The requested notification is for unknown or unavailable trainee '%s'.", personId);
+      throw new IllegalArgumentException(message);
+    }
+
+    UserDetails userCognitoAccountDetails = getCognitoAccountDetails(userTraineeDetails.email());
     UserDetails userAccountDetails = mapUserDetails(userCognitoAccountDetails, userTraineeDetails);
 
     if (userAccountDetails != null) {
@@ -339,12 +346,12 @@ public class NotificationService implements Job {
   /**
    * Get the user account details from Cognito if they have signed-up to TIS Self-Service.
    *
-   * @param personId The person ID to search for.
+   * @param email The person ID to search for.
    * @return The user account details, or null if not found or duplicate.
    */
-  private UserDetails getCognitoAccountDetails(String personId) {
+  private UserDetails getCognitoAccountDetails(String email) {
     try {
-      return emailService.getRecipientAccount(personId);
+      return emailService.getRecipientAccountByEmail(email);
     } catch (IllegalArgumentException e) {
       //no TSS account or duplicate accounts
       return null;
@@ -504,7 +511,7 @@ public class NotificationService implements Job {
    *
    * @param contact The contact string, expected to be either an email address or a URL.
    * @return "email" if it looks like an email address, "url" if it looks like a URL, and "NOT_HREF"
-   *     otherwise.
+   * otherwise.
    */
   protected String getHrefTypeForContact(String contact) {
     try {
