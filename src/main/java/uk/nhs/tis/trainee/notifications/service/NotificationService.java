@@ -133,18 +133,17 @@ public class NotificationService implements Job {
   }
 
   /**
-   * Execute a given notification job.
+   * Process a job now.
    *
-   * @param jobExecutionContext The job execution context.
+   * @param jobKey     The descriptive job identifier.
+   * @param jobDetails The job details.
+   * @return the result map with status details if successful.
    */
-  @Override
-  public void execute(JobExecutionContext jobExecutionContext) {
+  public Map<String, String> executeNow(String jobKey, JobDataMap jobDetails) {
     boolean isActionableJob = false; //default to ignore jobs
     boolean actuallySendEmail = false; //default to logging email only
     String jobName = "";
-    String jobKey = jobExecutionContext.getJobDetail().getKey().toString();
     Map<String, String> result = new HashMap<>();
-    JobDataMap jobDetails = jobExecutionContext.getJobDetail().getJobDataMap();
 
     // get job details according to notification type
     String personId = jobDetails.getString(PERSON_ID_FIELD);
@@ -238,10 +237,25 @@ public class NotificationService implements Job {
             templateVersion);
         Instant processedOn = Instant.now();
         result.put("status", "sent " + processedOn.toString());
-        jobExecutionContext.setResult(result);
       } else {
         log.info("No notification could be sent, no TSS details found for tisId {}", personId);
       }
+    }
+    return result;
+  }
+
+  /**
+   * Execute a given scheduled notification job.
+   *
+   * @param jobExecutionContext The job execution context.
+   */
+  @Override
+  public void execute(JobExecutionContext jobExecutionContext) {
+    String jobKey = jobExecutionContext.getJobDetail().getKey().toString();
+    JobDataMap jobDetails = jobExecutionContext.getJobDetail().getJobDataMap();
+    Map<String, String> result = executeNow(jobKey, jobDetails);
+    if (result.get("status") != null) {
+      jobExecutionContext.setResult(result);
     }
   }
 

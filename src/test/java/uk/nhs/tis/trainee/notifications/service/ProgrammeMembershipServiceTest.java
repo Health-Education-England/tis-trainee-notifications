@@ -504,11 +504,10 @@ class ProgrammeMembershipServiceTest {
     ArgumentCaptor<String> stringCaptor = ArgumentCaptor.forClass(String.class);
     ArgumentCaptor<JobDataMap> jobDataMapCaptor = ArgumentCaptor.forClass(JobDataMap.class);
     ArgumentCaptor<Date> dateCaptor = ArgumentCaptor.forClass(Date.class);
-    verify(notificationService).scheduleNotification(
+    verify(notificationService).executeNow(
         stringCaptor.capture(),
-        jobDataMapCaptor.capture(),
-        dateCaptor.capture()
-    );
+        jobDataMapCaptor.capture());
+    verify(notificationService, never()).scheduleNotification(any(), any(), any());
 
     //verify the details of the notification added
     String jobId = stringCaptor.getValue();
@@ -524,8 +523,8 @@ class ProgrammeMembershipServiceTest {
     assertThat("Unexpected CoJ synced at.", jobDataMap.get(COJ_SYNCED_FIELD),
         is(Instant.MIN));
 
-    Date when = dateCaptor.getValue();
-    assertThat("Unexpected start time", when, is(expectedWhen));
+
+
   }
 
   @Test
@@ -581,7 +580,7 @@ class ProgrammeMembershipServiceTest {
 
     service.addNotifications(programmeMembership);
 
-    verify(notificationService).scheduleNotification(any(), any(), any());
+    verify(notificationService).executeNow(any(), any());
   }
 
   @Test
@@ -606,7 +605,7 @@ class ProgrammeMembershipServiceTest {
 
     service.addNotifications(programmeMembership);
 
-    verify(notificationService).scheduleNotification(any(), any(), any());
+    verify(notificationService).executeNow(any(), any());
   }
 
   @Test
@@ -631,41 +630,11 @@ class ProgrammeMembershipServiceTest {
 
     service.addNotifications(programmeMembership);
 
-    verify(notificationService).scheduleNotification(any(), any(), any());
+    verify(notificationService).executeNow(any(), any());
   }
 
   @Test
-  void shouldScheduleMissedNotification() throws SchedulerException {
-    LocalDate dateToday = LocalDate.now();
-
-    Curriculum theCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, "any specialty", false);
-    ProgrammeMembership programmeMembership = new ProgrammeMembership();
-    programmeMembership.setTisId(TIS_ID);
-    programmeMembership.setPersonId(PERSON_ID);
-    programmeMembership.setStartDate(dateToday);
-    programmeMembership.setCurricula(List.of(theCurriculum));
-
-    Date dateLaterThan = Date.from(Instant.now());
-    when(notificationService
-        .getScheduleDate(dateToday, 1))
-        .thenReturn(dateLaterThan);
-    service.addNotifications(programmeMembership);
-
-    //the notification should be scheduled immediately
-    ArgumentCaptor<Date> dateCaptor = ArgumentCaptor.forClass(Date.class);
-    verify(notificationService).scheduleNotification(
-        any(),
-        any(),
-        dateCaptor.capture()
-    );
-
-    Date when = dateCaptor.getValue();
-    assertThat("Unexpected start time", when, is(dateLaterThan));
-  }
-
-  @Test
-  void shouldNotFailOnHistoryWithoutTisReferenceInfo()
-      throws SchedulerException {
+  void shouldNotFailOnHistoryWithoutTisReferenceInfo() {
     Curriculum theCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, "any specialty", false);
     ProgrammeMembership programmeMembership = new ProgrammeMembership();
     programmeMembership.setTisId(TIS_ID);
@@ -682,8 +651,6 @@ class ProgrammeMembershipServiceTest {
         Instant.MIN, Instant.MAX, SENT, null));
 
     when(historyService.findAllForTrainee(PERSON_ID)).thenReturn(sentNotifications);
-
-    service.addNotifications(programmeMembership);
 
     assertDoesNotThrow(() -> service.addNotifications(programmeMembership),
         "Unexpected addNotifications failure");
@@ -711,11 +678,11 @@ class ProgrammeMembershipServiceTest {
 
     service.addNotifications(programmeMembership);
 
-    verify(notificationService).scheduleNotification(any(), any(), any());
+    verify(notificationService).executeNow(any(), any());
   }
 
   @Test
-  void shouldRethrowSchedulerExceptions() throws SchedulerException {
+  void shouldNotEncounterSchedulerExceptions() throws SchedulerException {
     Curriculum theCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, "any specialty", false);
     ProgrammeMembership programmeMembership = new ProgrammeMembership();
     programmeMembership.setTisId(TIS_ID);
@@ -727,8 +694,8 @@ class ProgrammeMembershipServiceTest {
     doThrow(new SchedulerException())
         .when(notificationService).scheduleNotification(any(), any(), any());
 
-    assertThrows(SchedulerException.class,
-        () -> service.addNotifications(programmeMembership));
+    assertDoesNotThrow(() -> service.addNotifications(programmeMembership),
+        "Unexpected addNotifications failure");
   }
 
   @Test
@@ -757,7 +724,7 @@ class ProgrammeMembershipServiceTest {
     service.addNotifications(programmeMembership);
 
     ArgumentCaptor<JobDataMap> jobDataMapCaptor = ArgumentCaptor.forClass(JobDataMap.class);
-    verify(notificationService).scheduleNotification(any(), jobDataMapCaptor.capture(), any());
+    verify(notificationService).executeNow(any(), jobDataMapCaptor.capture());
 
     //verify the details of the job scheduled
     JobDataMap jobDataMap = jobDataMapCaptor.getValue();
