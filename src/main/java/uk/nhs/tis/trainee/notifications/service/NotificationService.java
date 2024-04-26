@@ -139,7 +139,7 @@ public class NotificationService implements Job {
    * @param jobDetails The job details.
    * @return the result map with status details if successful.
    */
-  private Map<String, String> processJob(String jobKey, JobDataMap jobDetails) {
+  public Map<String, String> processJob(String jobKey, JobDataMap jobDetails) {
     boolean isActionableJob = false; //default to ignore jobs
     boolean actuallySendEmail = false; //default to logging email only
     String jobName = "";

@@ -482,6 +482,8 @@ class ProgrammeMembershipServiceTest {
     ArgumentCaptor<String> stringCaptor = ArgumentCaptor.forClass(String.class);
     ArgumentCaptor<JobDataMap> jobDataMapCaptor = ArgumentCaptor.forClass(JobDataMap.class);
     ArgumentCaptor<Date> dateCaptor = ArgumentCaptor.forClass(Date.class);
+
+
     verify(notificationService).scheduleNotification(
         stringCaptor.capture(),
         jobDataMapCaptor.capture()
@@ -607,34 +609,6 @@ class ProgrammeMembershipServiceTest {
 
     verify(notificationService).scheduleNotification(any(), any());
   }
-
-//  @Test
-//  void shouldScheduleMissedNotification() throws SchedulerException {
-//    LocalDate dateToday = LocalDate.now();
-//
-//    Curriculum theCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, "any specialty", false);
-//    ProgrammeMembership programmeMembership = new ProgrammeMembership();
-//    programmeMembership.setTisId(TIS_ID);
-//    programmeMembership.setPersonId(PERSON_ID);
-//    programmeMembership.setStartDate(dateToday);
-//    programmeMembership.setCurricula(List.of(theCurriculum));
-//
-//    Date dateLaterThan = Date.from(Instant.now());
-//    when(notificationService
-//        .getScheduleDate(dateToday, 1))
-//        .thenReturn(dateLaterThan);
-//    service.addNotifications(programmeMembership);
-//
-//    //the notification should be scheduled immediately
-//    ArgumentCaptor<Date> dateCaptor = ArgumentCaptor.forClass(Date.class);
-//    verify(notificationService).scheduleNotification(
-//        any(),
-//        any()
-//    );
-//
-//    Date when = dateCaptor.getValue();
-//    assertThat("Unexpected start time", when, is(dateLaterThan));
-//  }
 
   @Test
   void shouldNotFailOnHistoryWithoutTisReferenceInfo()
