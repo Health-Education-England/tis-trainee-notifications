@@ -35,7 +35,6 @@ import static uk.nhs.tis.trainee.notifications.service.NotificationService.TEMPL
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
-import java.util.Date;
 import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -227,9 +226,7 @@ public class ProgrammeMembershipService {
     boolean shouldSchedule = shouldScheduleNotification(milestone, notificationsAlreadySent);
 
     if (shouldSchedule) {
-      log.info("Scheduling notification {} for {}.", milestone, programmeMembership.getTisId());
-      //default to send notification immediately
-      Date when = notificationService.getScheduleDate(LocalDate.now(), 1);
+      log.info("Processing notification {} for {}.", milestone, programmeMembership.getTisId());
 
       JobDataMap jobDataMap = new JobDataMap();
       jobDataMap.put(TIS_ID_FIELD, programmeMembership.getTisId());
@@ -246,12 +243,7 @@ public class ProgrammeMembershipService {
       // their name and email address and LO contact details, not now.
 
       String jobId = milestone + "-" + programmeMembership.getTisId();
-      try {
-        notificationService.scheduleNotification(jobId, jobDataMap, when);
-      } catch (SchedulerException e) {
-        log.error("Failed to schedule notification {}: {}", jobId, e.toString());
-        throw (e); //to allow message to be requeue-ed
-      }
+      notificationService.executeImmediately(jobId, jobDataMap);
     }
   }
 
