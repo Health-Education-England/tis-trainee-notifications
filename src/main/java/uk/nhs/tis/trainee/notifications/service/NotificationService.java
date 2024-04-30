@@ -63,6 +63,7 @@ import uk.nhs.tis.trainee.notifications.model.History.TisReferenceInfo;
 import uk.nhs.tis.trainee.notifications.model.LocalOfficeContactType;
 import uk.nhs.tis.trainee.notifications.model.MessageType;
 import uk.nhs.tis.trainee.notifications.model.NotificationType;
+import uk.nhs.tis.trainee.notifications.model.Placement;
 import uk.nhs.tis.trainee.notifications.model.ProgrammeMembership;
 
 /**
@@ -393,7 +394,7 @@ public class NotificationService implements Job {
   }
 
   /**
-   * Check whether an object meets the selected notification criteria.
+   * Check whether a programme membership meets the selected notification criteria.
    *
    * @param programmeMembership The programme membership to check.
    * @param checkNewStarter     Whether the trainee must be a new starter.
@@ -429,6 +430,30 @@ public class NotificationService implements Job {
   }
 
   /**
+   * Check whether a placement meets the selected notification criteria.
+   *
+   * @param placement         The placement to check.
+   * @param checkPilot        Whether the trainee must be in a pilot.
+   * @return true if all criteria met, or false if one or more criteria fail.
+   */
+  public boolean meetsCriteria(Placement placement, boolean checkPilot) {
+    String traineeId = placement.getPersonId();
+    String pmId = placement.getTisId();
+
+    if (checkPilot) {
+      boolean isInPilot
+          = messagingControllerService.isPlacementInPilot2024(traineeId, pmId);
+
+      if (!isInPilot) {
+        log.info("Skipping notification creation as trainee {} is not in the pilot.", traineeId);
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  /**
    * Check whether a programme membership's trainee should receive the given message-type
    * notification.
    *
@@ -439,6 +464,19 @@ public class NotificationService implements Job {
   public boolean programmeMembershipIsNotifiable(ProgrammeMembership programmeMembership,
       MessageType messageType) {
     String traineeId = programmeMembership.getPersonId();
+    return messagingControllerService.isValidRecipient(traineeId, messageType);
+  }
+
+  /**
+   * Check whether a placement's trainee should receive the given message-type
+   * notification.
+   *
+   * @param placement     The placement to check.
+   * @param messageType   The potential notification message type.
+   * @return true if the trainee should receive the notification, otherwise false.
+   */
+  public boolean placementIsNotifiable(Placement placement, MessageType messageType) {
+    String traineeId = placement.getPersonId();
     return messagingControllerService.isValidRecipient(traineeId, messageType);
   }
 

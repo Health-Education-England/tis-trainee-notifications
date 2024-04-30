@@ -79,18 +79,21 @@ class PlacementServiceTest {
   private static final String SITE = "site known as";
   private static final LocalDate START_DATE = LocalDate.now().plusYears(1);
   //set a year in the future to allow all notifications to be scheduled
-
+  private static final String PLACEMENT_INFO_VERSION = "v1.2.3";
   HistoryService historyService;
   PlacementService service;
   NotificationService notificationService;
+  InAppService inAppService;
   RestTemplate restTemplate;
 
   @BeforeEach
   void setUp() {
     historyService = mock(HistoryService.class);
     notificationService = mock(NotificationService.class);
+    inAppService = mock(InAppService.class);
     restTemplate = mock(RestTemplate.class);
-    service = new PlacementService(historyService, notificationService, ZoneId.of("Europe/London"));
+    service = new PlacementService(historyService, notificationService, inAppService,
+        ZoneId.of("Europe/London"), PLACEMENT_INFO_VERSION);
   }
 
   @ParameterizedTest

@@ -21,6 +21,8 @@
 
 package uk.nhs.tis.trainee.notifications.service;
 
+import static uk.nhs.tis.trainee.notifications.model.MessageType.IN_APP;
+import static uk.nhs.tis.trainee.notifications.model.NotificationType.PLACEMENT_INFORMATION;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PLACEMENT_UPDATED_WEEK_12;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.PERSON_ID_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.TEMPLATE_NOTIFICATION_TYPE_FIELD;
@@ -31,6 +33,7 @@ import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.Date;
 import java.util.EnumMap;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -40,6 +43,8 @@ import org.quartz.SchedulerException;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import uk.nhs.tis.trainee.notifications.dto.HistoryDto;
+import uk.nhs.tis.trainee.notifications.model.History;
+import uk.nhs.tis.trainee.notifications.model.LocalOfficeContactType;
 import uk.nhs.tis.trainee.notifications.model.NotificationType;
 import uk.nhs.tis.trainee.notifications.model.Placement;
 import uk.nhs.tis.trainee.notifications.model.TisReferenceType;
@@ -57,25 +62,35 @@ public class PlacementService {
   public static final String PLACEMENT_TYPE_FIELD = "placementType";
   public static final String PLACEMENT_SPECIALTY_FIELD = "specialty";
   public static final String PLACEMENT_SITE_FIELD = "site";
+  public static final String LOCAL_OFFICE_CONTACT_FIELD = "localOfficeContact";
+  public static final String LOCAL_OFFICE_CONTACT_TYPE_FIELD = "localOfficeContactType";
 
   public static final List<String> PLACEMENT_TYPES_TO_ACT_ON
       = List.of("In post", "In post - Acting up", "In Post - Extension");
 
   private final HistoryService historyService;
   private final NotificationService notificationService;
+  private final InAppService inAppService;
   private final ZoneId timezone;
+  private final String placementInfoVersion;
 
   /**
    * Initialise the Placement Service.
    *
-   * @param historyService      The history Service to use.
-   * @param notificationService The notification Service to use.
+   * @param historyService        The history Service to use.
+   * @param notificationService   The notification Service to use.
+   * @param inAppService          The in-app service to use.
+   * @param placementInfoVersion  The placement information version.
    */
-  public PlacementService(HistoryService historyService,
-      NotificationService notificationService, @Value("${application.timezone}") ZoneId timezone) {
+  public PlacementService(HistoryService historyService, NotificationService notificationService,
+      InAppService inAppService, @Value("${application.timezone}") ZoneId timezone,
+      @Value("${application.template-versions.placement-information.in-app}")
+                          String placementInfoVersion) {
     this.historyService = historyService;
     this.notificationService = notificationService;
+    this.inAppService = inAppService;
     this.timezone = timezone;
+    this.placementInfoVersion = placementInfoVersion;
   }
 
   /**
@@ -146,37 +161,8 @@ public class PlacementService {
       Map<NotificationType, Instant> notificationsAlreadySent
           = getNotificationsSent(placement.getPersonId(), placement.getTisId());
 
-      LocalDate startDate = placement.getStartDate();
-
-      boolean shouldSchedule = shouldScheduleNotification(notificationsAlreadySent, startDate);
-
-      if (shouldSchedule) {
-        log.info("Scheduling notification {} for {}.",
-            PLACEMENT_UPDATED_WEEK_12, placement.getTisId());
-        Integer daysBeforeStart = getNotificationDaysBeforeStart(PLACEMENT_UPDATED_WEEK_12);
-        Date when = notificationService.getScheduleDate(startDate, daysBeforeStart);
-
-        JobDataMap jobDataMap = new JobDataMap();
-        jobDataMap.put(TIS_ID_FIELD, placement.getTisId());
-        jobDataMap.put(PERSON_ID_FIELD, placement.getPersonId());
-        jobDataMap.put(START_DATE_FIELD, placement.getStartDate());
-        jobDataMap.put(PLACEMENT_TYPE_FIELD, placement.getPlacementType());
-        jobDataMap.put(PLACEMENT_SPECIALTY_FIELD, placement.getSpecialty());
-        jobDataMap.put(PLACEMENT_SITE_FIELD, placement.getSite());
-        jobDataMap.put(TEMPLATE_OWNER_FIELD, placement.getOwner());
-        jobDataMap.put(TEMPLATE_NOTIFICATION_TYPE_FIELD, PLACEMENT_UPDATED_WEEK_12);
-
-        // Note the status of the trainee will be retrieved when the job is executed, as will
-        // their name and email address, and the contact details of the owner LO, not now.
-
-        String jobId = PLACEMENT_UPDATED_WEEK_12 + "-" + placement.getTisId();
-        try {
-          notificationService.scheduleNotification(jobId, jobDataMap, when);
-        } catch (SchedulerException e) {
-          log.error("Failed to schedule notification {}: {}", jobId, e.toString());
-          throw (e); //to allow message to be requeue-ed
-        }
-      }
+      createDirectNotifications(placement, notificationsAlreadySent);
+      createInAppNotifications(placement, notificationsAlreadySent);
     }
   }
 
@@ -208,6 +194,48 @@ public class PlacementService {
   }
 
   /**
+   * Create "direct" notifications, such as email, which may be scheduled for a future date/time.
+   *
+   * @param placement      The updated placement.
+   * @param notificationsAlreadySent Previously sent notifications.
+   */
+  private void createDirectNotifications(Placement placement,
+                                         Map<NotificationType, Instant> notificationsAlreadySent)
+      throws SchedulerException {
+
+    LocalDate startDate = placement.getStartDate();
+    boolean shouldSchedule = shouldScheduleNotification(notificationsAlreadySent, startDate);
+
+    if (shouldSchedule) {
+      log.info("Scheduling notification {} for {}.",
+          PLACEMENT_UPDATED_WEEK_12, placement.getTisId());
+      Integer daysBeforeStart = getNotificationDaysBeforeStart(PLACEMENT_UPDATED_WEEK_12);
+      Date when = notificationService.getScheduleDate(startDate, daysBeforeStart);
+
+      JobDataMap jobDataMap = new JobDataMap();
+      jobDataMap.put(TIS_ID_FIELD, placement.getTisId());
+      jobDataMap.put(PERSON_ID_FIELD, placement.getPersonId());
+      jobDataMap.put(START_DATE_FIELD, placement.getStartDate());
+      jobDataMap.put(PLACEMENT_TYPE_FIELD, placement.getPlacementType());
+      jobDataMap.put(PLACEMENT_SPECIALTY_FIELD, placement.getSpecialty());
+      jobDataMap.put(PLACEMENT_SITE_FIELD, placement.getSite());
+      jobDataMap.put(TEMPLATE_OWNER_FIELD, placement.getOwner());
+      jobDataMap.put(TEMPLATE_NOTIFICATION_TYPE_FIELD, PLACEMENT_UPDATED_WEEK_12);
+
+      // Note the status of the trainee will be retrieved when the job is executed, as will
+      // their name and email address, and the contact details of the owner LO, not now.
+
+      String jobId = PLACEMENT_UPDATED_WEEK_12 + "-" + placement.getTisId();
+      try {
+        notificationService.scheduleNotification(jobId, jobDataMap, when);
+      } catch (SchedulerException e) {
+        log.error("Failed to schedule notification {}: {}", jobId, e.toString());
+        throw (e); //to allow message to be requeue-ed
+      }
+    }
+  }
+
+  /**
    * Helper function to determine whether a notification should be scheduled.
    *
    * @return true if it should be scheduled, false otherwise.
@@ -220,5 +248,61 @@ public class PlacementService {
     }
     //do not resend any notification
     return (!notificationsAlreadySent.containsKey(PLACEMENT_UPDATED_WEEK_12));
+  }
+
+  /**
+   * Create any relevant in-app notifications.
+   *
+   * @param placement      The updated placement.
+   * @param notificationsAlreadySent Previously sent notifications.
+   */
+  private void createInAppNotifications(Placement placement,
+                                        Map<NotificationType, Instant> notificationsAlreadySent) {
+    boolean meetsCriteria = notificationService.meetsCriteria(placement, true);
+
+    if (meetsCriteria) {
+      String owner = placement.getOwner();
+      List<Map<String, String>> contactList = notificationService.getOwnerContactList(owner);
+
+      // PLACEMENT_INFORMATION
+      String localOfficeContact = notificationService.getOwnerContact(contactList,
+          LocalOfficeContactType.TSS_SUPPORT, null);
+      String localOfficeContactType =
+          notificationService.getHrefTypeForContact(localOfficeContact);
+      createUniqueInAppNotification(placement, notificationsAlreadySent, PLACEMENT_INFORMATION,
+          placementInfoVersion, Map.of(
+              LOCAL_OFFICE_CONTACT_FIELD, localOfficeContact,
+              LOCAL_OFFICE_CONTACT_TYPE_FIELD, localOfficeContactType));
+    }
+  }
+
+  /**
+   * Create a unique in-app notification of the given type and version.
+   *
+   * @param placement                The updated placement.
+   * @param notificationsAlreadySent Previously sent notifications.
+   * @param notificationType         The type of notification being sent.
+   * @param notificationVersion      The version of the notification.
+   * @param extraVariables           Extra variables to include with the template, Programme Name
+   *                                 and Start Date are populated automatically.
+   */
+  private void createUniqueInAppNotification(Placement placement,
+      Map<NotificationType, Instant> notificationsAlreadySent, NotificationType notificationType,
+      String notificationVersion, Map<String, Object> extraVariables) {
+    boolean isUnique = !notificationsAlreadySent.containsKey(notificationType);
+
+    if (isUnique) {
+      Map<String, Object> variables = new HashMap<>(extraVariables);
+      variables.put(START_DATE_FIELD, placement.getStartDate());
+      variables.put(PLACEMENT_SPECIALTY_FIELD, placement.getSpecialty());
+      variables.put(PLACEMENT_SITE_FIELD, placement.getSite());
+
+      boolean doNotSendJustLog = !notificationService.placementIsNotifiable(placement, IN_APP);
+      History.TisReferenceInfo tisReference =
+          new History.TisReferenceInfo(TisReferenceType.PLACEMENT, placement.getTisId());
+
+      inAppService.createNotifications(placement.getPersonId(), tisReference,
+          notificationType, notificationVersion, variables, doNotSendJustLog);
+    }
   }
 }
