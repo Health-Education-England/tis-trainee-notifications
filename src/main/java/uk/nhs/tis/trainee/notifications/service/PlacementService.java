@@ -197,7 +197,7 @@ public class PlacementService {
    *
    * @param notificationType The notification type.
    * @return The number of days before the placement start for the notification, or null if not a
-   * placement update notification type.
+   *     placement update notification type.
    */
   public Integer getNotificationDaysBeforeStart(NotificationType notificationType) {
     if (notificationType.equals(PLACEMENT_UPDATED_WEEK_12)) {

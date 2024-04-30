@@ -110,7 +110,7 @@ class FormListenerTest {
 
     listener.handleFormUpdate(event);
 
-    ArgumentCaptor<Map<String, Object>> templateVarsCaptor = ArgumentCaptor.forClass(Map.class);
+    ArgumentCaptor<Map<String, Object>> templateVarsCaptor = ArgumentCaptor.captor();
     verify(emailService).sendMessageToExistingUser(any(), any(), any(),
         templateVarsCaptor.capture(), any());
 
@@ -125,7 +125,7 @@ class FormListenerTest {
 
     listener.handleFormUpdate(event);
 
-    ArgumentCaptor<Map<String, Object>> templateVarsCaptor = ArgumentCaptor.forClass(Map.class);
+    ArgumentCaptor<Map<String, Object>> templateVarsCaptor = ArgumentCaptor.captor();
     verify(emailService).sendMessageToExistingUser(any(), any(), any(),
         templateVarsCaptor.capture(), any());
 
@@ -141,7 +141,7 @@ class FormListenerTest {
 
     listener.handleFormUpdate(event);
 
-    ArgumentCaptor<Map<String, Object>> templateVarsCaptor = ArgumentCaptor.forClass(Map.class);
+    ArgumentCaptor<Map<String, Object>> templateVarsCaptor = ArgumentCaptor.captor();
     verify(emailService).sendMessageToExistingUser(any(), any(), any(),
         templateVarsCaptor.capture(), any());
 
@@ -156,7 +156,7 @@ class FormListenerTest {
 
     listener.handleFormUpdate(event);
 
-    ArgumentCaptor<Map<String, Object>> templateVarsCaptor = ArgumentCaptor.forClass(Map.class);
+    ArgumentCaptor<Map<String, Object>> templateVarsCaptor = ArgumentCaptor.captor();
     verify(emailService).sendMessageToExistingUser(any(), any(), any(),
         templateVarsCaptor.capture(), any());
 

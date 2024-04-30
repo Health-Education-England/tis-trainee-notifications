@@ -91,7 +91,7 @@ class EmailServiceIntegrationTest {
 
     service.sendMessageToExistingUser(PERSON_ID, notificationType, templateVersion, Map.of(), null);
 
-    ArgumentCaptor<MimeMessage> messageCaptor = ArgumentCaptor.forClass(MimeMessage.class);
+    ArgumentCaptor<MimeMessage> messageCaptor = ArgumentCaptor.captor();
     verify(mailSender).send(messageCaptor.capture());
 
     MimeMessage message = messageCaptor.getValue();
@@ -108,7 +108,7 @@ class EmailServiceIntegrationTest {
 
     service.sendMessageToExistingUser(PERSON_ID, notificationType, templateVersion, Map.of(), null);
 
-    ArgumentCaptor<MimeMessage> messageCaptor = ArgumentCaptor.forClass(MimeMessage.class);
+    ArgumentCaptor<MimeMessage> messageCaptor = ArgumentCaptor.captor();
     verify(mailSender).send(messageCaptor.capture());
 
     MimeMessage message = messageCaptor.getValue();
@@ -125,7 +125,7 @@ class EmailServiceIntegrationTest {
 
     service.sendMessageToExistingUser(PERSON_ID, notificationType, templateVersion, Map.of(), null);
 
-    ArgumentCaptor<MimeMessage> messageCaptor = ArgumentCaptor.forClass(MimeMessage.class);
+    ArgumentCaptor<MimeMessage> messageCaptor = ArgumentCaptor.captor();
     verify(mailSender).send(messageCaptor.capture());
 
     MimeMessage message = messageCaptor.getValue();
@@ -147,7 +147,7 @@ class EmailServiceIntegrationTest {
 
     service.sendMessageToExistingUser(PERSON_ID, notificationType, templateVersion, Map.of(), null);
 
-    ArgumentCaptor<MimeMessage> messageCaptor = ArgumentCaptor.forClass(MimeMessage.class);
+    ArgumentCaptor<MimeMessage> messageCaptor = ArgumentCaptor.captor();
     verify(mailSender).send(messageCaptor.capture());
 
     MimeMessage message = messageCaptor.getValue();
@@ -176,7 +176,7 @@ class EmailServiceIntegrationTest {
     service.sendMessageToExistingUser(PERSON_ID, notificationType, templateVersion,
         Map.of("familyName", "Maillig"), null);
 
-    ArgumentCaptor<MimeMessage> messageCaptor = ArgumentCaptor.forClass(MimeMessage.class);
+    ArgumentCaptor<MimeMessage> messageCaptor = ArgumentCaptor.captor();
     verify(mailSender).send(messageCaptor.capture());
 
     MimeMessage message = messageCaptor.getValue();

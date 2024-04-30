@@ -58,7 +58,7 @@ class MongoConfigurationTest {
 
     configuration.initIndexes();
 
-    ArgumentCaptor<IndexDefinition> indexCaptor = ArgumentCaptor.forClass(IndexDefinition.class);
+    ArgumentCaptor<IndexDefinition> indexCaptor = ArgumentCaptor.captor();
     verify(indexOperations, atLeastOnce()).ensureIndex(indexCaptor.capture());
 
     List<IndexDefinition> indexes = indexCaptor.getAllValues();

@@ -281,8 +281,8 @@ class ProgrammeMembershipServiceTest {
 
     ArgumentCaptor<TisReferenceInfo> referenceInfoCaptor = ArgumentCaptor.forClass(
         TisReferenceInfo.class);
-    ArgumentCaptor<Map<String, Object>> variablesCaptor = ArgumentCaptor.forClass(Map.class);
-    ArgumentCaptor<Boolean> doNotStoreJustLogCaptor = ArgumentCaptor.forClass(Boolean.class);
+    ArgumentCaptor<Map<String, Object>> variablesCaptor = ArgumentCaptor.captor();
+    ArgumentCaptor<Boolean> doNotStoreJustLogCaptor = ArgumentCaptor.captor();
     verify(inAppService).createNotifications(eq(PERSON_ID), referenceInfoCaptor.capture(),
         eq(notificationType), eq(notificationVersion), variablesCaptor.capture(),
         doNotStoreJustLogCaptor.capture());
@@ -317,7 +317,7 @@ class ProgrammeMembershipServiceTest {
 
     service.addNotifications(programmeMembership);
 
-    ArgumentCaptor<Map<String, Object>> variablesCaptor = ArgumentCaptor.forClass(Map.class);
+    ArgumentCaptor<Map<String, Object>> variablesCaptor = ArgumentCaptor.captor();
     verify(inAppService).createNotifications(eq(PERSON_ID), any(), eq(INDEMNITY_INSURANCE),
         eq(INDEMNITY_INSURANCE_VERSION), variablesCaptor.capture(), anyBoolean());
 
@@ -347,7 +347,7 @@ class ProgrammeMembershipServiceTest {
 
     service.addNotifications(programmeMembership);
 
-    ArgumentCaptor<Map<String, Object>> variablesCaptor = ArgumentCaptor.forClass(Map.class);
+    ArgumentCaptor<Map<String, Object>> variablesCaptor = ArgumentCaptor.captor();
     verify(inAppService).createNotifications(eq(PERSON_ID), any(), eq(INDEMNITY_INSURANCE),
         eq(INDEMNITY_INSURANCE_VERSION), variablesCaptor.capture(), anyBoolean());
 
@@ -373,7 +373,7 @@ class ProgrammeMembershipServiceTest {
 
     service.addNotifications(programmeMembership);
 
-    ArgumentCaptor<Map<String, Object>> variablesCaptor = ArgumentCaptor.forClass(Map.class);
+    ArgumentCaptor<Map<String, Object>> variablesCaptor = ArgumentCaptor.captor();
     verify(inAppService).createNotifications(eq(PERSON_ID), any(), eq(INDEMNITY_INSURANCE),
         eq(INDEMNITY_INSURANCE_VERSION), variablesCaptor.capture(), anyBoolean());
 
@@ -414,7 +414,7 @@ class ProgrammeMembershipServiceTest {
 
     service.addNotifications(programmeMembership);
 
-    ArgumentCaptor<Map<String, Object>> variablesCaptor = ArgumentCaptor.forClass(Map.class);
+    ArgumentCaptor<Map<String, Object>> variablesCaptor = ArgumentCaptor.captor();
     verify(inAppService).createNotifications(eq(PERSON_ID), any(), eq(LTFT),
         eq(LTFT_VERSION), variablesCaptor.capture(), anyBoolean());
     verify(inAppService).createNotifications(eq(PERSON_ID), any(), eq(DEFERRAL),
@@ -501,9 +501,9 @@ class ProgrammeMembershipServiceTest {
         .thenReturn(expectedWhen);
     service.addNotifications(programmeMembership);
 
-    ArgumentCaptor<String> stringCaptor = ArgumentCaptor.forClass(String.class);
-    ArgumentCaptor<JobDataMap> jobDataMapCaptor = ArgumentCaptor.forClass(JobDataMap.class);
-    ArgumentCaptor<Date> dateCaptor = ArgumentCaptor.forClass(Date.class);
+    ArgumentCaptor<String> stringCaptor = ArgumentCaptor.captor();
+    ArgumentCaptor<JobDataMap> jobDataMapCaptor = ArgumentCaptor.captor();
+    ArgumentCaptor<Date> dateCaptor = ArgumentCaptor.captor();
     verify(notificationService).executeNow(
         stringCaptor.capture(),
         jobDataMapCaptor.capture());
@@ -723,7 +723,7 @@ class ProgrammeMembershipServiceTest {
 
     service.addNotifications(programmeMembership);
 
-    ArgumentCaptor<JobDataMap> jobDataMapCaptor = ArgumentCaptor.forClass(JobDataMap.class);
+    ArgumentCaptor<JobDataMap> jobDataMapCaptor = ArgumentCaptor.captor();
     verify(notificationService).executeNow(any(), jobDataMapCaptor.capture());
 
     //verify the details of the job scheduled
