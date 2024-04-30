@@ -37,4 +37,5 @@ public class Placement {
   private String owner;
   private String specialty;
   private String site;
+  private String siteKnownAs;
 }
