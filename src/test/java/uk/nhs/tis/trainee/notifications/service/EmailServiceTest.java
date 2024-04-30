@@ -185,7 +185,7 @@ class EmailServiceTest {
     service.sendMessageToExistingUser(TRAINEE_ID, NOTIFICATION_TYPE, "", Map.of(),
         null);
 
-    ArgumentCaptor<Context> contextCaptor = ArgumentCaptor.forClass(Context.class);
+    ArgumentCaptor<Context> contextCaptor = ArgumentCaptor.captor();
     verify(templateService, atLeastOnce()).process(any(), any(), contextCaptor.capture());
 
     Context context = contextCaptor.getValue();
@@ -201,7 +201,7 @@ class EmailServiceTest {
     service.sendMessageToExistingUser(TRAINEE_ID, NOTIFICATION_TYPE, "",
         Map.of("familyName", "Maillig"), null);
 
-    ArgumentCaptor<Context> contextCaptor = ArgumentCaptor.forClass(Context.class);
+    ArgumentCaptor<Context> contextCaptor = ArgumentCaptor.captor();
     verify(templateService, atLeastOnce()).process(any(), any(), contextCaptor.capture());
 
     Context context = contextCaptor.getValue();
@@ -214,7 +214,7 @@ class EmailServiceTest {
     service.sendMessageToExistingUser(TRAINEE_ID, NOTIFICATION_TYPE, "",
         Map.of(), null);
 
-    ArgumentCaptor<Context> contextCaptor = ArgumentCaptor.forClass(Context.class);
+    ArgumentCaptor<Context> contextCaptor = ArgumentCaptor.captor();
     verify(templateService, atLeastOnce()).process(any(), any(), contextCaptor.capture());
 
     Context context = contextCaptor.getValue();
@@ -229,7 +229,7 @@ class EmailServiceTest {
     service.sendMessageToExistingUser(TRAINEE_ID, NOTIFICATION_TYPE, "",
         Map.of("domain", domain), null);
 
-    ArgumentCaptor<Context> contextCaptor = ArgumentCaptor.forClass(Context.class);
+    ArgumentCaptor<Context> contextCaptor = ArgumentCaptor.captor();
     verify(templateService, atLeastOnce()).process(any(), any(), contextCaptor.capture());
 
     Context context = contextCaptor.getValue();
@@ -241,10 +241,10 @@ class EmailServiceTest {
     service.sendMessageToExistingUser(TRAINEE_ID, NOTIFICATION_TYPE, "",
         Map.of(), null);
 
-    ArgumentCaptor<Context> contextCaptor = ArgumentCaptor.forClass(Context.class);
+    ArgumentCaptor<Context> contextCaptor = ArgumentCaptor.captor();
     verify(templateService, atLeastOnce()).process(any(), any(), contextCaptor.capture());
 
-    String expectedHashedEmail = service.createMD5Hash(RECIPIENT);
+    String expectedHashedEmail = service.createMd5Hash(RECIPIENT);
 
     Context context = contextCaptor.getValue();
     assertThat("Unexpected hashed email.", context.getVariable("hashedEmail"),
@@ -260,7 +260,7 @@ class EmailServiceTest {
     service.sendMessageToExistingUser(TRAINEE_ID, NOTIFICATION_TYPE, "",
         Map.of(), null);
 
-    ArgumentCaptor<MimeMessage> messageCaptor = ArgumentCaptor.forClass(MimeMessage.class);
+    ArgumentCaptor<MimeMessage> messageCaptor = ArgumentCaptor.captor();
     verify(mailSender).send(messageCaptor.capture());
 
     MimeMessage message = messageCaptor.getValue();
@@ -277,7 +277,7 @@ class EmailServiceTest {
     service.sendMessageToExistingUser(TRAINEE_ID, NOTIFICATION_TYPE, "",
         Map.of(), null);
 
-    ArgumentCaptor<MimeMessage> messageCaptor = ArgumentCaptor.forClass(MimeMessage.class);
+    ArgumentCaptor<MimeMessage> messageCaptor = ArgumentCaptor.captor();
     verify(mailSender).send(messageCaptor.capture());
 
     MimeMessage message = messageCaptor.getValue();
@@ -295,7 +295,7 @@ class EmailServiceTest {
     service.sendMessageToExistingUser(TRAINEE_ID, NOTIFICATION_TYPE, "",
         Map.of(), null);
 
-    ArgumentCaptor<MimeMessage> messageCaptor = ArgumentCaptor.forClass(MimeMessage.class);
+    ArgumentCaptor<MimeMessage> messageCaptor = ArgumentCaptor.captor();
     verify(mailSender).send(messageCaptor.capture());
 
     MimeMessage message = messageCaptor.getValue();
@@ -311,7 +311,7 @@ class EmailServiceTest {
     service.sendMessageToExistingUser(TRAINEE_ID, NOTIFICATION_TYPE, "",
         Map.of(), null);
 
-    ArgumentCaptor<MimeMessage> messageCaptor = ArgumentCaptor.forClass(MimeMessage.class);
+    ArgumentCaptor<MimeMessage> messageCaptor = ArgumentCaptor.captor();
     verify(mailSender).send(messageCaptor.capture());
 
     MimeMessage message = messageCaptor.getValue();
@@ -331,7 +331,7 @@ class EmailServiceTest {
     service.sendMessageToExistingUser(TRAINEE_ID, NOTIFICATION_TYPE, "",
         Map.of(), null);
 
-    ArgumentCaptor<MimeMessage> messageCaptor = ArgumentCaptor.forClass(MimeMessage.class);
+    ArgumentCaptor<MimeMessage> messageCaptor = ArgumentCaptor.captor();
     verify(mailSender).send(messageCaptor.capture());
 
     MimeMessage message = messageCaptor.getValue();
@@ -354,8 +354,8 @@ class EmailServiceTest {
     verify(templateService, times(2)).process(eq("template/path"),
         any(), (Context) any());
 
-    ArgumentCaptor<Set<String>> selectorCaptor = ArgumentCaptor.forClass(Set.class);
-    ArgumentCaptor<Context> contextCaptor = ArgumentCaptor.forClass(Context.class);
+    ArgumentCaptor<Set<String>> selectorCaptor = ArgumentCaptor.captor();
+    ArgumentCaptor<Context> contextCaptor = ArgumentCaptor.captor();
     verify(templateService, times(2)).process(any(), selectorCaptor.capture(),
         contextCaptor.capture());
 
@@ -386,7 +386,7 @@ class EmailServiceTest {
     service.sendMessageToExistingUser(TRAINEE_ID, notificationType, templateVersion,
         Map.of("key1", "value1"), tisReferenceInfo);
 
-    ArgumentCaptor<History> historyCaptor = ArgumentCaptor.forClass(History.class);
+    ArgumentCaptor<History> historyCaptor = ArgumentCaptor.captor();
     verify(historyService).save(historyCaptor.capture());
 
     History history = historyCaptor.getValue();
@@ -440,7 +440,7 @@ class EmailServiceTest {
         templateInfo, sentAt, null, FAILED, "bounced", null);
     service.resendMessage(toResend, "newemailaddress");
 
-    ArgumentCaptor<History> historyCaptor = ArgumentCaptor.forClass(History.class);
+    ArgumentCaptor<History> historyCaptor = ArgumentCaptor.captor();
     verify(historyService).save(historyCaptor.capture());
 
     History history = historyCaptor.getValue();
@@ -504,13 +504,13 @@ class EmailServiceTest {
     service.sendMessageToExistingUser(TRAINEE_ID, NOTIFICATION_TYPE, "",
         Map.of(), null);
 
-    ArgumentCaptor<MimeMessage> messageCaptor = ArgumentCaptor.forClass(MimeMessage.class);
+    ArgumentCaptor<MimeMessage> messageCaptor = ArgumentCaptor.captor();
     verify(mailSender).send(messageCaptor.capture());
 
     MimeMessage message = messageCaptor.getValue();
     String headerId = message.getHeader("NotificationId", "");
 
-    ArgumentCaptor<History> historyCaptor = ArgumentCaptor.forClass(History.class);
+    ArgumentCaptor<History> historyCaptor = ArgumentCaptor.captor();
     verify(historyService).save(historyCaptor.capture());
 
     History history = historyCaptor.getValue();
@@ -524,11 +524,32 @@ class EmailServiceTest {
     when(templateService.process(any(), eq(Set.of("content")), (Context) any())).thenReturn(
         template);
 
-    service.sendMessage(TRAINEE_ID, RECIPIENT, NOTIFICATION_TYPE, "", new HashMap<>(),
-        null, true);
+    service.sendMessage(TRAINEE_ID, RECIPIENT, NOTIFICATION_TYPE, "", Map.of("key1", "val1"), null,
+        true);
 
     verify(mailSender, never()).send((MimeMessage) any());
     verify(historyService, never()).save(any());
+  }
+
+  @Test
+  void shouldNotActuallySendMessageIfNoRecipient() throws MessagingException {
+    String template = "<div>Test message body</div>";
+    when(templateService.process(any(), eq(Set.of("content")), (Context) any())).thenReturn(
+        template);
+
+    service.sendMessage(TRAINEE_ID, null, NOTIFICATION_TYPE, "", new HashMap<>(),
+        null, false);
+
+    verify(mailSender, never()).send((MimeMessage) any());
+
+    ArgumentCaptor<History> historyCaptor = ArgumentCaptor.captor();
+    verify(historyService).save(historyCaptor.capture());
+
+    History history = historyCaptor.getValue();
+    assertThat("Unexpected recipient contact.", history.recipient().contact(), nullValue());
+    assertThat("Unexpected status.", history.status(), is(FAILED));
+    assertThat("Unexpected status detail.", history.statusDetail(),
+        is("No email address available."));
   }
 
   @Test
@@ -557,18 +578,18 @@ class EmailServiceTest {
 
   @Test
   void shouldUseDefaultHashIfMd5NotAvailable() {
-   MockedStatic<MessageDigest> mockedMessageDigest = Mockito.mockStatic(MessageDigest.class);
-   mockedMessageDigest.when(() -> MessageDigest.getInstance(any()))
-       .thenThrow(new NoSuchAlgorithmException("error"));
+    MockedStatic<MessageDigest> mockedMessageDigest = Mockito.mockStatic(MessageDigest.class);
+    mockedMessageDigest.when(() -> MessageDigest.getInstance(any()))
+        .thenThrow(new NoSuchAlgorithmException("error"));
 
-   String hash = service.createMD5Hash("some input");
-   assertThat("Unexpected default hash.", hash, is(DEFAULT_EMAIL_HASH));
-   mockedMessageDigest.close();
+    String hash = service.createMd5Hash("some input");
+    assertThat("Unexpected default hash.", hash, is(DEFAULT_EMAIL_HASH));
+    mockedMessageDigest.close();
   }
 
   @Test
   void shouldUseDefaultHashIfInputIsNull() {
-    String hash = service.createMD5Hash(null);
+    String hash = service.createMd5Hash(null);
     assertThat("Unexpected default hash.", hash, is(DEFAULT_EMAIL_HASH));
   }
 }

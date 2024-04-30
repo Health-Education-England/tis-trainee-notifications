@@ -347,8 +347,9 @@ public class NotificationService implements Job {
           (userTraineeDetails.gmcNumber() != null ? userTraineeDetails.gmcNumber().trim() : null));
     } else if (userTraineeDetails != null) {
       //no TSS account or duplicate accounts in Cognito
+      String email = userTraineeDetails.email();
       return new UserDetails(false,
-          userTraineeDetails.email(),
+          email == null || email.isBlank() ? null : email,
           userTraineeDetails.title(),
           userTraineeDetails.familyName(),
           userTraineeDetails.givenName(),
@@ -366,7 +367,8 @@ public class NotificationService implements Job {
    */
   private UserDetails getCognitoAccountDetails(String email) {
     try {
-      return emailService.getRecipientAccountByEmail(email);
+      return email == null || email.isBlank() ? null
+          : emailService.getRecipientAccountByEmail(email);
     } catch (UserNotFoundException e) {
       return null;
     }
@@ -525,7 +527,7 @@ public class NotificationService implements Job {
    *
    * @param contact The contact string, expected to be either an email address or a URL.
    * @return "email" if it looks like an email address, "url" if it looks like a URL, and "NOT_HREF"
-   * otherwise.
+   *     otherwise.
    */
   protected String getHrefTypeForContact(String contact) {
     try {
