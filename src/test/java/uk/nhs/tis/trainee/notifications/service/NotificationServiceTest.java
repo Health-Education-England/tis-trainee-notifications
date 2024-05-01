@@ -93,11 +93,8 @@ import org.springframework.web.client.RestTemplate;
 import org.testcontainers.shaded.org.apache.commons.lang3.time.DateUtils;
 import software.amazon.awssdk.services.cognitoidentityprovider.model.UserNotFoundException;
 import uk.nhs.tis.trainee.notifications.dto.UserDetails;
+import uk.nhs.tis.trainee.notifications.model.*;
 import uk.nhs.tis.trainee.notifications.model.History.TisReferenceInfo;
-import uk.nhs.tis.trainee.notifications.model.LocalOfficeContactType;
-import uk.nhs.tis.trainee.notifications.model.MessageType;
-import uk.nhs.tis.trainee.notifications.model.NotificationType;
-import uk.nhs.tis.trainee.notifications.model.ProgrammeMembership;
 
 class NotificationServiceTest {
 
@@ -717,7 +714,7 @@ class NotificationServiceTest {
   }
 
   @Test
-  void shouldMeetCriteriaWhenIsNewStarterAndIsInPilot() {
+  void shouldMeetPmCriteriaWhenIsNewStarterAndIsInPilot() {
     ProgrammeMembership programmeMembership = new ProgrammeMembership();
     programmeMembership.setTisId(TIS_ID);
     programmeMembership.setPersonId(PERSON_ID);
@@ -736,7 +733,7 @@ class NotificationServiceTest {
   }
 
   @Test
-  void shouldNotMeetCriteriaWhenNotNewStarterAndNotInPilot() {
+  void shouldNotMeetPmCriteriaWhenNotNewStarterAndNotInPilot() {
     ProgrammeMembership programmeMembership = new ProgrammeMembership();
     programmeMembership.setTisId(TIS_ID);
     programmeMembership.setPersonId(PERSON_ID);
@@ -755,7 +752,7 @@ class NotificationServiceTest {
   }
 
   @Test
-  void shouldMeetCriteriaWhenIsNewStarterAndAndPilotCheckSkipped() {
+  void shouldMeetPmCriteriaWhenIsNewStarterAndAndPilotCheckSkipped() {
     ProgrammeMembership programmeMembership = new ProgrammeMembership();
     programmeMembership.setTisId(TIS_ID);
     programmeMembership.setPersonId(PERSON_ID);
@@ -770,7 +767,7 @@ class NotificationServiceTest {
   }
 
   @Test
-  void shouldNotMeetCriteriaWhenNotNewStarterAndAndPilotCheckSkipped() {
+  void shouldNotMeetPmCriteriaWhenNotNewStarterAndAndPilotCheckSkipped() {
     ProgrammeMembership programmeMembership = new ProgrammeMembership();
     programmeMembership.setTisId(TIS_ID);
     programmeMembership.setPersonId(PERSON_ID);
@@ -788,7 +785,7 @@ class NotificationServiceTest {
   }
 
   @Test
-  void shouldMeetCriteriaWhenNewStartCheckSkippedAndIsInPilot() {
+  void shouldMeetPmCriteriaWhenNewStartCheckSkippedAndIsInPilot() {
     ProgrammeMembership programmeMembership = new ProgrammeMembership();
     programmeMembership.setTisId(TIS_ID);
     programmeMembership.setPersonId(PERSON_ID);
@@ -806,7 +803,7 @@ class NotificationServiceTest {
   }
 
   @Test
-  void shouldNotMeetCriteriaWhenNewStartCheckSkippedAndNotInPilot() {
+  void shouldNotMeetPmCriteriaWhenNewStartCheckSkippedAndNotInPilot() {
     ProgrammeMembership programmeMembership = new ProgrammeMembership();
     programmeMembership.setTisId(TIS_ID);
     programmeMembership.setPersonId(PERSON_ID);
@@ -824,7 +821,7 @@ class NotificationServiceTest {
   }
 
   @Test
-  void shouldMeetCriteriaWhenAllChecksSkipped() {
+  void shouldMeetPmCriteriaWhenAllChecksSkipped() {
     ProgrammeMembership programmeMembership = new ProgrammeMembership();
     programmeMembership.setTisId(TIS_ID);
     programmeMembership.setPersonId(PERSON_ID);
@@ -835,6 +832,49 @@ class NotificationServiceTest {
     assertThat("Unexpected unmet programme membership criteria.", meetsCriteria, is(true));
 
     verifyNoInteractions(messagingControllerService);
+  }
+
+  @Test
+  void shouldMeetPlacementCriteriaWhenIsInPilot() {
+    Placement placement = new Placement();
+    placement.setTisId(TIS_ID);
+    placement.setPersonId(PERSON_ID);
+
+    when(messagingControllerService.isPlacementInPilot2024(PERSON_ID, TIS_ID)).thenReturn(true);
+
+    boolean meetsCriteria = service.meetsCriteria(placement, true);
+
+    assertThat("Unexpected unmet placement criteria.", meetsCriteria, is(true));
+
+    verify(messagingControllerService).isPlacementInPilot2024(PERSON_ID, TIS_ID);
+  }
+
+  @Test
+  void shouldNotMeetPlacementCriteriaWhenNotInPilot() {
+    Placement placement = new Placement();
+    placement.setTisId(TIS_ID);
+    placement.setPersonId(PERSON_ID);
+
+    when(messagingControllerService.isPlacementInPilot2024(PERSON_ID, TIS_ID))
+        .thenReturn(false);
+
+    boolean meetsCriteria = service.meetsCriteria(placement, true);
+
+    assertThat("Unexpected unmet placement criteria.", meetsCriteria, is(false));
+
+    verify(messagingControllerService).isPlacementInPilot2024(PERSON_ID, TIS_ID);
+  }
+
+  @Test
+  void shouldMeetPlacementCriteriaWhenIsPilotCheckSkipped() {
+    Placement placement = new Placement();
+    placement.setTisId(TIS_ID);
+    placement.setPersonId(PERSON_ID);
+
+    boolean meetsCriteria = service.meetsCriteria(placement, false);
+
+    assertThat("Unexpected unmet placement criteria.", meetsCriteria, is(true));
+    verifyNoMoreInteractions(messagingControllerService);
   }
 
   @ParameterizedTest
@@ -865,6 +905,34 @@ class NotificationServiceTest {
         messageType);
 
     assertThat("Unexpected programme membership is notifiable value.", isNotifiablePm, is(false));
+  }
+
+  @ParameterizedTest
+  @EnumSource(MessageType.class)
+  void placementShouldBeNotifiableWhenIsValidRecipient(MessageType messageType) {
+    Placement placement = new Placement();
+    placement.setTisId(TIS_ID);
+    placement.setPersonId(PERSON_ID);
+
+    when(messagingControllerService.isValidRecipient(PERSON_ID, messageType)).thenReturn(true);
+
+    boolean isNotifiablePlacement = service.placementIsNotifiable(placement, messageType);
+
+    assertThat("Unexpected placement is notifiable value.", isNotifiablePlacement, is(true));
+  }
+
+  @ParameterizedTest
+  @EnumSource(MessageType.class)
+  void placementShouldNotBeNotifiableWhenIsInvalidRecipient(MessageType messageType) {
+    Placement placement = new Placement();
+    placement.setTisId(TIS_ID);
+    placement.setPersonId(PERSON_ID);
+
+    when(messagingControllerService.isValidRecipient(PERSON_ID, messageType)).thenReturn(false);
+
+    boolean isNotifiablePlacement = service.placementIsNotifiable(placement, messageType);
+
+    assertThat("Unexpected placement is notifiable value.", isNotifiablePlacement, is(false));
   }
 
   @Test

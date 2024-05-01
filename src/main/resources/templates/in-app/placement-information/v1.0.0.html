@@ -11,51 +11,49 @@
     <h2>Content</h2>
     <th:block th:fragment="content">
       <p>
-        This notification pertains to your placement in
+        For your placement starting
         <b>
-          <th:block th:text="${not #strings.isEmpty(specialty)} ? ${specialty} : _">
-            (speciality name missing)
+          <th:block th:text="${startDate} ? |${#temporals.format(startDate, 'dd MMMM yyyy')}| : _">
+            (start date missing)
           </th:block>
         </b> at
         <b>
           <th:block th:text="${not #strings.isEmpty(site)} ? ${site} : _">
             (site name missing)
           </th:block>
-        </b> starting on
+        </b> in
         <b>
-          <th:block th:text="${startDate} ? |${#temporals.format(startDate, 'dd MMMM yyyy')}| : _">
-            (start date missing)
+          <th:block th:text="${not #strings.isEmpty(specialty)} ? ${specialty} : _">
+            (speciality name missing)
           </th:block>
-        </b>.
+        </b>, please see the below information.
       </p>
       <p>
-        The placement information reflects what we have recorded on our Training Information System (TIS) as your next placement-
-        <b>please bear in mind that the end date may not be when you finish your rotation, but instead be a change in Grade, WTE or Post number on our system.</b>
+        The placement information reflects what we have recorded on our Training Information System (TIS) as
+        your next placement. <b>Please be aware that when your Grade, Whole Time Equivalent (WTE) or Post
+        Number changes, on TIS, a new placement will be created reflecting these changes.</b>
       </p>
       <p>
         If there are any <b>errors</b> in the placement data,
         <th:block: th:switch="${localOfficeContactType}">
           <th:block th:case="NON_HREF"
-          > please contact your local office for information on Placement.</th:block
+          > please contact your NHS England local office</th:block
           >
           <th:block th:case="*"
-          > please click on the following link to contact your NHS England local office.
+          > please contact your
             <a
               th:href="${localOfficeContactType} == 'email' ? |mailto:${localOfficeContact}| : ${localOfficeContact}"
-              th:text="${localOfficeContact}"
               th:target="_blank"
-            ></a
-            ></th:block>
-        </th:block:><br/>
+            >NHS England local office</a
+            >.</th:block>
+        </th:block:>
         Please note your salary may be impacted if this information is incorrect.
       </p>
       <p>
         Further details on the specialist area of your placement will be confirmed by your employing organisation.
-        This is because we are only able to confirm details that relate specifically to your college recognised curriculum.
-      </p>
-      <p>
-        An example of this would be If you have preference a specific post with your Training Programme Director
-        but does not relate to sub-specialty training. This may be a job in a specific location or department.
+        This is because we are only able to confirm details that relate specifically to your college recognised
+        curriculum. For example, if you have given your Training Programme Director a preference of a job in a
+        specific location or department, we will not record this level of detail on TIS.
       </p>
     </th:block>
   </body>

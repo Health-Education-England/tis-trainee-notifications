@@ -27,19 +27,29 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.SENT;
+import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.UNREAD;
+import static uk.nhs.tis.trainee.notifications.model.NotificationType.PLACEMENT_INFORMATION;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PLACEMENT_UPDATED_WEEK_12;
+import static uk.nhs.tis.trainee.notifications.model.TisReferenceType.PLACEMENT;
+import static uk.nhs.tis.trainee.notifications.service.NotificationService.CONTACT_TYPE_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.PERSON_ID_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.TEMPLATE_OWNER_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.PlacementService.PLACEMENT_SITE_FIELD;
+import static uk.nhs.tis.trainee.notifications.service.PlacementService.PLACEMENT_SPECIALTY_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.PlacementService.PLACEMENT_TYPE_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.PlacementService.START_DATE_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.PlacementService.TIS_ID_FIELD;
+import static uk.nhs.tis.trainee.notifications.service.PlacementService.LOCAL_OFFICE_CONTACT_FIELD;
+import static uk.nhs.tis.trainee.notifications.service.PlacementService.LOCAL_OFFICE_CONTACT_TYPE_FIELD;
 
 import java.time.Instant;
 import java.time.LocalDate;
@@ -51,6 +61,8 @@ import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.quartz.JobDataMap;
@@ -58,6 +70,8 @@ import org.quartz.SchedulerException;
 import org.springframework.web.client.RestTemplate;
 import uk.nhs.tis.trainee.notifications.dto.HistoryDto;
 import uk.nhs.tis.trainee.notifications.model.History.TisReferenceInfo;
+import uk.nhs.tis.trainee.notifications.model.HrefType;
+import uk.nhs.tis.trainee.notifications.model.LocalOfficeContactType;
 import uk.nhs.tis.trainee.notifications.model.MessageType;
 import uk.nhs.tis.trainee.notifications.model.NotificationType;
 import uk.nhs.tis.trainee.notifications.model.Placement;
@@ -77,6 +91,8 @@ class PlacementServiceTest {
   private static final String OWNER_CONTACT = "north.west@nhs.net";
   private static final String PERSON_ID = "abc";
   private static final String SITE = "site known as";
+  private static final String SPECIALTY = "General Practice";
+  private static final String MANAGING_DEANERY = "the local office";
   private static final LocalDate START_DATE = LocalDate.now().plusYears(1);
   //set a year in the future to allow all notifications to be scheduled
   private static final String PLACEMENT_INFO_VERSION = "v1.2.3";
@@ -180,6 +196,7 @@ class PlacementServiceTest {
     service.addNotifications(placement);
 
     verify(notificationService, never()).scheduleNotification(any(), any(), any());
+    verifyNoInteractions(inAppService);
   }
 
   @Test
@@ -192,6 +209,7 @@ class PlacementServiceTest {
     service.addNotifications(placement);
 
     verify(notificationService, never()).scheduleNotification(any(), any(), any());
+    verifyNoInteractions(inAppService);
   }
 
   @Test
@@ -205,6 +223,7 @@ class PlacementServiceTest {
     service.addNotifications(placement);
 
     verify(notificationService, never()).scheduleNotification(any(), any(), any());
+    verifyNoInteractions(inAppService);
   }
 
   @Test
@@ -466,5 +485,145 @@ class PlacementServiceTest {
   void shouldHandleUnknownNotificationTypesForNotificationDays() {
     assertThat("Unexpected days before start.",
         service.getNotificationDaysBeforeStart(NotificationType.COJ_CONFIRMATION), nullValue());
+  }
+
+  @ParameterizedTest
+  @CsvSource(delimiter = '|', textBlock = """
+      PLACEMENT_INFORMATION | v1.2.3 | true
+      PLACEMENT_INFORMATION | v1.2.3 | false""")
+  void shouldAddInAppNotificationsWhenNotExcludedAndMeetsCriteria(NotificationType notificationType,
+                                                                  String notificationVersion, boolean notifiable) throws SchedulerException {
+    Placement placement = new Placement();
+    placement.setTisId(TIS_ID);
+    placement.setPersonId(PERSON_ID);
+    placement.setStartDate(START_DATE);
+    placement.setOwner(OWNER);
+    placement.setPlacementType(IN_POST);
+    placement.setSpecialty(SPECIALTY);
+    placement.setSite(SITE);
+
+    when(notificationService.meetsCriteria(placement, true)).thenReturn(true);
+    when(notificationService.placementIsNotifiable(placement, MessageType.IN_APP)).
+        thenReturn(notifiable);
+    when(notificationService.getOwnerContact(any(), any(), any())).thenReturn("");
+    when(notificationService.getHrefTypeForContact(any())).thenReturn("");
+
+    service.addNotifications(placement);
+
+    ArgumentCaptor<TisReferenceInfo> referenceInfoCaptor = ArgumentCaptor.forClass(
+        TisReferenceInfo.class);
+    ArgumentCaptor<Map<String, Object>> variablesCaptor = ArgumentCaptor.forClass(Map.class);
+    ArgumentCaptor<Boolean> doNotStoreJustLogCaptor = ArgumentCaptor.forClass(Boolean.class);
+    verify(inAppService).createNotifications(eq(PERSON_ID), referenceInfoCaptor.capture(),
+        eq(notificationType), eq(notificationVersion), variablesCaptor.capture(),
+        doNotStoreJustLogCaptor.capture());
+
+    TisReferenceInfo referenceInfo = referenceInfoCaptor.getValue();
+    assertThat("Unexpected reference type.", referenceInfo.type(), is(PLACEMENT));
+    assertThat("Unexpected reference id.", referenceInfo.id(), is(TIS_ID));
+
+    Map<String, Object> variables = variablesCaptor.getValue();
+    assertThat("Unexpected specialty.", variables.get(PLACEMENT_SPECIALTY_FIELD),
+        is(SPECIALTY));
+    assertThat("Unexpected site.", variables.get(PLACEMENT_SITE_FIELD),
+        is(SITE));
+    assertThat("Unexpected start date.", variables.get(START_DATE_FIELD),
+        is(START_DATE));
+
+    Boolean doNotStoreJustLog = doNotStoreJustLogCaptor.getValue();
+    assertThat("Unexpected doNotStoreJustLog value.", doNotStoreJustLog, is(!notifiable));
+  }
+
+  @ParameterizedTest
+  @CsvSource(delimiter = '|', textBlock = """
+      email@example.com | PROTOCOL_EMAIL
+      https://example.com | ABSOLUTE_URL
+      not a href | NON_HREF""")
+  void shouldIncludeContactDetailsInInAppNotification(String contact, HrefType contactType)
+      throws SchedulerException {
+    Placement placement = new Placement();
+    placement.setTisId(TIS_ID);
+    placement.setPersonId(PERSON_ID);
+    placement.setStartDate(START_DATE);
+    placement.setOwner(OWNER);
+    placement.setPlacementType(IN_POST);
+    placement.setSpecialty(SPECIALTY);
+    placement.setSite(SITE);
+
+    when(notificationService.meetsCriteria(placement,true)).thenReturn(true);
+
+    List<Map<String, String>> contactList = List.of(
+        Map.of(CONTACT_TYPE_FIELD, LocalOfficeContactType.TSS_SUPPORT.getContactTypeName()));
+    when(notificationService.getOwnerContactList(OWNER)).thenReturn(contactList);
+    when(notificationService.getOwnerContact(contactList, LocalOfficeContactType.TSS_SUPPORT,
+        null)).thenReturn(contact);
+    when(notificationService.getHrefTypeForContact(contact)).thenReturn(
+        contactType.getHrefTypeName());
+
+    service.addNotifications(placement);
+
+    ArgumentCaptor<Map<String, Object>> variablesCaptor = ArgumentCaptor.forClass(Map.class);
+    verify(inAppService).createNotifications(eq(PERSON_ID), any(), eq(PLACEMENT_INFORMATION),
+        eq(PLACEMENT_INFO_VERSION), variablesCaptor.capture(), anyBoolean());
+
+    Map<String, Object> variables = variablesCaptor.getValue();
+    assertThat("Unexpected variable count.", variables.size(), is(5));
+    assertThat("Unexpected specialty.", variables.get(PLACEMENT_SPECIALTY_FIELD),
+        is(SPECIALTY));
+    assertThat("Unexpected site.", variables.get(PLACEMENT_SITE_FIELD),
+        is(SITE));
+    assertThat("Unexpected start date.", variables.get(START_DATE_FIELD), is(START_DATE));
+    assertThat("Unexpected local office contact.", variables.get(LOCAL_OFFICE_CONTACT_FIELD),
+        is(contact));
+    assertThat("Unexpected local office contact type.",
+        variables.get(LOCAL_OFFICE_CONTACT_TYPE_FIELD), is(contactType.getHrefTypeName()));
+  }
+
+  @Test
+  void shouldNotAddInAppNotificationsWhenNotMeetsCriteria() throws SchedulerException {
+    Placement placement = new Placement();
+    placement.setTisId(TIS_ID);
+    placement.setPersonId(PERSON_ID);
+    placement.setStartDate(START_DATE);
+    placement.setOwner(OWNER);
+    placement.setPlacementType(IN_POST);
+    placement.setSpecialty(SPECIALTY);
+    placement.setSite(SITE);
+
+    when(notificationService.meetsCriteria(placement, true)).thenReturn(false);
+
+    service.addNotifications(placement);
+
+    verifyNoInteractions(inAppService);
+  }
+
+  @ParameterizedTest
+  @EnumSource(value = NotificationType.class, mode = EnumSource.Mode.INCLUDE, names = {"PLACEMENT_INFORMATION"})
+  void shouldNotAddInAppNotificationsWhenNotUnique(NotificationType notificationType)
+      throws SchedulerException {
+    Placement placement = new Placement();
+    placement.setTisId(TIS_ID);
+    placement.setPersonId(PERSON_ID);
+    placement.setStartDate(START_DATE);
+    placement.setOwner(OWNER);
+    placement.setPlacementType(IN_POST);
+    placement.setSpecialty(SPECIALTY);
+    placement.setSite(SITE);
+
+    List<HistoryDto> sentNotifications = List.of(
+        new HistoryDto("id", new TisReferenceInfo(PLACEMENT, TIS_ID), MessageType.IN_APP,
+            notificationType, null, null, Instant.MIN, Instant.MAX, UNREAD, null));
+
+    when(historyService.findAllForTrainee(PERSON_ID)).thenReturn(sentNotifications);
+    when(notificationService.meetsCriteria(placement, true)).thenReturn(true);
+    when(notificationService.placementIsNotifiable(placement, MessageType.IN_APP)).
+        thenReturn(true);
+    when(notificationService.getOwnerContact(any(), any(), any())).thenReturn("");
+    when(notificationService.getHrefTypeForContact(any())).thenReturn("");
+
+    service.addNotifications(placement);
+
+    verify(inAppService, never()).createNotifications(any(), any(), eq(notificationType), any(),
+        any());
   }
 }
