@@ -57,7 +57,6 @@ public class PlacementService {
   public static final String PLACEMENT_TYPE_FIELD = "placementType";
   public static final String PLACEMENT_SPECIALTY_FIELD = "specialty";
   public static final String PLACEMENT_SITE_FIELD = "site";
-  public static final String PLACEMENT_SITEKNOWNAS_FIELD = "siteKnownAs";
 
   public static final List<String> PLACEMENT_TYPES_TO_ACT_ON
       = List.of("In post", "In post - Acting up", "In Post - Extension");
@@ -164,7 +163,6 @@ public class PlacementService {
         jobDataMap.put(PLACEMENT_TYPE_FIELD, placement.getPlacementType());
         jobDataMap.put(PLACEMENT_SPECIALTY_FIELD, placement.getSpecialty());
         jobDataMap.put(PLACEMENT_SITE_FIELD, placement.getSite());
-        jobDataMap.put(PLACEMENT_SITEKNOWNAS_FIELD, placement.getSiteKnownAs());
         jobDataMap.put(TEMPLATE_OWNER_FIELD, placement.getOwner());
         jobDataMap.put(TEMPLATE_NOTIFICATION_TYPE_FIELD, PLACEMENT_UPDATED_WEEK_12);
 

@@ -45,9 +45,20 @@ public interface PlacementMapper {
   @Mapping(target = "startDate", source = "recordData.dateFrom")
   @Mapping(target = "placementType", source = "recordData.placementType")
   @Mapping(target = "owner", source = "recordData.owner")
-  @Mapping(target = "site", source = "recordData.site")
-  @Mapping(target = "siteKnownAs", source = "recordData.siteKnownAs")
+  @Mapping(target = "site", expression = "java(calculateSite(recordData))")
   Placement toEntity(Map<String, String> recordData);
+
+  /**
+   * Determine the site name to use, with 'site known as' preferred.
+   *
+   * @param recordData The record data map.
+   * @return The site name.
+   */
+  default String calculateSite(Map<String, String> recordData) {
+    return ((recordData.get("siteKnownAs") != null && !recordData.get("siteKnownAs").isBlank())
+        ? recordData.get("siteKnownAs")
+        : recordData.get("site"));
+  }
 }
 
 
