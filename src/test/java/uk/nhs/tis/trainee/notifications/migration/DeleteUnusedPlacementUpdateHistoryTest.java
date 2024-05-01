@@ -63,7 +63,7 @@ class DeleteUnusedPlacementUpdateHistoryTest {
     when(template.remove(any(), eq(History.class))).thenReturn(DeleteResult.acknowledged(1L));
     migration.migrate();
 
-    ArgumentCaptor<Query> queryCaptor = ArgumentCaptor.forClass(Query.class);
+    ArgumentCaptor<Query> queryCaptor = ArgumentCaptor.captor();
     verify(template, times(expectedDeletes)).remove(queryCaptor.capture(), eq(History.class));
 
     List<Query> queries = queryCaptor.getAllValues();

@@ -136,7 +136,7 @@ class ConditionsOfJoiningListenerIntegrationTest {
         templateVersion);
     listener.handleConditionsOfJoiningReceived(event);
 
-    ArgumentCaptor<MimeMessage> messageCaptor = ArgumentCaptor.forClass(MimeMessage.class);
+    ArgumentCaptor<MimeMessage> messageCaptor = ArgumentCaptor.captor();
     verify(mailSender).send(messageCaptor.capture());
 
     MimeMessage message = messageCaptor.getValue();
@@ -172,7 +172,7 @@ class ConditionsOfJoiningListenerIntegrationTest {
 
     listener.handleConditionsOfJoiningReceived(event);
 
-    ArgumentCaptor<MimeMessage> messageCaptor = ArgumentCaptor.forClass(MimeMessage.class);
+    ArgumentCaptor<MimeMessage> messageCaptor = ArgumentCaptor.captor();
     verify(mailSender).send(messageCaptor.capture());
 
     MimeMessage message = messageCaptor.getValue();
@@ -212,7 +212,7 @@ class ConditionsOfJoiningListenerIntegrationTest {
 
     listener.handleConditionsOfJoiningReceived(event);
 
-    ArgumentCaptor<MimeMessage> messageCaptor = ArgumentCaptor.forClass(MimeMessage.class);
+    ArgumentCaptor<MimeMessage> messageCaptor = ArgumentCaptor.captor();
     verify(mailSender).send(messageCaptor.capture());
 
     MimeMessage message = messageCaptor.getValue();
@@ -248,7 +248,7 @@ class ConditionsOfJoiningListenerIntegrationTest {
 
     listener.handleConditionsOfJoiningReceived(event);
 
-    ArgumentCaptor<MimeMessage> messageCaptor = ArgumentCaptor.forClass(MimeMessage.class);
+    ArgumentCaptor<MimeMessage> messageCaptor = ArgumentCaptor.captor();
     verify(mailSender).send(messageCaptor.capture());
 
     MimeMessage message = messageCaptor.getValue();
@@ -286,7 +286,7 @@ class ConditionsOfJoiningListenerIntegrationTest {
 
     listener.handleConditionsOfJoiningReceived(event);
 
-    ArgumentCaptor<MimeMessage> messageCaptor = ArgumentCaptor.forClass(MimeMessage.class);
+    ArgumentCaptor<MimeMessage> messageCaptor = ArgumentCaptor.captor();
     verify(mailSender).send(messageCaptor.capture());
 
     MimeMessage message = messageCaptor.getValue();
@@ -324,7 +324,7 @@ class ConditionsOfJoiningListenerIntegrationTest {
 
     listener.handleConditionsOfJoiningReceived(event);
 
-    ArgumentCaptor<MimeMessage> messageCaptor = ArgumentCaptor.forClass(MimeMessage.class);
+    ArgumentCaptor<MimeMessage> messageCaptor = ArgumentCaptor.captor();
     verify(mailSender).send(messageCaptor.capture());
 
     MimeMessage message = messageCaptor.getValue();
@@ -360,7 +360,7 @@ class ConditionsOfJoiningListenerIntegrationTest {
 
     listener.handleConditionsOfJoiningReceived(event);
 
-    ArgumentCaptor<History> historyCaptor = ArgumentCaptor.forClass(History.class);
+    ArgumentCaptor<History> historyCaptor = ArgumentCaptor.captor();
     verify(historyService).save(historyCaptor.capture());
 
     History history = historyCaptor.getValue();

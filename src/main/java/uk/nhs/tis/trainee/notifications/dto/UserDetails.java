@@ -21,6 +21,8 @@
 
 package uk.nhs.tis.trainee.notifications.dto;
 
+import lombok.Builder;
+
 /**
  * User details for an individual user.
  *
@@ -31,6 +33,7 @@ package uk.nhs.tis.trainee.notifications.dto;
  * @param givenName     The user's given name.
  * @param gmcNumber     The user's GMC number.
  */
+@Builder
 public record UserDetails(
     Boolean isRegistered,
     String email,
