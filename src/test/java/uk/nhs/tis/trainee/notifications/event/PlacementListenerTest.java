@@ -93,7 +93,7 @@ class PlacementListenerTest {
 
     when(mapper.toEntity(any())).thenReturn(placementToDelete);
 
-    ArgumentCaptor<Placement> placementCaptor = ArgumentCaptor.forClass(Placement.class);
+    ArgumentCaptor<Placement> placementCaptor = ArgumentCaptor.captor();
 
     listener.handlePlacementDelete(event);
 

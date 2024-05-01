@@ -142,7 +142,7 @@ class FormListenerIntegrationTest {
     FormListener listener = new FormListener(emailService, templateVersion);
     listener.handleFormUpdate(event);
 
-    ArgumentCaptor<MimeMessage> messageCaptor = ArgumentCaptor.forClass(MimeMessage.class);
+    ArgumentCaptor<MimeMessage> messageCaptor = ArgumentCaptor.captor();
     verify(mailSender).send(messageCaptor.capture());
 
     MimeMessage message = messageCaptor.getValue();
@@ -180,7 +180,7 @@ class FormListenerIntegrationTest {
 
     listener.handleFormUpdate(event);
 
-    ArgumentCaptor<MimeMessage> messageCaptor = ArgumentCaptor.forClass(MimeMessage.class);
+    ArgumentCaptor<MimeMessage> messageCaptor = ArgumentCaptor.captor();
     verify(mailSender).send(messageCaptor.capture());
 
     MimeMessage message = messageCaptor.getValue();
@@ -224,7 +224,7 @@ class FormListenerIntegrationTest {
 
     listener.handleFormUpdate(event);
 
-    ArgumentCaptor<MimeMessage> messageCaptor = ArgumentCaptor.forClass(MimeMessage.class);
+    ArgumentCaptor<MimeMessage> messageCaptor = ArgumentCaptor.captor();
     verify(mailSender).send(messageCaptor.capture());
 
     MimeMessage message = messageCaptor.getValue();
@@ -268,7 +268,7 @@ class FormListenerIntegrationTest {
 
     listener.handleFormUpdate(event);
 
-    ArgumentCaptor<MimeMessage> messageCaptor = ArgumentCaptor.forClass(MimeMessage.class);
+    ArgumentCaptor<MimeMessage> messageCaptor = ArgumentCaptor.captor();
     verify(mailSender).send(messageCaptor.capture());
 
     MimeMessage message = messageCaptor.getValue();
@@ -309,7 +309,7 @@ class FormListenerIntegrationTest {
 
     listener.handleFormUpdate(event);
 
-    ArgumentCaptor<History> historyCaptor = ArgumentCaptor.forClass(History.class);
+    ArgumentCaptor<History> historyCaptor = ArgumentCaptor.captor();
     verify(historyService).save(historyCaptor.capture());
 
     History history = historyCaptor.getValue();

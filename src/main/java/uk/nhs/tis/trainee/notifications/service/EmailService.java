@@ -23,9 +23,9 @@ package uk.nhs.tis.trainee.notifications.service;
 
 import static uk.nhs.tis.trainee.notifications.model.MessageType.EMAIL;
 
+import jakarta.annotation.Nullable;
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
-import java.io.IOException;
 import java.math.BigInteger;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
@@ -112,9 +112,11 @@ public class EmailService {
 
   /**
    * Send an email message using a given template, the domain variable will be set if not provided.
+   * If no email address is given a history record will still be saved with a failed state for
+   * reporting purposes.
    *
    * @param traineeId         The trainee ID of the recipient.
-   * @param recipient         Where the email should be sent.
+   * @param recipient         Where the email should be sent, should be null when not available.
    * @param notificationType  The type of notification, which will determine the template used.
    * @param templateVersion   The version of the template to be sent.
    * @param templateVariables The variables to pass to the template.
@@ -122,38 +124,42 @@ public class EmailService {
    * @param doNotSendJustLog  Do not actually send the mail, simply log the action.
    * @throws MessagingException When the message could not be sent.
    */
-  public void sendMessage(String traineeId, String recipient, NotificationType notificationType,
+  public void sendMessage(String traineeId, @Nullable String recipient,
+      NotificationType notificationType,
       String templateVersion, Map<String, Object> templateVariables,
       TisReferenceInfo tisReferenceInfo, boolean doNotSendJustLog) throws MessagingException {
-
     String templateName = templateService.getTemplatePath(EMAIL, notificationType, templateVersion);
     log.info("Sending template {} to {}.", templateName, recipient);
-    ObjectId notificationId = ObjectId.get();
-
-    MimeMessageHelper helper = buildMessageHelper(recipient, templateName, templateVariables,
-        notificationId);
 
     if (!doNotSendJustLog) {
-      mailSender.send(helper.getMimeMessage());
+      ObjectId notificationId = ObjectId.get();
+      NotificationStatus status;
+      String statusDetail = null;
+
+      if (recipient != null) {
+        MimeMessageHelper helper = buildMessageHelper(recipient, templateName, templateVariables,
+            notificationId);
+        mailSender.send(helper.getMimeMessage());
+        status = NotificationStatus.SENT;
+      } else {
+        log.info("No email address available for trainee {}, this failure will be recorded.",
+            traineeId);
+        status = NotificationStatus.FAILED;
+        statusDetail = "No email address available.";
+      }
 
       // Store the notification history.
       RecipientInfo recipientInfo = new RecipientInfo(traineeId, EMAIL, recipient);
       TemplateInfo templateInfo = new TemplateInfo(notificationType.getTemplateName(),
           templateVersion, templateVariables);
       History history = new History(notificationId, tisReferenceInfo, notificationType,
-          recipientInfo, templateInfo, Instant.now(), null, NotificationStatus.SENT, null, null);
+          recipientInfo, templateInfo, Instant.now(), null, status, statusDetail, null);
       historyService.save(history);
 
       log.info("Sent template {} to {}.", templateName, recipient);
     } else {
-      try {
-        log.info("For now, just logging mail to '{}' with subject '{}' and content '{}'", recipient,
-            helper.getMimeMessage().getSubject(), helper.getMimeMessage().getContent().toString());
-      } catch (IOException e) {
-        //should not happen
-        log.info("For now, just logging mail to '{}' with subject '{}' and unparseable content",
-            recipient, helper.getMimeMessage().getSubject());
-      }
+      log.info("For now, just logging mail to '{}' from template '{}' with variables '{}'",
+          recipient, templateName, templateVariables);
     }
   }
 
@@ -212,7 +218,7 @@ public class EmailService {
 
     // Add the application domain for any templates with hyperlinks.
     templateVariables.putIfAbsent("domain", appDomain);
-    templateVariables.putIfAbsent("hashedEmail", createMD5Hash(recipient));
+    templateVariables.putIfAbsent("hashedEmail", createMd5Hash(recipient));
 
     Context templateContext = templateService.buildContext(templateVariables);
     final String subject = templateService.process(templateName, Set.of("subject"),
@@ -266,13 +272,14 @@ public class EmailService {
    * @param input The string to hash.
    * @return The MD5 hash, or a fixed default if MD5 is not available or the input is null.
    */
-  public String createMD5Hash(final String input) {
+  public String createMd5Hash(final String input) {
     if (input != null) {
       try {
         MessageDigest md = MessageDigest.getInstance("MD5");
         byte[] messageDigest = md.digest(input.getBytes());
         return convertToHex(messageDigest);
       } catch (NoSuchAlgorithmException ignored) {
+        log.warn("MD5 algorithm not available, default hash will be used.");
       }
     }
     return "0".repeat(32); //default hash

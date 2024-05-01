@@ -173,7 +173,7 @@ class TemplateServiceTest {
     Set<String> selectors = Set.of("selector1", "selector2");
     Map<String, Object> templateVariables = Map.of("key1", "value1");
 
-    ArgumentCaptor<Context> contextCaptor = ArgumentCaptor.forClass(Context.class);
+    ArgumentCaptor<Context> contextCaptor = ArgumentCaptor.captor();
     when(templateEngine.process(eq(template), eq(selectors), contextCaptor.capture())).thenReturn(
         "processedTemplate");
 

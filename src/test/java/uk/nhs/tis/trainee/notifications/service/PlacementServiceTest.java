@@ -224,9 +224,9 @@ class PlacementServiceTest {
         .thenReturn(expectedWhen);
     service.addNotifications(placement);
 
-    ArgumentCaptor<String> stringCaptor = ArgumentCaptor.forClass(String.class);
-    ArgumentCaptor<JobDataMap> jobDataMapCaptor = ArgumentCaptor.forClass(JobDataMap.class);
-    ArgumentCaptor<Date> dateCaptor = ArgumentCaptor.forClass(Date.class);
+    ArgumentCaptor<String> stringCaptor = ArgumentCaptor.captor();
+    ArgumentCaptor<JobDataMap> jobDataMapCaptor = ArgumentCaptor.captor();
+    ArgumentCaptor<Date> dateCaptor = ArgumentCaptor.captor();
     verify(notificationService).scheduleNotification(
         stringCaptor.capture(),
         jobDataMapCaptor.capture(),
@@ -366,7 +366,7 @@ class PlacementServiceTest {
     service.addNotifications(placement);
 
     //the zero-day notification should be scheduled, but no other missed notifications
-    ArgumentCaptor<Date> dateCaptor = ArgumentCaptor.forClass(Date.class);
+    ArgumentCaptor<Date> dateCaptor = ArgumentCaptor.captor();
     verify(notificationService).scheduleNotification(
         any(),
         any(),

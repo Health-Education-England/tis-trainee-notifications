@@ -85,7 +85,7 @@ class InAppServiceTest {
   void shouldNotSetIdWhenCreatingNotification(NotificationType notificationType) {
     service.createNotifications(TRAINEE_ID, null, notificationType, VERSION, Map.of());
 
-    ArgumentCaptor<History> historyCaptor = ArgumentCaptor.forClass(History.class);
+    ArgumentCaptor<History> historyCaptor = ArgumentCaptor.captor();
     verify(historyService).save(historyCaptor.capture());
 
     History history = historyCaptor.getValue();
@@ -99,7 +99,7 @@ class InAppServiceTest {
     TisReferenceInfo referenceInfo = new TisReferenceInfo(PLACEMENT, referenceId);
     service.createNotifications(TRAINEE_ID, referenceInfo, notificationType, VERSION, Map.of());
 
-    ArgumentCaptor<History> historyCaptor = ArgumentCaptor.forClass(History.class);
+    ArgumentCaptor<History> historyCaptor = ArgumentCaptor.captor();
     verify(historyService).save(historyCaptor.capture());
 
     History history = historyCaptor.getValue();
@@ -113,7 +113,7 @@ class InAppServiceTest {
   void shouldSetNotificationTypeWhenCreatingNotification(NotificationType notificationType) {
     service.createNotifications(TRAINEE_ID, null, notificationType, VERSION, Map.of());
 
-    ArgumentCaptor<History> historyCaptor = ArgumentCaptor.forClass(History.class);
+    ArgumentCaptor<History> historyCaptor = ArgumentCaptor.captor();
     verify(historyService).save(historyCaptor.capture());
 
     History history = historyCaptor.getValue();
@@ -125,7 +125,7 @@ class InAppServiceTest {
   void shouldSetRecipientInfoWhenCreatingNotification(NotificationType notificationType) {
     service.createNotifications(TRAINEE_ID, null, notificationType, VERSION, Map.of());
 
-    ArgumentCaptor<History> historyCaptor = ArgumentCaptor.forClass(History.class);
+    ArgumentCaptor<History> historyCaptor = ArgumentCaptor.captor();
     verify(historyService).save(historyCaptor.capture());
 
     History history = historyCaptor.getValue();
@@ -145,7 +145,7 @@ class InAppServiceTest {
     );
     service.createNotifications(TRAINEE_ID, null, notificationType, VERSION, variables);
 
-    ArgumentCaptor<History> historyCaptor = ArgumentCaptor.forClass(History.class);
+    ArgumentCaptor<History> historyCaptor = ArgumentCaptor.captor();
     verify(historyService).save(historyCaptor.capture());
 
     History history = historyCaptor.getValue();
@@ -166,7 +166,7 @@ class InAppServiceTest {
   void shouldSetSentAtWhenCreatingNotification(NotificationType notificationType) {
     service.createNotifications(TRAINEE_ID, null, notificationType, VERSION, Map.of());
 
-    ArgumentCaptor<History> historyCaptor = ArgumentCaptor.forClass(History.class);
+    ArgumentCaptor<History> historyCaptor = ArgumentCaptor.captor();
     verify(historyService).save(historyCaptor.capture());
 
     History history = historyCaptor.getValue();
@@ -179,7 +179,7 @@ class InAppServiceTest {
   void shouldNotSetReadAtWhenCreatingNotification(NotificationType notificationType) {
     service.createNotifications(TRAINEE_ID, null, notificationType, VERSION, Map.of());
 
-    ArgumentCaptor<History> historyCaptor = ArgumentCaptor.forClass(History.class);
+    ArgumentCaptor<History> historyCaptor = ArgumentCaptor.captor();
     verify(historyService).save(historyCaptor.capture());
 
     History history = historyCaptor.getValue();
@@ -191,7 +191,7 @@ class InAppServiceTest {
   void shouldSetStatusWhenCreatingNotification(NotificationType notificationType) {
     service.createNotifications(TRAINEE_ID, null, notificationType, VERSION, Map.of());
 
-    ArgumentCaptor<History> historyCaptor = ArgumentCaptor.forClass(History.class);
+    ArgumentCaptor<History> historyCaptor = ArgumentCaptor.captor();
     verify(historyService).save(historyCaptor.capture());
 
     History history = historyCaptor.getValue();
@@ -203,7 +203,7 @@ class InAppServiceTest {
   void shouldSetStatusDetailWhenCreatingNotification(NotificationType notificationType) {
     service.createNotifications(TRAINEE_ID, null, notificationType, VERSION, Map.of());
 
-    ArgumentCaptor<History> historyCaptor = ArgumentCaptor.forClass(History.class);
+    ArgumentCaptor<History> historyCaptor = ArgumentCaptor.captor();
     verify(historyService).save(historyCaptor.capture());
 
     History history = historyCaptor.getValue();
