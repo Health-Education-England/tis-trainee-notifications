@@ -80,11 +80,14 @@ class ContactDetailsServiceTest {
   void shouldResendFailedEmailTypeMessagesWithDifferentEmailOnly() throws MessagingException {
     History historySameEmail = buildHistory(TRAINEE_CONTACT, EMAIL);
     History historyOtherEmail = buildHistory("different email", EMAIL);
+    History historyNullEmail = buildHistory(null, EMAIL);
     History historySameInApp = buildHistory(TRAINEE_CONTACT, IN_APP);
     History historyOtherInApp = buildHistory("different email", IN_APP);
+    History historyNullInApp = buildHistory(null, IN_APP);
 
     when(historyService.findAllFailedForTrainee(TRAINEE_ID)).thenReturn(
-        List.of(historySameEmail, historyOtherEmail, historySameInApp, historyOtherInApp));
+        List.of(historySameEmail, historyOtherEmail, historyNullEmail, historySameInApp,
+            historyOtherInApp, historyNullInApp));
 
     ContactDetails updatedContactDetails = new ContactDetails();
     updatedContactDetails.setEmail(TRAINEE_CONTACT);
@@ -93,6 +96,7 @@ class ContactDetailsServiceTest {
     service.updateContactDetails(updatedContactDetails);
 
     verify(emailService).resendMessage(historyOtherEmail, TRAINEE_CONTACT);
+    verify(emailService).resendMessage(historyNullEmail, TRAINEE_CONTACT);
     verifyNoMoreInteractions(emailService);
   }
 
@@ -122,7 +126,7 @@ class ContactDetailsServiceTest {
    * Helper function to build a standard history object with variable contact email and message
    * type.
    *
-   * @param contact The contact email to use.
+   * @param contact     The contact email to use.
    * @param messageType The message type to use.
    * @return The history object.
    */
