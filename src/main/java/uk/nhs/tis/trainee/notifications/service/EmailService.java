@@ -179,8 +179,7 @@ public class EmailService {
           toResend.template().version());
       log.info("Sending template {} to {}.", templateName, updatedEmailAddress);
       ObjectId notificationId = toResend.id();
-      Map<String, Object> resendVariables = new HashMap<>(
-          Map.copyOf(toResend.template().variables()));
+      Map<String, Object> resendVariables = new HashMap<>(toResend.template().variables());
       resendVariables.putIfAbsent("originallySentOn", toResend.sentAt());
 
       MimeMessageHelper helper = buildMessageHelper(updatedEmailAddress, templateName,
