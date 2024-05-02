@@ -197,15 +197,15 @@ class EmailServiceIntegrationTest {
 
   @ParameterizedTest
   @ValueSource(strings = {"", "123090", "873091", "555592", "647593", "033594"})
-  void shouldUseSegmentAInPlacement12WeekTemplateIfGmcNumberEmptyOrEnds0to4(String gmc)
+  void shouldUseSegmentAinPlacement12WeekTemplateIfGmcNumberEmptyOrEnds0to4(String gmc)
       throws Exception {
     //version is fixed, since a different test will inevitably be needed for later revisions
     String templateVersion = "v1.0.0";
     when(userAccountService.getUserDetails(USER_ID)).thenReturn(
         new UserDetails(true, RECIPIENT, null, "Gilliam", "Anthony", null));
 
-    service.sendMessageToExistingUser(PERSON_ID, NotificationType.PLACEMENT_UPDATED_WEEK_12, templateVersion,
-        Map.of("familyName", "Maillig", "gmcNumber", gmc), null);
+    service.sendMessageToExistingUser(PERSON_ID, NotificationType.PLACEMENT_UPDATED_WEEK_12,
+        templateVersion, Map.of("familyName", "Maillig", "gmcNumber", gmc), null);
 
     ArgumentCaptor<MimeMessage> messageCaptor = ArgumentCaptor.captor();
     verify(mailSender).send(messageCaptor.capture());
@@ -221,15 +221,15 @@ class EmailServiceIntegrationTest {
 
   @ParameterizedTest
   @ValueSource(strings = {"123095", "873096", "555597", "647598", "033599", "UNKNOWN", "na"})
-  void shouldUseSegmentBInPlacement12WeekTemplateIfGmcNumberEnds5orGreater(String gmc)
+  void shouldUseSegmentBinPlacement12WeekTemplateIfGmcNumberEnds5orGreater(String gmc)
       throws Exception {
     //version is fixed, since a different test will inevitably be needed for later revisions
     String templateVersion = "v1.0.0";
     when(userAccountService.getUserDetails(USER_ID)).thenReturn(
         new UserDetails(true, RECIPIENT, null, "Gilliam", "Anthony", null));
 
-    service.sendMessageToExistingUser(PERSON_ID, NotificationType.PLACEMENT_UPDATED_WEEK_12, templateVersion,
-        Map.of("familyName", "Maillig", "gmcNumber", gmc), null);
+    service.sendMessageToExistingUser(PERSON_ID, NotificationType.PLACEMENT_UPDATED_WEEK_12,
+        templateVersion, Map.of("familyName", "Maillig", "gmcNumber", gmc), null);
 
     ArgumentCaptor<MimeMessage> messageCaptor = ArgumentCaptor.captor();
     verify(mailSender).send(messageCaptor.capture());
