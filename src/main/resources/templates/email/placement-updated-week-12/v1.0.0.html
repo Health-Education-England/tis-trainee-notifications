@@ -13,47 +13,49 @@
   <div style="text-align:right"><img style="margin-right:25px" src='https://trainee.tis.nhs.uk/nhse-logo.png' alt="NHS England logo"/></div>
   <p th:if="${#strings.isEmpty(givenName) AND #strings.isEmpty(familyName)}">Dear Doctor,</p>
   <p th:if="${not (#strings.isEmpty(givenName) OR #strings.isEmpty(familyName))}">Dear <span th:text="${not #strings.isEmpty(title)} ? ${title} : 'Dr'"></span> <span th:text="${not #strings.isEmpty(givenName)} ? ${givenName} : _"></span> <span th:text="${not #strings.isEmpty(familyName)} ? ${familyName} : _"></span>,</p>
-  <p>GMC <th:block th:text="${not #strings.isEmpty(gmcNumber)} ? ${gmcNumber} : _">UNKNOWN</th:block><th:block th:if="${#strings.isEmpty(isValidGmc) OR not isValidGmc}"> - We don't have a confirmed GMC no. please contact your local office to update this.</th:block></p>
   <p>
-    This notification pertains to your placement in <b><th:block th:text="${not #strings.isEmpty(specialty)} ? ${specialty} : _">(speciality name missing)</th:block></b> at <b><th:block th:text="${not #strings.isEmpty(site)} ? ${site} : _">(site name missing)</th:block></b> starting on <b><th:block th:text="${startDate} ? |${#temporals.format(startDate, 'dd MMMM yyyy')}| : _">(start date missing)</th:block></b>.
+    GMC <th:block th:text="${not #strings.isEmpty(gmcNumber)} ? ${gmcNumber} : _">UNKNOWN</th:block
+    ><th:block th:if="${#strings.isEmpty(isValidGmc) OR not isValidGmc}"> - We don't have a confirmed GMC no. please contact your local office to update this.</th:block>
   </p>
   <p>
-    We appreciate this must be a busy time for you but please set some time aside to read this letter as it contains some vital information regarding your training placement.
+    For your placement starting <th:block th:text="${startDate} ? |${#temporals.format(startDate, 'dd MMMM yyyy')}| : _">(start date missing)</th:block
+    > at <th:block th:text="${not #strings.isEmpty(site)} ? ${site} : _">(site name missing)</th:block
+    > in <th:block th:text="${not #strings.isEmpty(specialty)} ? ${specialty} : _">(speciality name missing)</th:block
+    >, please see the below information. We appreciate this must be a busy time for you but please set some time aside to read this letter as it contains some vital information regarding your training placement.
   </p>
   <p>
-    The NHS England team can now confirm your placement within a programme of <b><span th:text="${not #strings.isEmpty(localOfficeName)} ? ${localOfficeName} : 'your local office'"></span></b>. Please note Healthcare Education England is now part of NHS England. Our systems will be updated in due course.
+    The NHS England team can now confirm your placement within <b><span th:text="${not #strings.isEmpty(localOfficeName)} ? ${localOfficeName} : 'your local office'"></span></b
+    >. Please note Health Education England is now part of NHS England. Our systems will be updated in due course.
   </p>
   <p>
-    Please note your allocation and grade progression if appropriate will be subject to you receiving a satisfactory ARCP outcome, and your continued registration/licence to practise with the GMC for the duration of your training.
+    Please note your allocation and grade progression (if appropriate) will be subject to you receiving a satisfactory ARCP outcome and your continued registration/licence to practise with the GMC for the duration of your training.
   </p>
   <p><b>Accessing TIS Self-Service (TSS)</b></p>
   <th:block th:switch="${isRegistered}"
-  ><p th:case="true">
-    We have a registered account for you on TIS Self-Service against the email address <b><span th:text="${email}"></span></b>. To access your upcoming placement details please log in to <a href="https://trainee.tis.nhs.uk/">TIS Self-Service</a>.
-  </p>
-  <p th:case="false">
-    We have no TIS Self-Service account associated with your records. Please create one by clicking the link below.
-    Please ensure you use the email address we have against our records, which is: <b><span th:text="${email}"></span></b>.<br/><br/>
-    <a href="https://trainee.tis.nhs.uk/">TIS Self-Service</a>
-  </p>
+    ><p th:case="true">
+      We have a registered account for you on TIS Self-Service against the email address <b><span th:text="${email}"></span></b>. To access your upcoming placement details please log in to <a href="https://trainee.tis.nhs.uk/">TIS Self-Service</a>.
+    </p>
+    <p th:case="false">
+      We have no TIS Self-Service account associated with your records. Please create one by clicking the link below. Please ensure you use the email address we have against our records, which is: <b><span th:text="${email}"></span></b>.<br/><br/>
+      <a href="https://trainee.tis.nhs.uk/">TIS Self-Service</a>
+    </p>
   </th:block>
   <p>
-    If your email address is likely to change, or you need support signing up on TIS Self-Service then please ensure that you contact via <th:block th:switch="${contactHref}"
-  ><span th:case="url"><a th:href="${localOfficeContact}"><span th:text="${localOfficeContact}"></span></a></span
-  ><span th:case="email"><a th:href="'mailto:' + ${localOfficeContact}"><span th:text="${localOfficeContact}"></span></a></span
-  ><span th:case="*"><span th:text="${localOfficeContact}"></span></span
-  ></th:block> or see our <a href="https://tis-support.hee.nhs.uk/trainees/changes-to-account/">FAQ</a> for details.
+    If your email address is likely to change, or you need support creating an account on TIS Self-Service then please contact us via <th:block th:switch="${contactHref}"
+    ><span th:case="url"><a th:href="${localOfficeContact}"><span th:text="${localOfficeContact}"></span></a></span
+    ><span th:case="email"><a th:href="'mailto:' + ${localOfficeContact}"><span th:text="${localOfficeContact}"></span></a></span
+    ><span th:case="*"><span th:text="${localOfficeContact}"></span></span
+    ></th:block> or see our <a href="https://tis-support.hee.nhs.uk/trainees/changes-to-account/">FAQ</a> for details.
   </p>
   <p>
-    The placement information reflects what we have recorded on our Training Information System (TIS) as your next placement- <b>please bear in mind that the end date may not be when you finish your rotation, but instead be a change in Grade, WTE or Post number on our system.</b>
+    The placement information reflects what we have recorded on our Training Information System (TIS) as your next placement. Please be aware that when your Grade, Whole Time Equivalent (WTE) or Post Number changes, on TIS, a new placement will be created reflecting these changes.
   </p>
   <p>
-    Further details on the specialist area of your placement will be confirmed by your employing organisation. This is because we are only able to confirm details that relate specifically to your college recognised curriculum.
+    Further details on the specialist area of your placement will be confirmed by your employing organisation. This is because we are only able to confirm details that relate specifically to your college recognised curriculum. For example, if you have given your Training Programme Director a preference of a job in a specific location or department, we will not record this level of detail on TIS.
   </p>
   <p>
-    An example of this would be if you have a preference for a specific post within your Training Programme that does not relate to sub-specialty training. This may be a job in a specific location or department. Please confirm this with your Training Programme Director.
+    <b>We are currently piloting the Placement confirmation service. You may come across a series of questions about this within the TIS Self-Service app. We appreciate your feedback to help us improve the process and make it easy for you to access the necessary information.</b>
   </p>
-  <p><b>We are currently piloting the Placement confirmation service. You may come across a series of questions about this within the TIS Self-Service app. We appreciate your feedback to help us improve the process and make it easy for you to access the necessary information.</b></p>
   <p>
     Kind Regards,
   </p>
@@ -67,6 +69,21 @@
     NHS England
   </p>
   <div th:replace="fragments/disclaimer/v1.0.0 :: body"></div>
+  <hr>
+  <div>
+    <th:block th:switch="${#abSegment}"
+      ><p th:case="a">
+        Did you find this Placement email useful? <a th:href="'form_url_question_a_response_positive' + ${hashedEmail} + '&submit=Submit'"
+        ><img src='https://trainee.tis.nhs.uk/thumbs-up.png' alt="thumbs up"/></a>&nbsp;<a th:href="'form_url_question_a_response_negative' + ${hashedEmail} + '&submit=Submit'"
+        ><img src='https://trainee.tis.nhs.uk/thumbs-down.png' alt="thumbs down"/></a>.
+      </p>
+      <p th:case="b">
+        Was the information in this Placement email correct? <a th:href="'form_url_question_b_response_positive' + ${hashedEmail} + '&submit=Submit'"
+        ><img src='https://trainee.tis.nhs.uk/thumbs-up.png' alt="thumbs up"/></a>&nbsp;<a th:href="'form_url_question_b_response_negative' + ${hashedEmail} + '&submit=Submit'"
+        ><img src='https://trainee.tis.nhs.uk/thumbs-down.png' alt="thumbs down"/></a>.
+      </p>
+    </th:block>
+  </div>
 </th:block>
 </body>
 </html>
