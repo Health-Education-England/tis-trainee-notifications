@@ -283,8 +283,8 @@ public class PlacementService {
    * @param notificationsAlreadySent Previously sent notifications.
    * @param notificationType         The type of notification being sent.
    * @param notificationVersion      The version of the notification.
-   * @param extraVariables           Extra variables to include with the template, Programme Name
-   *                                 and Start Date are populated automatically.
+   * @param extraVariables           Extra variables to include with the template, Specialty,
+   *                                 Site Known As and Start Date are populated automatically.
    */
   private void createUniqueInAppNotification(Placement placement,
       Map<NotificationType, Instant> notificationsAlreadySent, NotificationType notificationType,

@@ -40,16 +40,17 @@ import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.UNREAD;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PLACEMENT_INFORMATION;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PLACEMENT_UPDATED_WEEK_12;
 import static uk.nhs.tis.trainee.notifications.model.TisReferenceType.PLACEMENT;
+import static uk.nhs.tis.trainee.notifications.model.TisReferenceType.PROGRAMME_MEMBERSHIP;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.CONTACT_TYPE_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.PERSON_ID_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.TEMPLATE_OWNER_FIELD;
+import static uk.nhs.tis.trainee.notifications.service.PlacementService.LOCAL_OFFICE_CONTACT_FIELD;
+import static uk.nhs.tis.trainee.notifications.service.PlacementService.LOCAL_OFFICE_CONTACT_TYPE_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.PlacementService.PLACEMENT_SITE_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.PlacementService.PLACEMENT_SPECIALTY_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.PlacementService.PLACEMENT_TYPE_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.PlacementService.START_DATE_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.PlacementService.TIS_ID_FIELD;
-import static uk.nhs.tis.trainee.notifications.service.PlacementService.LOCAL_OFFICE_CONTACT_FIELD;
-import static uk.nhs.tis.trainee.notifications.service.PlacementService.LOCAL_OFFICE_CONTACT_TYPE_FIELD;
 
 import java.time.Instant;
 import java.time.LocalDate;
@@ -492,7 +493,7 @@ class PlacementServiceTest {
       PLACEMENT_INFORMATION | v1.2.3 | true
       PLACEMENT_INFORMATION | v1.2.3 | false""")
   void shouldAddInAppNotificationsWhenNotExcludedAndMeetsCriteria(NotificationType notificationType,
-                                                                  String notificationVersion, boolean notifiable) throws SchedulerException {
+      String notificationVersion, boolean notifiable) throws SchedulerException {
     Placement placement = new Placement();
     placement.setTisId(TIS_ID);
     placement.setPersonId(PERSON_ID);
@@ -550,7 +551,7 @@ class PlacementServiceTest {
     placement.setSpecialty(SPECIALTY);
     placement.setSite(SITE);
 
-    when(notificationService.meetsCriteria(placement,true)).thenReturn(true);
+    when(notificationService.meetsCriteria(placement, true)).thenReturn(true);
 
     List<Map<String, String>> contactList = List.of(
         Map.of(CONTACT_TYPE_FIELD, LocalOfficeContactType.TSS_SUPPORT.getContactTypeName()));
@@ -598,7 +599,8 @@ class PlacementServiceTest {
   }
 
   @ParameterizedTest
-  @EnumSource(value = NotificationType.class, mode = EnumSource.Mode.INCLUDE, names = {"PLACEMENT_INFORMATION"})
+  @EnumSource(value = NotificationType.class, mode = EnumSource.Mode.INCLUDE,
+      names = {"PLACEMENT_INFORMATION"})
   void shouldNotAddInAppNotificationsWhenNotUnique(NotificationType notificationType)
       throws SchedulerException {
     Placement placement = new Placement();
@@ -625,5 +627,36 @@ class PlacementServiceTest {
 
     verify(inAppService, never()).createNotifications(any(), any(), eq(notificationType), any(),
         any());
+  }
+
+  @ParameterizedTest
+  @EnumSource(value = NotificationType.class, mode = EnumSource.Mode.INCLUDE,
+      names = {"PLACEMENT_INFORMATION"})
+  void shouldAddInAppNotificationsWhenUnique(NotificationType notificationType)
+      throws SchedulerException {
+    Placement placement = new Placement();
+    placement.setTisId(TIS_ID);
+    placement.setPersonId(PERSON_ID);
+    placement.setStartDate(START_DATE);
+    placement.setOwner(OWNER);
+    placement.setPlacementType(IN_POST);
+    placement.setSpecialty(SPECIALTY);
+    placement.setSite(SITE);
+
+    List<HistoryDto> sentNotifications = List.of(
+        new HistoryDto("id", new TisReferenceInfo(PROGRAMME_MEMBERSHIP, TIS_ID), MessageType.IN_APP,
+            notificationType, null, null, Instant.MIN, Instant.MAX, UNREAD, null));
+
+    when(historyService.findAllForTrainee(PERSON_ID)).thenReturn(sentNotifications);
+    when(notificationService.meetsCriteria(placement, true)).thenReturn(true);
+    when(notificationService.placementIsNotifiable(placement, MessageType.IN_APP)).
+        thenReturn(true);
+    when(notificationService.getOwnerContact(any(), any(), any())).thenReturn("");
+    when(notificationService.getHrefTypeForContact(any())).thenReturn("");
+
+    service.addNotifications(placement);
+
+    verify(inAppService).createNotifications(any(), any(), eq(notificationType), any(), any(),
+        eq(false));
   }
 }
