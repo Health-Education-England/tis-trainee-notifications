@@ -218,10 +218,7 @@ public class EmailService {
 
     // Add the application domain for any templates with hyperlinks.
     templateVariables.putIfAbsent("domain", appDomain);
-    String hashedEmail = createMd5Hash(recipient);
-    templateVariables.putIfAbsent("hashedEmail", hashedEmail);
-    templateVariables.putIfAbsent("abSegment",
-        hashedEmail.substring(0, 1).compareTo("7") > 0 ? "b" : "a");
+    templateVariables.putIfAbsent("hashedEmail", createMd5Hash(recipient));
 
     Context templateContext = templateService.buildContext(templateVariables);
     final String subject = templateService.process(templateName, Set.of("subject"),
