@@ -39,6 +39,7 @@ import org.jsoup.nodes.Element;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
@@ -192,6 +193,54 @@ class EmailServiceIntegrationTest {
       assertThat("Unexpected element tag.", greeting.tagName(), is("p"));
       assertThat("Unexpected greeting.", greeting.text(), is("Dear Dr Maillig,"));
     }
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"", "123090", "873091", "555592", "647593", "033594"})
+  void shouldUseSegmentAinPlacement12WeekTemplateIfGmcNumberEmptyOrEnds0to4(String gmc)
+      throws Exception {
+    //version is fixed, since a different test will inevitably be needed for later revisions
+    String templateVersion = "v1.0.0";
+    when(userAccountService.getUserDetails(USER_ID)).thenReturn(
+        new UserDetails(true, RECIPIENT, null, "Gilliam", "Anthony", null));
+
+    service.sendMessageToExistingUser(PERSON_ID, NotificationType.PLACEMENT_UPDATED_WEEK_12,
+        templateVersion, Map.of("familyName", "Maillig", "gmcNumber", gmc), null);
+
+    ArgumentCaptor<MimeMessage> messageCaptor = ArgumentCaptor.captor();
+    verify(mailSender).send(messageCaptor.capture());
+
+    MimeMessage message = messageCaptor.getValue();
+    Document content = Jsoup.parse((String) message.getContent());
+    Element body = content.body();
+
+    Element survey = body.children().get(18);
+    assertThat("Unexpected survey segment.",
+        survey.text().contains("Did you find this email useful?"), is(true));
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"123095", "873096", "555597", "647598", "033599", "UNKNOWN", "na"})
+  void shouldUseSegmentBinPlacement12WeekTemplateIfGmcNumberEnds5orGreater(String gmc)
+      throws Exception {
+    //version is fixed, since a different test will inevitably be needed for later revisions
+    String templateVersion = "v1.0.0";
+    when(userAccountService.getUserDetails(USER_ID)).thenReturn(
+        new UserDetails(true, RECIPIENT, null, "Gilliam", "Anthony", null));
+
+    service.sendMessageToExistingUser(PERSON_ID, NotificationType.PLACEMENT_UPDATED_WEEK_12,
+        templateVersion, Map.of("familyName", "Maillig", "gmcNumber", gmc), null);
+
+    ArgumentCaptor<MimeMessage> messageCaptor = ArgumentCaptor.captor();
+    verify(mailSender).send(messageCaptor.capture());
+
+    MimeMessage message = messageCaptor.getValue();
+    Document content = Jsoup.parse((String) message.getContent());
+    Element body = content.body();
+
+    Element survey = body.children().get(18);
+    assertThat("Unexpected survey segment.",
+        survey.text().contains("Did you find this email useful?"), is(false));
   }
 
   int getGreetingElementIndex(NotificationType notificationType) {
