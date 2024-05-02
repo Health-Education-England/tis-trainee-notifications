@@ -36,6 +36,7 @@ import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.SENT;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PLACEMENT_UPDATED_WEEK_12;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.PERSON_ID_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.TEMPLATE_OWNER_FIELD;
+import static uk.nhs.tis.trainee.notifications.service.PlacementService.PLACEMENT_SITE_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.PlacementService.PLACEMENT_TYPE_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.PlacementService.START_DATE_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.PlacementService.TIS_ID_FIELD;
@@ -75,6 +76,7 @@ class PlacementServiceTest {
   private static final String OWNER = "North West";
   private static final String OWNER_CONTACT = "north.west@nhs.net";
   private static final String PERSON_ID = "abc";
+  private static final String SITE = "site known as";
   private static final LocalDate START_DATE = LocalDate.now().plusYears(1);
   //set a year in the future to allow all notifications to be scheduled
 
@@ -210,6 +212,7 @@ class PlacementServiceTest {
     placement.setStartDate(START_DATE);
     placement.setOwner(OWNER);
     placement.setPlacementType(IN_POST);
+    placement.setSite(SITE);
 
     NotificationType milestone = PLACEMENT_UPDATED_WEEK_12;
     LocalDate expectedDate = START_DATE
@@ -246,6 +249,8 @@ class PlacementServiceTest {
         is(IN_POST));
     assertThat("Unexpected placement owner.", jobDataMap.get(TEMPLATE_OWNER_FIELD),
         is(OWNER));
+    assertThat("Unexpected placement site.", jobDataMap.get(PLACEMENT_SITE_FIELD),
+        is(SITE));
 
     Date when = dateCaptor.getValue();
     assertThat("Unexpected start time", when, is(expectedWhen));
