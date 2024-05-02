@@ -428,6 +428,7 @@ class EmailServiceTest {
     String templateVersion = "v1.2.3";
     Map<String, Object> variables = new HashMap<>();
     variables.put("key1", "value1");
+    variables.put("key2", null);
     TemplateInfo templateInfo = new TemplateInfo(notificationType.getTemplateName(),
         templateVersion, variables);
     TisReferenceInfo tisReferenceInfo = new TisReferenceInfo(REFERENCE_TABLE, REFERENCE_KEY);
@@ -466,8 +467,9 @@ class EmailServiceTest {
     assertThat("Unexpected template version.", savedTemplateInfo.version(), is(templateVersion));
 
     Map<String, Object> storedVariables = templateInfo.variables();
-    assertThat("Unexpected template variable count.", storedVariables.size(), is(1));
+    assertThat("Unexpected template variable count.", storedVariables.size(), is(2));
     assertThat("Unexpected template variable.", storedVariables.get("key1"), is("value1"));
+    assertThat("Unexpected template variable.", storedVariables.get("key2"), nullValue());
   }
 
   @ParameterizedTest
