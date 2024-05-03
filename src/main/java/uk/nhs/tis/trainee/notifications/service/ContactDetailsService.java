@@ -36,8 +36,8 @@ import uk.nhs.tis.trainee.notifications.model.MessageType;
 @Service
 public class ContactDetailsService {
 
-  private HistoryService historyService;
-  private EmailService emailService;
+  private final HistoryService historyService;
+  private final EmailService emailService;
 
   public ContactDetailsService(HistoryService historyService, EmailService emailService) {
     this.historyService = historyService;
@@ -50,15 +50,22 @@ public class ContactDetailsService {
    * @param contactDetails The updated contact details.
    */
   public void updateContactDetails(ContactDetails contactDetails) {
+    String traineeId = contactDetails.getTisId();
+    if (contactDetails.getEmail() == null) {
+      log.info("The latest email for trainee {} is null, contact details will not be updated.",
+          traineeId);
+      return;
+    }
+
     List<History> failedMessages
-        = historyService.findAllFailedForTrainee(contactDetails.getTisId());
+        = historyService.findAllFailedForTrainee(traineeId);
     List<History> onesToResend = failedMessages.stream()
         .filter(h -> h.recipient().type() == MessageType.EMAIL)
         .filter(h -> h.recipient().contact() == null || !h.recipient().contact()
             .equalsIgnoreCase(contactDetails.getEmail()))
         .toList();
     log.info("There are {} failed emails to retry for trainee {} with updated email address",
-        onesToResend.size(), contactDetails.getTisId());
+        onesToResend.size(), traineeId);
     onesToResend.forEach(failed -> {
       log.info("Resending failed message {} (originally sent to trainee {} using address {}) "
               + "to updated address {}", failed.id(), failed.recipient().id(),

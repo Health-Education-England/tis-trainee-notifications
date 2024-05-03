@@ -28,6 +28,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 import static uk.nhs.tis.trainee.notifications.model.MessageType.EMAIL;
@@ -74,6 +75,15 @@ class ContactDetailsServiceTest {
     emailService = mock(EmailService.class);
     notificationService = mock(NotificationService.class);
     service = new ContactDetailsService(historyService, emailService);
+  }
+
+  @Test
+  void shouldNotResendFailedEmailsWhenLatestEmailIsNull() {
+    ContactDetails updatedContactDetails = new ContactDetails();
+    updatedContactDetails.setTisId(TRAINEE_ID);
+    service.updateContactDetails(updatedContactDetails);
+
+    verifyNoInteractions(emailService);
   }
 
   @Test
