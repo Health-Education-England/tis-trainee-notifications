@@ -214,7 +214,7 @@ class EmailServiceIntegrationTest {
     Document content = Jsoup.parse((String) message.getContent());
     Element body = content.body();
 
-    Element survey = body.children().get(18);
+    Element survey = body.children().get(19);
     assertThat("Unexpected survey segment.",
         survey.text().contains("Did you find this email useful?"), is(true));
   }
@@ -238,7 +238,7 @@ class EmailServiceIntegrationTest {
     Document content = Jsoup.parse((String) message.getContent());
     Element body = content.body();
 
-    Element survey = body.children().get(18);
+    Element survey = body.children().get(19);
     assertThat("Unexpected survey segment.",
         survey.text().contains("Did you find this email useful?"), is(false));
   }
