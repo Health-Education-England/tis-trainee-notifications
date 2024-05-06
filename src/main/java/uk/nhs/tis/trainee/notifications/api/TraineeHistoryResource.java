@@ -79,7 +79,7 @@ public class TraineeHistoryResource {
     }
 
     log.info("Retrieving notification history for trainee {}.", traineeId);
-    List<HistoryDto> history = service.findAllForTrainee(traineeId);
+    List<HistoryDto> history = service.findAllSentForTrainee(traineeId);
     log.info("Found {} notifications for trainee {}.", history.size(), traineeId);
     return ResponseEntity.ok(history);
   }

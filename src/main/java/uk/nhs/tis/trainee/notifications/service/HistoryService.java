@@ -29,6 +29,7 @@ import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.READ;
 import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.SENT;
 import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.UNREAD;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -162,6 +163,21 @@ public class HistoryService {
     List<History> history = repository.findAllByRecipient_IdOrderBySentAtDesc(traineeId);
 
     return history.stream()
+        .map(this::toDto)
+        .toList();
+  }
+
+  /**
+   * Find all sent historic notifications for the given Trainee.
+   *
+   * @param traineeId The ID of the trainee to get notifications for.
+   * @return The found notifications, empty if none found.
+   */
+  public List<HistoryDto> findAllSentForTrainee(String traineeId) {
+    List<History> history = repository.findAllByRecipient_IdOrderBySentAtDesc(traineeId);
+
+    return history.stream()
+        .filter(h -> Instant.now().isAfter(h.sentAt()))
         .map(this::toDto)
         .toList();
   }

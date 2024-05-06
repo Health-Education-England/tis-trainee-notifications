@@ -56,23 +56,40 @@ public class InAppService {
    * @param templateVersion   The version of the template to use.
    * @param templateVariables The variables to insert in to the template.
    * @param doNotStoreJustLog Do not store the notification, just log it.
+   * @param sendAt            The date and time the notification is displayed / to be displayed.
    */
   public void createNotifications(String traineeId, TisReferenceInfo tisReference,
       NotificationType notificationType, String templateVersion,
-      Map<String, Object> templateVariables, boolean doNotStoreJustLog) {
+      Map<String, Object> templateVariables, boolean doNotStoreJustLog, Instant sendAt) {
     log.info("Creating in-app {} notification for trainee {}.", notificationType, traineeId);
     RecipientInfo recipient = new RecipientInfo(traineeId, IN_APP, null);
     TemplateInfo template = new TemplateInfo(notificationType.getTemplateName(), templateVersion,
         templateVariables);
 
     History history = new History(null, tisReference, notificationType, recipient, template,
-        Instant.now(),
-        null, UNREAD, null, null);
+        sendAt, null, UNREAD, null, null);
     if (!doNotStoreJustLog) {
       historyService.save(history);
     } else {
       log.info("Just logging in-app notification with contents: {}", history);
     }
+  }
+
+  /**
+   * Create an in-app notification, or simply log it.
+   *
+   * @param traineeId         The trainee ID to associate the notification with.
+   * @param tisReference      The TIS reference of the associated object.
+   * @param notificationType  The type of notification.
+   * @param templateVersion   The version of the template to use.
+   * @param templateVariables The variables to insert in to the template.
+   * @param doNotStoreJustLog Do not store the notification, just log it.
+   */
+  public void createNotifications(String traineeId, TisReferenceInfo tisReference,
+                                  NotificationType notificationType, String templateVersion,
+                                  Map<String, Object> templateVariables, boolean doNotStoreJustLog) {
+    createNotifications(traineeId, tisReference, notificationType, templateVersion,
+        templateVariables, doNotStoreJustLog, Instant.now());
   }
 
   /**
@@ -88,6 +105,6 @@ public class InAppService {
       NotificationType notificationType, String templateVersion,
       Map<String, Object> templateVariables) {
     createNotifications(traineeId, tisReference, notificationType, templateVersion,
-        templateVariables, false);
+        templateVariables, false, Instant.now());
   }
 }

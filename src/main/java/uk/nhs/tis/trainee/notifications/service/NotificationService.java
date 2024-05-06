@@ -329,6 +329,27 @@ public class NotificationService implements Job {
   }
 
   /**
+   * Get a display date for an in-app notification from the start date and day offset.
+   *
+   * @param startDate       The starting date.
+   * @param daysBeforeStart The number of days prior to the start date.
+   * @return The in-app notification display date and time.
+   */
+  public Instant calculateInAppDisplayDate(LocalDate startDate, int daysBeforeStart) {
+    LocalDate milestoneDate = startDate.minusDays(daysBeforeStart);
+    if (!milestoneDate.isAfter(LocalDate.now())) {
+      // 'Missed' milestones: display immediately
+      return Instant.now();
+    } else {
+      // Future milestone.
+      return milestoneDate
+          .atStartOfDay()
+          .atZone(ZoneId.systemDefault())
+          .toInstant();
+    }
+  }
+
+  /**
    * Map the user details from Cognito and trainee-profile. (Map gmcNumber from the Trainee Details
    * profile, map email and familyName from Cognito if they have signed-up to TIS Self-Service, or
    * from the Trainee Details profile if not)

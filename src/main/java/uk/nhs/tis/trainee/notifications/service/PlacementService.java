@@ -34,9 +34,11 @@ import java.time.ZoneId;
 import java.util.Date;
 import java.util.EnumMap;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
 import org.quartz.JobDataMap;
 import org.quartz.SchedulerException;
@@ -130,16 +132,22 @@ public class PlacementService {
     EnumMap<NotificationType, Instant> notifications = new EnumMap<>(NotificationType.class);
     List<HistoryDto> correspondence = historyService.findAllForTrainee(traineeId);
 
-    Optional<HistoryDto> sentItem = correspondence.stream()
-        .filter(c -> c.tisReference() != null)
-        .filter(c ->
-            c.tisReference().type().equals(TisReferenceType.PLACEMENT)
-                && c.subject().equals(PLACEMENT_UPDATED_WEEK_12)
-                && c.tisReference().id().equals(placementId))
-        .findFirst();
-    sentItem.ifPresent(
-        historyDto -> notifications.put(PLACEMENT_UPDATED_WEEK_12, historyDto.sentAt()));
+    Set<NotificationType> notificationTypes = new HashSet<>(
+        NotificationType.getProgrammeUpdateNotificationTypes());
+    notificationTypes.add(PLACEMENT_UPDATED_WEEK_12);
+    notificationTypes.add(PLACEMENT_INFORMATION);
 
+    for (NotificationType milestone : notificationTypes) {
+      Optional<HistoryDto> sentItem = correspondence.stream()
+          .filter(c -> c.tisReference() != null)
+          .filter(c ->
+              c.tisReference().type().equals(TisReferenceType.PLACEMENT)
+                  && c.subject().equals(milestone)
+                  && c.tisReference().id().equals(placementId))
+          .findFirst();
+      sentItem.ifPresent(
+          historyDto -> notifications.put(milestone, historyDto.sentAt()));
+    }
     return notifications;
   }
 
@@ -186,7 +194,8 @@ public class PlacementService {
    *     placement update notification type.
    */
   public Integer getNotificationDaysBeforeStart(NotificationType notificationType) {
-    if (notificationType.equals(PLACEMENT_UPDATED_WEEK_12)) {
+    if (notificationType.equals(PLACEMENT_UPDATED_WEEK_12)
+        || notificationType.equals(PLACEMENT_INFORMATION)) {
       return 84;
     } else {
       return null;
@@ -301,8 +310,12 @@ public class PlacementService {
       History.TisReferenceInfo tisReference =
           new History.TisReferenceInfo(TisReferenceType.PLACEMENT, placement.getTisId());
 
+      Integer daysBeforeStart = getNotificationDaysBeforeStart(notificationType);
+      Instant sentAt = notificationService.
+          calculateInAppDisplayDate(placement.getStartDate(), daysBeforeStart);
+
       inAppService.createNotifications(placement.getPersonId(), tisReference,
-          notificationType, notificationVersion, variables, doNotSendJustLog);
+          notificationType, notificationVersion, variables, doNotSendJustLog, sentAt);
     }
   }
 }
