@@ -311,8 +311,8 @@ public class PlacementService {
           new History.TisReferenceInfo(TisReferenceType.PLACEMENT, placement.getTisId());
 
       Integer daysBeforeStart = getNotificationDaysBeforeStart(notificationType);
-      Instant sentAt = notificationService.
-          calculateInAppDisplayDate(placement.getStartDate(), daysBeforeStart);
+      Instant sentAt = notificationService
+          .calculateInAppDisplayDate(placement.getStartDate(), daysBeforeStart);
 
       inAppService.createNotifications(placement.getPersonId(), tisReference,
           notificationType, notificationVersion, variables, doNotSendJustLog, sentAt);

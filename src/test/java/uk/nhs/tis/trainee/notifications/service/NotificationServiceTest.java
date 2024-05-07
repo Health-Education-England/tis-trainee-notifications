@@ -718,6 +718,31 @@ class NotificationServiceTest {
   }
 
   @Test
+  void shouldDisplayMissedInAppMilestonesImmediately() {
+    Instant expectedMilestone = Instant.now();
+
+    Instant scheduledDate = service.calculateInAppDisplayDate(LocalDate.MIN, 0);
+
+    assertThat("Unexpected display date", scheduledDate.truncatedTo(ChronoUnit.MINUTES),
+        is(expectedMilestone.truncatedTo(ChronoUnit.MINUTES)));
+  }
+
+  @Test
+  void shouldDisplayFutureInAppMilestonesAtStartOfCorrectDay() {
+    LocalDate startDate = LocalDate.now().plusMonths(12);
+    int daysBeforeStart = 100;
+    LocalDate milestoneDate = startDate.minusDays(daysBeforeStart);
+    Instant expectedMilestone = milestoneDate
+        .atStartOfDay()
+        .atZone(ZoneId.systemDefault())
+        .toInstant();
+
+    Instant scheduledDate = service.calculateInAppDisplayDate(startDate, daysBeforeStart);
+
+    assertThat("Unexpected display date", scheduledDate, is(expectedMilestone));
+  }
+
+  @Test
   void shouldMeetPmCriteriaWhenIsNewStarterAndIsInPilot() {
     ProgrammeMembership programmeMembership = new ProgrammeMembership();
     programmeMembership.setTisId(TIS_ID);
@@ -920,9 +945,9 @@ class NotificationServiceTest {
 
     when(messagingControllerService.isValidRecipient(PERSON_ID, messageType)).thenReturn(true);
 
-    boolean isNotifiablePlacement = service.placementIsNotifiable(placement, messageType);
+    boolean isNotifiablePm = service.placementIsNotifiable(placement, messageType);
 
-    assertThat("Unexpected placement is notifiable value.", isNotifiablePlacement, is(true));
+    assertThat("Unexpected placement is notifiable value.", isNotifiablePm, is(true));
   }
 
   @ParameterizedTest
@@ -934,9 +959,9 @@ class NotificationServiceTest {
 
     when(messagingControllerService.isValidRecipient(PERSON_ID, messageType)).thenReturn(false);
 
-    boolean isNotifiablePlacement = service.placementIsNotifiable(placement, messageType);
+    boolean isNotifiablePm = service.placementIsNotifiable(placement, messageType);
 
-    assertThat("Unexpected placement is notifiable value.", isNotifiablePlacement, is(false));
+    assertThat("Unexpected placement is notifiable value.", isNotifiablePm, is(false));
   }
 
   @Test

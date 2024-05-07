@@ -209,4 +209,18 @@ class InAppServiceTest {
     History history = historyCaptor.getValue();
     assertThat("Unexpected status detail.", history.statusDetail(), nullValue());
   }
+
+  @ParameterizedTest
+  @EnumSource(NotificationType.class)
+  void shouldSetSentAtTimeWhenCreatingNotification(NotificationType notificationType) {
+    Instant timeNow = Instant.now();
+    service.createNotifications(TRAINEE_ID, null, notificationType, VERSION, Map.of(),
+        false, timeNow);
+
+    ArgumentCaptor<History> historyCaptor = ArgumentCaptor.captor();
+    verify(historyService).save(historyCaptor.capture());
+
+    History history = historyCaptor.getValue();
+    assertThat("Unexpected sent at.", history.sentAt(), is(timeNow));
+  }
 }

@@ -228,7 +228,7 @@ class PlacementServiceTest {
   }
 
   @Test
-  void shouldAddNotificationsIfNotExcluded() throws SchedulerException {
+  void shouldAddEmailNotificationsIfNotExcluded() throws SchedulerException {
     Placement placement = new Placement();
     placement.setTisId(TIS_ID);
     placement.setPersonId(PERSON_ID);
@@ -503,11 +503,18 @@ class PlacementServiceTest {
     placement.setSpecialty(SPECIALTY);
     placement.setSite(SITE);
 
+    Instant expectedDisplayInstant =  START_DATE.minusDays(84)
+        .atStartOfDay()
+        .atZone(ZoneId.systemDefault())
+        .toInstant();
+
     when(notificationService.meetsCriteria(placement, true)).thenReturn(true);
-    when(notificationService.placementIsNotifiable(placement, MessageType.IN_APP)).
-        thenReturn(notifiable);
+    when(notificationService.placementIsNotifiable(placement, MessageType.IN_APP))
+        .thenReturn(notifiable);
     when(notificationService.getOwnerContact(any(), any(), any())).thenReturn("");
     when(notificationService.getHrefTypeForContact(any())).thenReturn("");
+    when(notificationService.calculateInAppDisplayDate(START_DATE, 84))
+        .thenReturn(expectedDisplayInstant);
 
     service.addNotifications(placement);
 
@@ -517,7 +524,7 @@ class PlacementServiceTest {
     ArgumentCaptor<Boolean> doNotStoreJustLogCaptor = ArgumentCaptor.forClass(Boolean.class);
     verify(inAppService).createNotifications(eq(PERSON_ID), referenceInfoCaptor.capture(),
         eq(notificationType), eq(notificationVersion), variablesCaptor.capture(),
-        doNotStoreJustLogCaptor.capture());
+        doNotStoreJustLogCaptor.capture(), eq(expectedDisplayInstant));
 
     TisReferenceInfo referenceInfo = referenceInfoCaptor.getValue();
     assertThat("Unexpected reference type.", referenceInfo.type(), is(PLACEMENT));
@@ -565,7 +572,7 @@ class PlacementServiceTest {
 
     ArgumentCaptor<Map<String, Object>> variablesCaptor = ArgumentCaptor.forClass(Map.class);
     verify(inAppService).createNotifications(eq(PERSON_ID), any(), eq(PLACEMENT_INFORMATION),
-        eq(PLACEMENT_INFO_VERSION), variablesCaptor.capture(), anyBoolean());
+        eq(PLACEMENT_INFO_VERSION), variablesCaptor.capture(), anyBoolean(), any());
 
     Map<String, Object> variables = variablesCaptor.getValue();
     assertThat("Unexpected variable count.", variables.size(), is(5));
@@ -618,15 +625,15 @@ class PlacementServiceTest {
 
     when(historyService.findAllForTrainee(PERSON_ID)).thenReturn(sentNotifications);
     when(notificationService.meetsCriteria(placement, true)).thenReturn(true);
-    when(notificationService.placementIsNotifiable(placement, MessageType.IN_APP)).
-        thenReturn(true);
+    when(notificationService.placementIsNotifiable(placement, MessageType.IN_APP))
+        .thenReturn(true);
     when(notificationService.getOwnerContact(any(), any(), any())).thenReturn("");
     when(notificationService.getHrefTypeForContact(any())).thenReturn("");
 
     service.addNotifications(placement);
 
     verify(inAppService, never()).createNotifications(any(), any(), eq(notificationType), any(),
-        any());
+        any(), anyBoolean(), any());
   }
 
   @ParameterizedTest
@@ -649,14 +656,14 @@ class PlacementServiceTest {
 
     when(historyService.findAllForTrainee(PERSON_ID)).thenReturn(sentNotifications);
     when(notificationService.meetsCriteria(placement, true)).thenReturn(true);
-    when(notificationService.placementIsNotifiable(placement, MessageType.IN_APP)).
-        thenReturn(true);
+    when(notificationService.placementIsNotifiable(placement, MessageType.IN_APP))
+        .thenReturn(true);
     when(notificationService.getOwnerContact(any(), any(), any())).thenReturn("");
     when(notificationService.getHrefTypeForContact(any())).thenReturn("");
 
     service.addNotifications(placement);
 
     verify(inAppService).createNotifications(any(), any(), eq(notificationType), any(), any(),
-        eq(false));
+        eq(false), any());
   }
 }

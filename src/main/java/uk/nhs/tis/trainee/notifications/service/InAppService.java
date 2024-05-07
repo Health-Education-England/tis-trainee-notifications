@@ -86,8 +86,8 @@ public class InAppService {
    * @param doNotStoreJustLog Do not store the notification, just log it.
    */
   public void createNotifications(String traineeId, TisReferenceInfo tisReference,
-                                  NotificationType notificationType, String templateVersion,
-                                  Map<String, Object> templateVariables, boolean doNotStoreJustLog) {
+      NotificationType notificationType, String templateVersion,
+      Map<String, Object> templateVariables, boolean doNotStoreJustLog) {
     createNotifications(traineeId, tisReference, notificationType, templateVersion,
         templateVariables, doNotStoreJustLog, Instant.now());
   }
