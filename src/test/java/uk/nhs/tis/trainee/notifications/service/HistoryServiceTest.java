@@ -460,7 +460,7 @@ class HistoryServiceTest {
         templateInfo, Instant.MAX, Instant.MIN, SENT, null, null);
 
     when(repository.findAllByRecipient_IdOrderBySentAtDesc(TRAINEE_ID)).thenReturn(
-        List.of(history1, history2, history3));
+        List.of(history3, history2, history1));
 
     when(templateService.process(any(), any(), anyMap())).thenReturn("");
 
@@ -468,20 +468,7 @@ class HistoryServiceTest {
 
     assertThat("Unexpected history count.", historyDtos.size(), is(2));
 
-    HistoryDto historyDto1 = historyDtos.get(0);
-    assertThat("Unexpected history id.", historyDto1.id(), is(id1.toString()));
-    TisReferenceInfo referenceInfo = historyDtos.get(0).tisReference();
-    assertThat("Unexpected history TIS reference type.", referenceInfo.type(),
-        is(TIS_REFERENCE_TYPE));
-    assertThat("Unexpected history TIS reference id.", referenceInfo.id(),
-        is(TIS_REFERENCE_ID));
-    assertThat("Unexpected history type.", historyDto1.type(), is(messageType));
-    assertThat("Unexpected history subject.", historyDto1.subject(), is(notificationType));
-    assertThat("Unexpected history contact.", historyDto1.contact(), is(TRAINEE_CONTACT));
-    assertThat("Unexpected history sent at.", historyDto1.sentAt(), is(Instant.MIN));
-    assertThat("Unexpected history read at.", historyDto1.readAt(), is(Instant.MAX));
-
-    HistoryDto historyDto2 = historyDtos.get(1);
+    HistoryDto historyDto2 = historyDtos.get(0);
     assertThat("Unexpected history id.", historyDto2.id(), is(id2.toString()));
     TisReferenceInfo referenceInfo2 = historyDtos.get(0).tisReference();
     assertThat("Unexpected history TIS reference type.", referenceInfo2.type(),
@@ -493,6 +480,19 @@ class HistoryServiceTest {
     assertThat("Unexpected history contact.", historyDto2.contact(), is(TRAINEE_CONTACT));
     assertThat("Unexpected history sent at.", historyDto2.sentAt(), is(timeNow));
     assertThat("Unexpected history read at.", historyDto2.readAt(), is(Instant.MIN));
+
+    HistoryDto historyDto1 = historyDtos.get(1);
+    assertThat("Unexpected history id.", historyDto1.id(), is(id1.toString()));
+    TisReferenceInfo referenceInfo = historyDtos.get(0).tisReference();
+    assertThat("Unexpected history TIS reference type.", referenceInfo.type(),
+        is(TIS_REFERENCE_TYPE));
+    assertThat("Unexpected history TIS reference id.", referenceInfo.id(),
+        is(TIS_REFERENCE_ID));
+    assertThat("Unexpected history type.", historyDto1.type(), is(messageType));
+    assertThat("Unexpected history subject.", historyDto1.subject(), is(notificationType));
+    assertThat("Unexpected history contact.", historyDto1.contact(), is(TRAINEE_CONTACT));
+    assertThat("Unexpected history sent at.", historyDto1.sentAt(), is(Instant.MIN));
+    assertThat("Unexpected history read at.", historyDto1.readAt(), is(Instant.MAX));
   }
 
   @Test
