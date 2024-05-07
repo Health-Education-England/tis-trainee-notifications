@@ -99,6 +99,7 @@ public class NotificationService implements Job {
   private final Scheduler scheduler;
   private final MessagingControllerService messagingControllerService;
   private final List<String> notificationsWhitelist;
+  private final String timezone;
   protected final Integer immediateNotificationDelayMinutes;
 
   /**
@@ -122,7 +123,8 @@ public class NotificationService implements Job {
       @Value("${service.trainee.url}") String serviceUrl,
       @Value("${service.reference.url}") String referenceUrl,
       @Value("${application.immediate-notifications-delay-minutes}") Integer notificationDelay,
-      @Value("${application.notifications-whitelist}") List<String> notificationsWhitelist) {
+      @Value("${application.notifications-whitelist}") List<String> notificationsWhitelist,
+      @Value("${application.timezone}") String timezone) {
     this.emailService = emailService;
     this.restTemplate = restTemplate;
     this.scheduler = scheduler;
@@ -132,6 +134,7 @@ public class NotificationService implements Job {
     this.messagingControllerService = messagingControllerService;
     this.immediateNotificationDelayMinutes = notificationDelay;
     this.notificationsWhitelist = notificationsWhitelist;
+    this.timezone = timezone;
   }
 
   /**
@@ -322,7 +325,7 @@ public class NotificationService implements Job {
       // Future milestone.
       milestone = Date.from(milestoneDate
           .atStartOfDay()
-          .atZone(ZoneId.systemDefault())
+          .atZone(ZoneId.of(timezone))
           .toInstant());
     }
     return milestone;
@@ -344,7 +347,7 @@ public class NotificationService implements Job {
       // Future milestone.
       return milestoneDate
           .atStartOfDay()
-          .atZone(ZoneId.systemDefault())
+          .atZone(ZoneId.of(timezone))
           .toInstant();
     }
   }

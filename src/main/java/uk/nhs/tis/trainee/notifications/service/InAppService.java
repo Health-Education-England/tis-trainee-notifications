@@ -105,6 +105,6 @@ public class InAppService {
       NotificationType notificationType, String templateVersion,
       Map<String, Object> templateVariables) {
     createNotifications(traineeId, tisReference, notificationType, templateVersion,
-        templateVariables, false, Instant.now());
+        templateVariables, false);
   }
 }

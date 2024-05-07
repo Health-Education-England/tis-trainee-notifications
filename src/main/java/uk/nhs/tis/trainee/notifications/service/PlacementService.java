@@ -132,8 +132,7 @@ public class PlacementService {
     EnumMap<NotificationType, Instant> notifications = new EnumMap<>(NotificationType.class);
     List<HistoryDto> correspondence = historyService.findAllForTrainee(traineeId);
 
-    Set<NotificationType> notificationTypes = new HashSet<>(
-        NotificationType.getProgrammeUpdateNotificationTypes());
+    Set<NotificationType> notificationTypes = new HashSet<>();
     notificationTypes.add(PLACEMENT_UPDATED_WEEK_12);
     notificationTypes.add(PLACEMENT_INFORMATION);
 

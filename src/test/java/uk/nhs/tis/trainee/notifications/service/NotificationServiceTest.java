@@ -117,6 +117,7 @@ class NotificationServiceTest {
   private static final String WHITELIST_2 = "456";
   private static final List<String> NOT_WHITELISTED = List.of(WHITELIST_1, WHITELIST_2);
   private static final List<String> WHITELISTED = List.of(WHITELIST_1, WHITELIST_2, PERSON_ID);
+  private static final String TIMEZONE = "Europe/London";
 
   private static final String LOCAL_OFFICE = "local office";
   private static final String LOCAL_OFFICE_CONTACT = "local office contact";
@@ -187,11 +188,11 @@ class NotificationServiceTest {
         .build();
 
     service = new NotificationService(emailService, restTemplate, scheduler,
-        messagingControllerService,
-        TEMPLATE_VERSION, SERVICE_URL, REFERENCE_URL, NOTIFICATION_DELAY, NOT_WHITELISTED);
+        messagingControllerService, TEMPLATE_VERSION, SERVICE_URL, REFERENCE_URL,
+        NOTIFICATION_DELAY, NOT_WHITELISTED, TIMEZONE);
     serviceWhitelisted = new NotificationService(emailService, restTemplate, scheduler,
-        messagingControllerService,
-        TEMPLATE_VERSION, SERVICE_URL, REFERENCE_URL, NOTIFICATION_DELAY, WHITELISTED);
+        messagingControllerService, TEMPLATE_VERSION, SERVICE_URL, REFERENCE_URL,
+        NOTIFICATION_DELAY, WHITELISTED, TIMEZONE);
   }
 
   @Test

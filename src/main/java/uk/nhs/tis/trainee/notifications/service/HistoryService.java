@@ -177,7 +177,7 @@ public class HistoryService {
     List<History> history = repository.findAllByRecipient_IdOrderBySentAtDesc(traineeId);
 
     return history.stream()
-        .filter(h -> Instant.now().isAfter(h.sentAt()))
+        .takeWhile(h -> Instant.now().isAfter(h.sentAt()))
         .map(this::toDto)
         .toList();
   }
