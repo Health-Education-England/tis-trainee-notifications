@@ -27,6 +27,7 @@ import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.ARCHIVED
 import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.DELETED;
 import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.FAILED;
 import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.READ;
+import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.SCHEDULED;
 import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.SENT;
 import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.UNREAD;
 
@@ -56,7 +57,7 @@ public class HistoryService {
 
   private static final Map<MessageType, Set<NotificationStatus>> VALID_STATUSES = Map.of(
       EMAIL, Set.of(FAILED, SENT),
-      IN_APP, Set.of(ARCHIVED, READ, UNREAD)
+      IN_APP, Set.of(ARCHIVED, READ, SCHEDULED, UNREAD)
   );
 
   private final HistoryRepository repository;
@@ -251,15 +252,20 @@ public class HistoryService {
    */
   private HistoryDto toDto(History history) {
     String subject = null;
+    NotificationStatus status = history.status();
 
     if (history.recipient().type() == IN_APP) {
       subject = rebuildMessage(history, Set.of("subject")).orElse("");
+
+      if (history.sentAt().isAfter(Instant.now())) {
+        status = SCHEDULED;
+      }
     }
 
     if (subject == null || subject.isEmpty()) {
-      return mapper.toDto(history);
+      return mapper.toDto(history, status);
     } else {
-      return mapper.toDto(history, subject);
+      return mapper.toDto(history, subject, status);
     }
   }
 

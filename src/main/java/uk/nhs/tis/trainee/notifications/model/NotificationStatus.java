@@ -25,5 +25,5 @@ package uk.nhs.tis.trainee.notifications.model;
  * An enumeration of possible notification statuses.
  */
 public enum NotificationStatus {
-  ARCHIVED, FAILED, READ, SENT, UNREAD, DELETED
+  ARCHIVED, FAILED, READ, SCHEDULED, SENT, UNREAD, DELETED
 }
