@@ -267,7 +267,7 @@ public class PlacementService {
    * @param notificationsAlreadySent Previously sent notifications.
    */
   private void createInAppNotifications(Placement placement,
-      Map<NotificationType, Instant> notificationsAlreadySent) throws SchedulerException {
+      Map<NotificationType, Instant> notificationsAlreadySent) {
     boolean meetsCriteria = notificationService.meetsCriteria(placement, true);
 
     if (meetsCriteria) {
