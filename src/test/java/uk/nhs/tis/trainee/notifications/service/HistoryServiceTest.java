@@ -73,6 +73,7 @@ class HistoryServiceTest {
   private static final String TRAINEE_CONTACT = "test@tis.nhs.uk";
 
   private static final String NOTIFICATION_ID = ObjectId.get().toString();
+  private static final ObjectId HISTORY_ID = ObjectId.get();
 
   private static final String TEMPLATE_NAME = "test/template";
   private static final String TEMPLATE_VERSION = "v1.2.3";
@@ -496,6 +497,61 @@ class HistoryServiceTest {
   }
 
   @Test
+  void shouldFindNoHistoryForTraineeWhenScheduledInAppNotificationsNotExist() {
+    when(repository.findAllByRecipient_IdOrderBySentAtDesc(TRAINEE_ID)).thenReturn(List.of());
+
+    List<History> history = service.findAllScheduledInAppForTrainee(TRAINEE_ID);
+
+    assertThat("Unexpected history count.", history.size(), is(0));
+  }
+
+  @ParameterizedTest
+  @MethodSource("uk.nhs.tis.trainee.notifications.MethodArgumentUtil#getTemplateCombinations")
+  void shouldFindHistoryForTraineeWhenScheduledInAppNotificationsExist(MessageType messageType,
+                                                             NotificationType notificationType) {
+    RecipientInfo recipientInfo = new RecipientInfo(TRAINEE_ID, messageType, TRAINEE_CONTACT);
+    TemplateInfo templateInfo = new TemplateInfo(TEMPLATE_NAME, TEMPLATE_VERSION,
+        TEMPLATE_VARIABLES);
+    TisReferenceInfo tisReferenceInfo = new TisReferenceInfo(TIS_REFERENCE_TYPE, TIS_REFERENCE_ID);
+
+    ObjectId id1 = ObjectId.get();
+    History history1 = new History(id1, tisReferenceInfo, notificationType, recipientInfo,
+        templateInfo, Instant.MIN, Instant.MAX, SENT, null, null);
+
+    ObjectId id2 = ObjectId.get();
+    Instant timeNow = Instant.now();
+    History history2 = new History(id2, tisReferenceInfo, notificationType, recipientInfo,
+        templateInfo, timeNow, Instant.MIN, SENT, null, null);
+
+    ObjectId id3 = ObjectId.get();
+    History history3 = new History(id3, tisReferenceInfo, notificationType, recipientInfo,
+        templateInfo, Instant.MAX, Instant.MIN, SENT, null, null);
+
+    when(repository.findAllByRecipient_IdOrderBySentAtDesc(TRAINEE_ID)).thenReturn(
+        List.of(history3, history2, history1));
+
+    when(templateService.process(any(), any(), anyMap())).thenReturn("");
+
+    List<History> history = service.findAllScheduledInAppForTrainee(TRAINEE_ID);
+
+    if (messageType.equals(IN_APP)) {
+      assertThat("Unexpected history count.", history.size(), is(1));
+
+      History returnedHistory1 = history.get(0);
+      assertThat("Unexpected history id.", returnedHistory1.id(), is(id3));
+      TisReferenceInfo referenceInfo2 = history.get(0).tisReference();
+      assertThat("Unexpected history TIS reference type.", referenceInfo2.type(),
+          is(TIS_REFERENCE_TYPE));
+      assertThat("Unexpected history TIS reference id.", referenceInfo2.id(),
+          is(TIS_REFERENCE_ID));
+      assertThat("Unexpected history sent at.", returnedHistory1.sentAt(), is(Instant.MAX));
+      assertThat("Unexpected history read at.", returnedHistory1.readAt(), is(Instant.MIN));
+    } else {
+      assertThat("Unexpected history count.", history.size(), is(0));
+    }
+  }
+
+  @Test
   void shouldFindNoFailedHistoryForTraineeWhenFailedNotificationsNotExist() {
     when(repository.findAllByRecipient_IdAndStatus(TRAINEE_ID, FAILED.name()))
         .thenReturn(List.of());
@@ -544,6 +600,14 @@ class HistoryServiceTest {
     assertThat("Unexpected failed history read at.", failed1.readAt(), is(Instant.MAX));
     assertThat("Unexpected failed history status.", failed1.status(), is(FAILED));
     assertThat("Unexpected failed history last retry.", failed1.lastRetry(), is(Instant.MAX));
+  }
+
+  @Test
+  void shouldDeleteHistoryForTrainee() {
+
+    service.deleteHistoryForTrainee(HISTORY_ID, TRAINEE_ID);
+
+    verify(repository).deleteByIdAndRecipient_Id(HISTORY_ID, TRAINEE_ID);
   }
 
   @ParameterizedTest

@@ -35,6 +35,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
+import static uk.nhs.tis.trainee.notifications.model.MessageType.IN_APP;
 import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.SENT;
 import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.UNREAD;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PLACEMENT_INFORMATION;
@@ -59,6 +60,7 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
+import org.bson.types.ObjectId;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -70,6 +72,7 @@ import org.quartz.JobDataMap;
 import org.quartz.SchedulerException;
 import org.springframework.web.client.RestTemplate;
 import uk.nhs.tis.trainee.notifications.dto.HistoryDto;
+import uk.nhs.tis.trainee.notifications.model.History;
 import uk.nhs.tis.trainee.notifications.model.History.TisReferenceInfo;
 import uk.nhs.tis.trainee.notifications.model.HrefType;
 import uk.nhs.tis.trainee.notifications.model.LocalOfficeContactType;
@@ -97,6 +100,8 @@ class PlacementServiceTest {
   private static final LocalDate START_DATE = LocalDate.now().plusYears(1);
   //set a year in the future to allow all notifications to be scheduled
   private static final String PLACEMENT_INFO_VERSION = "v1.2.3";
+  private static final ObjectId HISTORY_ID_1 = ObjectId.get();
+  private static final ObjectId HISTORY_ID_2 = ObjectId.get();
   HistoryService historyService;
   PlacementService service;
   NotificationService notificationService;
@@ -665,5 +670,32 @@ class PlacementServiceTest {
 
     verify(inAppService).createNotifications(any(), any(), eq(notificationType), any(), any(),
         eq(false), any());
+  }
+
+  @Test
+  void shouldDeleteScheduledInAppNotifications() {
+    History.RecipientInfo recipientInfo = new History.RecipientInfo(PERSON_ID, IN_APP, null);
+    History history1 = new History(HISTORY_ID_1, null, null, recipientInfo, null,
+        null, null, UNREAD, null, null);
+    History history2 = new History(HISTORY_ID_2, null, null, recipientInfo, null,
+        null, null, UNREAD, null, null);
+
+    when(historyService.findAllScheduledInAppForTrainee(PERSON_ID))
+        .thenReturn(List.of(history1, history2));
+
+    service.deleteScheduledInAppNotifications(PERSON_ID);
+
+    verify(historyService).deleteHistoryForTrainee(HISTORY_ID_1, PERSON_ID);
+    verify(historyService).deleteHistoryForTrainee(HISTORY_ID_2, PERSON_ID);
+  }
+
+  @Test
+  void shouldNotDeleteWhenNoScheduledInAppNotifications() {
+    when(historyService.findAllScheduledInAppForTrainee(PERSON_ID))
+        .thenReturn(List.of());
+
+    service.deleteScheduledInAppNotifications(PERSON_ID);
+
+    verify(historyService, never()).deleteHistoryForTrainee(any(), any());
   }
 }

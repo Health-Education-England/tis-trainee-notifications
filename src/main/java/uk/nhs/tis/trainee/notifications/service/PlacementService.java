@@ -159,7 +159,9 @@ public class PlacementService {
   public void addNotifications(Placement placement)
       throws SchedulerException {
 
-    deleteNotifications(placement); //first delete any stale notifications
+    //first delete any stale notifications
+    deleteNotifications(placement);
+    deleteScheduledInAppNotifications(placement.getPersonId());
 
     boolean isExcluded = isExcluded(placement);
     log.info("Placement {}: excluded {}.", placement.getTisId(), isExcluded);
@@ -265,7 +267,7 @@ public class PlacementService {
    * @param notificationsAlreadySent Previously sent notifications.
    */
   private void createInAppNotifications(Placement placement,
-                                        Map<NotificationType, Instant> notificationsAlreadySent) {
+      Map<NotificationType, Instant> notificationsAlreadySent) throws SchedulerException {
     boolean meetsCriteria = notificationService.meetsCriteria(placement, true);
 
     if (meetsCriteria) {
@@ -297,8 +299,8 @@ public class PlacementService {
   private void createUniqueInAppNotification(Placement placement,
       Map<NotificationType, Instant> notificationsAlreadySent, NotificationType notificationType,
       String notificationVersion, Map<String, Object> extraVariables) {
-    boolean isUnique = !notificationsAlreadySent.containsKey(notificationType);
 
+    boolean isUnique = !notificationsAlreadySent.containsKey(notificationType);
     if (isUnique) {
       Map<String, Object> variables = new HashMap<>(extraVariables);
       variables.put(START_DATE_FIELD, placement.getStartDate());
@@ -315,6 +317,20 @@ public class PlacementService {
 
       inAppService.createNotifications(placement.getPersonId(), tisReference,
           notificationType, notificationVersion, variables, doNotSendJustLog, sentAt);
+    }
+  }
+
+  /**
+   * Remove scheduled in-app notifications for a placement.
+   *
+   * @param traineeId The trainee ID.
+   * @throws SchedulerException if any one of the notification jobs could not be removed.
+   */
+  public void deleteScheduledInAppNotifications(String traineeId) {
+    List<History> scheduledHistories = historyService.findAllScheduledInAppForTrainee(traineeId);
+
+    for (History history : scheduledHistories) {
+      historyService.deleteHistoryForTrainee(history.id(), traineeId);
     }
   }
 }

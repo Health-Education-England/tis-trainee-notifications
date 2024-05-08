@@ -194,6 +194,33 @@ public class HistoryService {
   }
 
   /**
+   * Find all scheduled in-app notifications for the given Trainee.
+   *
+   * @param traineeId The ID of the trainee to get notifications for.
+   * @return The found notifications, empty if none found.
+   */
+  public List<History> findAllScheduledInAppForTrainee(String traineeId) {
+    List<History> history = repository.findAllByRecipient_IdOrderBySentAtDesc(traineeId);
+
+    return history.stream()
+        .takeWhile(h -> h.sentAt().isAfter(Instant.now()))
+        .filter(h -> h.recipient().type().equals(IN_APP))
+        .toList();
+  }
+
+  /**
+   * Delete notification history by history ID and trainee ID.
+   *
+   * @param id The object ID of the history to delete.
+   * @param traineeId The ID of the trainee to get notifications for.
+   */
+  public void deleteHistoryForTrainee(ObjectId id, String traineeId) {
+    repository.deleteByIdAndRecipient_Id(id, traineeId);
+    log.info("Removed notification history {} for {}", id, traineeId);
+  }
+
+
+  /**
    * Convert a history entity to an equivalent DTO, handles in-app subject text.
    *
    * @param history The history entity to map.
