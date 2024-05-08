@@ -689,7 +689,7 @@ class PlacementServiceTest {
     History history2 = new History(HISTORY_ID_2, null, null, recipientInfo, null,
         null, null, UNREAD, null, null);
 
-    when(historyService.findAllScheduledInAppForTrainee(PERSON_ID, TIS_ID))
+    when(historyService.findAllScheduledInAppForTrainee(PERSON_ID, PLACEMENT, TIS_ID))
         .thenReturn(List.of(history1, history2));
 
     service.deleteScheduledInAppNotifications(placement);
@@ -709,7 +709,7 @@ class PlacementServiceTest {
     placement.setSpecialty(SPECIALTY);
     placement.setSite(SITE);
 
-    when(historyService.findAllScheduledInAppForTrainee(PERSON_ID, TIS_ID))
+    when(historyService.findAllScheduledInAppForTrainee(PERSON_ID, PLACEMENT, TIS_ID))
         .thenReturn(List.of());
 
     service.deleteScheduledInAppNotifications(placement);

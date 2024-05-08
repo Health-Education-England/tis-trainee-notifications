@@ -24,6 +24,7 @@ package uk.nhs.tis.trainee.notifications.service;
 import static uk.nhs.tis.trainee.notifications.model.MessageType.IN_APP;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PLACEMENT_INFORMATION;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PLACEMENT_UPDATED_WEEK_12;
+import static uk.nhs.tis.trainee.notifications.model.TisReferenceType.PLACEMENT;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.PERSON_ID_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.TEMPLATE_NOTIFICATION_TYPE_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.TEMPLATE_OWNER_FIELD;
@@ -140,7 +141,7 @@ public class PlacementService {
       Optional<HistoryDto> sentItem = correspondence.stream()
           .filter(c -> c.tisReference() != null)
           .filter(c ->
-              c.tisReference().type().equals(TisReferenceType.PLACEMENT)
+              c.tisReference().type().equals(PLACEMENT)
                   && c.subject().equals(milestone)
                   && c.tisReference().id().equals(placementId))
           .findFirst();
@@ -309,7 +310,7 @@ public class PlacementService {
 
       boolean doNotSendJustLog = !notificationService.placementIsNotifiable(placement, IN_APP);
       History.TisReferenceInfo tisReference =
-          new History.TisReferenceInfo(TisReferenceType.PLACEMENT, placement.getTisId());
+          new History.TisReferenceInfo(PLACEMENT, placement.getTisId());
 
       Integer daysBeforeStart = getNotificationDaysBeforeStart(notificationType);
       Instant sentAt = notificationService
@@ -329,7 +330,7 @@ public class PlacementService {
   public void deleteScheduledInAppNotifications(Placement placement) {
 
     List<History> scheduledHistories = historyService
-        .findAllScheduledInAppForTrainee(placement.getPersonId(), placement.getTisId());
+        .findAllScheduledInAppForTrainee(placement.getPersonId(), PLACEMENT, placement.getTisId());
 
     for (History history : scheduledHistories) {
       historyService.deleteHistoryForTrainee(history.id(), placement.getPersonId());

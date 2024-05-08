@@ -43,6 +43,7 @@ import uk.nhs.tis.trainee.notifications.model.History;
 import uk.nhs.tis.trainee.notifications.model.History.TemplateInfo;
 import uk.nhs.tis.trainee.notifications.model.MessageType;
 import uk.nhs.tis.trainee.notifications.model.NotificationStatus;
+import uk.nhs.tis.trainee.notifications.model.TisReferenceType;
 import uk.nhs.tis.trainee.notifications.repository.HistoryRepository;
 
 /**
@@ -200,13 +201,15 @@ public class HistoryService {
    * @param refId The reference ID of the TisReferenceType.
    * @return The found notifications, empty if none found.
    */
-  public List<History> findAllScheduledInAppForTrainee(String traineeId, String refId) {
+  public List<History> findAllScheduledInAppForTrainee(
+      String traineeId, TisReferenceType tisReferenceType, String refId) {
     List<History> history = repository.findAllByRecipient_IdOrderBySentAtDesc(traineeId);
 
     return history.stream()
         .takeWhile(h -> h.sentAt().isAfter(Instant.now()))
         .filter(h -> h.recipient().type().equals(IN_APP))
-        .filter(h -> h.tisReference().id().equals(refId))
+        .filter(h -> h.tisReference().id().equals(refId)
+            && h.tisReference().type().equals(tisReferenceType))
         .toList();
   }
 
