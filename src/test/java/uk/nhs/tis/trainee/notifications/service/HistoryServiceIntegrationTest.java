@@ -305,8 +305,10 @@ class HistoryServiceIntegrationTest {
     assertThat("Unexpected history count.", foundHistory.size(), is(1));
 
     History history = foundHistory.get(0);
-    assertThat("Unexpected tis reference type at.", history.tisReference().type(), is(TisReferenceType.PLACEMENT));
-    assertThat("Unexpected tis reference id at.", history.tisReference().id(), is(TIS_REFERENCE_ID));
+    assertThat("Unexpected tis reference type at.",
+        history.tisReference().type(), is(TisReferenceType.PLACEMENT));
+    assertThat("Unexpected tis reference id at.",
+        history.tisReference().id(), is(TIS_REFERENCE_ID));
   }
 
   @Test
