@@ -500,7 +500,7 @@ class HistoryServiceTest {
   void shouldFindNoHistoryForTraineeWhenScheduledInAppNotificationsNotExist() {
     when(repository.findAllByRecipient_IdOrderBySentAtDesc(TRAINEE_ID)).thenReturn(List.of());
 
-    List<History> history = service.findAllScheduledInAppForTrainee(TRAINEE_ID);
+    List<History> history = service.findAllScheduledInAppForTrainee(TRAINEE_ID, any());
 
     assertThat("Unexpected history count.", history.size(), is(0));
   }
@@ -532,7 +532,7 @@ class HistoryServiceTest {
 
     when(templateService.process(any(), any(), anyMap())).thenReturn("");
 
-    List<History> history = service.findAllScheduledInAppForTrainee(TRAINEE_ID);
+    List<History> history = service.findAllScheduledInAppForTrainee(TRAINEE_ID, TIS_REFERENCE_ID);
 
     if (messageType.equals(IN_APP)) {
       assertThat("Unexpected history count.", history.size(), is(1));

@@ -242,7 +242,8 @@ class HistoryServiceIntegrationTest {
     service.save(new History(null, tisReferenceInfo, FORM_UPDATED, recipientInfo, templateInfo,
         after, before, SENT, null, null));
 
-    List<History> foundHistory = service.findAllScheduledInAppForTrainee(TRAINEE_ID);
+    List<History> foundHistory = service.findAllScheduledInAppForTrainee(
+        TRAINEE_ID, TIS_REFERENCE_ID);
 
     assertThat("Unexpected history count.", foundHistory.size(), is(1));
 
@@ -269,7 +270,8 @@ class HistoryServiceIntegrationTest {
     service.save(new History(null, tisReferenceInfo, FORM_UPDATED, recipientInfo, templateInfo,
         after, before, SENT, null, null));
 
-    List<History> foundHistory = service.findAllScheduledInAppForTrainee(TRAINEE_ID);
+    List<History> foundHistory = service.findAllScheduledInAppForTrainee(
+        TRAINEE_ID, TIS_REFERENCE_ID);
 
     assertThat("Unexpected history count.", foundHistory.size(), is(0));
   }

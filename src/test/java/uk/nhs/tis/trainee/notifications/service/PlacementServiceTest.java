@@ -674,16 +674,25 @@ class PlacementServiceTest {
 
   @Test
   void shouldDeleteScheduledInAppNotifications() {
+    Placement placement = new Placement();
+    placement.setTisId(TIS_ID);
+    placement.setPersonId(PERSON_ID);
+    placement.setStartDate(START_DATE);
+    placement.setOwner(OWNER);
+    placement.setPlacementType(IN_POST);
+    placement.setSpecialty(SPECIALTY);
+    placement.setSite(SITE);
+
     History.RecipientInfo recipientInfo = new History.RecipientInfo(PERSON_ID, IN_APP, null);
-    History history1 = new History(HISTORY_ID_1, null, null, recipientInfo, null,
-        null, null, UNREAD, null, null);
+    History history1 = new History(HISTORY_ID_1, new TisReferenceInfo(PLACEMENT, TIS_ID), null,
+        recipientInfo, null, null, null, UNREAD, null, null);
     History history2 = new History(HISTORY_ID_2, null, null, recipientInfo, null,
         null, null, UNREAD, null, null);
 
-    when(historyService.findAllScheduledInAppForTrainee(PERSON_ID))
+    when(historyService.findAllScheduledInAppForTrainee(PERSON_ID, TIS_ID))
         .thenReturn(List.of(history1, history2));
 
-    service.deleteScheduledInAppNotifications(PERSON_ID);
+    service.deleteScheduledInAppNotifications(placement);
 
     verify(historyService).deleteHistoryForTrainee(HISTORY_ID_1, PERSON_ID);
     verify(historyService).deleteHistoryForTrainee(HISTORY_ID_2, PERSON_ID);
@@ -691,10 +700,19 @@ class PlacementServiceTest {
 
   @Test
   void shouldNotDeleteWhenNoScheduledInAppNotifications() {
-    when(historyService.findAllScheduledInAppForTrainee(PERSON_ID))
+    Placement placement = new Placement();
+    placement.setTisId(TIS_ID);
+    placement.setPersonId(PERSON_ID);
+    placement.setStartDate(START_DATE);
+    placement.setOwner(OWNER);
+    placement.setPlacementType(IN_POST);
+    placement.setSpecialty(SPECIALTY);
+    placement.setSite(SITE);
+
+    when(historyService.findAllScheduledInAppForTrainee(PERSON_ID, TIS_ID))
         .thenReturn(List.of());
 
-    service.deleteScheduledInAppNotifications(PERSON_ID);
+    service.deleteScheduledInAppNotifications(placement);
 
     verify(historyService, never()).deleteHistoryForTrainee(any(), any());
   }

@@ -197,14 +197,16 @@ public class HistoryService {
    * Find all scheduled in-app notifications for the given Trainee.
    *
    * @param traineeId The ID of the trainee to get notifications for.
+   * @param refId The reference ID of the TisReferenceType.
    * @return The found notifications, empty if none found.
    */
-  public List<History> findAllScheduledInAppForTrainee(String traineeId) {
+  public List<History> findAllScheduledInAppForTrainee(String traineeId, String refId) {
     List<History> history = repository.findAllByRecipient_IdOrderBySentAtDesc(traineeId);
 
     return history.stream()
         .takeWhile(h -> h.sentAt().isAfter(Instant.now()))
         .filter(h -> h.recipient().type().equals(IN_APP))
+        .filter(h -> h.tisReference().id().equals(refId))
         .toList();
   }
 
