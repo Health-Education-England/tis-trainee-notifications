@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <title>Sponsorship</title>
+  </head>
+  <body>
+    <h1>In-App Notification</h1>
+    <h2>Subject</h2>
+    <th:block th:fragment="subject">Placement Confirmation Does Not Constitute An Offer Of Employment</th:block>
+    <h2>Content</h2>
+    <th:block th:fragment="content">
+      <p>
+        For your placement starting
+        <b>
+          <th:block th:text="${startDate} ? |${#temporals.format(startDate, 'dd MMMM yyyy')}| : _">
+            (start date missing)
+          </th:block>
+        </b> at
+        <b>
+          <th:block th:text="${not #strings.isEmpty(site)} ? ${site} : _">
+            (site name missing)
+          </th:block>
+        </b> in
+        <b>
+          <th:block th:text="${not #strings.isEmpty(specialty)} ? ${specialty} : _">
+            (speciality name missing)
+          </th:block></b>, please see the below information.
+      </p>
+      <p>
+        Your employment contract, pay details and rota will all be issued by your employer.
+        Please note that NHS England is not your employer and cannot advise on HR related matters.
+        Further information about your employment terms and conditions can be found on the
+        <a
+          href="http://www.nhsemployers.org/"
+          th:target="_blank"
+        >NHS Employers' website</a>.
+      </p>
+      <p>
+        Training placements may be subject to change due to educational needs and service requirements.
+      </p>
+      <p>
+        Your offer of appointment is subject to satisfactory pre‐employment checks.
+        It is essential that Occupational Health screening, Disclosure and Barring Service (DBS)
+        and other pre-employment checks take place prior to your arrival.
+      </p>
+      <p>
+        Even if you are in an NHS trust currently, if you are moving employer,
+        you will still need to complete your pre-employment checks before you move to your next placement.
+        Failure to complete pre-employment checks in a timely manner can cause delays to your pay,
+        training, I.T and facilities access which will impact your training experience.
+      </p>
+      <p>
+        Your Trust will follow the
+        <a
+          href="https://www.nhsemployers.org/topics-0/employment-standards-and-regulation"
+          th:target="_blank"
+        >NHS Employment Check Standards</a>.
+      </p>
+      <p>
+        Their checks will include:
+        <ul>
+          <li>Your right to work</li>
+          <li>If you have a criminal record</li>
+          <li>Employment history and references</li>
+          <li>Professional Registration and qualifications</li>
+          <li>Fitness to work</li>
+        </ul>
+      </p>
+      <p>
+        The notification to trusts and doctors in training at 12 weeks is in line with the
+        <a
+          href="https://www.hee.nhs.uk/our-work/medical-recruitment/code-practice-medical-recruitment"
+          th:target="_blank"
+        >code of practice</a>
+        (CoP) agreed in conjunction with the BMA and NHS Employers.
+        In some cases, such as when there is delayed allocation to a post due to unexpected circumstances,
+        the trust will work to a shortened timeline.
+      </p>
+      <p>
+        Under the CoP agreement, you are responsible for providing information when requested,
+        keeping your employer fully informed of any changes to your contact details and start date.
+        Failure to do so may impact on your pay or terms and conditions and your ability to take up your training post.
+        Please note changes to placements now finalised will only be agreed in very exceptional circumstances.
+      </p>
+      <p>
+        If your Trust has not been in touch with you by eight weeks prior to your start date,
+        please ensure that you contact them directly. You can find a list of NHS Employers
+        <a
+          href="https://www.jobs.nhs.uk/cgi-bin/employer_list.cgi?action=search&sl=A&el=E"
+          th:target="_blank"
+        >here</a>. If you are unable to contact them,
+        <th:block: th:switch="${localOfficeContactType}">
+          <th:block th:case="NON_HREF"
+          > please contact your NHS England local office.</th:block
+          >
+          <th:block th:case="*"
+          > please contact your
+            <a
+              th:href="${localOfficeContactType} == 'email' ? |mailto:${localOfficeContact}| : ${localOfficeContact}"
+              th:target="_blank"
+            >NHS England local office</a
+            >.</th:block>
+        </th:block:>
+      </p>
+      <p>
+        You may need to ask for the Medical Staffing department when calling trust recruitment departments.
+      </p>
+    </th:block>
+  </body>
+</html>

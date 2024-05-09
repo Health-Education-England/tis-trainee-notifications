@@ -38,6 +38,7 @@ import static org.mockito.Mockito.when;
 import static uk.nhs.tis.trainee.notifications.model.MessageType.IN_APP;
 import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.SENT;
 import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.UNREAD;
+import static uk.nhs.tis.trainee.notifications.model.NotificationType.NON_EMPLOYMENT;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PLACEMENT_INFORMATION;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PLACEMENT_UPDATED_WEEK_12;
 import static uk.nhs.tis.trainee.notifications.model.TisReferenceType.PLACEMENT;
@@ -100,6 +101,7 @@ class PlacementServiceTest {
   private static final LocalDate START_DATE = LocalDate.now().plusYears(1);
   //set a year in the future to allow all notifications to be scheduled
   private static final String PLACEMENT_INFO_VERSION = "v1.2.3";
+  private static final String NON_EMPLOYMENT_VERSION = "v2.3.4";
   private static final ObjectId HISTORY_ID_1 = ObjectId.get();
   private static final ObjectId HISTORY_ID_2 = ObjectId.get();
   HistoryService historyService;
@@ -115,7 +117,7 @@ class PlacementServiceTest {
     inAppService = mock(InAppService.class);
     restTemplate = mock(RestTemplate.class);
     service = new PlacementService(historyService, notificationService, inAppService,
-        ZoneId.of("Europe/London"), PLACEMENT_INFO_VERSION);
+        ZoneId.of("Europe/London"), PLACEMENT_INFO_VERSION, NON_EMPLOYMENT_VERSION);
   }
 
   @ParameterizedTest
@@ -496,7 +498,9 @@ class PlacementServiceTest {
   @ParameterizedTest
   @CsvSource(delimiter = '|', textBlock = """
       PLACEMENT_INFORMATION | v1.2.3 | true
-      PLACEMENT_INFORMATION | v1.2.3 | false""")
+      PLACEMENT_INFORMATION | v1.2.3 | false
+      NON_EMPLOYMENT | v2.3.4 | true
+      NON_EMPLOYMENT | v2.3.4 | false""")
   void shouldAddInAppNotificationsWhenNotExcludedAndMeetsCriteria(NotificationType notificationType,
       String notificationVersion, boolean notifiable) throws SchedulerException {
     Placement placement = new Placement();
@@ -578,6 +582,8 @@ class PlacementServiceTest {
     ArgumentCaptor<Map<String, Object>> variablesCaptor = ArgumentCaptor.forClass(Map.class);
     verify(inAppService).createNotifications(eq(PERSON_ID), any(), eq(PLACEMENT_INFORMATION),
         eq(PLACEMENT_INFO_VERSION), variablesCaptor.capture(), anyBoolean(), any());
+    verify(inAppService).createNotifications(eq(PERSON_ID), any(), eq(NON_EMPLOYMENT),
+        eq(NON_EMPLOYMENT_VERSION), variablesCaptor.capture(), anyBoolean(), any());
 
     Map<String, Object> variables = variablesCaptor.getValue();
     assertThat("Unexpected variable count.", variables.size(), is(5));
@@ -612,7 +618,7 @@ class PlacementServiceTest {
 
   @ParameterizedTest
   @EnumSource(value = NotificationType.class, mode = EnumSource.Mode.INCLUDE,
-      names = {"PLACEMENT_INFORMATION"})
+      names = {"PLACEMENT_INFORMATION", "NON_EMPLOYMENT"})
   void shouldNotAddInAppNotificationsWhenPastSentHistoryExist(NotificationType notificationType)
       throws SchedulerException {
     Placement placement = new Placement();
@@ -643,7 +649,7 @@ class PlacementServiceTest {
 
   @ParameterizedTest
   @EnumSource(value = NotificationType.class, mode = EnumSource.Mode.INCLUDE,
-      names = {"PLACEMENT_INFORMATION"})
+      names = {"PLACEMENT_INFORMATION", "NON_EMPLOYMENT"})
   void shouldAddInAppNotificationsWhenNoPastSentHistoryWithSameRefType(
       NotificationType notificationType)
       throws SchedulerException {
