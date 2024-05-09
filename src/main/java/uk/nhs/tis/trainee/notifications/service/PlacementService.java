@@ -325,7 +325,6 @@ public class PlacementService {
    * Remove scheduled in-app notifications for a placement.
    *
    * @param placement The placement.
-   * @throws SchedulerException if any one of the notification jobs could not be removed.
    */
   public void deleteScheduledInAppNotifications(Placement placement) {
 

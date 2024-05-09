@@ -613,7 +613,7 @@ class PlacementServiceTest {
   @ParameterizedTest
   @EnumSource(value = NotificationType.class, mode = EnumSource.Mode.INCLUDE,
       names = {"PLACEMENT_INFORMATION"})
-  void shouldNotAddInAppNotificationsWhenNotUnique(NotificationType notificationType)
+  void shouldNotAddInAppNotificationsWhenPastSentHistoryExist(NotificationType notificationType)
       throws SchedulerException {
     Placement placement = new Placement();
     placement.setTisId(TIS_ID);
@@ -644,7 +644,8 @@ class PlacementServiceTest {
   @ParameterizedTest
   @EnumSource(value = NotificationType.class, mode = EnumSource.Mode.INCLUDE,
       names = {"PLACEMENT_INFORMATION"})
-  void shouldAddInAppNotificationsWhenUnique(NotificationType notificationType)
+  void shouldAddInAppNotificationsWhenNoPastSentHistoryWithSameRefType(
+      NotificationType notificationType)
       throws SchedulerException {
     Placement placement = new Placement();
     placement.setTisId(TIS_ID);

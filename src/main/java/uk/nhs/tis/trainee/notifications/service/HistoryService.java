@@ -198,6 +198,7 @@ public class HistoryService {
    * Find all scheduled in-app notifications for the given Trainee.
    *
    * @param traineeId The ID of the trainee to get notifications for.
+   * @param tisReferenceType The reference type of the object.
    * @param refId The reference ID of the TisReferenceType.
    * @return The found notifications, empty if none found.
    */

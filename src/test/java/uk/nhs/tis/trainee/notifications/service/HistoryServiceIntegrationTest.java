@@ -278,7 +278,7 @@ class HistoryServiceIntegrationTest {
   }
 
   @Test
-  void shouldSortInAppNotificationsBySentAtRefType() {
+  void shouldFilterInAppNotificationsBySentAtRefType() {
     RecipientInfo recipientInfo = new RecipientInfo(TRAINEE_ID, IN_APP, TRAINEE_CONTACT);
     TemplateInfo templateInfo = new TemplateInfo(TEMPLATE_NAME, TEMPLATE_VERSION,
         TEMPLATE_VARIABLES);
