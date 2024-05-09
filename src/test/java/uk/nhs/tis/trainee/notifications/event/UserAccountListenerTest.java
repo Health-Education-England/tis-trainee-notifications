@@ -21,31 +21,61 @@
 
 package uk.nhs.tis.trainee.notifications.event;
 
+import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+import static uk.nhs.tis.trainee.notifications.model.NotificationType.EMAIL_UPDATED_NEW;
+import static uk.nhs.tis.trainee.notifications.model.NotificationType.EMAIL_UPDATED_OLD;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.WELCOME;
 
+import jakarta.mail.MessagingException;
+import java.net.URI;
 import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
+import org.mockito.ArgumentCaptor;
 import uk.nhs.tis.trainee.notifications.dto.AccountConfirmedEvent;
+import uk.nhs.tis.trainee.notifications.dto.AccountUpdatedEvent;
+import uk.nhs.tis.trainee.notifications.dto.UserDetails;
+import uk.nhs.tis.trainee.notifications.model.NotificationType;
+import uk.nhs.tis.trainee.notifications.service.EmailService;
 import uk.nhs.tis.trainee.notifications.service.InAppService;
+import uk.nhs.tis.trainee.notifications.service.UserAccountService;
 
 class UserAccountListenerTest {
 
-  private static final String VERSION = "v1.2.3";
+  private static final String UPDATED_EMAIL_VERSION_NEW = "v1.2.3";
+  private static final String UPDATED_EMAIL_VERSION_OLD = "v2.3.4";
+  private static final String WELCOME_VERSION = "v3.4.5";
   private static final UUID USER_ID = UUID.randomUUID();
   private static final String TRAINEE_ID = UUID.randomUUID().toString();
+  private static final String FAMILY_NAME = "Gilliam";
+  private static final URI APP_DOMAIN = URI.create("https://local.notifications.com");
   private static final String EMAIL = "trainee@example.com";
+  private static final String EMAIL_OLD = "trainee.old@example.com";
 
   private UserAccountListener listener;
+  private EmailService emailService;
   private InAppService inAppService;
+  private UserAccountService userAccountService;
 
   @BeforeEach
   void setUp() {
+    emailService = mock(EmailService.class);
     inAppService = mock(InAppService.class);
-    listener = new UserAccountListener(inAppService, VERSION);
+    userAccountService = mock(UserAccountService.class);
+    listener = new UserAccountListener(emailService, inAppService, userAccountService, APP_DOMAIN,
+        UPDATED_EMAIL_VERSION_NEW, UPDATED_EMAIL_VERSION_OLD, WELCOME_VERSION);
   }
 
   @Test
@@ -54,6 +84,63 @@ class UserAccountListenerTest {
 
     listener.handleAccountConfirmation(event);
 
-    verify(inAppService).createNotifications(TRAINEE_ID, null, WELCOME, VERSION, Map.of());
+    verify(inAppService).createNotifications(TRAINEE_ID, null, WELCOME, WELCOME_VERSION, Map.of());
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"EMAIL_UPDATED_OLD", "EMAIL_UPDATED_NEW"})
+  void shouldThrowExceptionWhenEmailUpdateNotificationFails(NotificationType notificationType)
+      throws MessagingException {
+    when(userAccountService.getUserDetails(USER_ID.toString())).thenReturn(
+        UserDetails.builder().build());
+
+    doThrow(MessagingException.class).when(emailService)
+        .sendMessage(any(), any(), eq(notificationType), any(), any(), any(), anyBoolean());
+
+    AccountUpdatedEvent event = new AccountUpdatedEvent(USER_ID, TRAINEE_ID, EMAIL_OLD, EMAIL);
+    assertThrows(MessagingException.class, () -> listener.handleAccountUpdate(event));
+  }
+
+  @Test
+  void shouldSendEmailToPreviousEmailWhenAccountUpdated() throws MessagingException {
+    UserDetails userDetails = UserDetails.builder()
+        .familyName(FAMILY_NAME)
+        .build();
+    when(userAccountService.getUserDetails(USER_ID.toString())).thenReturn(userDetails);
+
+    AccountUpdatedEvent event = new AccountUpdatedEvent(USER_ID, TRAINEE_ID, EMAIL_OLD, EMAIL);
+    listener.handleAccountUpdate(event);
+
+    ArgumentCaptor<Map<String, Object>> variableCaptor = ArgumentCaptor.captor();
+    verify(emailService).sendMessage(eq(TRAINEE_ID), eq(EMAIL_OLD), eq(EMAIL_UPDATED_OLD),
+        eq(UPDATED_EMAIL_VERSION_OLD), variableCaptor.capture(), eq(null), eq(false));
+
+    Map<String, Object> variables = variableCaptor.getValue();
+    assertThat("Unexpected variable count.", variables.size(), is(4));
+    assertThat("Unexpected domain.", variables.get("domain"), is(APP_DOMAIN));
+    assertThat("Unexpected family name.", variables.get("familyName"), is(FAMILY_NAME));
+    assertThat("Unexpected previous email.", variables.get("previousEmail"), is(EMAIL_OLD));
+    assertThat("Unexpected new email.", variables.get("newEmail"), is(EMAIL));
+  }
+
+  @Test
+  void shouldSendEmailToNewEmailWhenAccountUpdated() throws MessagingException {
+    UserDetails userDetails = UserDetails.builder()
+        .familyName(FAMILY_NAME)
+        .build();
+    when(userAccountService.getUserDetails(USER_ID.toString())).thenReturn(userDetails);
+
+    AccountUpdatedEvent event = new AccountUpdatedEvent(USER_ID, TRAINEE_ID, EMAIL_OLD, EMAIL);
+    listener.handleAccountUpdate(event);
+
+    ArgumentCaptor<Map<String, Object>> variableCaptor = ArgumentCaptor.captor();
+    verify(emailService).sendMessage(eq(TRAINEE_ID), eq(EMAIL), eq(EMAIL_UPDATED_NEW),
+        eq(UPDATED_EMAIL_VERSION_NEW), variableCaptor.capture(), eq(null), eq(false));
+
+    Map<String, Object> variables = variableCaptor.getValue();
+    assertThat("Unexpected variable count.", variables.size(), is(3));
+    assertThat("Unexpected domain.", variables.get("domain"), is(APP_DOMAIN));
+    assertThat("Unexpected family name.", variables.get("familyName"), is(FAMILY_NAME));
+    assertThat("Unexpected new email.", variables.get("newEmail"), is(EMAIL));
   }
 }

@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <title>TIS Self-Service Email Updated (New)</title>
+  </head>
+  <body>
+    <h1>Email Message</h1>
+    <h2>Subject</h2>
+    <th:block th:fragment="subject">TIS Self-Service Email Updated</th:block>
+    <h2>Content</h2>
+    <th:block th:fragment="content">
+      <div th:replace="fragments/retry/v1.0.0 :: body"></div>
+      <div style="text-align: right">
+        <img
+          style="margin-right: 25px"
+          src="https://trainee.tis.nhs.uk/nhse-logo.png"
+          alt="NHS England logo"
+        />
+      </div>
+      <p th:replace="fragments/greeting/v1.0.0 :: p"></p>
+
+      <p>
+        Your contact details have been updated by your NHS England local office, as a result
+        <strong th:text="${newEmail}"></strong> is now what you should use to sign in to
+        <a th:href="${not #strings.isEmpty(domain)} ? @{{domain}/(domain=${domain})} : _"
+          >TIS Self-Service</a
+        >. Your previous email will no longer allow you to sign in.
+      </p>
+      <p>
+        If the new email address is incorrect, or you did not request a change to your contact
+        details, please contact your local office as soon as possible.
+      </p>
+
+      <div th:replace="fragments/disclaimer/v1.0.0 :: body"></div>
+    </th:block>
+  </body>
+</html>
