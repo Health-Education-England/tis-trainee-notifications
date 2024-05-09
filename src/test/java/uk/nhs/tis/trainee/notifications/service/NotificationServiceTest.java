@@ -97,6 +97,7 @@ import uk.nhs.tis.trainee.notifications.model.History.TisReferenceInfo;
 import uk.nhs.tis.trainee.notifications.model.LocalOfficeContactType;
 import uk.nhs.tis.trainee.notifications.model.MessageType;
 import uk.nhs.tis.trainee.notifications.model.NotificationType;
+import uk.nhs.tis.trainee.notifications.model.Placement;
 import uk.nhs.tis.trainee.notifications.model.ProgrammeMembership;
 
 class NotificationServiceTest {
@@ -116,6 +117,7 @@ class NotificationServiceTest {
   private static final String WHITELIST_2 = "456";
   private static final List<String> NOT_WHITELISTED = List.of(WHITELIST_1, WHITELIST_2);
   private static final List<String> WHITELISTED = List.of(WHITELIST_1, WHITELIST_2, PERSON_ID);
+  private static final String TIMEZONE = "Europe/London";
 
   private static final String LOCAL_OFFICE = "local office";
   private static final String LOCAL_OFFICE_CONTACT = "local office contact";
@@ -186,11 +188,11 @@ class NotificationServiceTest {
         .build();
 
     service = new NotificationService(emailService, restTemplate, scheduler,
-        messagingControllerService,
-        TEMPLATE_VERSION, SERVICE_URL, REFERENCE_URL, NOTIFICATION_DELAY, NOT_WHITELISTED);
+        messagingControllerService, TEMPLATE_VERSION, SERVICE_URL, REFERENCE_URL,
+        NOTIFICATION_DELAY, NOT_WHITELISTED, TIMEZONE);
     serviceWhitelisted = new NotificationService(emailService, restTemplate, scheduler,
-        messagingControllerService,
-        TEMPLATE_VERSION, SERVICE_URL, REFERENCE_URL, NOTIFICATION_DELAY, WHITELISTED);
+        messagingControllerService, TEMPLATE_VERSION, SERVICE_URL, REFERENCE_URL,
+        NOTIFICATION_DELAY, WHITELISTED, TIMEZONE);
   }
 
   @Test
@@ -717,7 +719,32 @@ class NotificationServiceTest {
   }
 
   @Test
-  void shouldMeetCriteriaWhenIsNewStarterAndIsInPilot() {
+  void shouldDisplayMissedInAppMilestonesImmediately() {
+    Instant expectedMilestone = Instant.now();
+
+    Instant scheduledDate = service.calculateInAppDisplayDate(LocalDate.MIN, 0);
+
+    assertThat("Unexpected display date", scheduledDate.truncatedTo(ChronoUnit.MINUTES),
+        is(expectedMilestone.truncatedTo(ChronoUnit.MINUTES)));
+  }
+
+  @Test
+  void shouldDisplayFutureInAppMilestonesAtStartOfCorrectDay() {
+    LocalDate startDate = LocalDate.now().plusMonths(12);
+    int daysBeforeStart = 100;
+    LocalDate milestoneDate = startDate.minusDays(daysBeforeStart);
+    Instant expectedMilestone = milestoneDate
+        .atStartOfDay()
+        .atZone(ZoneId.systemDefault())
+        .toInstant();
+
+    Instant scheduledDate = service.calculateInAppDisplayDate(startDate, daysBeforeStart);
+
+    assertThat("Unexpected display date", scheduledDate, is(expectedMilestone));
+  }
+
+  @Test
+  void shouldMeetPmCriteriaWhenIsNewStarterAndIsInPilot() {
     ProgrammeMembership programmeMembership = new ProgrammeMembership();
     programmeMembership.setTisId(TIS_ID);
     programmeMembership.setPersonId(PERSON_ID);
@@ -736,7 +763,7 @@ class NotificationServiceTest {
   }
 
   @Test
-  void shouldNotMeetCriteriaWhenNotNewStarterAndNotInPilot() {
+  void shouldNotMeetPmCriteriaWhenNotNewStarterAndNotInPilot() {
     ProgrammeMembership programmeMembership = new ProgrammeMembership();
     programmeMembership.setTisId(TIS_ID);
     programmeMembership.setPersonId(PERSON_ID);
@@ -755,7 +782,7 @@ class NotificationServiceTest {
   }
 
   @Test
-  void shouldMeetCriteriaWhenIsNewStarterAndAndPilotCheckSkipped() {
+  void shouldMeetPmCriteriaWhenIsNewStarterAndAndPilotCheckSkipped() {
     ProgrammeMembership programmeMembership = new ProgrammeMembership();
     programmeMembership.setTisId(TIS_ID);
     programmeMembership.setPersonId(PERSON_ID);
@@ -770,7 +797,7 @@ class NotificationServiceTest {
   }
 
   @Test
-  void shouldNotMeetCriteriaWhenNotNewStarterAndAndPilotCheckSkipped() {
+  void shouldNotMeetPmCriteriaWhenNotNewStarterAndAndPilotCheckSkipped() {
     ProgrammeMembership programmeMembership = new ProgrammeMembership();
     programmeMembership.setTisId(TIS_ID);
     programmeMembership.setPersonId(PERSON_ID);
@@ -788,7 +815,7 @@ class NotificationServiceTest {
   }
 
   @Test
-  void shouldMeetCriteriaWhenNewStartCheckSkippedAndIsInPilot() {
+  void shouldMeetPmCriteriaWhenNewStartCheckSkippedAndIsInPilot() {
     ProgrammeMembership programmeMembership = new ProgrammeMembership();
     programmeMembership.setTisId(TIS_ID);
     programmeMembership.setPersonId(PERSON_ID);
@@ -806,7 +833,7 @@ class NotificationServiceTest {
   }
 
   @Test
-  void shouldNotMeetCriteriaWhenNewStartCheckSkippedAndNotInPilot() {
+  void shouldNotMeetPmCriteriaWhenNewStartCheckSkippedAndNotInPilot() {
     ProgrammeMembership programmeMembership = new ProgrammeMembership();
     programmeMembership.setTisId(TIS_ID);
     programmeMembership.setPersonId(PERSON_ID);
@@ -824,7 +851,7 @@ class NotificationServiceTest {
   }
 
   @Test
-  void shouldMeetCriteriaWhenAllChecksSkipped() {
+  void shouldMeetPmCriteriaWhenAllChecksSkipped() {
     ProgrammeMembership programmeMembership = new ProgrammeMembership();
     programmeMembership.setTisId(TIS_ID);
     programmeMembership.setPersonId(PERSON_ID);
@@ -835,6 +862,49 @@ class NotificationServiceTest {
     assertThat("Unexpected unmet programme membership criteria.", meetsCriteria, is(true));
 
     verifyNoInteractions(messagingControllerService);
+  }
+
+  @Test
+  void shouldMeetPlacementCriteriaWhenIsInPilot() {
+    Placement placement = new Placement();
+    placement.setTisId(TIS_ID);
+    placement.setPersonId(PERSON_ID);
+
+    when(messagingControllerService.isPlacementInPilot2024(PERSON_ID, TIS_ID)).thenReturn(true);
+
+    boolean meetsCriteria = service.meetsCriteria(placement, true);
+
+    assertThat("Unexpected unmet placement criteria.", meetsCriteria, is(true));
+
+    verify(messagingControllerService).isPlacementInPilot2024(PERSON_ID, TIS_ID);
+  }
+
+  @Test
+  void shouldNotMeetPlacementCriteriaWhenNotInPilot() {
+    Placement placement = new Placement();
+    placement.setTisId(TIS_ID);
+    placement.setPersonId(PERSON_ID);
+
+    when(messagingControllerService.isPlacementInPilot2024(PERSON_ID, TIS_ID))
+        .thenReturn(false);
+
+    boolean meetsCriteria = service.meetsCriteria(placement, true);
+
+    assertThat("Unexpected unmet placement criteria.", meetsCriteria, is(false));
+
+    verify(messagingControllerService).isPlacementInPilot2024(PERSON_ID, TIS_ID);
+  }
+
+  @Test
+  void shouldMeetPlacementCriteriaWhenIsPilotCheckSkipped() {
+    Placement placement = new Placement();
+    placement.setTisId(TIS_ID);
+    placement.setPersonId(PERSON_ID);
+
+    boolean meetsCriteria = service.meetsCriteria(placement, false);
+
+    assertThat("Unexpected unmet placement criteria.", meetsCriteria, is(true));
+    verifyNoMoreInteractions(messagingControllerService);
   }
 
   @ParameterizedTest
@@ -865,6 +935,34 @@ class NotificationServiceTest {
         messageType);
 
     assertThat("Unexpected programme membership is notifiable value.", isNotifiablePm, is(false));
+  }
+
+  @ParameterizedTest
+  @EnumSource(MessageType.class)
+  void placementShouldBeNotifiableWhenIsValidRecipient(MessageType messageType) {
+    Placement placement = new Placement();
+    placement.setTisId(TIS_ID);
+    placement.setPersonId(PERSON_ID);
+
+    when(messagingControllerService.isValidRecipient(PERSON_ID, messageType)).thenReturn(true);
+
+    boolean isNotifiablePm = service.placementIsNotifiable(placement, messageType);
+
+    assertThat("Unexpected placement is notifiable value.", isNotifiablePm, is(true));
+  }
+
+  @ParameterizedTest
+  @EnumSource(MessageType.class)
+  void placementShouldNotBeNotifiableWhenIsInvalidRecipient(MessageType messageType) {
+    Placement placement = new Placement();
+    placement.setTisId(TIS_ID);
+    placement.setPersonId(PERSON_ID);
+
+    when(messagingControllerService.isValidRecipient(PERSON_ID, messageType)).thenReturn(false);
+
+    boolean isNotifiablePm = service.placementIsNotifiable(placement, messageType);
+
+    assertThat("Unexpected placement is notifiable value.", isNotifiablePm, is(false));
   }
 
   @Test

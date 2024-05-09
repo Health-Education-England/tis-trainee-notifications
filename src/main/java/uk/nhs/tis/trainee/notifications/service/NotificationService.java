@@ -63,6 +63,7 @@ import uk.nhs.tis.trainee.notifications.model.History.TisReferenceInfo;
 import uk.nhs.tis.trainee.notifications.model.LocalOfficeContactType;
 import uk.nhs.tis.trainee.notifications.model.MessageType;
 import uk.nhs.tis.trainee.notifications.model.NotificationType;
+import uk.nhs.tis.trainee.notifications.model.Placement;
 import uk.nhs.tis.trainee.notifications.model.ProgrammeMembership;
 
 /**
@@ -98,6 +99,7 @@ public class NotificationService implements Job {
   private final Scheduler scheduler;
   private final MessagingControllerService messagingControllerService;
   private final List<String> notificationsWhitelist;
+  private final String timezone;
   protected final Integer immediateNotificationDelayMinutes;
 
   /**
@@ -121,7 +123,8 @@ public class NotificationService implements Job {
       @Value("${service.trainee.url}") String serviceUrl,
       @Value("${service.reference.url}") String referenceUrl,
       @Value("${application.immediate-notifications-delay-minutes}") Integer notificationDelay,
-      @Value("${application.notifications-whitelist}") List<String> notificationsWhitelist) {
+      @Value("${application.notifications-whitelist}") List<String> notificationsWhitelist,
+      @Value("${application.timezone}") String timezone) {
     this.emailService = emailService;
     this.restTemplate = restTemplate;
     this.scheduler = scheduler;
@@ -131,6 +134,7 @@ public class NotificationService implements Job {
     this.messagingControllerService = messagingControllerService;
     this.immediateNotificationDelayMinutes = notificationDelay;
     this.notificationsWhitelist = notificationsWhitelist;
+    this.timezone = timezone;
   }
 
   /**
@@ -321,10 +325,31 @@ public class NotificationService implements Job {
       // Future milestone.
       milestone = Date.from(milestoneDate
           .atStartOfDay()
-          .atZone(ZoneId.systemDefault())
+          .atZone(ZoneId.of(timezone))
           .toInstant());
     }
     return milestone;
+  }
+
+  /**
+   * Get a display date for an in-app notification from the start date and day offset.
+   *
+   * @param startDate       The starting date.
+   * @param daysBeforeStart The number of days prior to the start date.
+   * @return The in-app notification display date and time.
+   */
+  public Instant calculateInAppDisplayDate(LocalDate startDate, int daysBeforeStart) {
+    LocalDate milestoneDate = startDate.minusDays(daysBeforeStart);
+    if (!milestoneDate.isAfter(LocalDate.now())) {
+      // 'Missed' milestones: display immediately
+      return Instant.now();
+    } else {
+      // Future milestone.
+      return milestoneDate
+          .atStartOfDay()
+          .atZone(ZoneId.of(timezone))
+          .toInstant();
+    }
   }
 
   /**
@@ -393,7 +418,7 @@ public class NotificationService implements Job {
   }
 
   /**
-   * Check whether an object meets the selected notification criteria.
+   * Check whether a programme membership meets the selected notification criteria.
    *
    * @param programmeMembership The programme membership to check.
    * @param checkNewStarter     Whether the trainee must be a new starter.
@@ -429,6 +454,30 @@ public class NotificationService implements Job {
   }
 
   /**
+   * Check whether a placement meets the selected notification criteria.
+   *
+   * @param placement         The placement to check.
+   * @param checkPilot        Whether the trainee must be in a pilot.
+   * @return true if all criteria met, or false if one or more criteria fail.
+   */
+  public boolean meetsCriteria(Placement placement, boolean checkPilot) {
+    String traineeId = placement.getPersonId();
+    String pmId = placement.getTisId();
+
+    if (checkPilot) {
+      boolean isInPilot
+          = messagingControllerService.isPlacementInPilot2024(traineeId, pmId);
+
+      if (!isInPilot) {
+        log.info("Skipping notification creation as trainee {} is not in the pilot.", traineeId);
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  /**
    * Check whether a programme membership's trainee should receive the given message-type
    * notification.
    *
@@ -439,6 +488,19 @@ public class NotificationService implements Job {
   public boolean programmeMembershipIsNotifiable(ProgrammeMembership programmeMembership,
       MessageType messageType) {
     String traineeId = programmeMembership.getPersonId();
+    return messagingControllerService.isValidRecipient(traineeId, messageType);
+  }
+
+  /**
+   * Check whether a placement's trainee should receive the given message-type
+   * notification.
+   *
+   * @param placement     The placement to check.
+   * @param messageType   The potential notification message type.
+   * @return true if the trainee should receive the notification, otherwise false.
+   */
+  public boolean placementIsNotifiable(Placement placement, MessageType messageType) {
+    String traineeId = placement.getPersonId();
     return messagingControllerService.isValidRecipient(traineeId, messageType);
   }
 

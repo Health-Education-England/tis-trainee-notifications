@@ -125,7 +125,8 @@ class TraineeHistoryResourceTest {
     HistoryDto history3 = new HistoryDto("3", tisReferenceForm, EMAIL, FORM_UPDATED,
         null, TRAINEE_CONTACT_3, Instant.MAX, Instant.MIN, FAILED, "Additional detail");
 
-    when(service.findAllForTrainee(TRAINEE_ID)).thenReturn(List.of(history1, history2, history3));
+    when(service.findAllSentForTrainee(TRAINEE_ID)).thenReturn(
+        List.of(history1, history2, history3));
 
     mockMvc.perform(get("/api/history/trainee")
             .header(HttpHeaders.AUTHORIZATION, TestJwtUtil.generateTokenForTisId(TRAINEE_ID)))

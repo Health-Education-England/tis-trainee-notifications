@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <title>Sponsorship</title>
+  </head>
+  <body>
+    <h1>In-App Notification</h1>
+    <h2>Subject</h2>
+    <th:block th:fragment="subject">Placement Information</th:block>
+    <h2>Content</h2>
+    <th:block th:fragment="content">
+      <p>
+        For your placement starting
+        <b>
+          <th:block th:text="${startDate} ? |${#temporals.format(startDate, 'dd MMMM yyyy')}| : _">
+            (start date missing)
+          </th:block>
+        </b> at
+        <b>
+          <th:block th:text="${not #strings.isEmpty(site)} ? ${site} : _">
+            (site name missing)
+          </th:block>
+        </b> in
+        <b>
+          <th:block th:text="${not #strings.isEmpty(specialty)} ? ${specialty} : _">
+            (speciality name missing)
+          </th:block></b>, please see the below information.
+      </p>
+      <p>
+        The placement information reflects what we have recorded on our Training Information System (TIS) as
+        your next placement. <b>Please be aware that when your Grade, Whole Time Equivalent (WTE) or Post
+        Number changes, on TIS, a new placement will be created reflecting these changes.</b>
+      </p>
+      <p>
+        If there are any <b>errors</b> in the placement data,
+        <th:block: th:switch="${localOfficeContactType}">
+          <th:block th:case="NON_HREF"
+          > please contact your NHS England local office.</th:block
+          >
+          <th:block th:case="*"
+          > please contact your
+            <a
+              th:href="${localOfficeContactType} == 'email' ? |mailto:${localOfficeContact}| : ${localOfficeContact}"
+              th:target="_blank"
+            >NHS England local office</a
+            >.</th:block>
+        </th:block:>
+        Please note your salary may be impacted if this information is incorrect.
+      </p>
+      <p>
+        Further details on the specialist area of your placement will be confirmed by your employing organisation.
+        This is because we are only able to confirm details that relate specifically to your college recognised
+        curriculum. For example, if you have given your Training Programme Director a preference of a job in a
+        specific location or department, we will not record this level of detail on TIS.
+      </p>
+    </th:block>
+  </body>
+</html>

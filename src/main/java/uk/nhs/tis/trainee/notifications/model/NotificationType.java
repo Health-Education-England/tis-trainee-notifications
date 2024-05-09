@@ -40,6 +40,7 @@ public enum NotificationType {
   FORM_UPDATED("form-updated"),
   INDEMNITY_INSURANCE("indemnity-insurance"),
   LTFT("less-than-full-time"),
+  PLACEMENT_INFORMATION("placement-information"),
   PLACEMENT_UPDATED_WEEK_12("placement-updated-week-12"),
   PROGRAMME_UPDATED_WEEK_8("programme-updated-week-8"),
   PROGRAMME_UPDATED_WEEK_4("programme-updated-week-4"),

@@ -60,4 +60,12 @@ public interface HistoryRepository extends
    * @return The found history, empty if none found.
    */
   List<History> findAllByRecipient_IdAndStatus(String recipientId, String status);
+
+  /**
+   * Remove history Notifications by ID and recipientId.
+   *
+   * @param id          The ID of the history record.
+   * @param recipientId The ID of the recipient to get the history for.
+   */
+  void deleteByIdAndRecipient_Id(ObjectId id, String recipientId);
 }

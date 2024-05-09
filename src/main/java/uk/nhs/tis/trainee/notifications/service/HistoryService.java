@@ -29,6 +29,7 @@ import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.READ;
 import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.SENT;
 import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.UNREAD;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -42,6 +43,7 @@ import uk.nhs.tis.trainee.notifications.model.History;
 import uk.nhs.tis.trainee.notifications.model.History.TemplateInfo;
 import uk.nhs.tis.trainee.notifications.model.MessageType;
 import uk.nhs.tis.trainee.notifications.model.NotificationStatus;
+import uk.nhs.tis.trainee.notifications.model.TisReferenceType;
 import uk.nhs.tis.trainee.notifications.repository.HistoryRepository;
 
 /**
@@ -167,6 +169,21 @@ public class HistoryService {
   }
 
   /**
+   * Find all sent historic notifications for the given Trainee.
+   *
+   * @param traineeId The ID of the trainee to get notifications for.
+   * @return The found notifications, empty if none found.
+   */
+  public List<HistoryDto> findAllSentForTrainee(String traineeId) {
+    List<History> history = repository.findAllByRecipient_IdOrderBySentAtDesc(traineeId);
+
+    return history.stream()
+        .dropWhile(h -> h.sentAt().isAfter(Instant.now()))
+        .map(this::toDto)
+        .toList();
+  }
+
+  /**
    * Final all historic notifications for a given Trainee with a Failed status.
    *
    * @param traineeId The ID of the trainee to get notifications for.
@@ -176,6 +193,38 @@ public class HistoryService {
     return repository.findAllByRecipient_IdAndStatus(traineeId,
         NotificationStatus.FAILED.name());
   }
+
+  /**
+   * Find all scheduled in-app notifications for the given Trainee.
+   *
+   * @param traineeId The ID of the trainee to get notifications for.
+   * @param tisReferenceType The reference type of the object.
+   * @param refId The reference ID of the TisReferenceType.
+   * @return The found notifications, empty if none found.
+   */
+  public List<History> findAllScheduledInAppForTrainee(
+      String traineeId, TisReferenceType tisReferenceType, String refId) {
+    List<History> history = repository.findAllByRecipient_IdOrderBySentAtDesc(traineeId);
+
+    return history.stream()
+        .takeWhile(h -> h.sentAt().isAfter(Instant.now()))
+        .filter(h -> h.recipient().type().equals(IN_APP))
+        .filter(h -> h.tisReference().id().equals(refId)
+            && h.tisReference().type().equals(tisReferenceType))
+        .toList();
+  }
+
+  /**
+   * Delete notification history by history ID and trainee ID.
+   *
+   * @param id The object ID of the history to delete.
+   * @param traineeId The ID of the trainee to get notifications for.
+   */
+  public void deleteHistoryForTrainee(ObjectId id, String traineeId) {
+    repository.deleteByIdAndRecipient_Id(id, traineeId);
+    log.info("Removed notification history {} for {}", id, traineeId);
+  }
+
 
   /**
    * Convert a history entity to an equivalent DTO, handles in-app subject text.
