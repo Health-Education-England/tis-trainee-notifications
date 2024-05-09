@@ -41,6 +41,7 @@ import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.UNREAD;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.NON_EMPLOYMENT;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PLACEMENT_INFORMATION;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PLACEMENT_UPDATED_WEEK_12;
+import static uk.nhs.tis.trainee.notifications.model.NotificationType.PLACEMENT_USEFUL_INFORMATION;
 import static uk.nhs.tis.trainee.notifications.model.TisReferenceType.PLACEMENT;
 import static uk.nhs.tis.trainee.notifications.model.TisReferenceType.PROGRAMME_MEMBERSHIP;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.CONTACT_TYPE_FIELD;
@@ -102,6 +103,7 @@ class PlacementServiceTest {
   //set a year in the future to allow all notifications to be scheduled
   private static final String PLACEMENT_INFO_VERSION = "v1.2.3";
   private static final String NON_EMPLOYMENT_VERSION = "v2.3.4";
+  private static final String PLACEMENT_USEFUL_INFO_VERSION = "v3.4.5";
   private static final ObjectId HISTORY_ID_1 = ObjectId.get();
   private static final ObjectId HISTORY_ID_2 = ObjectId.get();
   HistoryService historyService;
@@ -117,7 +119,8 @@ class PlacementServiceTest {
     inAppService = mock(InAppService.class);
     restTemplate = mock(RestTemplate.class);
     service = new PlacementService(historyService, notificationService, inAppService,
-        ZoneId.of("Europe/London"), PLACEMENT_INFO_VERSION, NON_EMPLOYMENT_VERSION);
+        ZoneId.of("Europe/London"), PLACEMENT_INFO_VERSION, NON_EMPLOYMENT_VERSION,
+        PLACEMENT_USEFUL_INFO_VERSION);
   }
 
   @ParameterizedTest
@@ -500,7 +503,9 @@ class PlacementServiceTest {
       PLACEMENT_INFORMATION | v1.2.3 | true
       PLACEMENT_INFORMATION | v1.2.3 | false
       NON_EMPLOYMENT | v2.3.4 | true
-      NON_EMPLOYMENT | v2.3.4 | false""")
+      NON_EMPLOYMENT | v2.3.4 | false
+      PLACEMENT_USEFUL_INFORMATION | v2.3.4 | true
+      PLACEMENT_USEFUL_INFORMATION | v2.3.4 | false""")
   void shouldAddInAppNotificationsWhenNotExcludedAndMeetsCriteria(NotificationType notificationType,
       String notificationVersion, boolean notifiable) throws SchedulerException {
     Placement placement = new Placement();
@@ -584,6 +589,8 @@ class PlacementServiceTest {
         eq(PLACEMENT_INFO_VERSION), variablesCaptor.capture(), anyBoolean(), any());
     verify(inAppService).createNotifications(eq(PERSON_ID), any(), eq(NON_EMPLOYMENT),
         eq(NON_EMPLOYMENT_VERSION), variablesCaptor.capture(), anyBoolean(), any());
+    verify(inAppService).createNotifications(eq(PERSON_ID), any(), eq(PLACEMENT_USEFUL_INFORMATION),
+        eq(PLACEMENT_USEFUL_INFO_VERSION), variablesCaptor.capture(), anyBoolean(), any());
 
     Map<String, Object> variables = variablesCaptor.getValue();
     assertThat("Unexpected variable count.", variables.size(), is(5));
@@ -618,7 +625,8 @@ class PlacementServiceTest {
 
   @ParameterizedTest
   @EnumSource(value = NotificationType.class, mode = EnumSource.Mode.INCLUDE,
-      names = {"PLACEMENT_INFORMATION", "NON_EMPLOYMENT"})
+      names = {"PLACEMENT_INFORMATION", "NON_EMPLOYMENT", "PLACEMENT_INFORMATION",
+          "PLACEMENT_USEFUL_INFORMATION"})
   void shouldNotAddInAppNotificationsWhenPastSentHistoryExist(NotificationType notificationType)
       throws SchedulerException {
     Placement placement = new Placement();
@@ -649,7 +657,8 @@ class PlacementServiceTest {
 
   @ParameterizedTest
   @EnumSource(value = NotificationType.class, mode = EnumSource.Mode.INCLUDE,
-      names = {"PLACEMENT_INFORMATION", "NON_EMPLOYMENT"})
+      names = {"PLACEMENT_INFORMATION", "NON_EMPLOYMENT",
+          "PLACEMENT_INFORMATION", "PLACEMENT_USEFUL_INFORMATION"})
   void shouldAddInAppNotificationsWhenNoPastSentHistoryWithSameRefType(
       NotificationType notificationType)
       throws SchedulerException {

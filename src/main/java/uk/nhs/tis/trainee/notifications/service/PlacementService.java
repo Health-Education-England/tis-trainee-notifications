@@ -24,6 +24,7 @@ package uk.nhs.tis.trainee.notifications.service;
 import static uk.nhs.tis.trainee.notifications.model.MessageType.IN_APP;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.NON_EMPLOYMENT;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PLACEMENT_INFORMATION;
+import static uk.nhs.tis.trainee.notifications.model.NotificationType.PLACEMENT_USEFUL_INFORMATION;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PLACEMENT_UPDATED_WEEK_12;
 import static uk.nhs.tis.trainee.notifications.model.TisReferenceType.PLACEMENT;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.PERSON_ID_FIELD;
@@ -78,28 +79,33 @@ public class PlacementService {
   private final ZoneId timezone;
   private final String placementInfoVersion;
   private final String nonEmploymentVersion;
+  private final String placementUsefulInfoVersion;
 
   /**
    * Initialise the Placement Service.
    *
-   * @param historyService        The history Service to use.
-   * @param notificationService   The notification Service to use.
-   * @param inAppService          The in-app service to use.
-   * @param placementInfoVersion  The placement information in-app notification version.
+   * @param historyService             The history Service to use.
+   * @param notificationService        The notification Service to use.
+   * @param inAppService               The in-app service to use.
+   * @param placementInfoVersion       The placement information version.
+   * @param placementUsefulInfoVersion The placement useful information version.
    * @param nonEmploymentVersion  The non employment in-app notification version.
    */
   public PlacementService(HistoryService historyService, NotificationService notificationService,
       InAppService inAppService, @Value("${application.timezone}") ZoneId timezone,
       @Value("${application.template-versions.placement-information.in-app}")
-        String placementInfoVersion,
+                          String placementInfoVersion,
+      @Value("{application.template-versions.placement-useful-information.in-app}")
+                          String placementUsefulInfoVersion,
       @Value("${application.template-versions.non-employment.in-app}")
-        String nonEmploymentVersion) {
+                          String nonEmploymentVersion) {
     this.historyService = historyService;
     this.notificationService = notificationService;
     this.inAppService = inAppService;
     this.timezone = timezone;
     this.placementInfoVersion = placementInfoVersion;
     this.nonEmploymentVersion = nonEmploymentVersion;
+    this.placementUsefulInfoVersion = placementUsefulInfoVersion;
   }
 
   /**
@@ -143,6 +149,7 @@ public class PlacementService {
     notificationTypes.add(PLACEMENT_UPDATED_WEEK_12);
     notificationTypes.add(PLACEMENT_INFORMATION);
     notificationTypes.add(NON_EMPLOYMENT);
+    notificationTypes.add(PLACEMENT_USEFUL_INFORMATION);
 
     for (NotificationType milestone : notificationTypes) {
       Optional<HistoryDto> sentItem = correspondence.stream()
@@ -205,7 +212,8 @@ public class PlacementService {
   public Integer getNotificationDaysBeforeStart(NotificationType notificationType) {
     if (notificationType.equals(PLACEMENT_UPDATED_WEEK_12)
         || notificationType.equals(PLACEMENT_INFORMATION)
-        || notificationType.equals(NON_EMPLOYMENT)) {
+        || notificationType.equals(NON_EMPLOYMENT)
+        || notificationType.equals(PLACEMENT_USEFUL_INFORMATION)) {
       return 84;
     } else {
       return null;
@@ -297,6 +305,12 @@ public class PlacementService {
       // NON_EMPLOYMENT
       createUniqueInAppNotification(placement, notificationsAlreadySent, NON_EMPLOYMENT,
           nonEmploymentVersion, Map.of(
+              LOCAL_OFFICE_CONTACT_FIELD, localOfficeContact,
+              LOCAL_OFFICE_CONTACT_TYPE_FIELD, localOfficeContactType));
+
+      // PLACEMENT_USEFUL_INFORMATION
+      createUniqueInAppNotification(placement, notificationsAlreadySent, PLACEMENT_USEFUL_INFORMATION,
+          placementUsefulInfoVersion, Map.of(
               LOCAL_OFFICE_CONTACT_FIELD, localOfficeContact,
               LOCAL_OFFICE_CONTACT_TYPE_FIELD, localOfficeContactType));
     }
