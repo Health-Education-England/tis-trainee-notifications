@@ -119,7 +119,7 @@ class PlacementServiceTest {
     inAppService = mock(InAppService.class);
     restTemplate = mock(RestTemplate.class);
     service = new PlacementService(historyService, notificationService, inAppService,
-        ZoneId.of("Europe/London"), PLACEMENT_INFO_VERSION,PLACEMENT_USEFUL_INFO_VERSION,
+        ZoneId.of("Europe/London"), PLACEMENT_INFO_VERSION, PLACEMENT_USEFUL_INFO_VERSION,
         NON_EMPLOYMENT_VERSION);
   }
 
