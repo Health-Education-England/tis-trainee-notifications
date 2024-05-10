@@ -24,8 +24,8 @@ package uk.nhs.tis.trainee.notifications.service;
 import static uk.nhs.tis.trainee.notifications.model.MessageType.IN_APP;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.NON_EMPLOYMENT;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PLACEMENT_INFORMATION;
-import static uk.nhs.tis.trainee.notifications.model.NotificationType.PLACEMENT_USEFUL_INFORMATION;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PLACEMENT_UPDATED_WEEK_12;
+import static uk.nhs.tis.trainee.notifications.model.NotificationType.PLACEMENT_USEFUL_INFORMATION;
 import static uk.nhs.tis.trainee.notifications.model.TisReferenceType.PLACEMENT;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.PERSON_ID_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.TEMPLATE_NOTIFICATION_TYPE_FIELD;
@@ -87,7 +87,8 @@ public class PlacementService {
    * @param notificationService   The notification Service to use.
    * @param inAppService          The in-app service to use.
    * @param placementInfoVersion  The placement information in-app notification version.
-   * @param placementUsefulInfoVersion  The placement useful information in-app notification version.
+   * @param placementUsefulInfoVersion  The placement useful information
+   *                                    in-app notification version.
    * @param nonEmploymentVersion  The non employment in-app notification version.
    */
   public PlacementService(HistoryService historyService, NotificationService notificationService,
@@ -302,8 +303,8 @@ public class PlacementService {
               LOCAL_OFFICE_CONTACT_TYPE_FIELD, localOfficeContactType));
 
       // PLACEMENT_USEFUL_INFORMATION
-      createUniqueInAppNotification(placement, notificationsAlreadySent, PLACEMENT_USEFUL_INFORMATION,
-          placementUsefulInfoVersion, Map.of(
+      createUniqueInAppNotification(placement, notificationsAlreadySent,
+          PLACEMENT_USEFUL_INFORMATION, placementUsefulInfoVersion, Map.of(
               LOCAL_OFFICE_CONTACT_FIELD, localOfficeContact,
               LOCAL_OFFICE_CONTACT_TYPE_FIELD, localOfficeContactType));
 

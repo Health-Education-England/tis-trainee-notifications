@@ -625,7 +625,7 @@ class PlacementServiceTest {
 
   @ParameterizedTest
   @EnumSource(value = NotificationType.class, mode = EnumSource.Mode.INCLUDE,
-      names = {"PLACEMENT_INFORMATION","PLACEMENT_USEFUL_INFORMATION", "NON_EMPLOYMENT"})
+      names = {"PLACEMENT_INFORMATION", "PLACEMENT_USEFUL_INFORMATION", "NON_EMPLOYMENT"})
   void shouldNotAddInAppNotificationsWhenPastSentHistoryExist(NotificationType notificationType)
       throws SchedulerException {
     Placement placement = new Placement();
@@ -656,7 +656,7 @@ class PlacementServiceTest {
 
   @ParameterizedTest
   @EnumSource(value = NotificationType.class, mode = EnumSource.Mode.INCLUDE,
-      names = {"PLACEMENT_INFORMATION","PLACEMENT_USEFUL_INFORMATION", "NON_EMPLOYMENT"})
+      names = {"PLACEMENT_INFORMATION", "PLACEMENT_USEFUL_INFORMATION", "NON_EMPLOYMENT"})
   void shouldAddInAppNotificationsWhenNoPastSentHistoryWithSameRefType(
       NotificationType notificationType)
       throws SchedulerException {
