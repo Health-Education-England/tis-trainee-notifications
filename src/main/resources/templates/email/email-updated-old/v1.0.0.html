@@ -21,7 +21,7 @@
       <p th:replace="fragments/greeting/v1.0.0 :: p"></p>
 
       <p>
-        Your contact details have been updated by your NHS England local office, as a result
+        Your contact details have been updated by your local NHS England office, as a result
         <strong th:text="${previousEmail}"></strong> can no longer be used to sign in to
         <a th:href="${not #strings.isEmpty(domain)} ? @{{domain}/(domain=${domain})} : _"
           >TIS Self-Service</a
