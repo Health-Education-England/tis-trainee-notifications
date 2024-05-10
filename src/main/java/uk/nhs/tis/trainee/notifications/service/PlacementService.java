@@ -25,7 +25,7 @@ import static uk.nhs.tis.trainee.notifications.model.MessageType.IN_APP;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.NON_EMPLOYMENT;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PLACEMENT_INFORMATION;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PLACEMENT_UPDATED_WEEK_12;
-import static uk.nhs.tis.trainee.notifications.model.NotificationType.PLACEMENT_USEFUL_INFORMATION;
+import static uk.nhs.tis.trainee.notifications.model.NotificationType.USEFUL_INFORMATION;
 import static uk.nhs.tis.trainee.notifications.model.TisReferenceType.PLACEMENT;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.PERSON_ID_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.TEMPLATE_NOTIFICATION_TYPE_FIELD;
@@ -148,7 +148,7 @@ public class PlacementService {
     Set<NotificationType> notificationTypes = new HashSet<>();
     notificationTypes.add(PLACEMENT_UPDATED_WEEK_12);
     notificationTypes.add(PLACEMENT_INFORMATION);
-    notificationTypes.add(PLACEMENT_USEFUL_INFORMATION);
+    notificationTypes.add(USEFUL_INFORMATION);
     notificationTypes.add(NON_EMPLOYMENT);
 
     for (NotificationType milestone : notificationTypes) {
@@ -212,7 +212,7 @@ public class PlacementService {
   public Integer getNotificationDaysBeforeStart(NotificationType notificationType) {
     if (notificationType.equals(PLACEMENT_UPDATED_WEEK_12)
         || notificationType.equals(PLACEMENT_INFORMATION)
-        || notificationType.equals(PLACEMENT_USEFUL_INFORMATION)
+        || notificationType.equals(USEFUL_INFORMATION)
         || notificationType.equals(NON_EMPLOYMENT)) {
       return 84;
     } else {
@@ -304,7 +304,7 @@ public class PlacementService {
 
       // PLACEMENT_USEFUL_INFORMATION
       createUniqueInAppNotification(placement, notificationsAlreadySent,
-          PLACEMENT_USEFUL_INFORMATION, placementUsefulInfoVersion, Map.of(
+          USEFUL_INFORMATION, placementUsefulInfoVersion, Map.of(
               LOCAL_OFFICE_CONTACT_FIELD, localOfficeContact,
               LOCAL_OFFICE_CONTACT_TYPE_FIELD, localOfficeContactType));
 
