@@ -27,22 +27,17 @@
           (speciality name missing)
         </th:block></b>, please see the below information.
     </p>
-    <p>
-      Useful Information
-
-      <th:block: th:switch="${localOfficeContactType}">
-        <th:block th:case="NON_HREF"
-        >Further information on the management of specific issues can be found at your local offices
-          website, for example:
-        </th:block
-        >
-        <th:block th:case="*"
-        >Further information on the management of specific issues can be found <a
-          href="${localOfficeContactType} == 'email' ? |mailto:${localOfficeContact}"
-          th:target="_blank">
-          here</a>. for example:
-        </th:block>
-      </th:block:>
+    <p>Further information on the management of specific issues can be found by contacting your <th:block: th:switch="${localOfficeContactType}">
+      <th:block th:case="NON_HREF"
+      > NHS England local office.</th:block
+      >
+      <th:block th:case="*"
+      ><a
+        th:href="${localOfficeContactType} == 'email' ? |mailto:${localOfficeContact}| : ${localOfficeContact}"
+        th:target="_blank"
+      >NHS England local office</a
+      >.</th:block>
+    </th:block:>. For example:</p>
 
     <ul>
       <li>Taking time out of programme (OOP)</li>
@@ -57,9 +52,9 @@
     Please refer to the National guidelines found below:
 
     <ul>
-      <li>‘Gold guide’ to Specialty Training found <a
+      <li><a
         href="https://www.copmed.org.uk/publications/gold-guide" th:target="_blank">
-        here</a>.
+        Gold guide</a> to Specialty Training.
       </li>
     </ul>
     </p>
