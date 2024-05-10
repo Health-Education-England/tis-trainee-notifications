@@ -41,7 +41,7 @@ import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.UNREAD;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.NON_EMPLOYMENT;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PLACEMENT_INFORMATION;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PLACEMENT_UPDATED_WEEK_12;
-import static uk.nhs.tis.trainee.notifications.model.NotificationType.PLACEMENT_USEFUL_INFORMATION;
+import static uk.nhs.tis.trainee.notifications.model.NotificationType.USEFUL_INFORMATION;
 import static uk.nhs.tis.trainee.notifications.model.TisReferenceType.PLACEMENT;
 import static uk.nhs.tis.trainee.notifications.model.TisReferenceType.PROGRAMME_MEMBERSHIP;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.CONTACT_TYPE_FIELD;
@@ -504,8 +504,8 @@ class PlacementServiceTest {
       PLACEMENT_INFORMATION | v1.2.3 | false
       NON_EMPLOYMENT | v2.3.4 | true
       NON_EMPLOYMENT | v2.3.4 | false
-      PLACEMENT_USEFUL_INFORMATION | v3.4.5 | true
-      PLACEMENT_USEFUL_INFORMATION | v3.4.5 | false""")
+      USEFUL_INFORMATION | v3.4.5 | true
+      USEFUL_INFORMATION | v3.4.5 | false""")
   void shouldAddInAppNotificationsWhenNotExcludedAndMeetsCriteria(NotificationType notificationType,
       String notificationVersion, boolean notifiable) throws SchedulerException {
     Placement placement = new Placement();
@@ -589,7 +589,7 @@ class PlacementServiceTest {
         eq(PLACEMENT_INFO_VERSION), variablesCaptor.capture(), anyBoolean(), any());
     verify(inAppService).createNotifications(eq(PERSON_ID), any(), eq(NON_EMPLOYMENT),
         eq(NON_EMPLOYMENT_VERSION), variablesCaptor.capture(), anyBoolean(), any());
-    verify(inAppService).createNotifications(eq(PERSON_ID), any(), eq(PLACEMENT_USEFUL_INFORMATION),
+    verify(inAppService).createNotifications(eq(PERSON_ID), any(), eq(USEFUL_INFORMATION),
         eq(PLACEMENT_USEFUL_INFO_VERSION), variablesCaptor.capture(), anyBoolean(), any());
 
     Map<String, Object> variables = variablesCaptor.getValue();
@@ -625,7 +625,7 @@ class PlacementServiceTest {
 
   @ParameterizedTest
   @EnumSource(value = NotificationType.class, mode = EnumSource.Mode.INCLUDE,
-      names = {"PLACEMENT_INFORMATION", "PLACEMENT_USEFUL_INFORMATION", "NON_EMPLOYMENT"})
+      names = {"PLACEMENT_INFORMATION", "USEFUL_INFORMATION", "NON_EMPLOYMENT"})
   void shouldNotAddInAppNotificationsWhenPastSentHistoryExist(NotificationType notificationType)
       throws SchedulerException {
     Placement placement = new Placement();
@@ -656,7 +656,7 @@ class PlacementServiceTest {
 
   @ParameterizedTest
   @EnumSource(value = NotificationType.class, mode = EnumSource.Mode.INCLUDE,
-      names = {"PLACEMENT_INFORMATION", "PLACEMENT_USEFUL_INFORMATION", "NON_EMPLOYMENT"})
+      names = {"PLACEMENT_INFORMATION", "USEFUL_INFORMATION", "NON_EMPLOYMENT"})
   void shouldAddInAppNotificationsWhenNoPastSentHistoryWithSameRefType(
       NotificationType notificationType)
       throws SchedulerException {
