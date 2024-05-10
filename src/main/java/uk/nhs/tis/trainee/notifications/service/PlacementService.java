@@ -22,6 +22,7 @@
 package uk.nhs.tis.trainee.notifications.service;
 
 import static uk.nhs.tis.trainee.notifications.model.MessageType.IN_APP;
+import static uk.nhs.tis.trainee.notifications.model.NotificationType.NON_EMPLOYMENT;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PLACEMENT_INFORMATION;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PLACEMENT_UPDATED_WEEK_12;
 import static uk.nhs.tis.trainee.notifications.model.TisReferenceType.PLACEMENT;
@@ -76,6 +77,7 @@ public class PlacementService {
   private final InAppService inAppService;
   private final ZoneId timezone;
   private final String placementInfoVersion;
+  private final String nonEmploymentVersion;
 
   /**
    * Initialise the Placement Service.
@@ -83,17 +85,21 @@ public class PlacementService {
    * @param historyService        The history Service to use.
    * @param notificationService   The notification Service to use.
    * @param inAppService          The in-app service to use.
-   * @param placementInfoVersion  The placement information version.
+   * @param placementInfoVersion  The placement information in-app notification version.
+   * @param nonEmploymentVersion  The non employment in-app notification version.
    */
   public PlacementService(HistoryService historyService, NotificationService notificationService,
       InAppService inAppService, @Value("${application.timezone}") ZoneId timezone,
       @Value("${application.template-versions.placement-information.in-app}")
-                          String placementInfoVersion) {
+        String placementInfoVersion,
+      @Value("${application.template-versions.non-employment.in-app}")
+        String nonEmploymentVersion) {
     this.historyService = historyService;
     this.notificationService = notificationService;
     this.inAppService = inAppService;
     this.timezone = timezone;
     this.placementInfoVersion = placementInfoVersion;
+    this.nonEmploymentVersion = nonEmploymentVersion;
   }
 
   /**
@@ -136,6 +142,7 @@ public class PlacementService {
     Set<NotificationType> notificationTypes = new HashSet<>();
     notificationTypes.add(PLACEMENT_UPDATED_WEEK_12);
     notificationTypes.add(PLACEMENT_INFORMATION);
+    notificationTypes.add(NON_EMPLOYMENT);
 
     for (NotificationType milestone : notificationTypes) {
       Optional<HistoryDto> sentItem = correspondence.stream()
@@ -197,7 +204,8 @@ public class PlacementService {
    */
   public Integer getNotificationDaysBeforeStart(NotificationType notificationType) {
     if (notificationType.equals(PLACEMENT_UPDATED_WEEK_12)
-        || notificationType.equals(PLACEMENT_INFORMATION)) {
+        || notificationType.equals(PLACEMENT_INFORMATION)
+        || notificationType.equals(NON_EMPLOYMENT)) {
       return 84;
     } else {
       return null;
@@ -275,13 +283,20 @@ public class PlacementService {
       String owner = placement.getOwner();
       List<Map<String, String>> contactList = notificationService.getOwnerContactList(owner);
 
-      // PLACEMENT_INFORMATION
       String localOfficeContact = notificationService.getOwnerContact(contactList,
           LocalOfficeContactType.TSS_SUPPORT, null);
       String localOfficeContactType =
           notificationService.getHrefTypeForContact(localOfficeContact);
+
+      // PLACEMENT_INFORMATION
       createUniqueInAppNotification(placement, notificationsAlreadySent, PLACEMENT_INFORMATION,
           placementInfoVersion, Map.of(
+              LOCAL_OFFICE_CONTACT_FIELD, localOfficeContact,
+              LOCAL_OFFICE_CONTACT_TYPE_FIELD, localOfficeContactType));
+
+      // NON_EMPLOYMENT
+      createUniqueInAppNotification(placement, notificationsAlreadySent, NON_EMPLOYMENT,
+          nonEmploymentVersion, Map.of(
               LOCAL_OFFICE_CONTACT_FIELD, localOfficeContact,
               LOCAL_OFFICE_CONTACT_TYPE_FIELD, localOfficeContactType));
     }

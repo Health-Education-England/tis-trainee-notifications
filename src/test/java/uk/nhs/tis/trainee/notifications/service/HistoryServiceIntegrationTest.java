@@ -21,6 +21,7 @@
 
 package uk.nhs.tis.trainee.notifications.service;
 
+import static org.hamcrest.CoreMatchers.either;
 import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -451,6 +452,7 @@ class HistoryServiceIntegrationTest {
     assertThat("Unexpected child count.", body.childNodeSize(), greaterThanOrEqualTo(1));
 
     body.children().forEach(
-        contentNode -> assertThat("Unexpected node type.", contentNode.tagName(), is("p")));
+        contentNode -> assertThat("Unexpected node type.", contentNode.tagName(),
+            either(is("p")).or(is("ul"))));
   }
 }

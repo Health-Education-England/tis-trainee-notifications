@@ -44,6 +44,8 @@ application:
       in-app: v1.0.0
     less-than-full-time:
       in-app: v1.0.0
+    non-employment:
+      in-app: v1.0.0
     placement-information:
       in-app: v1.0.0
     sponsorship:
