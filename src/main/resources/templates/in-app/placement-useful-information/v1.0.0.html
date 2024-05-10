@@ -11,22 +11,21 @@
   <h2>Content</h2>
   <th:block th:fragment="content">
     <p>
-      This notification pertains to your placement in
-      <th:block th:text="${not #strings.isEmpty(specialityName)} ? ${specialityName} : _"
-      >(Speciality name missing)
-      </th:block
-      >
-      at
-      <th:block th:text="${not #strings.isEmpty(siteKnownAs)} ? ${siteKnownAs} : _"
-      >(Placement name missing)
-      </th:block
-      >
-      starting on
-      <th:block th:text="${startDate} ? |${#temporals.format(startDate, 'dd MMMM yyyy')}| : _"
-      >(start date missing)
-      </th:block
-      >
-      .
+      For your placement starting
+      <b>
+        <th:block th:text="${startDate} ? |${#temporals.format(startDate, 'dd MMMM yyyy')}| : _">
+          (start date missing)
+        </th:block>
+      </b> at
+      <b>
+        <th:block th:text="${not #strings.isEmpty(site)} ? ${site} : _">
+          (site name missing)
+        </th:block>
+      </b> in
+      <b>
+        <th:block th:text="${not #strings.isEmpty(specialty)} ? ${specialty} : _">
+          (speciality name missing)
+        </th:block></b>, please see the below information.
     </p>
     <p>
       Useful Information
