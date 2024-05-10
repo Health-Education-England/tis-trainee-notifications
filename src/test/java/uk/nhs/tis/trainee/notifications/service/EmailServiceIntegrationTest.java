@@ -244,11 +244,9 @@ class EmailServiceIntegrationTest {
   }
 
   int getGreetingElementIndex(NotificationType notificationType) {
-    int greetingElement = 0;
-    if (notificationType.equals(NotificationType.PLACEMENT_UPDATED_WEEK_12)
-        || notificationType.equals(NotificationType.PROGRAMME_CREATED)) {
-      greetingElement = 1; //because of logo above it
-    }
-    return greetingElement;
+    return switch (notificationType) {
+      case PLACEMENT_UPDATED_WEEK_12, PROGRAMME_CREATED, EMAIL_UPDATED_NEW, EMAIL_UPDATED_OLD -> 1;
+      default -> 0;
+    };
   }
 }

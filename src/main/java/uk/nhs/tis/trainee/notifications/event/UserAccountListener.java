@@ -21,15 +21,25 @@
 
 package uk.nhs.tis.trainee.notifications.event;
 
+import static uk.nhs.tis.trainee.notifications.model.NotificationType.EMAIL_UPDATED_NEW;
+import static uk.nhs.tis.trainee.notifications.model.NotificationType.EMAIL_UPDATED_OLD;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.WELCOME;
 
 import io.awspring.cloud.sqs.annotation.SqsListener;
+import jakarta.mail.MessagingException;
+import java.net.URI;
+import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import uk.nhs.tis.trainee.notifications.dto.AccountConfirmedEvent;
+import uk.nhs.tis.trainee.notifications.dto.AccountUpdatedEvent;
+import uk.nhs.tis.trainee.notifications.dto.UserDetails;
+import uk.nhs.tis.trainee.notifications.service.EmailService;
 import uk.nhs.tis.trainee.notifications.service.InAppService;
+import uk.nhs.tis.trainee.notifications.service.UserAccountService;
 
 /**
  * A listener for user account events.
@@ -38,13 +48,28 @@ import uk.nhs.tis.trainee.notifications.service.InAppService;
 @Component
 public class UserAccountListener {
 
+  private final EmailService emailService;
   private final InAppService inAppService;
-  private final String templateVersion;
+  private final UserAccountService userAccountService;
+  private final URI appDomain;
+  private final String emailUpdatedNewVersion;
+  private final String emailUpdatedOldVersion;
+  private final String welcomeVersion;
 
-  public UserAccountListener(InAppService inAppService,
-      @Value("${application.template-versions.welcome.in-app}") String templateVersion) {
+  public UserAccountListener(EmailService emailService, InAppService inAppService,
+      UserAccountService userAccountService, @Value("${application.domain}") URI appDomain,
+      @Value("${application.template-versions.email-updated-new.email}")
+      String emailUpdatedNewVersion,
+      @Value("${application.template-versions.email-updated-old.email}")
+      String emailUpdatedOldVersion,
+      @Value("${application.template-versions.welcome.in-app}") String welcomeVersion) {
+    this.emailService = emailService;
     this.inAppService = inAppService;
-    this.templateVersion = templateVersion;
+    this.userAccountService = userAccountService;
+    this.appDomain = appDomain;
+    this.emailUpdatedNewVersion = emailUpdatedNewVersion;
+    this.emailUpdatedOldVersion = emailUpdatedOldVersion;
+    this.welcomeVersion = welcomeVersion;
   }
 
   /**
@@ -55,6 +80,32 @@ public class UserAccountListener {
   @SqsListener("${application.queues.account-confirmed}")
   public void handleAccountConfirmation(AccountConfirmedEvent event) {
     log.info("Handling account confirmation event for user {}.", event.userId());
-    inAppService.createNotifications(event.traineeId(), null, WELCOME, templateVersion, Map.of());
+    inAppService.createNotifications(event.traineeId(), null, WELCOME, welcomeVersion, Map.of());
+  }
+
+  /**
+   * Handle account update events.
+   *
+   * @param event The account update event.
+   */
+  @SqsListener("${application.queues.account-updated}")
+  public void handleAccountUpdate(AccountUpdatedEvent event) throws MessagingException {
+    UUID userId = event.userId();
+    log.info("Handling account update event for user {}.", userId);
+
+    UserDetails userDetails = userAccountService.getUserDetails(userId.toString());
+
+    Map<String, Object> newEmailVariables = new HashMap<>();
+    newEmailVariables.put("familyName", userDetails.familyName());
+    newEmailVariables.put("domain", appDomain);
+    newEmailVariables.put("newEmail", event.newEmail());
+
+    emailService.sendMessage(event.traineeId(), event.newEmail(), EMAIL_UPDATED_NEW,
+        emailUpdatedNewVersion, newEmailVariables, null, false);
+
+    Map<String, Object> oldEmailVariables = new HashMap<>(newEmailVariables);
+    oldEmailVariables.put("previousEmail", event.previousEmail());
+    emailService.sendMessage(event.traineeId(), event.previousEmail(), EMAIL_UPDATED_OLD,
+        emailUpdatedOldVersion, oldEmailVariables, null, false);
   }
 }

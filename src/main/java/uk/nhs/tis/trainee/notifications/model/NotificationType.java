@@ -37,6 +37,8 @@ public enum NotificationType {
   CREDENTIAL_REVOKED("credential-revoked"),
   DEFERRAL("deferral"),
   E_PORTFOLIO("e-portfolio"),
+  EMAIL_UPDATED_NEW("email-updated-new"),
+  EMAIL_UPDATED_OLD("email-updated-old"),
   FORM_UPDATED("form-updated"),
   INDEMNITY_INSURANCE("indemnity-insurance"),
   LTFT("less-than-full-time"),
