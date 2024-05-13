@@ -114,6 +114,12 @@ spring:
       initialize-schema: never
     jobStore:
       useProperties: true
+    properties:
+      org.quartz:
+        scheduler:
+          instanceId: AUTO
+        jobStore:
+          isClustered: true
 
 service:
   trainee:

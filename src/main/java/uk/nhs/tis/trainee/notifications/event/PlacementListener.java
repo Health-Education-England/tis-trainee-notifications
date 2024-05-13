@@ -22,8 +22,6 @@
 package uk.nhs.tis.trainee.notifications.event;
 
 import io.awspring.cloud.sqs.annotation.SqsListener;
-import java.time.LocalDate;
-import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.quartz.SchedulerException;
 import org.springframework.stereotype.Component;
