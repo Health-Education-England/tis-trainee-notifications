@@ -169,6 +169,16 @@ public class HistoryService {
   }
 
   /**
+   * Find all historic notifications for the given Trainee.
+   *
+   * @param traineeId The ID of the trainee to get notifications for.
+   * @return The found notifications, empty if none found.
+   */
+  public List<History> findAllHistoryForTrainee(String traineeId) {
+    return repository.findAllByRecipient_IdOrderBySentAtDesc(traineeId);
+  }
+
+  /**
    * Find all sent historic notifications for the given Trainee.
    *
    * @param traineeId The ID of the trainee to get notifications for.

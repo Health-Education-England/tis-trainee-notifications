@@ -35,6 +35,8 @@ import static uk.nhs.tis.trainee.notifications.service.NotificationService.TEMPL
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -49,6 +51,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import uk.nhs.tis.trainee.notifications.dto.HistoryDto;
 import uk.nhs.tis.trainee.notifications.model.Curriculum;
+import uk.nhs.tis.trainee.notifications.model.History;
 import uk.nhs.tis.trainee.notifications.model.History.TisReferenceInfo;
 import uk.nhs.tis.trainee.notifications.model.LocalOfficeContactType;
 import uk.nhs.tis.trainee.notifications.model.NotificationType;
@@ -156,17 +159,18 @@ public class ProgrammeMembershipService {
   }
 
   /**
-   * Get a map of notification types and the instant they were sent for a given trainee and
-   * programme membership from the notification history.
+   * Get a map of notification types and the most recent one that was sent for a given trainee and
+   * programme membership from the notification history. If more than one notification exists for a
+   * particular notification type, the most recent (or furthest in the future) sent will be used.
    *
    * @param traineeId             The trainee TIS ID.
    * @param programmeMembershipId The programme membership TIS ID.
-   * @return The map of notification types and when they were sent.
+   * @return The map of notification types and the notification item most recently sent.
    */
-  private Map<NotificationType, Instant> getNotificationsSent(String traineeId,
+  private Map<NotificationType, History> getNotificationsSent(String traineeId,
       String programmeMembershipId) {
-    EnumMap<NotificationType, Instant> notifications = new EnumMap<>(NotificationType.class);
-    List<HistoryDto> correspondence = historyService.findAllForTrainee(traineeId);
+    EnumMap<NotificationType, History> notifications = new EnumMap<>(NotificationType.class);
+    List<History> correspondence = historyService.findAllHistoryForTrainee(traineeId);
 
     Set<NotificationType> notificationTypes = new HashSet<>(
         NotificationType.getProgrammeUpdateNotificationTypes());
@@ -177,14 +181,14 @@ public class ProgrammeMembershipService {
     notificationTypes.add(SPONSORSHIP);
 
     for (NotificationType milestone : notificationTypes) {
-      Optional<HistoryDto> sentItem = correspondence.stream()
+      Optional<History> sentItem = correspondence.stream()
           .filter(c -> c.tisReference() != null)
           .filter(c ->
               c.tisReference().type().equals(TisReferenceType.PROGRAMME_MEMBERSHIP)
-                  && c.subject().equals(milestone)
+                  && c.type().equals(milestone)
                   && c.tisReference().id().equals(programmeMembershipId))
-          .findFirst();
-      sentItem.ifPresent(historyDto -> notifications.put(milestone, historyDto.sentAt()));
+          .max(Comparator.comparing(History::sentAt)); //get most recent sent
+      sentItem.ifPresent(history -> notifications.put(milestone, history));
     }
     return notifications;
   }
@@ -204,7 +208,7 @@ public class ProgrammeMembershipService {
     log.info("Programme membership {}: excluded {}.", programmeMembership.getTisId(), isExcluded);
 
     if (!isExcluded) {
-      Map<NotificationType, Instant> notificationsAlreadySent
+      Map<NotificationType, History> notificationsAlreadySent
           = getNotificationsSent(programmeMembership.getPersonId(), programmeMembership.getTisId());
 
       createDirectNotifications(programmeMembership, notificationsAlreadySent);
@@ -219,10 +223,12 @@ public class ProgrammeMembershipService {
    * @param notificationsAlreadySent Previously sent notifications.
    */
   private void createDirectNotifications(ProgrammeMembership programmeMembership,
-      Map<NotificationType, Instant> notificationsAlreadySent) {
+      Map<NotificationType, History> notificationsAlreadySent) {
 
     NotificationType milestone = PROGRAMME_CREATED; //do not handle other programme notifications
-    boolean shouldSchedule = shouldScheduleNotification(milestone, notificationsAlreadySent);
+    LocalDate newStartDate = programmeMembership.getStartDate();
+    boolean shouldSchedule = shouldScheduleNotification(milestone, newStartDate,
+        notificationsAlreadySent);
 
     if (shouldSchedule) {
       log.info("Processing notification {} for {}.", milestone, programmeMembership.getTisId());
@@ -253,7 +259,7 @@ public class ProgrammeMembershipService {
    * @param notificationsAlreadySent Previously sent notifications.
    */
   private void createInAppNotifications(ProgrammeMembership programmeMembership,
-      Map<NotificationType, Instant> notificationsAlreadySent) {
+      Map<NotificationType, History> notificationsAlreadySent) {
     // Create ePortfolio notification if the PM qualifies.
     boolean meetsCriteria = notificationService.meetsCriteria(programmeMembership, true, true);
 
@@ -315,7 +321,7 @@ public class ProgrammeMembershipService {
    *                                 and Start Date are populated automatically.
    */
   private void createUniqueInAppNotification(ProgrammeMembership programmeMembership,
-      Map<NotificationType, Instant> notificationsAlreadySent, NotificationType notificationType,
+      Map<NotificationType, History> notificationsAlreadySent, NotificationType notificationType,
       String notificationVersion, Map<String, Object> extraVariables) {
     boolean isUnique = !notificationsAlreadySent.containsKey(notificationType);
 
@@ -355,14 +361,18 @@ public class ProgrammeMembershipService {
    * Helper function to determine whether a notification should be scheduled.
    *
    * @param milestone                The milestone to consider.
+   * @param newStartDate             The new start date.
    * @param notificationsAlreadySent The notifications already sent for this entity.
    * @return true if it should be scheduled, false otherwise.
    */
-  private boolean shouldScheduleNotification(NotificationType milestone,
-      Map<NotificationType, Instant> notificationsAlreadySent) {
+  private boolean shouldScheduleNotification(NotificationType milestone, LocalDate newStartDate,
+      Map<NotificationType, History> notificationsAlreadySent) {
 
     //do not resend any notification
     if (notificationsAlreadySent.containsKey(milestone)) {
+      History lastSent = notificationsAlreadySent.get(milestone);
+      LocalDate oldStartDate = LocalDate.parse(lastSent.template().variables().get("startDate").toString()); //TODO
+      //TODO: if new start date < 90 days after notificationsAlreadySent.get(milestone)
       return false;
     }
 
