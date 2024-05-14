@@ -33,7 +33,9 @@
     >
     <th:block th:case="*"
     ><a
-      th:href="${localOfficeContactType} == 'email' ? |mailto:${localOfficeContact}| : ${localOfficeContact}"
+      th:href="${localOfficeContactType} == 'email' ?
+      |mailto:${localOfficeContact}?subject=Placement Useful Information - GMC: ${not #strings.isEmpty(gmcNumber) ? gmcNumber : 'unknown'}, Start Date: ${#temporals.format(startDate, 'dd/MM/yyyy')}|
+      : ${localOfficeContact}"
       th:target="_blank"
     >NHS England local office</a
     >.</th:block>

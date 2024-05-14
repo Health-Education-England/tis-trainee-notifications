@@ -36,6 +36,7 @@ public class ProgrammeMembership {
   private String tisId;
   private String personId;
   private String programmeName;
+  private String programmeNumber;
   private String managingDeanery;
   private LocalDate startDate;
   private List<Curriculum> curricula = new ArrayList<>();

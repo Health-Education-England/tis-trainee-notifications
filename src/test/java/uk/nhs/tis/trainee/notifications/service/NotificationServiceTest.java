@@ -1116,4 +1116,34 @@ class NotificationServiceTest {
 
     assertThat("Unexpected validate GMC result.", isValidGmc, is(false));
   }
+
+  @Test
+  void shouldGetTraineeDetails() {
+    UserDetails userAccountDetails =
+        new UserDetails(
+            null, USER_EMAIL, USER_TITLE, USER_FAMILY_NAME, USER_GIVEN_NAME, USER_GMC);
+
+    when(restTemplate.getForObject(ACCOUNT_DETAILS_URL, UserDetails.class,
+        Map.of(TIS_ID_FIELD, PERSON_ID))).thenReturn(userAccountDetails);
+
+    UserDetails result = service.getTraineeDetails(PERSON_ID);
+
+    assertThat("Unexpected email.", result.email(), is(userAccountDetails.email()));
+    assertThat("Unexpected title.", result.title(), is(userAccountDetails.title()));
+    assertThat("Unexpected family name.", result.familyName(),
+        is(userAccountDetails.familyName()));
+    assertThat("Unexpected given name.", result.givenName(),
+        is(userAccountDetails.givenName()));
+    assertThat("Unexpected gmc.", result.gmcNumber(), is(userAccountDetails.gmcNumber()));
+  }
+
+  @Test
+  void shouldReturnNullWhenRestClientExceptionsInGetTraineeDetails() {
+    when(restTemplate.getForObject(any(), any(), anyMap()))
+        .thenThrow(new RestClientException("error"));
+
+    UserDetails result = service.getTraineeDetails(PERSON_ID);
+
+    assertThat("Unexpected result.", result, is(nullValue()));
+  }
 }
