@@ -224,13 +224,7 @@ class ProgrammeMembershipServiceTest {
 
   @Test
   void shouldRemoveStaleNotifications() throws SchedulerException {
-    Curriculum theCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, EXCLUDE_SPECIALTY_1, false);
-    ProgrammeMembership programmeMembership = new ProgrammeMembership();
-    programmeMembership.setTisId(TIS_ID);
-    programmeMembership.setStartDate(START_DATE);
-    programmeMembership.setCurricula(List.of(theCurriculum));
-
-    service.addNotifications(programmeMembership);
+    service.addNotifications(getDefaultProgrammeMembership());
 
     for (NotificationType milestone : NotificationType.getProgrammeUpdateNotificationTypes()) {
       String jobId = milestone.toString() + "-" + TIS_ID;
@@ -266,14 +260,7 @@ class ProgrammeMembershipServiceTest {
       SPONSORSHIP | v5.6.7 | false""")
   void shouldAddInAppNotificationsWhenNotExcludedAndMeetsCriteria(NotificationType notificationType,
       String notificationVersion, boolean notifiablePm) throws SchedulerException {
-    Curriculum theCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, "any specialty", false);
-    ProgrammeMembership programmeMembership = new ProgrammeMembership();
-    programmeMembership.setTisId(TIS_ID);
-    programmeMembership.setPersonId(PERSON_ID);
-    programmeMembership.setProgrammeName(PROGRAMME_NAME);
-    programmeMembership.setStartDate(START_DATE);
-    programmeMembership.setCurricula(List.of(theCurriculum));
-    programmeMembership.setConditionsOfJoining(new ConditionsOfJoining(Instant.MIN));
+    ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
 
     when(notificationService.meetsCriteria(programmeMembership, true,
         true)).thenReturn(true);
@@ -393,15 +380,7 @@ class ProgrammeMembershipServiceTest {
       not a href | NON_HREF""")
   void shouldIncludeContactDetailsInInAppNotification(String contact, HrefType contactType)
       throws SchedulerException {
-    Curriculum theCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, "any specialty", true);
-    ProgrammeMembership programmeMembership = new ProgrammeMembership();
-    programmeMembership.setTisId(TIS_ID);
-    programmeMembership.setPersonId(PERSON_ID);
-    programmeMembership.setProgrammeName(PROGRAMME_NAME);
-    programmeMembership.setStartDate(START_DATE);
-    programmeMembership.setCurricula(List.of(theCurriculum));
-    programmeMembership.setConditionsOfJoining(new ConditionsOfJoining(Instant.MIN));
-    programmeMembership.setManagingDeanery(MANAGING_DEANERY);
+    ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
 
     when(notificationService.meetsCriteria(programmeMembership, true, true)).thenReturn(true);
 
@@ -440,14 +419,7 @@ class ProgrammeMembershipServiceTest {
 
   @Test
   void shouldNotAddInAppNotificationsWhenNotMeetsCriteria() throws SchedulerException {
-    Curriculum theCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, "any specialty", false);
-    ProgrammeMembership programmeMembership = new ProgrammeMembership();
-    programmeMembership.setTisId(TIS_ID);
-    programmeMembership.setPersonId(PERSON_ID);
-    programmeMembership.setProgrammeName(PROGRAMME_NAME);
-    programmeMembership.setStartDate(START_DATE);
-    programmeMembership.setCurricula(List.of(theCurriculum));
-    programmeMembership.setConditionsOfJoining(new ConditionsOfJoining(Instant.MIN));
+    ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
 
     when(notificationService.meetsCriteria(programmeMembership, true,
         true)).thenReturn(false);
@@ -462,14 +434,7 @@ class ProgrammeMembershipServiceTest {
       "E_PORTFOLIO", "INDEMNITY_INSURANCE", "LTFT", "SPONSORSHIP"})
   void shouldNotAddInAppNotificationsWhenNotUnique(NotificationType notificationType)
       throws SchedulerException {
-    Curriculum theCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, "any specialty", false);
-    ProgrammeMembership programmeMembership = new ProgrammeMembership();
-    programmeMembership.setTisId(TIS_ID);
-    programmeMembership.setPersonId(PERSON_ID);
-    programmeMembership.setProgrammeName(PROGRAMME_NAME);
-    programmeMembership.setStartDate(START_DATE);
-    programmeMembership.setCurricula(List.of(theCurriculum));
-    programmeMembership.setConditionsOfJoining(new ConditionsOfJoining(Instant.MIN));
+    ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
 
     RecipientInfo recipientInfo = new RecipientInfo("id", MessageType.IN_APP, null);
     List<History> sentNotifications = List.of(
@@ -492,14 +457,7 @@ class ProgrammeMembershipServiceTest {
 
   @Test
   void shouldAddDirectProgrammeNotificationsWhenNotExcluded() throws SchedulerException {
-    Curriculum theCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, "any specialty", false);
-    ProgrammeMembership programmeMembership = new ProgrammeMembership();
-    programmeMembership.setTisId(TIS_ID);
-    programmeMembership.setPersonId(PERSON_ID);
-    programmeMembership.setProgrammeName(PROGRAMME_NAME);
-    programmeMembership.setStartDate(START_DATE);
-    programmeMembership.setCurricula(List.of(theCurriculum));
-    programmeMembership.setConditionsOfJoining(new ConditionsOfJoining(Instant.MIN));
+    ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
 
     Date expectedWhen = Date.from(Instant.now().plus(1, ChronoUnit.HOURS));
 
@@ -533,13 +491,7 @@ class ProgrammeMembershipServiceTest {
 
   @Test
   void shouldNotResendSentNotificationIfNotDeferral() throws SchedulerException {
-    Curriculum theCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, "any specialty", false);
-    ProgrammeMembership programmeMembership = new ProgrammeMembership();
-    programmeMembership.setTisId(TIS_ID);
-    programmeMembership.setPersonId(PERSON_ID);
-    programmeMembership.setProgrammeName(PROGRAMME_NAME);
-    programmeMembership.setStartDate(START_DATE);
-    programmeMembership.setCurricula(List.of(theCurriculum));
+    ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
 
     RecipientInfo recipientInfo = new RecipientInfo("id", MessageType.EMAIL, "test@email.com");
     TemplateInfo templateInfo = new TemplateInfo(null, null,
@@ -566,13 +518,7 @@ class ProgrammeMembershipServiceTest {
   @Test
   void shouldResendSentNotificationImmediatelyIfDeferralLeadTimeNotInFuture()
       throws SchedulerException {
-    Curriculum theCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, "any specialty", false);
-    ProgrammeMembership programmeMembership = new ProgrammeMembership();
-    programmeMembership.setTisId(TIS_ID);
-    programmeMembership.setPersonId(PERSON_ID);
-    programmeMembership.setProgrammeName(PROGRAMME_NAME);
-    programmeMembership.setStartDate(START_DATE);
-    programmeMembership.setCurricula(List.of(theCurriculum));
+    ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
 
     RecipientInfo recipientInfo = new RecipientInfo("id", MessageType.EMAIL, "test@email.com");
     //original start date was 90 days before START_DATE, and welcome was sent >90 days ago
@@ -599,13 +545,7 @@ class ProgrammeMembershipServiceTest {
   @Test
   void shouldResendSentNotificationImmediatelyIfDeferralAndHistoryMissingSentAt()
       throws SchedulerException {
-    Curriculum theCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, "any specialty", false);
-    ProgrammeMembership programmeMembership = new ProgrammeMembership();
-    programmeMembership.setTisId(TIS_ID);
-    programmeMembership.setPersonId(PERSON_ID);
-    programmeMembership.setProgrammeName(PROGRAMME_NAME);
-    programmeMembership.setStartDate(START_DATE);
-    programmeMembership.setCurricula(List.of(theCurriculum));
+    ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
 
     RecipientInfo recipientInfo = new RecipientInfo("id", MessageType.EMAIL, "test@email.com");
     //original start date was > DEFERRAL_IF_MORE_THAN_DAYS days before START_DATE,
@@ -632,13 +572,7 @@ class ProgrammeMembershipServiceTest {
   @Test
   void shouldScheduleSentNotificationIfDeferralLeadTimeInFuture()
       throws SchedulerException {
-    Curriculum theCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, "any specialty", false);
-    ProgrammeMembership programmeMembership = new ProgrammeMembership();
-    programmeMembership.setTisId(TIS_ID);
-    programmeMembership.setPersonId(PERSON_ID);
-    programmeMembership.setProgrammeName(PROGRAMME_NAME);
-    programmeMembership.setStartDate(START_DATE);
-    programmeMembership.setCurricula(List.of(theCurriculum));
+    ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
 
     RecipientInfo recipientInfo = new RecipientInfo("id", MessageType.EMAIL, "test@email.com");
     //original start date was > DEFERRAL_IF_MORE_THAN_DAYS days before START_DATE,
@@ -669,13 +603,8 @@ class ProgrammeMembershipServiceTest {
   @Test
   void shouldNotScheduleSentNotificationIfNewStartDateIsNull()
       throws SchedulerException {
-    Curriculum theCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, "any specialty", false);
-    ProgrammeMembership programmeMembership = new ProgrammeMembership();
-    programmeMembership.setTisId(TIS_ID);
-    programmeMembership.setPersonId(PERSON_ID);
-    programmeMembership.setProgrammeName(PROGRAMME_NAME);
-    //no programme start date
-    programmeMembership.setCurricula(List.of(theCurriculum));
+    ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
+    programmeMembership.setStartDate(null);
 
     RecipientInfo recipientInfo = new RecipientInfo("id", MessageType.EMAIL, "test@email.com");
     //original start date was > DEFERRAL_IF_MORE_THAN_DAYS days before START_DATE,
@@ -703,13 +632,7 @@ class ProgrammeMembershipServiceTest {
   @Test
   void shouldNotResendSentNotificationIfStartDateChangeNotDeferral()
       throws SchedulerException {
-    Curriculum theCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, "any specialty", false);
-    ProgrammeMembership programmeMembership = new ProgrammeMembership();
-    programmeMembership.setTisId(TIS_ID);
-    programmeMembership.setPersonId(PERSON_ID);
-    programmeMembership.setProgrammeName(PROGRAMME_NAME);
-    programmeMembership.setStartDate(START_DATE);
-    programmeMembership.setCurricula(List.of(theCurriculum));
+    ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
 
     RecipientInfo recipientInfo = new RecipientInfo("id", MessageType.EMAIL, "test@email.com");
     //original start date was <= DEFERRAL_IF_MORE_THAN_DAYS days before START_DATE
@@ -736,13 +659,7 @@ class ProgrammeMembershipServiceTest {
   @Test
   void shouldNotResendSentNotificationIfHistoryStartDateCorrupt()
       throws SchedulerException {
-    Curriculum theCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, "any specialty", false);
-    ProgrammeMembership programmeMembership = new ProgrammeMembership();
-    programmeMembership.setTisId(TIS_ID);
-    programmeMembership.setPersonId(PERSON_ID);
-    programmeMembership.setProgrammeName(PROGRAMME_NAME);
-    programmeMembership.setStartDate(START_DATE);
-    programmeMembership.setCurricula(List.of(theCurriculum));
+    ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
 
     RecipientInfo recipientInfo = new RecipientInfo("id", MessageType.EMAIL, "test@email.com");
 
@@ -767,13 +684,7 @@ class ProgrammeMembershipServiceTest {
   @Test
   void shouldNotResendSentNotificationIfHistoryTemplateMissing()
       throws SchedulerException {
-    Curriculum theCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, "any specialty", false);
-    ProgrammeMembership programmeMembership = new ProgrammeMembership();
-    programmeMembership.setTisId(TIS_ID);
-    programmeMembership.setPersonId(PERSON_ID);
-    programmeMembership.setProgrammeName(PROGRAMME_NAME);
-    programmeMembership.setStartDate(START_DATE);
-    programmeMembership.setCurricula(List.of(theCurriculum));
+    ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
 
     RecipientInfo recipientInfo = new RecipientInfo("id", MessageType.EMAIL, "test@email.com");
 
@@ -796,13 +707,7 @@ class ProgrammeMembershipServiceTest {
   @Test
   void shouldNotResendSentNotificationIfHistoryTemplateVariablesMissing()
       throws SchedulerException {
-    Curriculum theCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, "any specialty", false);
-    ProgrammeMembership programmeMembership = new ProgrammeMembership();
-    programmeMembership.setTisId(TIS_ID);
-    programmeMembership.setPersonId(PERSON_ID);
-    programmeMembership.setProgrammeName(PROGRAMME_NAME);
-    programmeMembership.setStartDate(START_DATE);
-    programmeMembership.setCurricula(List.of(theCurriculum));
+    ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
 
     RecipientInfo recipientInfo = new RecipientInfo("id", MessageType.EMAIL, "test@email.com");
 
@@ -826,13 +731,7 @@ class ProgrammeMembershipServiceTest {
   @Test
   void shouldNotResendSentNotificationIfHistoryTemplateVariablesStartDateMissing()
       throws SchedulerException {
-    Curriculum theCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, "any specialty", false);
-    ProgrammeMembership programmeMembership = new ProgrammeMembership();
-    programmeMembership.setTisId(TIS_ID);
-    programmeMembership.setPersonId(PERSON_ID);
-    programmeMembership.setProgrammeName(PROGRAMME_NAME);
-    programmeMembership.setStartDate(START_DATE);
-    programmeMembership.setCurricula(List.of(theCurriculum));
+    ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
 
     RecipientInfo recipientInfo = new RecipientInfo("id", MessageType.EMAIL, "test@email.com");
 
@@ -858,13 +757,7 @@ class ProgrammeMembershipServiceTest {
   @EnumSource(value = NotificationType.class, mode = Mode.EXCLUDE, names = "PROGRAMME_CREATED")
   void shouldIgnoreNonPmCreatedSentNotifications(NotificationType notificationType)
       throws SchedulerException {
-    Curriculum theCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, "any specialty", false);
-    ProgrammeMembership programmeMembership = new ProgrammeMembership();
-    programmeMembership.setTisId(TIS_ID);
-    programmeMembership.setPersonId(PERSON_ID);
-    programmeMembership.setProgrammeName(PROGRAMME_NAME);
-    programmeMembership.setStartDate(START_DATE);
-    programmeMembership.setCurricula(List.of(theCurriculum));
+    ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
 
     List<History> sentNotifications = new ArrayList<>();
     RecipientInfo recipientInfo = new RecipientInfo("id", MessageType.EMAIL, "test@email.com");
@@ -883,13 +776,7 @@ class ProgrammeMembershipServiceTest {
 
   @Test
   void shouldIgnoreNonPmTypeSentNotifications() throws SchedulerException {
-    Curriculum theCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, "any specialty", false);
-    ProgrammeMembership programmeMembership = new ProgrammeMembership();
-    programmeMembership.setTisId(TIS_ID);
-    programmeMembership.setPersonId(PERSON_ID);
-    programmeMembership.setProgrammeName(PROGRAMME_NAME);
-    programmeMembership.setStartDate(START_DATE);
-    programmeMembership.setCurricula(List.of(theCurriculum));
+    ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
 
     List<History> sentNotifications = new ArrayList<>();
     RecipientInfo recipientInfo = new RecipientInfo("id", MessageType.EMAIL, "test@email.com");
@@ -908,13 +795,7 @@ class ProgrammeMembershipServiceTest {
 
   @Test
   void shouldIgnoreOtherPmUpdateSentNotifications() throws SchedulerException {
-    Curriculum theCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, "any specialty", false);
-    ProgrammeMembership programmeMembership = new ProgrammeMembership();
-    programmeMembership.setTisId(TIS_ID);
-    programmeMembership.setPersonId(PERSON_ID);
-    programmeMembership.setProgrammeName(PROGRAMME_NAME);
-    programmeMembership.setStartDate(START_DATE);
-    programmeMembership.setCurricula(List.of(theCurriculum));
+    ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
 
     List<History> sentNotifications = new ArrayList<>();
     RecipientInfo recipientInfo = new RecipientInfo("id", MessageType.EMAIL, "test@email.com");
@@ -933,12 +814,7 @@ class ProgrammeMembershipServiceTest {
 
   @Test
   void shouldNotFailOnHistoryWithoutTisReferenceInfo() {
-    Curriculum theCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, "any specialty", false);
-    ProgrammeMembership programmeMembership = new ProgrammeMembership();
-    programmeMembership.setTisId(TIS_ID);
-    programmeMembership.setPersonId(PERSON_ID);
-    programmeMembership.setStartDate(START_DATE);
-    programmeMembership.setCurricula(List.of(theCurriculum));
+    ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
 
     List<History> sentNotifications = new ArrayList<>();
     RecipientInfo recipientInfo = new RecipientInfo("id", MessageType.EMAIL, "test@email.com");
@@ -956,13 +832,7 @@ class ProgrammeMembershipServiceTest {
 
   @Test
   void shouldIgnoreHistoryWithoutTisReferenceInfo() throws SchedulerException {
-    Curriculum theCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, "any specialty", false);
-    ProgrammeMembership programmeMembership = new ProgrammeMembership();
-    programmeMembership.setTisId(TIS_ID);
-    programmeMembership.setPersonId(PERSON_ID);
-    programmeMembership.setProgrammeName(PROGRAMME_NAME);
-    programmeMembership.setStartDate(START_DATE);
-    programmeMembership.setCurricula(List.of(theCurriculum));
+    ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
 
     RecipientInfo recipientInfo = new RecipientInfo("id", MessageType.EMAIL, "test@email.com");
     List<History> sentNotifications = new ArrayList<>();
@@ -981,13 +851,7 @@ class ProgrammeMembershipServiceTest {
 
   @Test
   void shouldNotEncounterSchedulerExceptions() throws SchedulerException {
-    Curriculum theCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, "any specialty", false);
-    ProgrammeMembership programmeMembership = new ProgrammeMembership();
-    programmeMembership.setTisId(TIS_ID);
-    programmeMembership.setPersonId(PERSON_ID);
-    programmeMembership.setProgrammeName(PROGRAMME_NAME);
-    programmeMembership.setStartDate(START_DATE);
-    programmeMembership.setCurricula(List.of(theCurriculum));
+    ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
 
     doThrow(new SchedulerException())
         .when(notificationService).scheduleNotification(any(), any(), any());
@@ -1011,13 +875,8 @@ class ProgrammeMembershipServiceTest {
 
   @Test
   void shouldIgnoreMissingConditionsOfJoining() throws SchedulerException {
-    Curriculum theCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, "any specialty", false);
-    ProgrammeMembership programmeMembership = new ProgrammeMembership();
-    programmeMembership.setTisId(TIS_ID);
-    programmeMembership.setPersonId(PERSON_ID);
-    programmeMembership.setProgrammeName(PROGRAMME_NAME);
-    programmeMembership.setStartDate(START_DATE);
-    programmeMembership.setCurricula(List.of(theCurriculum));
+    ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
+    programmeMembership.setConditionsOfJoining(null);
 
     service.addNotifications(programmeMembership);
 
@@ -1028,5 +887,23 @@ class ProgrammeMembershipServiceTest {
     JobDataMap jobDataMap = jobDataMapCaptor.getValue();
     assertThat("Unexpected CoJ synced at.", jobDataMap.get(COJ_SYNCED_FIELD),
         is(nullValue()));
+  }
+
+  /**
+   * Helper function to set up a default non-excluded programme membership.
+   *
+   * @return the default programme membership.
+   */
+  private ProgrammeMembership getDefaultProgrammeMembership() {
+    Curriculum theCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, "any specialty", false);
+    ProgrammeMembership programmeMembership = new ProgrammeMembership();
+    programmeMembership.setTisId(TIS_ID);
+    programmeMembership.setPersonId(PERSON_ID);
+    programmeMembership.setProgrammeName(PROGRAMME_NAME);
+    programmeMembership.setStartDate(START_DATE);
+    programmeMembership.setCurricula(List.of(theCurriculum));
+    programmeMembership.setConditionsOfJoining(new ConditionsOfJoining(Instant.MIN));
+    programmeMembership.setManagingDeanery(MANAGING_DEANERY);
+    return programmeMembership;
   }
 }
