@@ -228,7 +228,7 @@ class HistoryServiceIntegrationTest {
 
     History historyReceived = foundHistory.get(0);
     assertThat("Unexpected history id.", historyReceived.id(), is(savedHistory.id()));
-    assertThat("Unexpected history type.", historyReceived.type(), is(TIS_REFERENCE_TYPE));
+    assertThat("Unexpected history type.", historyReceived.type(), is(FORM_UPDATED));
     RecipientInfo recipientInfoReceived = historyReceived.recipient();
     assertThat("Unexpected history recipient type.", recipientInfoReceived.type(),
         is(EMAIL));
