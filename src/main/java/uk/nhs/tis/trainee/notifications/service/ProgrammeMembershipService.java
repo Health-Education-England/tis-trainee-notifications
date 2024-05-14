@@ -213,26 +213,28 @@ public class ProgrammeMembershipService {
           = getLatestNotificationsSent(programmeMembership.getPersonId(),
           programmeMembership.getTisId());
 
-      createDirectNotifications(programmeMembership, notificationsAlreadySent);
+      createDirectProgrammeNotifications(programmeMembership, notificationsAlreadySent);
       createInAppNotifications(programmeMembership, notificationsAlreadySent);
     }
   }
 
   /**
-   * Create "direct" notifications, such as email, which may be scheduled for a future date/time.
+   * Create "direct" programme notifications, such as email, which may be scheduled for a future
+   * date/time.
    *
    * @param programmeMembership      The updated programme membership.
    * @param notificationsAlreadySent Previously sent notifications.
    */
-  private void createDirectNotifications(ProgrammeMembership programmeMembership,
+  private void createDirectProgrammeNotifications(ProgrammeMembership programmeMembership,
       Map<NotificationType, History> notificationsAlreadySent) throws SchedulerException {
 
-    NotificationType milestone = PROGRAMME_CREATED; //do not handle other programme notifications
-    boolean shouldSchedule = shouldScheduleNotification(milestone, programmeMembership,
+    //only handle 'programme created' notifications
+    boolean shouldSchedule = shouldScheduleProgrammeCreatedNotification(programmeMembership,
         notificationsAlreadySent);
 
     if (shouldSchedule) {
-      log.info("Processing notification {} for {}.", milestone, programmeMembership.getTisId());
+      log.info("Processing notification {} for {}.", PROGRAMME_CREATED,
+          programmeMembership.getTisId());
 
       JobDataMap jobDataMap = new JobDataMap();
       jobDataMap.put(TIS_ID_FIELD, programmeMembership.getTisId());
@@ -240,7 +242,7 @@ public class ProgrammeMembershipService {
       jobDataMap.put(PROGRAMME_NAME_FIELD, programmeMembership.getProgrammeName());
       jobDataMap.put(START_DATE_FIELD, programmeMembership.getStartDate());
       jobDataMap.put(TEMPLATE_OWNER_FIELD, programmeMembership.getManagingDeanery());
-      jobDataMap.put(TEMPLATE_NOTIFICATION_TYPE_FIELD, milestone);
+      jobDataMap.put(TEMPLATE_NOTIFICATION_TYPE_FIELD, PROGRAMME_CREATED);
       if (programmeMembership.getConditionsOfJoining() != null) {
         jobDataMap.put(COJ_SYNCED_FIELD,
             programmeMembership.getConditionsOfJoining().syncedAt());
@@ -248,8 +250,8 @@ public class ProgrammeMembershipService {
       // Note the status of the trainee will be retrieved when the job is executed, as will
       // their name and email address and LO contact details.
 
-      String jobId = milestone + "-" + programmeMembership.getTisId();
-      Date scheduleWhen = whenScheduleNotification(milestone, programmeMembership,
+      String jobId = PROGRAMME_CREATED + "-" + programmeMembership.getTisId();
+      Date scheduleWhen = whenScheduleProgrammeCreatedNotification(programmeMembership,
           notificationsAlreadySent);
       if (scheduleWhen == null) {
         notificationService.executeNow(jobId, jobDataMap);
@@ -365,46 +367,42 @@ public class ProgrammeMembershipService {
   }
 
   /**
-   * Helper function to determine whether a notification should be scheduled.
+   * Helper function to determine whether a programme created notification should be scheduled.
    *
-   * @param milestone                The milestone to consider.
    * @param programmeMembership      The updated programme membership to consider.
    * @param notificationsAlreadySent The notifications already sent for this entity.
    * @return true if it should be scheduled, false otherwise.
    */
-  private boolean shouldScheduleNotification(NotificationType milestone,
+  private boolean shouldScheduleProgrammeCreatedNotification(
       ProgrammeMembership programmeMembership,
       Map<NotificationType, History> notificationsAlreadySent) {
 
     //only resend deferred programme notifications
-    if (notificationsAlreadySent.containsKey(milestone)) {
-      History lastSent = notificationsAlreadySent.get(milestone);
+    if (notificationsAlreadySent.containsKey(PROGRAMME_CREATED)) {
+      History lastSent = notificationsAlreadySent.get(PROGRAMME_CREATED);
       LocalDate oldStartDate = getProgrammeCreatedProgrammeStartDate(lastSent);
-      if (oldStartDate != null && oldStartDate.plusDays(DEFERRAL_IF_MORE_THAN_DAYS)
-          .isBefore(programmeMembership.getStartDate())) {
-        return milestone == PROGRAMME_CREATED;
-      }
-      return false;
+      return oldStartDate != null && programmeMembership.getStartDate() != null
+          && oldStartDate.plusDays(DEFERRAL_IF_MORE_THAN_DAYS)
+          .isBefore(programmeMembership.getStartDate());
     }
 
-    return milestone == PROGRAMME_CREATED; //immediately notify of a new programme membership
+    return true; //immediately notify of a new programme membership
   }
 
   /**
-   * Helper function to determine when a notification should be scheduled.
+   * Helper function to determine when a programme created notification should be scheduled.
    *
-   * @param milestone                The milestone to consider.
    * @param programmeMembership      The updated programme membership to consider.
    * @param notificationsAlreadySent The notifications already sent for this entity.
    * @return the date it should be scheduled, or null if it should be sent immediately.
    */
-  private Date whenScheduleNotification(NotificationType milestone,
+  private Date whenScheduleProgrammeCreatedNotification(
       ProgrammeMembership programmeMembership,
       Map<NotificationType, History> notificationsAlreadySent) {
 
     //schedule deferred notifications with the same lead time as the original notification
-    if (notificationsAlreadySent.containsKey(milestone)) {
-      History lastSent = notificationsAlreadySent.get(milestone);
+    if (notificationsAlreadySent.containsKey(PROGRAMME_CREATED)) {
+      History lastSent = notificationsAlreadySent.get(PROGRAMME_CREATED);
       LocalDate oldStartDate = getProgrammeCreatedProgrammeStartDate(lastSent);
       LocalDate newStartDate = programmeMembership.getStartDate();
       if (oldStartDate != null && newStartDate != null && lastSent.sentAt() != null) {
