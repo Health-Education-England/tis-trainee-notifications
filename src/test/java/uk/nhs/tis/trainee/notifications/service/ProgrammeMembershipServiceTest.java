@@ -100,6 +100,7 @@ class ProgrammeMembershipServiceTest {
   private static final String MANAGING_DEANERY = "the local office";
   private static final LocalDate START_DATE = LocalDate.now().plusYears(1);
   //set a year in the future to allow all notifications to be scheduled
+  private static final ZoneId timezone = ZoneId.of("Europe/London");
 
   private static final Curriculum IGNORED_CURRICULUM
       = new Curriculum("some-subtype", "some-specialty", false);
@@ -121,7 +122,7 @@ class ProgrammeMembershipServiceTest {
     inAppService = mock(InAppService.class);
     notificationService = mock(NotificationService.class);
     service = new ProgrammeMembershipService(historyService, inAppService, notificationService,
-        ZoneId.of("Europe/London"), DEFERRAL_VERSION, E_PORTFOLIO_VERSION,
+        timezone, DEFERRAL_VERSION, E_PORTFOLIO_VERSION,
         INDEMNITY_INSURANCE_VERSION, LTFT_VERSION, SPONSORSHIP_VERSION);
   }
 
@@ -539,7 +540,8 @@ class ProgrammeMembershipServiceTest {
     programmeMembership.setCurricula(List.of(theCurriculum));
 
     RecipientInfo recipientInfo = new RecipientInfo("id", MessageType.EMAIL, "test@email.com");
-    TemplateInfo templateInfo = new TemplateInfo(null, null, Map.of(START_DATE_FIELD, START_DATE.toString()));
+    TemplateInfo templateInfo = new TemplateInfo(null, null,
+        Map.of(START_DATE_FIELD, START_DATE.toString()));
     List<History> sentNotifications = new ArrayList<>();
     sentNotifications.add(new History(ObjectId.get(),
         new TisReferenceInfo(PROGRAMME_MEMBERSHIP, TIS_ID),
@@ -581,7 +583,7 @@ class ProgrammeMembershipServiceTest {
         new TisReferenceInfo(PROGRAMME_MEMBERSHIP, TIS_ID),
         PROGRAMME_CREATED, recipientInfo,
         templateInfo,
-        Instant.from(originalSentAt.atStartOfDay(ZoneId.systemDefault())), Instant.MAX,
+        Instant.from(originalSentAt.atStartOfDay(timezone)), Instant.MAX,
         SENT, null, null));
 
     when(historyService.findAllHistoryForTrainee(PERSON_ID)).thenReturn(sentNotifications);
@@ -614,7 +616,7 @@ class ProgrammeMembershipServiceTest {
         new TisReferenceInfo(PROGRAMME_MEMBERSHIP, TIS_ID),
         PROGRAMME_CREATED, recipientInfo,
         templateInfo,
-        Instant.from(originalSentAt.atStartOfDay(ZoneId.systemDefault())), Instant.MAX,
+        Instant.from(originalSentAt.atStartOfDay(timezone)), Instant.MAX,
         SENT, null, null));
 
     when(historyService.findAllHistoryForTrainee(PERSON_ID)).thenReturn(sentNotifications);
@@ -623,7 +625,7 @@ class ProgrammeMembershipServiceTest {
 
     LocalDate expectedWhen = LocalDate.now().plusDays(DEFERRAL_IF_MORE_THAN_DAYS + 1 - 50);
     Date expectedWhenDate = Date.from(
-        expectedWhen.atStartOfDay(ZoneId.systemDefault()).toInstant());
+        expectedWhen.atStartOfDay(timezone).toInstant());
     verify(notificationService).scheduleNotification(any(), any(), eq(expectedWhenDate));
     verify(notificationService, never()).executeNow(any(), any());
   }
@@ -650,7 +652,7 @@ class ProgrammeMembershipServiceTest {
         new TisReferenceInfo(PROGRAMME_MEMBERSHIP, TIS_ID),
         PROGRAMME_CREATED, recipientInfo,
         templateInfo,
-        Instant.from(originalSentAt.atStartOfDay(ZoneId.systemDefault())), Instant.MAX,
+        Instant.from(originalSentAt.atStartOfDay(timezone)), Instant.MAX,
         SENT, null, null));
 
     when(historyService.findAllHistoryForTrainee(PERSON_ID)).thenReturn(sentNotifications);

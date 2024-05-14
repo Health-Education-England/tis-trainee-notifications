@@ -412,7 +412,8 @@ public class ProgrammeMembershipService {
         if (oldSentDateTime != null) {
           LocalDateTime oldStartDateTime = oldStartDate.atStartOfDay();
           long leadDays = Duration.between(oldSentDateTime, oldStartDateTime).toDays();
-          log.info("old sent = {}, old start = {}, lead days = {}", oldSentDateTime, oldStartDateTime, leadDays);
+          log.info("Old sent = {}, old start = {}, lead days = {}", oldSentDateTime,
+              oldStartDateTime, leadDays);
           LocalDate newSend = newStartDate.minusDays(leadDays);
           if (newSend.isAfter(LocalDate.now())) {
             return Date.from(newSend.atStartOfDay(timezone).toInstant());
