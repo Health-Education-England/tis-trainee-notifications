@@ -601,6 +601,85 @@ class ProgrammeMembershipServiceTest {
   }
 
   @Test
+  void shouldScheduleSentNotificationIfMultipleHistoryAndLatestIsDeferral()
+      throws SchedulerException {
+    ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
+
+    RecipientInfo recipientInfo = new RecipientInfo("id", MessageType.EMAIL, "test@email.com");
+    //most recent start date was > DEFERRAL_IF_MORE_THAN_DAYS days before START_DATE,
+    //and welcome was sent <90 days ago
+    LocalDate mostRecentStartDate = START_DATE.minusDays(DEFERRAL_IF_MORE_THAN_DAYS + 1);
+    LocalDate mostRecentSentAt = LocalDate.now().minusDays(50);
+    LocalDate previousStartDate = START_DATE.minusDays(DEFERRAL_IF_MORE_THAN_DAYS - 1);
+    LocalDate previousSentAt = LocalDate.now().minusDays(150);
+    TemplateInfo mostRecentTemplateInfo = new TemplateInfo(null, null,
+        Map.of(START_DATE_FIELD, mostRecentStartDate.toString()));
+    TemplateInfo previousTemplateInfo = new TemplateInfo(null, null,
+        Map.of(START_DATE_FIELD, previousStartDate.toString()));
+    List<History> sentNotifications = new ArrayList<>();
+    sentNotifications.add(new History(ObjectId.get(),
+        new TisReferenceInfo(PROGRAMME_MEMBERSHIP, TIS_ID),
+        PROGRAMME_CREATED, recipientInfo,
+        mostRecentTemplateInfo,
+        Instant.from(mostRecentSentAt.atStartOfDay(timezone)), Instant.MAX,
+        SENT, null, null));
+    sentNotifications.add(new History(ObjectId.get(),
+        new TisReferenceInfo(PROGRAMME_MEMBERSHIP, TIS_ID),
+        PROGRAMME_CREATED, recipientInfo,
+        previousTemplateInfo,
+        Instant.from(previousSentAt.atStartOfDay(timezone)), Instant.MAX,
+        SENT, null, null));
+
+    when(historyService.findAllHistoryForTrainee(PERSON_ID)).thenReturn(sentNotifications);
+
+    service.addNotifications(programmeMembership);
+
+    LocalDate expectedWhen = LocalDate.now().plusDays(DEFERRAL_IF_MORE_THAN_DAYS + 1 - 50);
+    Date expectedWhenDate = Date.from(
+        expectedWhen.atStartOfDay(timezone).toInstant());
+    verify(notificationService).scheduleNotification(any(), any(), eq(expectedWhenDate));
+    verify(notificationService, never()).executeNow(any(), any());
+  }
+
+  @Test
+  void shouldNotScheduleSentNotificationIfMultipleHistoryAndLatestIsNotDeferral()
+      throws SchedulerException {
+    ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
+
+    RecipientInfo recipientInfo = new RecipientInfo("id", MessageType.EMAIL, "test@email.com");
+    //most recent start date was > DEFERRAL_IF_MORE_THAN_DAYS days before START_DATE,
+    //and welcome was sent <90 days ago
+    LocalDate mostRecentStartDate = START_DATE.minusDays(DEFERRAL_IF_MORE_THAN_DAYS - 1);
+    LocalDate mostRecentSentAt = LocalDate.now().minusDays(50);
+    LocalDate previousStartDate = START_DATE.minusDays(DEFERRAL_IF_MORE_THAN_DAYS + 1);
+    LocalDate previousSentAt = LocalDate.now().minusDays(150);
+    TemplateInfo mostRecentTemplateInfo = new TemplateInfo(null, null,
+        Map.of(START_DATE_FIELD, mostRecentStartDate.toString()));
+    TemplateInfo previousTemplateInfo = new TemplateInfo(null, null,
+        Map.of(START_DATE_FIELD, previousStartDate.toString()));
+    List<History> sentNotifications = new ArrayList<>();
+    sentNotifications.add(new History(ObjectId.get(),
+        new TisReferenceInfo(PROGRAMME_MEMBERSHIP, TIS_ID),
+        PROGRAMME_CREATED, recipientInfo,
+        mostRecentTemplateInfo,
+        Instant.from(mostRecentSentAt.atStartOfDay(timezone)), Instant.MAX,
+        SENT, null, null));
+    sentNotifications.add(new History(ObjectId.get(),
+        new TisReferenceInfo(PROGRAMME_MEMBERSHIP, TIS_ID),
+        PROGRAMME_CREATED, recipientInfo,
+        previousTemplateInfo,
+        Instant.from(previousSentAt.atStartOfDay(timezone)), Instant.MAX,
+        SENT, null, null));
+
+    when(historyService.findAllHistoryForTrainee(PERSON_ID)).thenReturn(sentNotifications);
+
+    service.addNotifications(programmeMembership);
+
+    verify(notificationService, never()).scheduleNotification(any(), any(), any());
+    verify(notificationService, never()).executeNow(any(), any());
+  }
+
+  @Test
   void shouldNotScheduleSentNotificationIfNewStartDateIsNull()
       throws SchedulerException {
     ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
