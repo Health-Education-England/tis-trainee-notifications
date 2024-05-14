@@ -44,6 +44,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
@@ -381,8 +382,7 @@ public class ProgrammeMembershipService {
     if (notificationsAlreadySent.containsKey(PROGRAMME_CREATED)) {
       History lastSent = notificationsAlreadySent.get(PROGRAMME_CREATED);
       LocalDate oldStartDate = getProgrammeCreatedProgrammeStartDate(lastSent);
-      return oldStartDate != null && programmeMembership.getStartDate() != null
-          && oldStartDate.plusDays(DEFERRAL_IF_MORE_THAN_DAYS)
+      return oldStartDate != null && oldStartDate.plusDays(DEFERRAL_IF_MORE_THAN_DAYS)
           .isBefore(programmeMembership.getStartDate());
     }
 
@@ -407,8 +407,7 @@ public class ProgrammeMembershipService {
       LocalDate newStartDate = programmeMembership.getStartDate();
       if (lastSent.sentAt() != null) {
         LocalDateTime oldSentDateTime = lastSent.sentAt().atZone(timezone).toLocalDateTime();
-        assert oldStartDate != null;
-        LocalDateTime oldStartDateTime = oldStartDate.atStartOfDay();
+        LocalDateTime oldStartDateTime = Objects.requireNonNull(oldStartDate).atStartOfDay();
         long leadDays = Duration.between(oldSentDateTime, oldStartDateTime).toDays();
         log.info("Old sent = {}, old start = {}, lead days = {}", oldSentDateTime,
             oldStartDateTime, leadDays);
