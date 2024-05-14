@@ -457,14 +457,9 @@ class ProgrammeMembershipServiceTest {
 
   @Test
   void shouldAddDirectProgrammeNotificationsWhenNotExcluded() throws SchedulerException {
-    ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
-
-    Date expectedWhen = Date.from(Instant.now().plus(1, ChronoUnit.HOURS));
-
-    when(notificationService.getScheduleDate(LocalDate.now(), 1))
-        .thenReturn(expectedWhen);
     when(historyService.findAllHistoryForTrainee(PERSON_ID)).thenReturn(new ArrayList<>());
 
+    ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
     service.addNotifications(programmeMembership);
 
     ArgumentCaptor<String> stringCaptor = ArgumentCaptor.captor();
@@ -491,8 +486,6 @@ class ProgrammeMembershipServiceTest {
 
   @Test
   void shouldNotResendSentNotificationIfNotDeferral() throws SchedulerException {
-    ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
-
     RecipientInfo recipientInfo = new RecipientInfo("id", MessageType.EMAIL, "test@email.com");
     TemplateInfo templateInfo = new TemplateInfo(null, null,
         Map.of(START_DATE_FIELD, START_DATE.toString()));
@@ -509,6 +502,7 @@ class ProgrammeMembershipServiceTest {
     when(notificationService.getScheduleDate(START_DATE, 1))
         .thenReturn(expectedWhen);
 
+    ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
     service.addNotifications(programmeMembership);
 
     verify(notificationService, never()).scheduleNotification(any(), any(), any());
@@ -518,8 +512,6 @@ class ProgrammeMembershipServiceTest {
   @Test
   void shouldResendSentNotificationImmediatelyIfDeferralLeadTimeNotInFuture()
       throws SchedulerException {
-    ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
-
     RecipientInfo recipientInfo = new RecipientInfo("id", MessageType.EMAIL, "test@email.com");
     //original start date was 90 days before START_DATE, and welcome was sent >90 days ago
     LocalDate originalStartDate = START_DATE.minusDays(DEFERRAL_IF_MORE_THAN_DAYS + 1);
@@ -536,6 +528,7 @@ class ProgrammeMembershipServiceTest {
 
     when(historyService.findAllHistoryForTrainee(PERSON_ID)).thenReturn(sentNotifications);
 
+    ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
     service.addNotifications(programmeMembership);
 
     verify(notificationService, never()).scheduleNotification(any(), any(), any());
@@ -545,8 +538,6 @@ class ProgrammeMembershipServiceTest {
   @Test
   void shouldResendSentNotificationImmediatelyIfDeferralAndHistoryMissingSentAt()
       throws SchedulerException {
-    ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
-
     RecipientInfo recipientInfo = new RecipientInfo("id", MessageType.EMAIL, "test@email.com");
     //original start date was > DEFERRAL_IF_MORE_THAN_DAYS days before START_DATE,
     //and welcome was sent >90 days ago
@@ -563,6 +554,7 @@ class ProgrammeMembershipServiceTest {
 
     when(historyService.findAllHistoryForTrainee(PERSON_ID)).thenReturn(sentNotifications);
 
+    ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
     service.addNotifications(programmeMembership);
 
     verify(notificationService, never()).scheduleNotification(any(), any(), any());
@@ -572,8 +564,6 @@ class ProgrammeMembershipServiceTest {
   @Test
   void shouldScheduleSentNotificationIfDeferralLeadTimeInFuture()
       throws SchedulerException {
-    ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
-
     RecipientInfo recipientInfo = new RecipientInfo("id", MessageType.EMAIL, "test@email.com");
     //original start date was > DEFERRAL_IF_MORE_THAN_DAYS days before START_DATE,
     //and welcome was sent <90 days ago
@@ -591,6 +581,7 @@ class ProgrammeMembershipServiceTest {
 
     when(historyService.findAllHistoryForTrainee(PERSON_ID)).thenReturn(sentNotifications);
 
+    ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
     service.addNotifications(programmeMembership);
 
     LocalDate expectedWhen = LocalDate.now().plusDays(DEFERRAL_IF_MORE_THAN_DAYS + 1 - 50);
@@ -603,8 +594,6 @@ class ProgrammeMembershipServiceTest {
   @Test
   void shouldScheduleSentNotificationIfMultipleHistoryAndLatestIsDeferral()
       throws SchedulerException {
-    ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
-
     RecipientInfo recipientInfo = new RecipientInfo("id", MessageType.EMAIL, "test@email.com");
     //most recent start date was > DEFERRAL_IF_MORE_THAN_DAYS days before START_DATE,
     //and welcome was sent <90 days ago
@@ -632,6 +621,7 @@ class ProgrammeMembershipServiceTest {
 
     when(historyService.findAllHistoryForTrainee(PERSON_ID)).thenReturn(sentNotifications);
 
+    ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
     service.addNotifications(programmeMembership);
 
     LocalDate expectedWhen = LocalDate.now().plusDays(DEFERRAL_IF_MORE_THAN_DAYS + 1 - 50);
@@ -644,8 +634,6 @@ class ProgrammeMembershipServiceTest {
   @Test
   void shouldNotScheduleSentNotificationIfMultipleHistoryAndLatestIsNotDeferral()
       throws SchedulerException {
-    ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
-
     RecipientInfo recipientInfo = new RecipientInfo("id", MessageType.EMAIL, "test@email.com");
     //most recent start date was > DEFERRAL_IF_MORE_THAN_DAYS days before START_DATE,
     //and welcome was sent <90 days ago
@@ -673,6 +661,7 @@ class ProgrammeMembershipServiceTest {
 
     when(historyService.findAllHistoryForTrainee(PERSON_ID)).thenReturn(sentNotifications);
 
+    ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
     service.addNotifications(programmeMembership);
 
     verify(notificationService, never()).scheduleNotification(any(), any(), any());
@@ -682,9 +671,6 @@ class ProgrammeMembershipServiceTest {
   @Test
   void shouldNotScheduleSentNotificationIfNewStartDateIsNull()
       throws SchedulerException {
-    ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
-    programmeMembership.setStartDate(null);
-
     RecipientInfo recipientInfo = new RecipientInfo("id", MessageType.EMAIL, "test@email.com");
     //original start date was > DEFERRAL_IF_MORE_THAN_DAYS days before START_DATE,
     //and we don't know updated programme start date
@@ -702,6 +688,8 @@ class ProgrammeMembershipServiceTest {
 
     when(historyService.findAllHistoryForTrainee(PERSON_ID)).thenReturn(sentNotifications);
 
+    ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
+    programmeMembership.setStartDate(null);
     service.addNotifications(programmeMembership);
 
     verify(notificationService, never()).scheduleNotification(any(), any(), any());
@@ -711,8 +699,6 @@ class ProgrammeMembershipServiceTest {
   @Test
   void shouldNotResendSentNotificationIfStartDateChangeNotDeferral()
       throws SchedulerException {
-    ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
-
     RecipientInfo recipientInfo = new RecipientInfo("id", MessageType.EMAIL, "test@email.com");
     //original start date was <= DEFERRAL_IF_MORE_THAN_DAYS days before START_DATE
     LocalDate originalStartDate = START_DATE.minusDays(DEFERRAL_IF_MORE_THAN_DAYS);
@@ -729,6 +715,7 @@ class ProgrammeMembershipServiceTest {
 
     when(historyService.findAllHistoryForTrainee(PERSON_ID)).thenReturn(sentNotifications);
 
+    ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
     service.addNotifications(programmeMembership);
 
     verify(notificationService, never()).scheduleNotification(any(), any(), any());
@@ -738,8 +725,6 @@ class ProgrammeMembershipServiceTest {
   @Test
   void shouldNotResendSentNotificationIfHistoryStartDateCorrupt()
       throws SchedulerException {
-    ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
-
     RecipientInfo recipientInfo = new RecipientInfo("id", MessageType.EMAIL, "test@email.com");
 
     TemplateInfo templateInfo = new TemplateInfo(null, null,
@@ -754,6 +739,7 @@ class ProgrammeMembershipServiceTest {
 
     when(historyService.findAllHistoryForTrainee(PERSON_ID)).thenReturn(sentNotifications);
 
+    ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
     service.addNotifications(programmeMembership);
 
     verify(notificationService, never()).scheduleNotification(any(), any(), any());
@@ -763,8 +749,6 @@ class ProgrammeMembershipServiceTest {
   @Test
   void shouldNotResendSentNotificationIfHistoryTemplateMissing()
       throws SchedulerException {
-    ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
-
     RecipientInfo recipientInfo = new RecipientInfo("id", MessageType.EMAIL, "test@email.com");
 
     List<History> sentNotifications = new ArrayList<>();
@@ -777,6 +761,7 @@ class ProgrammeMembershipServiceTest {
 
     when(historyService.findAllHistoryForTrainee(PERSON_ID)).thenReturn(sentNotifications);
 
+    ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
     service.addNotifications(programmeMembership);
 
     verify(notificationService, never()).scheduleNotification(any(), any(), any());
@@ -786,8 +771,6 @@ class ProgrammeMembershipServiceTest {
   @Test
   void shouldNotResendSentNotificationIfHistoryTemplateVariablesMissing()
       throws SchedulerException {
-    ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
-
     RecipientInfo recipientInfo = new RecipientInfo("id", MessageType.EMAIL, "test@email.com");
 
     TemplateInfo templateInfo = new TemplateInfo(null, null, null);
@@ -801,6 +784,7 @@ class ProgrammeMembershipServiceTest {
 
     when(historyService.findAllHistoryForTrainee(PERSON_ID)).thenReturn(sentNotifications);
 
+    ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
     service.addNotifications(programmeMembership);
 
     verify(notificationService, never()).scheduleNotification(any(), any(), any());
@@ -810,8 +794,6 @@ class ProgrammeMembershipServiceTest {
   @Test
   void shouldNotResendSentNotificationIfHistoryTemplateVariablesStartDateMissing()
       throws SchedulerException {
-    ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
-
     RecipientInfo recipientInfo = new RecipientInfo("id", MessageType.EMAIL, "test@email.com");
 
     TemplateInfo templateInfo = new TemplateInfo(null, null,
@@ -826,6 +808,7 @@ class ProgrammeMembershipServiceTest {
 
     when(historyService.findAllHistoryForTrainee(PERSON_ID)).thenReturn(sentNotifications);
 
+    ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
     service.addNotifications(programmeMembership);
 
     verify(notificationService, never()).scheduleNotification(any(), any(), any());
@@ -836,8 +819,6 @@ class ProgrammeMembershipServiceTest {
   @EnumSource(value = NotificationType.class, mode = Mode.EXCLUDE, names = "PROGRAMME_CREATED")
   void shouldIgnoreNonPmCreatedSentNotifications(NotificationType notificationType)
       throws SchedulerException {
-    ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
-
     List<History> sentNotifications = new ArrayList<>();
     RecipientInfo recipientInfo = new RecipientInfo("id", MessageType.EMAIL, "test@email.com");
     sentNotifications.add(new History(ObjectId.get(),
@@ -848,6 +829,7 @@ class ProgrammeMembershipServiceTest {
 
     when(historyService.findAllHistoryForTrainee(PERSON_ID)).thenReturn(sentNotifications);
 
+    ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
     service.addNotifications(programmeMembership);
 
     verify(notificationService).executeNow(any(), any());
@@ -855,8 +837,6 @@ class ProgrammeMembershipServiceTest {
 
   @Test
   void shouldIgnoreNonPmTypeSentNotifications() throws SchedulerException {
-    ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
-
     List<History> sentNotifications = new ArrayList<>();
     RecipientInfo recipientInfo = new RecipientInfo("id", MessageType.EMAIL, "test@email.com");
     sentNotifications.add(new History(ObjectId.get(),
@@ -867,6 +847,7 @@ class ProgrammeMembershipServiceTest {
 
     when(historyService.findAllHistoryForTrainee(PERSON_ID)).thenReturn(sentNotifications);
 
+    ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
     service.addNotifications(programmeMembership);
 
     verify(notificationService).executeNow(any(), any());
@@ -874,8 +855,6 @@ class ProgrammeMembershipServiceTest {
 
   @Test
   void shouldIgnoreOtherPmUpdateSentNotifications() throws SchedulerException {
-    ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
-
     List<History> sentNotifications = new ArrayList<>();
     RecipientInfo recipientInfo = new RecipientInfo("id", MessageType.EMAIL, "test@email.com");
     sentNotifications.add(new History(ObjectId.get(),
@@ -886,6 +865,7 @@ class ProgrammeMembershipServiceTest {
 
     when(historyService.findAllHistoryForTrainee(PERSON_ID)).thenReturn(sentNotifications);
 
+    ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
     service.addNotifications(programmeMembership);
 
     verify(notificationService).executeNow(any(), any());
@@ -893,8 +873,6 @@ class ProgrammeMembershipServiceTest {
 
   @Test
   void shouldNotFailOnHistoryWithoutTisReferenceInfo() {
-    ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
-
     List<History> sentNotifications = new ArrayList<>();
     RecipientInfo recipientInfo = new RecipientInfo("id", MessageType.EMAIL, "test@email.com");
     sentNotifications.add(new History(ObjectId.get(),
@@ -905,14 +883,13 @@ class ProgrammeMembershipServiceTest {
 
     when(historyService.findAllHistoryForTrainee(PERSON_ID)).thenReturn(sentNotifications);
 
+    ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
     assertDoesNotThrow(() -> service.addNotifications(programmeMembership),
         "Unexpected addNotifications failure");
   }
 
   @Test
   void shouldIgnoreHistoryWithoutTisReferenceInfo() throws SchedulerException {
-    ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
-
     RecipientInfo recipientInfo = new RecipientInfo("id", MessageType.EMAIL, "test@email.com");
     List<History> sentNotifications = new ArrayList<>();
     sentNotifications.add(new History(ObjectId.get(),
@@ -923,6 +900,7 @@ class ProgrammeMembershipServiceTest {
 
     when(historyService.findAllHistoryForTrainee(PERSON_ID)).thenReturn(sentNotifications);
 
+    ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
     service.addNotifications(programmeMembership);
 
     verify(notificationService).executeNow(any(), any());
@@ -930,11 +908,10 @@ class ProgrammeMembershipServiceTest {
 
   @Test
   void shouldNotEncounterSchedulerExceptions() throws SchedulerException {
-    ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
-
     doThrow(new SchedulerException())
         .when(notificationService).scheduleNotification(any(), any(), any());
 
+    ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
     assertDoesNotThrow(() -> service.addNotifications(programmeMembership),
         "Unexpected addNotifications failure");
   }
