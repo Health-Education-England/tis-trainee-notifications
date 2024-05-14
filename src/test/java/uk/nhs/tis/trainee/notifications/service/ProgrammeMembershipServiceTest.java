@@ -47,6 +47,7 @@ import static uk.nhs.tis.trainee.notifications.service.NotificationService.CONTA
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.PERSON_ID_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.BLOCK_INDEMNITY_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.COJ_SYNCED_FIELD;
+import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.DEFERRAL_IF_MORE_THAN_DAYS;
 import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.LOCAL_OFFICE_CONTACT_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.LOCAL_OFFICE_CONTACT_TYPE_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.PROGRAMME_NAME_FIELD;
@@ -61,6 +62,7 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
+import org.bson.types.ObjectId;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -73,8 +75,10 @@ import org.mockito.ArgumentCaptor;
 import org.quartz.JobDataMap;
 import org.quartz.SchedulerException;
 import uk.nhs.tis.trainee.notifications.dto.CojSignedEvent.ConditionsOfJoining;
-import uk.nhs.tis.trainee.notifications.dto.HistoryDto;
 import uk.nhs.tis.trainee.notifications.model.Curriculum;
+import uk.nhs.tis.trainee.notifications.model.History;
+import uk.nhs.tis.trainee.notifications.model.History.RecipientInfo;
+import uk.nhs.tis.trainee.notifications.model.History.TemplateInfo;
 import uk.nhs.tis.trainee.notifications.model.History.TisReferenceInfo;
 import uk.nhs.tis.trainee.notifications.model.HrefType;
 import uk.nhs.tis.trainee.notifications.model.LocalOfficeContactType;
@@ -466,11 +470,12 @@ class ProgrammeMembershipServiceTest {
     programmeMembership.setCurricula(List.of(theCurriculum));
     programmeMembership.setConditionsOfJoining(new ConditionsOfJoining(Instant.MIN));
 
-    List<HistoryDto> sentNotifications = List.of(
-        new HistoryDto("id", new TisReferenceInfo(PROGRAMME_MEMBERSHIP, TIS_ID), MessageType.IN_APP,
-            notificationType, null, null, Instant.MIN, Instant.MAX, UNREAD, null));
+    RecipientInfo recipientInfo = new RecipientInfo("id", MessageType.IN_APP, null);
+    List<History> sentNotifications = List.of(
+        new History(ObjectId.get(), new TisReferenceInfo(PROGRAMME_MEMBERSHIP, TIS_ID),
+            notificationType, recipientInfo, null, Instant.MIN, Instant.MAX, UNREAD, null, null));
 
-    when(historyService.findAllForTrainee(PERSON_ID)).thenReturn(sentNotifications);
+    when(historyService.findAllHistoryForTrainee(PERSON_ID)).thenReturn(sentNotifications);
     when(notificationService.meetsCriteria(programmeMembership, true,
         true)).thenReturn(true);
     when(notificationService.programmeMembershipIsNotifiable(programmeMembership,
@@ -503,7 +508,6 @@ class ProgrammeMembershipServiceTest {
 
     ArgumentCaptor<String> stringCaptor = ArgumentCaptor.captor();
     ArgumentCaptor<JobDataMap> jobDataMapCaptor = ArgumentCaptor.captor();
-    ArgumentCaptor<Date> dateCaptor = ArgumentCaptor.captor();
     verify(notificationService).executeNow(
         stringCaptor.capture(),
         jobDataMapCaptor.capture());
@@ -522,13 +526,10 @@ class ProgrammeMembershipServiceTest {
     assertThat("Unexpected start date.", jobDataMap.get(START_DATE_FIELD), is(START_DATE));
     assertThat("Unexpected CoJ synced at.", jobDataMap.get(COJ_SYNCED_FIELD),
         is(Instant.MIN));
-
-
-
   }
 
   @Test
-  void shouldNotScheduleSentNotification() throws SchedulerException {
+  void shouldNotResendSentNotificationIfNotDeferral() throws SchedulerException {
     Curriculum theCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, "any specialty", false);
     ProgrammeMembership programmeMembership = new ProgrammeMembership();
     programmeMembership.setTisId(TIS_ID);
@@ -537,23 +538,158 @@ class ProgrammeMembershipServiceTest {
     programmeMembership.setStartDate(START_DATE);
     programmeMembership.setCurricula(List.of(theCurriculum));
 
-    List<HistoryDto> sentNotifications = new ArrayList<>();
-    sentNotifications.add(new HistoryDto("id",
+    RecipientInfo recipientInfo = new RecipientInfo("id", MessageType.EMAIL, "test@email.com");
+    TemplateInfo templateInfo = new TemplateInfo(null, null, Map.of(START_DATE_FIELD, START_DATE.toString()));
+    List<History> sentNotifications = new ArrayList<>();
+    sentNotifications.add(new History(ObjectId.get(),
         new TisReferenceInfo(PROGRAMME_MEMBERSHIP, TIS_ID),
-        MessageType.EMAIL,
-        PROGRAMME_CREATED, null,
-        "email address",
-        Instant.MIN, Instant.MAX, SENT, null));
+        PROGRAMME_CREATED, recipientInfo,
+        templateInfo,
+        Instant.MIN, Instant.MAX, SENT, null, null));
 
     Date expectedWhen = Date.from(Instant.now().plus(1, ChronoUnit.HOURS));
 
-    when(historyService.findAllForTrainee(PERSON_ID)).thenReturn(sentNotifications);
+    when(historyService.findAllHistoryForTrainee(PERSON_ID)).thenReturn(sentNotifications);
     when(notificationService.getScheduleDate(START_DATE, 1))
         .thenReturn(expectedWhen);
 
     service.addNotifications(programmeMembership);
 
     verify(notificationService, never()).scheduleNotification(any(), any(), any());
+    verify(notificationService, never()).executeNow(any(), any());
+  }
+
+  @Test
+  void shouldResendSentNotificationImmediatelyIfDeferralLeadTimeNotInFuture()
+      throws SchedulerException {
+    Curriculum theCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, "any specialty", false);
+    ProgrammeMembership programmeMembership = new ProgrammeMembership();
+    programmeMembership.setTisId(TIS_ID);
+    programmeMembership.setPersonId(PERSON_ID);
+    programmeMembership.setProgrammeName(PROGRAMME_NAME);
+    programmeMembership.setStartDate(START_DATE);
+    programmeMembership.setCurricula(List.of(theCurriculum));
+
+    RecipientInfo recipientInfo = new RecipientInfo("id", MessageType.EMAIL, "test@email.com");
+    //original start date was 90 days before START_DATE, and welcome was sent >90 days ago
+    LocalDate originalStartDate = START_DATE.minusDays(DEFERRAL_IF_MORE_THAN_DAYS + 1);
+    LocalDate originalSentAt = LocalDate.now().minusDays(100);
+    TemplateInfo templateInfo = new TemplateInfo(null, null,
+        Map.of(START_DATE_FIELD, originalStartDate.toString()));
+    List<History> sentNotifications = new ArrayList<>();
+    sentNotifications.add(new History(ObjectId.get(),
+        new TisReferenceInfo(PROGRAMME_MEMBERSHIP, TIS_ID),
+        PROGRAMME_CREATED, recipientInfo,
+        templateInfo,
+        Instant.from(originalSentAt.atStartOfDay(ZoneId.systemDefault())), Instant.MAX,
+        SENT, null, null));
+
+    when(historyService.findAllHistoryForTrainee(PERSON_ID)).thenReturn(sentNotifications);
+
+    service.addNotifications(programmeMembership);
+
+    verify(notificationService, never()).scheduleNotification(any(), any(), any());
+    verify(notificationService).executeNow(any(), any());
+  }
+
+  @Test
+  void shouldScheduleSentNotificationIfDeferralLeadTimeInFuture()
+      throws SchedulerException {
+    Curriculum theCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, "any specialty", false);
+    ProgrammeMembership programmeMembership = new ProgrammeMembership();
+    programmeMembership.setTisId(TIS_ID);
+    programmeMembership.setPersonId(PERSON_ID);
+    programmeMembership.setProgrammeName(PROGRAMME_NAME);
+    programmeMembership.setStartDate(START_DATE);
+    programmeMembership.setCurricula(List.of(theCurriculum));
+
+    RecipientInfo recipientInfo = new RecipientInfo("id", MessageType.EMAIL, "test@email.com");
+    //original start date was 90 days before START_DATE, and welcome was sent <90 days ago
+    LocalDate originalStartDate = START_DATE.minusDays(DEFERRAL_IF_MORE_THAN_DAYS + 1);
+    LocalDate originalSentAt = LocalDate.now().minusDays(50);
+    TemplateInfo templateInfo = new TemplateInfo(null, null,
+        Map.of(START_DATE_FIELD, originalStartDate.toString()));
+    List<History> sentNotifications = new ArrayList<>();
+    sentNotifications.add(new History(ObjectId.get(),
+        new TisReferenceInfo(PROGRAMME_MEMBERSHIP, TIS_ID),
+        PROGRAMME_CREATED, recipientInfo,
+        templateInfo,
+        Instant.from(originalSentAt.atStartOfDay(ZoneId.systemDefault())), Instant.MAX,
+        SENT, null, null));
+
+    when(historyService.findAllHistoryForTrainee(PERSON_ID)).thenReturn(sentNotifications);
+
+    service.addNotifications(programmeMembership);
+
+    LocalDate expectedWhen = LocalDate.now().plusDays(DEFERRAL_IF_MORE_THAN_DAYS + 1 - 50);
+    Date expectedWhenDate = Date.from(
+        expectedWhen.atStartOfDay(ZoneId.systemDefault()).toInstant());
+    verify(notificationService).scheduleNotification(any(), any(), eq(expectedWhenDate));
+    verify(notificationService, never()).executeNow(any(), any());
+  }
+
+  @Test
+  void shouldNotResendSentNotificationIfStartDateChangeNotDeferral()
+      throws SchedulerException {
+    Curriculum theCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, "any specialty", false);
+    ProgrammeMembership programmeMembership = new ProgrammeMembership();
+    programmeMembership.setTisId(TIS_ID);
+    programmeMembership.setPersonId(PERSON_ID);
+    programmeMembership.setProgrammeName(PROGRAMME_NAME);
+    programmeMembership.setStartDate(START_DATE);
+    programmeMembership.setCurricula(List.of(theCurriculum));
+
+    RecipientInfo recipientInfo = new RecipientInfo("id", MessageType.EMAIL, "test@email.com");
+    //original start date was <= DEFERRAL_IF_MORE_THAN_DAYS days before START_DATE
+    LocalDate originalStartDate = START_DATE.minusDays(DEFERRAL_IF_MORE_THAN_DAYS);
+    LocalDate originalSentAt = LocalDate.now().minusDays(100);
+    TemplateInfo templateInfo = new TemplateInfo(null, null,
+        Map.of(START_DATE_FIELD, originalStartDate.toString()));
+    List<History> sentNotifications = new ArrayList<>();
+    sentNotifications.add(new History(ObjectId.get(),
+        new TisReferenceInfo(PROGRAMME_MEMBERSHIP, TIS_ID),
+        PROGRAMME_CREATED, recipientInfo,
+        templateInfo,
+        Instant.from(originalSentAt.atStartOfDay(ZoneId.systemDefault())), Instant.MAX,
+        SENT, null, null));
+
+    when(historyService.findAllHistoryForTrainee(PERSON_ID)).thenReturn(sentNotifications);
+
+    service.addNotifications(programmeMembership);
+
+    verify(notificationService, never()).scheduleNotification(any(), any(), any());
+    verify(notificationService, never()).executeNow(any(), any());
+  }
+
+  @Test
+  void shouldNotResendSentNotificationIfHistoryStartDateCorrupt()
+      throws SchedulerException {
+    Curriculum theCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, "any specialty", false);
+    ProgrammeMembership programmeMembership = new ProgrammeMembership();
+    programmeMembership.setTisId(TIS_ID);
+    programmeMembership.setPersonId(PERSON_ID);
+    programmeMembership.setProgrammeName(PROGRAMME_NAME);
+    programmeMembership.setStartDate(START_DATE);
+    programmeMembership.setCurricula(List.of(theCurriculum));
+
+    RecipientInfo recipientInfo = new RecipientInfo("id", MessageType.EMAIL, "test@email.com");
+
+    TemplateInfo templateInfo = new TemplateInfo(null, null,
+        Map.of(START_DATE_FIELD, "not a date"));
+    List<History> sentNotifications = new ArrayList<>();
+    sentNotifications.add(new History(ObjectId.get(),
+        new TisReferenceInfo(PROGRAMME_MEMBERSHIP, TIS_ID),
+        PROGRAMME_CREATED, recipientInfo,
+        templateInfo,
+        Instant.MIN, Instant.MAX,
+        SENT, null, null));
+
+    when(historyService.findAllHistoryForTrainee(PERSON_ID)).thenReturn(sentNotifications);
+
+    service.addNotifications(programmeMembership);
+
+    verify(notificationService, never()).scheduleNotification(any(), any(), any());
+    verify(notificationService, never()).executeNow(any(), any());
   }
 
   @ParameterizedTest
@@ -568,15 +704,15 @@ class ProgrammeMembershipServiceTest {
     programmeMembership.setStartDate(START_DATE);
     programmeMembership.setCurricula(List.of(theCurriculum));
 
-    List<HistoryDto> sentNotifications = new ArrayList<>();
-    sentNotifications.add(new HistoryDto("id",
+    List<History> sentNotifications = new ArrayList<>();
+    RecipientInfo recipientInfo = new RecipientInfo("id", MessageType.EMAIL, "test@email.com");
+    sentNotifications.add(new History(ObjectId.get(),
         new TisReferenceInfo(PROGRAMME_MEMBERSHIP, TIS_ID),
-        MessageType.EMAIL,
-        notificationType, null,
-        "email address",
-        Instant.MIN, Instant.MAX, SENT, null));
+        notificationType, recipientInfo,
+        null,
+        Instant.MIN, Instant.MAX, SENT, null, null));
 
-    when(historyService.findAllForTrainee(PERSON_ID)).thenReturn(sentNotifications);
+    when(historyService.findAllHistoryForTrainee(PERSON_ID)).thenReturn(sentNotifications);
 
     service.addNotifications(programmeMembership);
 
@@ -593,15 +729,15 @@ class ProgrammeMembershipServiceTest {
     programmeMembership.setStartDate(START_DATE);
     programmeMembership.setCurricula(List.of(theCurriculum));
 
-    List<HistoryDto> sentNotifications = new ArrayList<>();
-    sentNotifications.add(new HistoryDto("id",
+    List<History> sentNotifications = new ArrayList<>();
+    RecipientInfo recipientInfo = new RecipientInfo("id", MessageType.EMAIL, "test@email.com");
+    sentNotifications.add(new History(ObjectId.get(),
         new TisReferenceInfo(TisReferenceType.PLACEMENT, TIS_ID), //note: placement type
-        MessageType.EMAIL,
-        PROGRAMME_CREATED, null, //to avoid masking the test condition
-        "email address",
-        Instant.MIN, Instant.MAX, SENT, null));
+        PROGRAMME_CREATED, recipientInfo, //to avoid masking the test condition
+        null,
+        Instant.MIN, Instant.MAX, SENT, null, null));
 
-    when(historyService.findAllForTrainee(PERSON_ID)).thenReturn(sentNotifications);
+    when(historyService.findAllHistoryForTrainee(PERSON_ID)).thenReturn(sentNotifications);
 
     service.addNotifications(programmeMembership);
 
@@ -618,15 +754,15 @@ class ProgrammeMembershipServiceTest {
     programmeMembership.setStartDate(START_DATE);
     programmeMembership.setCurricula(List.of(theCurriculum));
 
-    List<HistoryDto> sentNotifications = new ArrayList<>();
-    sentNotifications.add(new HistoryDto("id",
+    List<History> sentNotifications = new ArrayList<>();
+    RecipientInfo recipientInfo = new RecipientInfo("id", MessageType.EMAIL, "test@email.com");
+    sentNotifications.add(new History(ObjectId.get(),
         new TisReferenceInfo(PROGRAMME_MEMBERSHIP, "another id"),
-        MessageType.EMAIL,
-        PROGRAMME_CREATED, null,
-        "email address",
-        Instant.MIN, Instant.MAX, SENT, null));
+        PROGRAMME_CREATED, recipientInfo,
+        null,
+        Instant.MIN, Instant.MAX, SENT, null, null));
 
-    when(historyService.findAllForTrainee(PERSON_ID)).thenReturn(sentNotifications);
+    when(historyService.findAllHistoryForTrainee(PERSON_ID)).thenReturn(sentNotifications);
 
     service.addNotifications(programmeMembership);
 
@@ -642,15 +778,15 @@ class ProgrammeMembershipServiceTest {
     programmeMembership.setStartDate(START_DATE);
     programmeMembership.setCurricula(List.of(theCurriculum));
 
-    List<HistoryDto> sentNotifications = new ArrayList<>();
-    sentNotifications.add(new HistoryDto("id",
+    List<History> sentNotifications = new ArrayList<>();
+    RecipientInfo recipientInfo = new RecipientInfo("id", MessageType.EMAIL, "test@email.com");
+    sentNotifications.add(new History(ObjectId.get(),
         null,
-        MessageType.EMAIL,
-        PROGRAMME_CREATED, null,
-        "email address",
-        Instant.MIN, Instant.MAX, SENT, null));
+        PROGRAMME_CREATED, recipientInfo,
+        null,
+        Instant.MIN, Instant.MAX, SENT, null, null));
 
-    when(historyService.findAllForTrainee(PERSON_ID)).thenReturn(sentNotifications);
+    when(historyService.findAllHistoryForTrainee(PERSON_ID)).thenReturn(sentNotifications);
 
     assertDoesNotThrow(() -> service.addNotifications(programmeMembership),
         "Unexpected addNotifications failure");
@@ -666,15 +802,15 @@ class ProgrammeMembershipServiceTest {
     programmeMembership.setStartDate(START_DATE);
     programmeMembership.setCurricula(List.of(theCurriculum));
 
-    List<HistoryDto> sentNotifications = new ArrayList<>();
-    sentNotifications.add(new HistoryDto("id",
+    RecipientInfo recipientInfo = new RecipientInfo("id", MessageType.EMAIL, "test@email.com");
+    List<History> sentNotifications = new ArrayList<>();
+    sentNotifications.add(new History(ObjectId.get(),
         null,
-        MessageType.EMAIL,
-        PROGRAMME_CREATED, null,
-        "email address",
-        Instant.MIN, Instant.MAX, SENT, null));
+        PROGRAMME_CREATED,
+        recipientInfo, null,
+        Instant.MIN, Instant.MAX, SENT, null, null));
 
-    when(historyService.findAllForTrainee(PERSON_ID)).thenReturn(sentNotifications);
+    when(historyService.findAllHistoryForTrainee(PERSON_ID)).thenReturn(sentNotifications);
 
     service.addNotifications(programmeMembership);
 

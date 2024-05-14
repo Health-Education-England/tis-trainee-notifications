@@ -34,6 +34,7 @@ import static uk.nhs.tis.trainee.notifications.service.NotificationService.TEMPL
 
 import java.time.Duration;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeParseException;
 import java.util.Comparator;
@@ -407,10 +408,11 @@ public class ProgrammeMembershipService {
       LocalDate oldStartDate = getProgrammeCreatedProgrammeStartDate(lastSent);
       LocalDate newStartDate = programmeMembership.getStartDate();
       if (oldStartDate != null && newStartDate != null && lastSent.sentAt() != null) {
-        LocalDate oldSentDate = lastSent.sentAt().atZone(timezone).toLocalDate();
-        if (oldSentDate != null) {
-          long leadDays = Duration.between(oldSentDate, oldStartDate).toDays();
-
+        LocalDateTime oldSentDateTime = lastSent.sentAt().atZone(timezone).toLocalDateTime();
+        if (oldSentDateTime != null) {
+          LocalDateTime oldStartDateTime = oldStartDate.atStartOfDay();
+          long leadDays = Duration.between(oldSentDateTime, oldStartDateTime).toDays();
+          log.info("old sent = {}, old start = {}, lead days = {}", oldSentDateTime, oldStartDateTime, leadDays);
           LocalDate newSend = newStartDate.minusDays(leadDays);
           if (newSend.isAfter(LocalDate.now())) {
             return Date.from(newSend.atStartOfDay(timezone).toInstant());
@@ -428,14 +430,9 @@ public class ProgrammeMembershipService {
    * Get the programme start date from a saved PROGRAMME_CREATED history item.
    *
    * @param history The history to inspect.
-   * @return The programme start date, or null if it is missing, unparseable or the history item is
-   *     null or the wrong type.
+   * @return The programme start date, or null if it is missing or unparseable.
    */
   private LocalDate getProgrammeCreatedProgrammeStartDate(History history) {
-    if (history == null || history.type() != PROGRAMME_CREATED) {
-      log.warn("Cannot retrieve programme start date from history {}", history);
-      return null;
-    }
     if (history.template() != null
         && history.template().variables() != null
         && history.template().variables().get(START_DATE_FIELD) != null) {
