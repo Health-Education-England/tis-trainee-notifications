@@ -405,17 +405,16 @@ public class ProgrammeMembershipService {
       History lastSent = notificationsAlreadySent.get(PROGRAMME_CREATED);
       LocalDate oldStartDate = getProgrammeCreatedProgrammeStartDate(lastSent);
       LocalDate newStartDate = programmeMembership.getStartDate();
-      if (oldStartDate != null && newStartDate != null && lastSent.sentAt() != null) {
+      if (lastSent.sentAt() != null) {
         LocalDateTime oldSentDateTime = lastSent.sentAt().atZone(timezone).toLocalDateTime();
-        if (oldSentDateTime != null) {
-          LocalDateTime oldStartDateTime = oldStartDate.atStartOfDay();
-          long leadDays = Duration.between(oldSentDateTime, oldStartDateTime).toDays();
-          log.info("Old sent = {}, old start = {}, lead days = {}", oldSentDateTime,
-              oldStartDateTime, leadDays);
-          LocalDate newSend = newStartDate.minusDays(leadDays);
-          if (newSend.isAfter(LocalDate.now())) {
-            return Date.from(newSend.atStartOfDay(timezone).toInstant());
-          }
+        assert oldStartDate != null;
+        LocalDateTime oldStartDateTime = oldStartDate.atStartOfDay();
+        long leadDays = Duration.between(oldSentDateTime, oldStartDateTime).toDays();
+        log.info("Old sent = {}, old start = {}, lead days = {}", oldSentDateTime,
+            oldStartDateTime, leadDays);
+        LocalDate newSend = newStartDate.minusDays(leadDays);
+        if (newSend.isAfter(LocalDate.now())) {
+          return Date.from(newSend.atStartOfDay(timezone).toInstant());
         }
       }
       return null; //send immediately if newSend is not in the future, or any data missing

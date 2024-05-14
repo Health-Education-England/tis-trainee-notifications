@@ -491,7 +491,7 @@ class ProgrammeMembershipServiceTest {
   }
 
   @Test
-  void shouldAddDirectNotificationsWhenNotExcluded() throws SchedulerException {
+  void shouldAddDirectProgrammeNotificationsWhenNotExcluded() throws SchedulerException {
     Curriculum theCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, "any specialty", false);
     ProgrammeMembership programmeMembership = new ProgrammeMembership();
     programmeMembership.setTisId(TIS_ID);
@@ -674,11 +674,12 @@ class ProgrammeMembershipServiceTest {
     programmeMembership.setTisId(TIS_ID);
     programmeMembership.setPersonId(PERSON_ID);
     programmeMembership.setProgrammeName(PROGRAMME_NAME);
+    //no programme start date
     programmeMembership.setCurricula(List.of(theCurriculum));
 
     RecipientInfo recipientInfo = new RecipientInfo("id", MessageType.EMAIL, "test@email.com");
     //original start date was > DEFERRAL_IF_MORE_THAN_DAYS days before START_DATE,
-    //and we don't know when welcome was sent
+    //and we don't know updated programme start date
     LocalDate originalStartDate = START_DATE.minusDays(DEFERRAL_IF_MORE_THAN_DAYS + 1);
     LocalDate originalSentAt = LocalDate.now().minusDays(50);
     TemplateInfo templateInfo = new TemplateInfo(null, null,
