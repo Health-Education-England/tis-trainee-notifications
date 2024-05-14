@@ -32,14 +32,19 @@ import static uk.nhs.tis.trainee.notifications.service.NotificationService.PERSO
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.TEMPLATE_NOTIFICATION_TYPE_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.TEMPLATE_OWNER_FIELD;
 
-import java.time.Instant;
+import java.time.Duration;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.time.format.DateTimeParseException;
+import java.util.Comparator;
+import java.util.Date;
 import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
@@ -47,8 +52,8 @@ import org.quartz.JobDataMap;
 import org.quartz.SchedulerException;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
-import uk.nhs.tis.trainee.notifications.dto.HistoryDto;
 import uk.nhs.tis.trainee.notifications.model.Curriculum;
+import uk.nhs.tis.trainee.notifications.model.History;
 import uk.nhs.tis.trainee.notifications.model.History.TisReferenceInfo;
 import uk.nhs.tis.trainee.notifications.model.LocalOfficeContactType;
 import uk.nhs.tis.trainee.notifications.model.NotificationType;
@@ -70,6 +75,7 @@ public class ProgrammeMembershipService {
   public static final String LOCAL_OFFICE_CONTACT_FIELD = "localOfficeContact";
   public static final String LOCAL_OFFICE_CONTACT_TYPE_FIELD = "localOfficeContactType";
   public static final String COJ_SYNCED_FIELD = "conditionsOfJoiningSyncedAt";
+  public static final Integer DEFERRAL_IF_MORE_THAN_DAYS = 89;
 
   private static final List<String> INCLUDE_CURRICULUM_SUBTYPES
       = List.of("MEDICAL_CURRICULUM", "MEDICAL_SPR");
@@ -156,17 +162,17 @@ public class ProgrammeMembershipService {
   }
 
   /**
-   * Get a map of notification types and the instant they were sent for a given trainee and
+   * Get a map of notification types and the most recent one that was sent for a given trainee and
    * programme membership from the notification history.
    *
    * @param traineeId             The trainee TIS ID.
    * @param programmeMembershipId The programme membership TIS ID.
-   * @return The map of notification types and when they were sent.
+   * @return The map of notification types and the notification item most recently sent.
    */
-  private Map<NotificationType, Instant> getNotificationsSent(String traineeId,
+  private Map<NotificationType, History> getLatestNotificationsSent(String traineeId,
       String programmeMembershipId) {
-    EnumMap<NotificationType, Instant> notifications = new EnumMap<>(NotificationType.class);
-    List<HistoryDto> correspondence = historyService.findAllForTrainee(traineeId);
+    EnumMap<NotificationType, History> notifications = new EnumMap<>(NotificationType.class);
+    List<History> correspondence = historyService.findAllHistoryForTrainee(traineeId);
 
     Set<NotificationType> notificationTypes = new HashSet<>(
         NotificationType.getProgrammeUpdateNotificationTypes());
@@ -177,14 +183,14 @@ public class ProgrammeMembershipService {
     notificationTypes.add(SPONSORSHIP);
 
     for (NotificationType milestone : notificationTypes) {
-      Optional<HistoryDto> sentItem = correspondence.stream()
+      Optional<History> sentItem = correspondence.stream()
           .filter(c -> c.tisReference() != null)
           .filter(c ->
               c.tisReference().type().equals(TisReferenceType.PROGRAMME_MEMBERSHIP)
-                  && c.subject().equals(milestone)
+                  && c.type().equals(milestone)
                   && c.tisReference().id().equals(programmeMembershipId))
-          .findFirst();
-      sentItem.ifPresent(historyDto -> notifications.put(milestone, historyDto.sentAt()));
+          .max(Comparator.comparing(History::sentAt)); //get most recent sent
+      sentItem.ifPresent(history -> notifications.put(milestone, history));
     }
     return notifications;
   }
@@ -204,28 +210,32 @@ public class ProgrammeMembershipService {
     log.info("Programme membership {}: excluded {}.", programmeMembership.getTisId(), isExcluded);
 
     if (!isExcluded) {
-      Map<NotificationType, Instant> notificationsAlreadySent
-          = getNotificationsSent(programmeMembership.getPersonId(), programmeMembership.getTisId());
+      Map<NotificationType, History> notificationsAlreadySent
+          = getLatestNotificationsSent(programmeMembership.getPersonId(),
+          programmeMembership.getTisId());
 
-      createDirectNotifications(programmeMembership, notificationsAlreadySent);
+      createDirectProgrammeNotifications(programmeMembership, notificationsAlreadySent);
       createInAppNotifications(programmeMembership, notificationsAlreadySent);
     }
   }
 
   /**
-   * Create "direct" notifications, such as email, which may be scheduled for a future date/time.
+   * Create "direct" programme notifications, such as email, which may be scheduled for a future
+   * date/time.
    *
    * @param programmeMembership      The updated programme membership.
    * @param notificationsAlreadySent Previously sent notifications.
    */
-  private void createDirectNotifications(ProgrammeMembership programmeMembership,
-      Map<NotificationType, Instant> notificationsAlreadySent) {
+  private void createDirectProgrammeNotifications(ProgrammeMembership programmeMembership,
+      Map<NotificationType, History> notificationsAlreadySent) throws SchedulerException {
 
-    NotificationType milestone = PROGRAMME_CREATED; //do not handle other programme notifications
-    boolean shouldSchedule = shouldScheduleNotification(milestone, notificationsAlreadySent);
+    //only handle 'programme created' notifications
+    boolean shouldSchedule = shouldScheduleProgrammeCreatedNotification(programmeMembership,
+        notificationsAlreadySent);
 
     if (shouldSchedule) {
-      log.info("Processing notification {} for {}.", milestone, programmeMembership.getTisId());
+      log.info("Processing notification {} for {}.", PROGRAMME_CREATED,
+          programmeMembership.getTisId());
 
       JobDataMap jobDataMap = new JobDataMap();
       jobDataMap.put(TIS_ID_FIELD, programmeMembership.getTisId());
@@ -233,7 +243,7 @@ public class ProgrammeMembershipService {
       jobDataMap.put(PROGRAMME_NAME_FIELD, programmeMembership.getProgrammeName());
       jobDataMap.put(START_DATE_FIELD, programmeMembership.getStartDate());
       jobDataMap.put(TEMPLATE_OWNER_FIELD, programmeMembership.getManagingDeanery());
-      jobDataMap.put(TEMPLATE_NOTIFICATION_TYPE_FIELD, milestone);
+      jobDataMap.put(TEMPLATE_NOTIFICATION_TYPE_FIELD, PROGRAMME_CREATED);
       if (programmeMembership.getConditionsOfJoining() != null) {
         jobDataMap.put(COJ_SYNCED_FIELD,
             programmeMembership.getConditionsOfJoining().syncedAt());
@@ -241,8 +251,14 @@ public class ProgrammeMembershipService {
       // Note the status of the trainee will be retrieved when the job is executed, as will
       // their name and email address and LO contact details.
 
-      String jobId = milestone + "-" + programmeMembership.getTisId();
-      notificationService.executeNow(jobId, jobDataMap);
+      String jobId = PROGRAMME_CREATED + "-" + programmeMembership.getTisId();
+      Date scheduleWhen = whenScheduleProgrammeCreatedNotification(programmeMembership,
+          notificationsAlreadySent);
+      if (scheduleWhen == null) {
+        notificationService.executeNow(jobId, jobDataMap);
+      } else {
+        notificationService.scheduleNotification(jobId, jobDataMap, scheduleWhen);
+      }
     }
   }
 
@@ -253,7 +269,7 @@ public class ProgrammeMembershipService {
    * @param notificationsAlreadySent Previously sent notifications.
    */
   private void createInAppNotifications(ProgrammeMembership programmeMembership,
-      Map<NotificationType, Instant> notificationsAlreadySent) {
+      Map<NotificationType, History> notificationsAlreadySent) {
     // Create ePortfolio notification if the PM qualifies.
     boolean meetsCriteria = notificationService.meetsCriteria(programmeMembership, true, true);
 
@@ -315,7 +331,7 @@ public class ProgrammeMembershipService {
    *                                 and Start Date are populated automatically.
    */
   private void createUniqueInAppNotification(ProgrammeMembership programmeMembership,
-      Map<NotificationType, Instant> notificationsAlreadySent, NotificationType notificationType,
+      Map<NotificationType, History> notificationsAlreadySent, NotificationType notificationType,
       String notificationVersion, Map<String, Object> extraVariables) {
     boolean isUnique = !notificationsAlreadySent.containsKey(notificationType);
 
@@ -352,20 +368,78 @@ public class ProgrammeMembershipService {
   }
 
   /**
-   * Helper function to determine whether a notification should be scheduled.
+   * Helper function to determine whether a programme created notification should be scheduled.
    *
-   * @param milestone                The milestone to consider.
+   * @param programmeMembership      The updated programme membership to consider.
    * @param notificationsAlreadySent The notifications already sent for this entity.
    * @return true if it should be scheduled, false otherwise.
    */
-  private boolean shouldScheduleNotification(NotificationType milestone,
-      Map<NotificationType, Instant> notificationsAlreadySent) {
+  private boolean shouldScheduleProgrammeCreatedNotification(
+      ProgrammeMembership programmeMembership,
+      Map<NotificationType, History> notificationsAlreadySent) {
 
-    //do not resend any notification
-    if (notificationsAlreadySent.containsKey(milestone)) {
-      return false;
+    //only resend deferred programme notifications
+    if (notificationsAlreadySent.containsKey(PROGRAMME_CREATED)) {
+      History lastSent = notificationsAlreadySent.get(PROGRAMME_CREATED);
+      LocalDate oldStartDate = getProgrammeCreatedProgrammeStartDate(lastSent);
+      return oldStartDate != null && oldStartDate.plusDays(DEFERRAL_IF_MORE_THAN_DAYS)
+          .isBefore(programmeMembership.getStartDate());
     }
 
-    return milestone == PROGRAMME_CREATED; //immediately notify of a new programme membership
+    return true; //immediately notify of a new programme membership
+  }
+
+  /**
+   * Helper function to determine when a programme created notification should be scheduled.
+   *
+   * @param programmeMembership      The updated programme membership to consider.
+   * @param notificationsAlreadySent The notifications already sent for this entity.
+   * @return the date it should be scheduled, or null if it should be sent immediately.
+   */
+  private Date whenScheduleProgrammeCreatedNotification(
+      ProgrammeMembership programmeMembership,
+      Map<NotificationType, History> notificationsAlreadySent) {
+
+    //schedule deferred notifications with the same lead time as the original notification
+    if (notificationsAlreadySent.containsKey(PROGRAMME_CREATED)) {
+      History lastSent = notificationsAlreadySent.get(PROGRAMME_CREATED);
+      LocalDate oldStartDate = getProgrammeCreatedProgrammeStartDate(lastSent);
+      LocalDate newStartDate = programmeMembership.getStartDate();
+      if (lastSent.sentAt() != null) {
+        LocalDateTime oldSentDateTime = lastSent.sentAt().atZone(timezone).toLocalDateTime();
+        LocalDateTime oldStartDateTime = Objects.requireNonNull(oldStartDate).atStartOfDay();
+        long leadDays = Duration.between(oldSentDateTime, oldStartDateTime).toDays();
+        log.info("Old sent = {}, old start = {}, lead days = {}", oldSentDateTime,
+            oldStartDateTime, leadDays);
+        LocalDate newSend = newStartDate.minusDays(leadDays);
+        if (newSend.isAfter(LocalDate.now())) {
+          return Date.from(newSend.atStartOfDay(timezone).toInstant());
+        }
+      }
+      return null; //send immediately if newSend is not in the future, or any data missing
+    }
+
+    return null; //send new programme membership notifications immediately
+  }
+
+
+  /**
+   * Get the programme start date from a saved PROGRAMME_CREATED history item.
+   *
+   * @param history The history to inspect.
+   * @return The programme start date, or null if it is missing or unparseable.
+   */
+  private LocalDate getProgrammeCreatedProgrammeStartDate(History history) {
+    if (history.template() != null
+        && history.template().variables() != null
+        && history.template().variables().get(START_DATE_FIELD) != null) {
+      try {
+        return LocalDate.parse(
+            history.template().variables().get(START_DATE_FIELD).toString());
+      } catch (DateTimeParseException e) {
+        log.error("Error: unparseable startDate in history {}", history);
+      }
+    }
+    return null;
   }
 }
