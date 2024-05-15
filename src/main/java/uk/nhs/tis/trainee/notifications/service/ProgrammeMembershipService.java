@@ -171,7 +171,10 @@ public class ProgrammeMembershipService {
 
     Set<NotificationType> notificationTypes = new HashSet<>(
         NotificationType.getProgrammeUpdateNotificationTypes());
-
+    notificationTypes.add(DEFERRAL);
+    notificationTypes.add(E_PORTFOLIO);
+    notificationTypes.add(INDEMNITY_INSURANCE);
+    notificationTypes.add(LTFT);
     notificationTypes.add(SPONSORSHIP);
 
     for (NotificationType milestone : notificationTypes) {
