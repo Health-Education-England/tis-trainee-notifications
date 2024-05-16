@@ -920,150 +920,135 @@ class ProgrammeMembershipServiceTest {
   }
 
   @Test
-  void shouldNotScheduleSentNotificationIfNewStartDateIsNull()
-      throws SchedulerException {
+  void shouldNotScheduleNotificationIfNewStartDateIsNull() {
     RecipientInfo recipientInfo = new RecipientInfo("id", MessageType.EMAIL, "test@email.com");
     //original start date was > DEFERRAL_IF_MORE_THAN_DAYS days before START_DATE,
     //and we don't know updated programme start date
     LocalDate originalStartDate = START_DATE.minusDays(DEFERRAL_IF_MORE_THAN_DAYS + 1);
-    LocalDate originalSentAt = LocalDate.now().minusDays(50);
+    LocalDate originalSentAt = LocalDate.now().minusDays(100);
     TemplateInfo templateInfo = new TemplateInfo(null, null,
         Map.of(START_DATE_FIELD, originalStartDate.toString()));
-    List<History> sentNotifications = new ArrayList<>();
-    sentNotifications.add(new History(ObjectId.get(),
+
+    History sentNotification = new History(ObjectId.get(),
         new TisReferenceInfo(PROGRAMME_MEMBERSHIP, TIS_ID),
         PROGRAMME_CREATED, recipientInfo,
         templateInfo,
         Instant.from(originalSentAt.atStartOfDay(timezone)), Instant.MAX,
-        SENT, null, null));
-
-    when(historyService.findAllHistoryForTrainee(PERSON_ID)).thenReturn(sentNotifications);
+        SENT, null, null);
+    Map<NotificationType, History> alreadySent = Map.of(PROGRAMME_CREATED, sentNotification);
 
     ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
     programmeMembership.setStartDate(null);
-    service.addNotifications(programmeMembership);
 
-    verify(notificationService, never()).scheduleNotification(any(), any(), any());
-    verify(notificationService, never()).executeNow(any(), any());
+    boolean shouldSchedule
+        = service.shouldScheduleNotification(PROGRAMME_CREATED, programmeMembership, alreadySent);
+    assertThat("Unexpected should schedule value.", shouldSchedule, is(false));
   }
 
   @Test
-  void shouldNotResendSentNotificationIfStartDateChangeNotDeferral()
-      throws SchedulerException {
+  void shouldNotScheduleNotificationIfStartDateChangeNotDeferral() {
     RecipientInfo recipientInfo = new RecipientInfo("id", MessageType.EMAIL, "test@email.com");
-    //original start date was <= DEFERRAL_IF_MORE_THAN_DAYS days before START_DATE
+    //original start date was <= DEFERRAL_IF_MORE_THAN_DAYS days before START_DATE,
     LocalDate originalStartDate = START_DATE.minusDays(DEFERRAL_IF_MORE_THAN_DAYS);
     LocalDate originalSentAt = LocalDate.now().minusDays(100);
     TemplateInfo templateInfo = new TemplateInfo(null, null,
         Map.of(START_DATE_FIELD, originalStartDate.toString()));
-    List<History> sentNotifications = new ArrayList<>();
-    sentNotifications.add(new History(ObjectId.get(),
+
+    History sentNotification = new History(ObjectId.get(),
         new TisReferenceInfo(PROGRAMME_MEMBERSHIP, TIS_ID),
         PROGRAMME_CREATED, recipientInfo,
         templateInfo,
         Instant.from(originalSentAt.atStartOfDay(timezone)), Instant.MAX,
-        SENT, null, null));
-
-    when(historyService.findAllHistoryForTrainee(PERSON_ID)).thenReturn(sentNotifications);
+        SENT, null, null);
+    Map<NotificationType, History> alreadySent = Map.of(PROGRAMME_CREATED, sentNotification);
 
     ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
-    service.addNotifications(programmeMembership);
 
-    verify(notificationService, never()).scheduleNotification(any(), any(), any());
-    verify(notificationService, never()).executeNow(any(), any());
+    boolean shouldSchedule
+        = service.shouldScheduleNotification(PROGRAMME_CREATED, programmeMembership, alreadySent);
+    assertThat("Unexpected should schedule value.", shouldSchedule, is(false));
   }
 
   @Test
-  void shouldNotResendSentNotificationIfHistoryStartDateCorrupt()
-      throws SchedulerException {
+  void shouldNotScheduleNotificationIfHistoryStartDateCorrupt() {
     RecipientInfo recipientInfo = new RecipientInfo("id", MessageType.EMAIL, "test@email.com");
-
+    LocalDate originalSentAt = LocalDate.now().minusDays(100);
     TemplateInfo templateInfo = new TemplateInfo(null, null,
         Map.of(START_DATE_FIELD, "not a date"));
-    List<History> sentNotifications = new ArrayList<>();
-    sentNotifications.add(new History(ObjectId.get(),
+
+    History sentNotification = new History(ObjectId.get(),
         new TisReferenceInfo(PROGRAMME_MEMBERSHIP, TIS_ID),
         PROGRAMME_CREATED, recipientInfo,
         templateInfo,
-        Instant.MIN, Instant.MAX,
-        SENT, null, null));
-
-    when(historyService.findAllHistoryForTrainee(PERSON_ID)).thenReturn(sentNotifications);
+        Instant.from(originalSentAt.atStartOfDay(timezone)), Instant.MAX,
+        SENT, null, null);
+    Map<NotificationType, History> alreadySent = Map.of(PROGRAMME_CREATED, sentNotification);
 
     ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
-    service.addNotifications(programmeMembership);
 
-    verify(notificationService, never()).scheduleNotification(any(), any(), any());
-    verify(notificationService, never()).executeNow(any(), any());
+    boolean shouldSchedule
+        = service.shouldScheduleNotification(PROGRAMME_CREATED, programmeMembership, alreadySent);
+    assertThat("Unexpected should schedule value.", shouldSchedule, is(false));
   }
 
   @Test
-  void shouldNotResendSentNotificationIfHistoryTemplateMissing()
-      throws SchedulerException {
+  void shouldNoScheduleNotificationIfHistoryTemplateMissing() {
     RecipientInfo recipientInfo = new RecipientInfo("id", MessageType.EMAIL, "test@email.com");
 
-    List<History> sentNotifications = new ArrayList<>();
-    sentNotifications.add(new History(ObjectId.get(),
+    History sentNotification = new History(ObjectId.get(),
         new TisReferenceInfo(PROGRAMME_MEMBERSHIP, TIS_ID),
         PROGRAMME_CREATED, recipientInfo,
         null,
         Instant.MIN, Instant.MAX,
-        SENT, null, null));
-
-    when(historyService.findAllHistoryForTrainee(PERSON_ID)).thenReturn(sentNotifications);
+        SENT, null, null);
+    Map<NotificationType, History> alreadySent = Map.of(PROGRAMME_CREATED, sentNotification);
 
     ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
-    service.addNotifications(programmeMembership);
 
-    verify(notificationService, never()).scheduleNotification(any(), any(), any());
-    verify(notificationService, never()).executeNow(any(), any());
+    boolean shouldSchedule
+        = service.shouldScheduleNotification(PROGRAMME_CREATED, programmeMembership, alreadySent);
+    assertThat("Unexpected should schedule value.", shouldSchedule, is(false));
   }
 
   @Test
-  void shouldNotResendSentNotificationIfHistoryTemplateVariablesMissing()
-      throws SchedulerException {
+  void shouldNotScheduleNotificationIfHistoryTemplateVariablesMissing() {
     RecipientInfo recipientInfo = new RecipientInfo("id", MessageType.EMAIL, "test@email.com");
 
     TemplateInfo templateInfo = new TemplateInfo(null, null, null);
-    List<History> sentNotifications = new ArrayList<>();
-    sentNotifications.add(new History(ObjectId.get(),
+    History sentNotification = new History(ObjectId.get(),
         new TisReferenceInfo(PROGRAMME_MEMBERSHIP, TIS_ID),
         PROGRAMME_CREATED, recipientInfo,
         templateInfo,
         Instant.MIN, Instant.MAX,
-        SENT, null, null));
-
-    when(historyService.findAllHistoryForTrainee(PERSON_ID)).thenReturn(sentNotifications);
+        SENT, null, null);
+    Map<NotificationType, History> alreadySent = Map.of(PROGRAMME_CREATED, sentNotification);
 
     ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
-    service.addNotifications(programmeMembership);
 
-    verify(notificationService, never()).scheduleNotification(any(), any(), any());
-    verify(notificationService, never()).executeNow(any(), any());
+    boolean shouldSchedule
+        = service.shouldScheduleNotification(PROGRAMME_CREATED, programmeMembership, alreadySent);
+    assertThat("Unexpected should schedule value.", shouldSchedule, is(false));
   }
 
   @Test
-  void shouldNotResendSentNotificationIfHistoryTemplateVariablesStartDateMissing()
-      throws SchedulerException {
+  void shouldNotScheduleNotificationIfHistoryTemplateVariablesStartDateMissing() {
     RecipientInfo recipientInfo = new RecipientInfo("id", MessageType.EMAIL, "test@email.com");
 
     TemplateInfo templateInfo = new TemplateInfo(null, null,
         Map.of("some field", "some field value"));
-    List<History> sentNotifications = new ArrayList<>();
-    sentNotifications.add(new History(ObjectId.get(),
+    History sentNotification = new History(ObjectId.get(),
         new TisReferenceInfo(PROGRAMME_MEMBERSHIP, TIS_ID),
         PROGRAMME_CREATED, recipientInfo,
         templateInfo,
         Instant.MIN, Instant.MAX,
-        SENT, null, null));
-
-    when(historyService.findAllHistoryForTrainee(PERSON_ID)).thenReturn(sentNotifications);
+        SENT, null, null);
+    Map<NotificationType, History> alreadySent = Map.of(PROGRAMME_CREATED, sentNotification);
 
     ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
-    service.addNotifications(programmeMembership);
 
-    verify(notificationService, never()).scheduleNotification(any(), any(), any());
-    verify(notificationService, never()).executeNow(any(), any());
+    boolean shouldSchedule
+        = service.shouldScheduleNotification(PROGRAMME_CREATED, programmeMembership, alreadySent);
+    assertThat("Unexpected should schedule value.", shouldSchedule, is(false));
   }
 
   @ParameterizedTest
