@@ -59,7 +59,7 @@
       <li th:case="false">According to our records, you do not currently have a TIS Self-Service account. Please create one by visiting <a href="https://trainee.tis.nhs.uk/">TIS Self-Service</a>. Please ensure you create an account using the email address we have against our records: <b><span th:text="${email}"></span></b>.</li></th:block>
     <li>If your email address is likely to change, or you need support signing up on TIS Self-Service, then contact us via <th:block th:switch="${contactHref}"
     ><span th:case="url"><a th:href="${localOfficeContact}"><span th:text="${localOfficeContact}"></span></a></span
-    ><span th:case="email"><a th:href="|mailto:${localOfficeContact}?subject=Onboarding to Programme - GMC: ${not #strings.isEmpty(gmcNumber) ? gmcNumber : 'unknown'}, Prog No: ${not #strings.isEmpty(programmeNumber) ? programmeNumber : 'unknown'}|"><span th:text="${localOfficeContact}"></span></a></span
+    ><span th:case="email"><a id="loMail" th:href="|mailto:${localOfficeContact}?subject=Onboarding to Programme - GMC: ${not #strings.isEmpty(gmcNumber) ? gmcNumber : 'unknown'}, Prog No: ${not #strings.isEmpty(programmeNumber) ? programmeNumber : 'unknown'}|"><span th:text="${localOfficeContact}"></span></a></span
     ><span th:case="*"><span th:text="${localOfficeContact}"></span></span
     ></th:block> or see our <a href="https://tis-support.hee.nhs.uk/trainees/changes-to-account/">FAQ</a> for details.</li>
     <li>Once you access TIS Self-Service, you will be presented with a set of actions and notifications to read relating to your training programme. Please complete the actions and read the notification as requested.</li>
