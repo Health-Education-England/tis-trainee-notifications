@@ -37,6 +37,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.Comparator;
 import java.util.Date;
@@ -439,12 +440,9 @@ public class ProgrammeMembershipService {
       History lastSent = notificationsAlreadySent.get(notificationType);
       LocalDate oldStartDate = getProgrammeStartDate(lastSent);
       LocalDate newStartDate = programmeMembership.getStartDate();
-      if (lastSent.sentAt() != null) {
+      if (lastSent.sentAt() != null && oldStartDate != null) {
         LocalDateTime oldSentDateTime = lastSent.sentAt().atZone(timezone).toLocalDateTime();
-        LocalDateTime oldStartDateTime = Objects.requireNonNull(oldStartDate).atStartOfDay();
-        long leadDays = Duration.between(oldSentDateTime, oldStartDateTime).toDays();
-        log.info("Old sent = {}, old start = {}, lead days = {}", oldSentDateTime,
-            oldStartDateTime, leadDays);
+        long leadDays = Duration.between(oldSentDateTime, oldStartDate.atStartOfDay()).toDays();
         LocalDate newSend = newStartDate.minusDays(leadDays);
         if (newSend.isAfter(LocalDate.now())) {
           return Date.from(newSend.atStartOfDay(timezone).toInstant());
@@ -469,10 +467,15 @@ public class ProgrammeMembershipService {
         && history.template().variables().get(START_DATE_FIELD) != null) {
       //to be deferrable, a programme-related notification must include the START_DATE_FIELD
       try {
-        return LocalDate.parse(
-            history.template().variables().get(START_DATE_FIELD).toString());
-      } catch (DateTimeParseException e) {
-        log.error("Error: unparseable startDate in history {}", history);
+        return (LocalDate) history.template().variables().get(START_DATE_FIELD);
+      } catch (Exception e) {
+        try {
+          Date startDateAsDate = (Date) history.template().variables().get(START_DATE_FIELD);
+          return startDateAsDate.toInstant().atZone(timezone).toLocalDate();
+        } catch (Exception ee) {
+          log.error("Error: unparseable startDate in history (should be a LocalDate or Date): '{}'",
+              history.template().variables().get(START_DATE_FIELD));
+        }
       }
     }
     return null;
