@@ -278,6 +278,27 @@ class EmailServiceIntegrationTest {
 
   @ParameterizedTest
   @ValueSource(strings = {"PLACEMENT_UPDATED_WEEK_12", "PROGRAMME_CREATED"})
+  void shouldIncludeUnknownGmcInMailtoSubjectWhenGmcIsEmpty(NotificationType notificationType)
+      throws Exception {
+    when(userAccountService.getUserDetails(USER_ID)).thenReturn(
+        new UserDetails(true, RECIPIENT, null, null, null, GMC));
+
+    service.sendMessageToExistingUser(PERSON_ID, notificationType, TEMPLATE_VERSION,
+        Map.of(TEMPLATE_CONTACT_HREF_FIELD, "email", GMC_NUMBER_FIELD, ""), null);
+
+    ArgumentCaptor<MimeMessage> messageCaptor = ArgumentCaptor.captor();
+    verify(mailSender).send(messageCaptor.capture());
+
+    MimeMessage message = messageCaptor.getValue();
+    Document content = Jsoup.parse((String) message.getContent());
+    Element body = content.body();
+
+    String mailTo = body.getElementById("loMail").attributes().get("href");
+    assertThat("Unexpected gmc.", mailTo.contains("GMC: unknown"), is(true));
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"PLACEMENT_UPDATED_WEEK_12", "PROGRAMME_CREATED"})
   void shouldIncludeUnknownGmcInMailtoSubjectWhenGmcIsMissing(NotificationType notificationType)
       throws Exception {
     when(userAccountService.getUserDetails(USER_ID)).thenReturn(
