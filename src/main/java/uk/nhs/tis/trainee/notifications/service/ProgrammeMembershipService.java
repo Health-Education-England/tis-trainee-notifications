@@ -399,10 +399,14 @@ public class ProgrammeMembershipService {
     if (notificationsAlreadySent.containsKey(notificationType)) {
       History lastSent = notificationsAlreadySent.get(notificationType);
       LocalDate oldStartDate = getProgrammeStartDate(lastSent);
-      return oldStartDate != null
+      boolean isDeferral = oldStartDate != null
           && programmeMembership.getStartDate() != null
           && oldStartDate.plusDays(DEFERRAL_IF_MORE_THAN_DAYS)
           .isBefore(programmeMembership.getStartDate());
+      log.info("Programme membership {} is deferral: {} (old start date {}, new start date {})",
+          programmeMembership.getTisId(), isDeferral, oldStartDate,
+          programmeMembership.getStartDate());
+      return isDeferral;
     }
 
     return true; //send new notifications
