@@ -65,5 +65,16 @@ public enum NotificationType {
       PROGRAMME_UPDATED_WEEK_0,
       PROGRAMME_CREATED);
 
+  /**
+   * The set of Programme Updated notification types.
+   */
+  @Getter
+  private static final Set<NotificationType> programmeInAppNotificationTypes = EnumSet.of(
+      DEFERRAL,
+      E_PORTFOLIO,
+      INDEMNITY_INSURANCE,
+      LTFT,
+      SPONSORSHIP);
+
   private final String templateName;
 }

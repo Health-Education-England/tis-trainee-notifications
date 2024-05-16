@@ -32,6 +32,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -506,8 +507,39 @@ class ProgrammeMembershipServiceTest {
   }
 
   @Test
-  void shouldResendSentNotificationImmediatelyIfDeferralLeadTimeNotInFuture()
-      throws SchedulerException {
+  void shouldNotResendInAppNotificationsIfNotDeferral() throws SchedulerException {
+    RecipientInfo recipientInfo = new RecipientInfo("id", MessageType.EMAIL, "test@email.com");
+    TemplateInfo templateInfo = new TemplateInfo(null, null,
+        Map.of(START_DATE_FIELD, START_DATE.toString()));
+    List<History> sentNotifications = new ArrayList<>();
+    for(NotificationType inAppType : NotificationType.getProgrammeInAppNotificationTypes()) {
+      sentNotifications.add(new History(ObjectId.get(),
+          new TisReferenceInfo(PROGRAMME_MEMBERSHIP, TIS_ID),
+          inAppType, recipientInfo,
+          templateInfo,
+          Instant.MIN, Instant.MAX, SENT, null, null));
+    }
+    when(historyService.findAllHistoryForTrainee(PERSON_ID)).thenReturn(sentNotifications);
+
+    List<Map<String, String>> contactList = List.of(
+        Map.of(CONTACT_TYPE_FIELD, LocalOfficeContactType.LTFT.getContactTypeName()));
+    when(notificationService.getOwnerContactList(any())).thenReturn(contactList);
+    when(notificationService.getOwnerContact(any(), any(), any(), any())).thenReturn("contact");
+    when(notificationService.getHrefTypeForContact(any())).thenReturn("href");
+    when(notificationService.meetsCriteria(any(), anyBoolean(), anyBoolean())).thenReturn(true);
+    when(notificationService.programmeMembershipIsNotifiable(any(), any())).thenReturn(true);
+
+    ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
+    service.addNotifications(programmeMembership);
+
+    verify(inAppService, never())
+        .createNotifications(any(), any(), any(), any(), any(), anyBoolean());
+    verify(inAppService, never())
+        .createNotifications(any(), any(), any(), any(), any(), anyBoolean(), any());
+  }
+
+  @Test
+  void shouldResendSentNotificationImmediatelyIfDeferralLeadTimeNotInFuture() throws SchedulerException {
     RecipientInfo recipientInfo = new RecipientInfo("id", MessageType.EMAIL, "test@email.com");
     //original start date was 90 days before START_DATE, and welcome was sent >90 days ago
     LocalDate originalStartDate = START_DATE.minusDays(DEFERRAL_IF_MORE_THAN_DAYS + 1);
@@ -529,6 +561,45 @@ class ProgrammeMembershipServiceTest {
 
     verify(notificationService, never()).scheduleNotification(any(), any(), any());
     verify(notificationService).executeNow(any(), any());
+  }
+
+  @Test
+  void shouldResendInAppNotificationsImmediatelyIfDeferralLeadTimeNotInFuture()
+      throws SchedulerException {
+    RecipientInfo recipientInfo = new RecipientInfo("id", MessageType.EMAIL, "test@email.com");
+    //original start date was 90 days before START_DATE, and welcome was sent >90 days ago
+    LocalDate originalStartDate = START_DATE.minusDays(DEFERRAL_IF_MORE_THAN_DAYS + 1);
+    LocalDate originalSentAt = LocalDate.now().minusDays(100);
+    TemplateInfo templateInfo = new TemplateInfo(null, null,
+        Map.of(START_DATE_FIELD, originalStartDate.toString()));
+    List<History> sentNotifications = new ArrayList<>();
+    for(NotificationType inAppType : NotificationType.getProgrammeInAppNotificationTypes()) {
+      sentNotifications.add(new History(ObjectId.get(),
+          new TisReferenceInfo(PROGRAMME_MEMBERSHIP, TIS_ID),
+          inAppType, recipientInfo,
+          templateInfo,
+          Instant.from(originalSentAt.atStartOfDay(timezone)), Instant.MAX,
+          SENT, null, null));
+    }
+    when(historyService.findAllHistoryForTrainee(PERSON_ID)).thenReturn(sentNotifications);
+
+    List<Map<String, String>> contactList = List.of(
+        Map.of(CONTACT_TYPE_FIELD, LocalOfficeContactType.LTFT.getContactTypeName()));
+    when(notificationService.getOwnerContactList(any())).thenReturn(contactList);
+    when(notificationService.getOwnerContact(any(), any(), any(), any())).thenReturn("contact");
+    when(notificationService.getHrefTypeForContact(any())).thenReturn("href");
+    when(notificationService.meetsCriteria(any(), anyBoolean(), anyBoolean())).thenReturn(true);
+    when(notificationService.programmeMembershipIsNotifiable(any(), any())).thenReturn(true);
+
+    ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
+    service.addNotifications(programmeMembership);
+
+    int expectedInAppNotifications
+        = NotificationType.getProgrammeInAppNotificationTypes().size();
+    verify(inAppService, times(expectedInAppNotifications))
+        .createNotifications(any(), any(), any(), any(), any(), anyBoolean());
+    verify(inAppService, never())
+        .createNotifications(any(), any(), any(), any(), any(), anyBoolean(), any());
   }
 
   @Test
@@ -558,8 +629,47 @@ class ProgrammeMembershipServiceTest {
   }
 
   @Test
-  void shouldScheduleSentNotificationIfDeferralLeadTimeInFuture()
+  void shouldResendInAppNotificationsImmediatelyIfDeferralAndHistoryMissingSentAt()
       throws SchedulerException {
+    RecipientInfo recipientInfo = new RecipientInfo("id", MessageType.EMAIL, "test@email.com");
+    //original start date was > DEFERRAL_IF_MORE_THAN_DAYS days before START_DATE,
+    //and welcome was sent >90 days ago
+    LocalDate originalStartDate = START_DATE.minusDays(DEFERRAL_IF_MORE_THAN_DAYS + 1);
+    TemplateInfo templateInfo = new TemplateInfo(null, null,
+        Map.of(START_DATE_FIELD, originalStartDate.toString()));
+    List<History> sentNotifications = new ArrayList<>();
+
+    for(NotificationType inAppType : NotificationType.getProgrammeInAppNotificationTypes()) {
+      sentNotifications.add(new History(ObjectId.get(),
+          new TisReferenceInfo(PROGRAMME_MEMBERSHIP, TIS_ID),
+          inAppType, recipientInfo,
+          templateInfo,
+          null, null,
+          SENT, null, null));
+    }
+    when(historyService.findAllHistoryForTrainee(PERSON_ID)).thenReturn(sentNotifications);
+
+    List<Map<String, String>> contactList = List.of(
+        Map.of(CONTACT_TYPE_FIELD, LocalOfficeContactType.LTFT.getContactTypeName()));
+    when(notificationService.getOwnerContactList(any())).thenReturn(contactList);
+    when(notificationService.getOwnerContact(any(), any(), any(), any())).thenReturn("contact");
+    when(notificationService.getHrefTypeForContact(any())).thenReturn("href");
+    when(notificationService.meetsCriteria(any(), anyBoolean(), anyBoolean())).thenReturn(true);
+    when(notificationService.programmeMembershipIsNotifiable(any(), any())).thenReturn(true);
+
+    ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
+    service.addNotifications(programmeMembership);
+
+    int expectedInAppNotifications
+        = NotificationType.getProgrammeInAppNotificationTypes().size();
+    verify(inAppService, times(expectedInAppNotifications))
+        .createNotifications(any(), any(), any(), any(), any(), anyBoolean());
+    verify(inAppService, never())
+        .createNotifications(any(), any(), any(), any(), any(), anyBoolean(), any());
+  }
+
+  @Test
+  void shouldScheduleSentNotificationIfDeferralLeadTimeInFuture() throws SchedulerException {
     RecipientInfo recipientInfo = new RecipientInfo("id", MessageType.EMAIL, "test@email.com");
     //original start date was > DEFERRAL_IF_MORE_THAN_DAYS days before START_DATE,
     //and welcome was sent <90 days ago
@@ -585,6 +695,49 @@ class ProgrammeMembershipServiceTest {
         expectedWhen.atStartOfDay(timezone).toInstant());
     verify(notificationService).scheduleNotification(any(), any(), eq(expectedWhenDate));
     verify(notificationService, never()).executeNow(any(), any());
+  }
+
+  @Test
+  void shouldScheduleInAppNotificationsIfDeferralLeadTimeInFuture() throws SchedulerException {
+    RecipientInfo recipientInfo = new RecipientInfo("id", MessageType.EMAIL, "test@email.com");
+    //original start date was > DEFERRAL_IF_MORE_THAN_DAYS days before START_DATE,
+    //and welcome was sent <90 days ago
+    LocalDate originalStartDate = START_DATE.minusDays(DEFERRAL_IF_MORE_THAN_DAYS + 1);
+    LocalDate originalSentAt = LocalDate.now().minusDays(50);
+    TemplateInfo templateInfo = new TemplateInfo(null, null,
+        Map.of(START_DATE_FIELD, originalStartDate.toString()));
+    List<History> sentNotifications = new ArrayList<>();
+    for(NotificationType inAppType : NotificationType.getProgrammeInAppNotificationTypes()) {
+      sentNotifications.add(new History(ObjectId.get(),
+          new TisReferenceInfo(PROGRAMME_MEMBERSHIP, TIS_ID),
+          inAppType, recipientInfo,
+          templateInfo,
+          Instant.from(originalSentAt.atStartOfDay(timezone)), Instant.MAX,
+          SENT, null, null));
+    }
+    when(historyService.findAllHistoryForTrainee(PERSON_ID)).thenReturn(sentNotifications);
+
+    List<Map<String, String>> contactList = List.of(
+        Map.of(CONTACT_TYPE_FIELD, LocalOfficeContactType.LTFT.getContactTypeName()));
+    when(notificationService.getOwnerContactList(any())).thenReturn(contactList);
+    when(notificationService.getOwnerContact(any(), any(), any(), any())).thenReturn("contact");
+    when(notificationService.getHrefTypeForContact(any())).thenReturn("href");
+    when(notificationService.meetsCriteria(any(), anyBoolean(), anyBoolean())).thenReturn(true);
+    when(notificationService.programmeMembershipIsNotifiable(any(), any())).thenReturn(true);
+
+    ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
+    service.addNotifications(programmeMembership);
+
+    LocalDate expectedWhen = LocalDate.now().plusDays(DEFERRAL_IF_MORE_THAN_DAYS + 1 - 50);
+    Date expectedWhenDate = Date.from(
+        expectedWhen.atStartOfDay(timezone).toInstant());
+    int expectedInAppNotifications
+        = NotificationType.getProgrammeInAppNotificationTypes().size();
+    verify(inAppService, never())
+        .createNotifications(any(), any(), any(), any(), any(), anyBoolean());
+    verify(inAppService, times(expectedInAppNotifications))
+        .createNotifications(any(), any(), any(), any(), any(), anyBoolean(),
+            eq(expectedWhenDate.toInstant()));
   }
 
   @Test
@@ -628,6 +781,60 @@ class ProgrammeMembershipServiceTest {
   }
 
   @Test
+  void shouldScheduleInAppNotificationsIfMultipleHistoryAndLatestIsDeferral()
+      throws SchedulerException {
+    RecipientInfo recipientInfo = new RecipientInfo("id", MessageType.EMAIL, "test@email.com");
+    //most recent start date was > DEFERRAL_IF_MORE_THAN_DAYS days before START_DATE,
+    //and welcome was sent <90 days ago
+    LocalDate mostRecentStartDate = START_DATE.minusDays(DEFERRAL_IF_MORE_THAN_DAYS + 1);
+    LocalDate mostRecentSentAt = LocalDate.now().minusDays(50);
+    LocalDate previousStartDate = START_DATE.minusDays(DEFERRAL_IF_MORE_THAN_DAYS - 1);
+    LocalDate previousSentAt = LocalDate.now().minusDays(150);
+    TemplateInfo mostRecentTemplateInfo = new TemplateInfo(null, null,
+        Map.of(START_DATE_FIELD, mostRecentStartDate.toString()));
+    TemplateInfo previousTemplateInfo = new TemplateInfo(null, null,
+        Map.of(START_DATE_FIELD, previousStartDate.toString()));
+    List<History> sentNotifications = new ArrayList<>();
+    for(NotificationType inAppType : NotificationType.getProgrammeInAppNotificationTypes()) {
+      sentNotifications.add(new History(ObjectId.get(),
+          new TisReferenceInfo(PROGRAMME_MEMBERSHIP, TIS_ID),
+          inAppType, recipientInfo,
+          mostRecentTemplateInfo,
+          Instant.from(mostRecentSentAt.atStartOfDay(timezone)), Instant.MAX,
+          SENT, null, null));
+      sentNotifications.add(new History(ObjectId.get(),
+          new TisReferenceInfo(PROGRAMME_MEMBERSHIP, TIS_ID),
+          inAppType, recipientInfo,
+          previousTemplateInfo,
+          Instant.from(previousSentAt.atStartOfDay(timezone)), Instant.MAX,
+          SENT, null, null));
+    }
+    when(historyService.findAllHistoryForTrainee(PERSON_ID)).thenReturn(sentNotifications);
+
+    List<Map<String, String>> contactList = List.of(
+        Map.of(CONTACT_TYPE_FIELD, LocalOfficeContactType.LTFT.getContactTypeName()));
+    when(notificationService.getOwnerContactList(any())).thenReturn(contactList);
+    when(notificationService.getOwnerContact(any(), any(), any(), any())).thenReturn("contact");
+    when(notificationService.getHrefTypeForContact(any())).thenReturn("href");
+    when(notificationService.meetsCriteria(any(), anyBoolean(), anyBoolean())).thenReturn(true);
+    when(notificationService.programmeMembershipIsNotifiable(any(), any())).thenReturn(true);
+
+    ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
+    service.addNotifications(programmeMembership);
+
+    LocalDate expectedWhen = LocalDate.now().plusDays(DEFERRAL_IF_MORE_THAN_DAYS + 1 - 50);
+    Date expectedWhenDate = Date.from(
+        expectedWhen.atStartOfDay(timezone).toInstant());
+    int expectedInAppNotifications
+        = NotificationType.getProgrammeInAppNotificationTypes().size();
+    verify(inAppService, never())
+        .createNotifications(any(), any(), any(), any(), any(), anyBoolean());
+    verify(inAppService, times(expectedInAppNotifications))
+        .createNotifications(any(), any(), any(), any(), any(), anyBoolean(),
+            eq(expectedWhenDate.toInstant()));
+  }
+
+  @Test
   void shouldNotScheduleSentNotificationIfMultipleHistoryAndLatestIsNotDeferral()
       throws SchedulerException {
     RecipientInfo recipientInfo = new RecipientInfo("id", MessageType.EMAIL, "test@email.com");
@@ -662,6 +869,54 @@ class ProgrammeMembershipServiceTest {
 
     verify(notificationService, never()).scheduleNotification(any(), any(), any());
     verify(notificationService, never()).executeNow(any(), any());
+  }
+
+  @Test
+  void shouldNotScheduleInAppNotificationsIfMultipleHistoryAndLatestIsNotDeferral()
+      throws SchedulerException {
+    RecipientInfo recipientInfo = new RecipientInfo("id", MessageType.EMAIL, "test@email.com");
+    //most recent start date was > DEFERRAL_IF_MORE_THAN_DAYS days before START_DATE,
+    //and welcome was sent <90 days ago
+    LocalDate mostRecentStartDate = START_DATE.minusDays(DEFERRAL_IF_MORE_THAN_DAYS - 1);
+    LocalDate mostRecentSentAt = LocalDate.now().minusDays(50);
+    LocalDate previousStartDate = START_DATE.minusDays(DEFERRAL_IF_MORE_THAN_DAYS + 1);
+    LocalDate previousSentAt = LocalDate.now().minusDays(150);
+    TemplateInfo mostRecentTemplateInfo = new TemplateInfo(null, null,
+        Map.of(START_DATE_FIELD, mostRecentStartDate.toString()));
+    TemplateInfo previousTemplateInfo = new TemplateInfo(null, null,
+        Map.of(START_DATE_FIELD, previousStartDate.toString()));
+    List<History> sentNotifications = new ArrayList<>();
+    for(NotificationType inAppType : NotificationType.getProgrammeInAppNotificationTypes()) {
+      sentNotifications.add(new History(ObjectId.get(),
+          new TisReferenceInfo(PROGRAMME_MEMBERSHIP, TIS_ID),
+          inAppType, recipientInfo,
+          mostRecentTemplateInfo,
+          Instant.from(mostRecentSentAt.atStartOfDay(timezone)), Instant.MAX,
+          SENT, null, null));
+      sentNotifications.add(new History(ObjectId.get(),
+          new TisReferenceInfo(PROGRAMME_MEMBERSHIP, TIS_ID),
+          inAppType, recipientInfo,
+          previousTemplateInfo,
+          Instant.from(previousSentAt.atStartOfDay(timezone)), Instant.MAX,
+          SENT, null, null));
+    }
+    when(historyService.findAllHistoryForTrainee(PERSON_ID)).thenReturn(sentNotifications);
+
+    List<Map<String, String>> contactList = List.of(
+        Map.of(CONTACT_TYPE_FIELD, LocalOfficeContactType.LTFT.getContactTypeName()));
+    when(notificationService.getOwnerContactList(any())).thenReturn(contactList);
+    when(notificationService.getOwnerContact(any(), any(), any(), any())).thenReturn("contact");
+    when(notificationService.getHrefTypeForContact(any())).thenReturn("href");
+    when(notificationService.meetsCriteria(any(), anyBoolean(), anyBoolean())).thenReturn(true);
+    when(notificationService.programmeMembershipIsNotifiable(any(), any())).thenReturn(true);
+
+    ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
+    service.addNotifications(programmeMembership);
+
+    verify(inAppService, never())
+        .createNotifications(any(), any(), any(), any(), any(), anyBoolean());
+    verify(inAppService, never())
+        .createNotifications(any(), any(), any(), any(), any(), anyBoolean(), any());
   }
 
   @Test
