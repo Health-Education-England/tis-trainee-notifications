@@ -405,7 +405,7 @@ public class ProgrammeMembershipService {
    * @param notificationsAlreadySent The notifications already sent for this entity.
    * @return true if it should be scheduled, false otherwise.
    */
-  private boolean shouldScheduleNotification(NotificationType notificationType,
+  protected boolean shouldScheduleNotification(NotificationType notificationType,
       ProgrammeMembership programmeMembership,
       Map<NotificationType, History> notificationsAlreadySent) {
 
@@ -413,7 +413,9 @@ public class ProgrammeMembershipService {
     if (notificationsAlreadySent.containsKey(notificationType)) {
       History lastSent = notificationsAlreadySent.get(notificationType);
       LocalDate oldStartDate = getProgrammeStartDate(lastSent);
-      return oldStartDate != null && oldStartDate.plusDays(DEFERRAL_IF_MORE_THAN_DAYS)
+      return oldStartDate != null
+          && programmeMembership.getStartDate() != null
+          && oldStartDate.plusDays(DEFERRAL_IF_MORE_THAN_DAYS)
           .isBefore(programmeMembership.getStartDate());
     }
 
