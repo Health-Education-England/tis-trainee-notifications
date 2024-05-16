@@ -605,7 +605,7 @@ class ProgrammeMembershipServiceTest {
     TemplateInfo templateInfo = new TemplateInfo(null, null,
         Map.of(START_DATE_FIELD, START_DATE));
     List<History> sentNotifications = new ArrayList<>();
-    for(NotificationType inAppType : NotificationType.getProgrammeInAppNotificationTypes()) {
+    for (NotificationType inAppType : NotificationType.getProgrammeInAppNotificationTypes()) {
       sentNotifications.add(new History(ObjectId.get(),
           new TisReferenceInfo(PROGRAMME_MEMBERSHIP, TIS_ID),
           inAppType, recipientInfo,
@@ -632,7 +632,8 @@ class ProgrammeMembershipServiceTest {
   }
 
   @Test
-  void shouldResendSentNotificationImmediatelyIfDeferralLeadTimeNotInFuture() throws SchedulerException {
+  void shouldResendSentNotificationImmediatelyIfDeferralLeadTimeNotInFuture()
+      throws SchedulerException {
     RecipientInfo recipientInfo = new RecipientInfo("id", MessageType.EMAIL, "test@email.com");
     //original start date was 90 days before START_DATE, and welcome was sent >90 days ago
     LocalDate originalStartDate = START_DATE.minusDays(DEFERRAL_IF_MORE_THAN_DAYS + 1);
@@ -666,7 +667,7 @@ class ProgrammeMembershipServiceTest {
     TemplateInfo templateInfo = new TemplateInfo(null, null,
         Map.of(START_DATE_FIELD, originalStartDate));
     List<History> sentNotifications = new ArrayList<>();
-    for(NotificationType inAppType : NotificationType.getProgrammeInAppNotificationTypes()) {
+    for (NotificationType inAppType : NotificationType.getProgrammeInAppNotificationTypes()) {
       sentNotifications.add(new History(ObjectId.get(),
           new TisReferenceInfo(PROGRAMME_MEMBERSHIP, TIS_ID),
           inAppType, recipientInfo,
@@ -732,7 +733,7 @@ class ProgrammeMembershipServiceTest {
         Map.of(START_DATE_FIELD, originalStartDate));
     List<History> sentNotifications = new ArrayList<>();
 
-    for(NotificationType inAppType : NotificationType.getProgrammeInAppNotificationTypes()) {
+    for (NotificationType inAppType : NotificationType.getProgrammeInAppNotificationTypes()) {
       sentNotifications.add(new History(ObjectId.get(),
           new TisReferenceInfo(PROGRAMME_MEMBERSHIP, TIS_ID),
           inAppType, recipientInfo,
@@ -800,7 +801,7 @@ class ProgrammeMembershipServiceTest {
     TemplateInfo templateInfo = new TemplateInfo(null, null,
         Map.of(START_DATE_FIELD, originalStartDate));
     List<History> sentNotifications = new ArrayList<>();
-    for(NotificationType inAppType : NotificationType.getProgrammeInAppNotificationTypes()) {
+    for (NotificationType inAppType : NotificationType.getProgrammeInAppNotificationTypes()) {
       sentNotifications.add(new History(ObjectId.get(),
           new TisReferenceInfo(PROGRAMME_MEMBERSHIP, TIS_ID),
           inAppType, recipientInfo,
@@ -888,7 +889,7 @@ class ProgrammeMembershipServiceTest {
     TemplateInfo previousTemplateInfo = new TemplateInfo(null, null,
         Map.of(START_DATE_FIELD, previousStartDate));
     List<History> sentNotifications = new ArrayList<>();
-    for(NotificationType inAppType : NotificationType.getProgrammeInAppNotificationTypes()) {
+    for (NotificationType inAppType : NotificationType.getProgrammeInAppNotificationTypes()) {
       sentNotifications.add(new History(ObjectId.get(),
           new TisReferenceInfo(PROGRAMME_MEMBERSHIP, TIS_ID),
           inAppType, recipientInfo,
@@ -979,7 +980,7 @@ class ProgrammeMembershipServiceTest {
     TemplateInfo previousTemplateInfo = new TemplateInfo(null, null,
         Map.of(START_DATE_FIELD, previousStartDate));
     List<History> sentNotifications = new ArrayList<>();
-    for(NotificationType inAppType : NotificationType.getProgrammeInAppNotificationTypes()) {
+    for (NotificationType inAppType : NotificationType.getProgrammeInAppNotificationTypes()) {
       sentNotifications.add(new History(ObjectId.get(),
           new TisReferenceInfo(PROGRAMME_MEMBERSHIP, TIS_ID),
           inAppType, recipientInfo,
