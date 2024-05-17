@@ -23,6 +23,7 @@ package uk.nhs.tis.trainee.notifications.config;
 
 import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.springframework.test.annotation.DirtiesContext.ClassMode.AFTER_EACH_TEST_METHOD;
@@ -30,6 +31,7 @@ import static org.springframework.test.annotation.DirtiesContext.ClassMode.AFTER
 import java.sql.Date;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.HashMap;
 import java.util.Map;
 import org.bson.types.ObjectId;
 import org.junit.jupiter.api.BeforeEach;
@@ -83,7 +85,8 @@ class MongoConfigurationTest {
   @Test
   void shouldRetrieveNullDateAsNullWhenTargetIsObject() {
     ObjectId objectId = ObjectId.get();
-    Map<String, Object> variables = Map.of("date", null);
+    Map<String, Object> variables = new HashMap<>();
+    variables.put("date", null);
     TemplateInfo templateInfo = new TemplateInfo(null, null, variables);
     History history = new History(objectId, null, null, null, templateInfo, null,
         null, null, null, null);
@@ -94,7 +97,7 @@ class MongoConfigurationTest {
 
     assert savedHistory != null;
     Map<String, Object> savedVariables = savedHistory.template().variables();
-    assertThat(savedVariables.get("date"), isNull());
+    assertThat(savedVariables.get("date"), is(nullValue()));
   }
 
   @Test
