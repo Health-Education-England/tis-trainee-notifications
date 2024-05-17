@@ -21,32 +21,100 @@
 
 package uk.nhs.tis.trainee.notifications.config;
 
-import jakarta.annotation.PostConstruct;
+import java.time.LocalDate;
+import java.util.Date;
+import java.util.List;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.data.domain.Sort.Direction;
+import org.springframework.core.convert.converter.Converter;
+import org.springframework.data.convert.Jsr310Converters;
+import org.springframework.data.convert.ReadingConverter;
+import org.springframework.data.convert.WritingConverter;
+import org.springframework.data.mongodb.MongoDatabaseFactory;
 import org.springframework.data.mongodb.core.MongoTemplate;
-import org.springframework.data.mongodb.core.index.Index;
-import org.springframework.data.mongodb.core.index.IndexOperations;
-import uk.nhs.tis.trainee.notifications.model.History;
+import org.springframework.data.mongodb.core.convert.MappingMongoConverter;
+import org.springframework.data.mongodb.core.convert.MongoCustomConversions;
 
 /**
  * Additional configuration for MongoDB.
  */
 @Configuration
+@Slf4j
 public class MongoConfiguration {
 
-  private final MongoTemplate template;
+  @Bean
+  public MongoTemplate mongoTemplate(MongoDatabaseFactory dbFactory,
+      MappingMongoConverter mongoConverter) {
 
-  MongoConfiguration(MongoTemplate template) {
-    this.template = template;
+    List<Converter<?, ?>> converters = List.of(
+        LocalDateToDateConverter.INSTANCE,
+        DateToLocalDateConverter.INSTANCE,
+        DateToObjectConverter.INSTANCE);
+
+    MongoCustomConversions customConversions = new MongoCustomConversions(converters);
+    mongoConverter.setCustomConversions(customConversions);
+    mongoConverter.afterPropertiesSet();
+    return new MongoTemplate(dbFactory, mongoConverter);
   }
 
-  /**
-   * Add custom indexes to the Mongo collections.
-   */
-  @PostConstruct
-  public void initIndexes() {
-    IndexOperations indexOps = template.indexOps(History.class);
-    indexOps.ensureIndex(new Index().on("recipient.id", Direction.ASC));
+  @ReadingConverter
+  public static class DateToObjectConverter implements Converter<Date, Object> {
+
+    public static final DateToObjectConverter INSTANCE = new DateToObjectConverter();
+
+    public Object convert(Date source) {
+      if (source == null) {
+        return null;
+      }
+      try {
+        return DateToLocalDateConverter.INSTANCE.convert(source);
+      } catch (Exception e) {
+        return source;
+      }
+    }
+  }
+
+  @ReadingConverter
+  public static class DateToLocalDateConverter implements Converter<Date, LocalDate> {
+
+    public static final DateToLocalDateConverter INSTANCE = new DateToLocalDateConverter();
+
+    public LocalDate convert(Date source) {
+      if (source == null) {
+        return null;
+      }
+      long timestamp = source.getTime();
+      if (Long.MIN_VALUE == timestamp) {
+        return LocalDate.MIN;
+      }
+      if (Long.MAX_VALUE == timestamp) {
+        return LocalDate.MAX;
+      }
+      return Jsr310Converters.DateToLocalDateConverter.INSTANCE.convert(source);
+    }
+  }
+
+  @WritingConverter
+  public static class LocalDateToDateConverter implements Converter<LocalDate, Date> {
+
+    public static final LocalDateToDateConverter INSTANCE = new LocalDateToDateConverter();
+
+    public Date convert(LocalDate source) {
+      try {
+        if (LocalDate.MIN.equals(source)) {
+          return new Date(Long.MIN_VALUE);
+        }
+        if (LocalDate.MAX.equals(source)) {
+          return new Date(Long.MAX_VALUE);
+        }
+        return Jsr310Converters.LocalDateToDateConverter.INSTANCE.convert(source);
+      } catch (RuntimeException ex) {
+        log.error(
+            "Failed to convert from type [java.time.LocalDate] to type [java.util.Date] for value '{}'",
+            source, ex);
+        throw ex;
+      }
+    }
   }
 }

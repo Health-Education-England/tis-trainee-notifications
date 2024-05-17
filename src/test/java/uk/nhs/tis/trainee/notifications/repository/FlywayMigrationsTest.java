@@ -31,7 +31,7 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.TestContext;
 import org.springframework.test.context.TestExecutionListener;
 import org.testcontainers.junit.jupiter.Testcontainers;
-import uk.nhs.tis.trainee.notifications.config.MongoConfiguration;
+import uk.nhs.tis.trainee.notifications.config.MongoCollectionConfiguration;
 
 @SpringBootTest(properties = {"embedded.containers.enabled=true", "embedded.mysql.enabled=true"})
 @ActiveProfiles({"test", "mysql"})
@@ -39,7 +39,7 @@ import uk.nhs.tis.trainee.notifications.config.MongoConfiguration;
 class FlywayMigrationsTest implements TestExecutionListener {
 
   @MockBean
-  private MongoConfiguration mongoConfiguration;
+  private MongoCollectionConfiguration mongoConfiguration;
 
   @Autowired
   Flyway flyway;

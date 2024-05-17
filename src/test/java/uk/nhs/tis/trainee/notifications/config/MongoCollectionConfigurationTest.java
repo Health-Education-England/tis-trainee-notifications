@@ -39,16 +39,16 @@ import org.springframework.data.mongodb.core.index.IndexDefinition;
 import org.springframework.data.mongodb.core.index.IndexOperations;
 import uk.nhs.tis.trainee.notifications.model.History;
 
-class MongoConfigurationTest {
+class MongoCollectionConfigurationTest {
 
-  private MongoConfiguration configuration;
+  private MongoCollectionConfiguration configuration;
 
   private MongoTemplate template;
 
   @BeforeEach
   void setUp() {
     template = mock(MongoTemplate.class);
-    configuration = new MongoConfiguration(template);
+    configuration = new MongoCollectionConfiguration(template);
   }
 
   @Test
