@@ -49,7 +49,7 @@ import uk.nhs.tis.trainee.notifications.model.History.TemplateInfo;
 @ActiveProfiles({"mongodb", "test"})
 @Testcontainers(disabledWithoutDocker = true)
 @DirtiesContext(classMode = AFTER_EACH_TEST_METHOD)
-class MongoConfigurationTest {
+class MongoConfigurationIntegrationTest {
 
   private MongoConfiguration configuration;
 
