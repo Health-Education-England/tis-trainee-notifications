@@ -72,7 +72,9 @@ public class MongoConfiguration {
 
     /**
      * Convert a Date to an Object of type LocalDate.
-     * @param source the source object to convert, which must be an instance of {@code S} (never {@code null})
+     *
+     * @param source the source object to convert, which must be an instance of {@code S}
+     *               (never {@code null})
      * @return The LocalDate Object if it can be converted, otherwise null or the source Date.
      */
     public Object convert(Date source) {

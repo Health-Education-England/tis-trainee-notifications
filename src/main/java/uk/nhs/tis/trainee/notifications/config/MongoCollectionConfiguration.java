@@ -31,6 +31,9 @@ import org.springframework.data.mongodb.core.index.Index;
 import org.springframework.data.mongodb.core.index.IndexOperations;
 import uk.nhs.tis.trainee.notifications.model.History;
 
+/**
+ * Custom configuration for Mongo collections.
+ */
 @Configuration
 @Order()
 @Slf4j
