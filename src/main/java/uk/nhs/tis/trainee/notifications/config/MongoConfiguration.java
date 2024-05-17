@@ -30,7 +30,6 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.core.convert.converter.Converter;
 import org.springframework.data.convert.Jsr310Converters;
 import org.springframework.data.convert.ReadingConverter;
-import org.springframework.data.convert.WritingConverter;
 import org.springframework.data.mongodb.MongoDatabaseFactory;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.convert.MappingMongoConverter;
@@ -43,6 +42,13 @@ import org.springframework.data.mongodb.core.convert.MongoCustomConversions;
 @Slf4j
 public class MongoConfiguration {
 
+  /**
+   * Mongo template with custom converter.
+   *
+   * @param dbFactory The Mongo Database Factory to use.
+   * @param mongoConverter The Mapping Mongo Converter to use.
+   * @return the Mongo template.
+   */
   @Bean
   public MongoTemplate mongoTemplate(MongoDatabaseFactory dbFactory,
       MappingMongoConverter mongoConverter) {
@@ -56,11 +62,19 @@ public class MongoConfiguration {
     return new MongoTemplate(dbFactory, mongoConverter);
   }
 
+  /**
+   * Map dates to LocalDate when the target is an Object.
+   */
   @ReadingConverter
   public static class DateToObjectConverter implements Converter<Date, Object> {
 
     public static final DateToObjectConverter INSTANCE = new DateToObjectConverter();
 
+    /**
+     * Convert a Date to an Object of type LocalDate.
+     * @param source the source object to convert, which must be an instance of {@code S} (never {@code null})
+     * @return The LocalDate Object if it can be converted, otherwise null or the source Date.
+     */
     public Object convert(Date source) {
       if (source == null) {
         return null;

@@ -66,7 +66,7 @@ class MongoCollectionConfigurationTest {
 
     List<String> indexKeys = indexes.stream()
         .flatMap(i -> i.getIndexKeys().keySet().stream())
-        .collect(Collectors.toList());
+            .toList();
     assertThat("Unexpected number of index keys.", indexKeys.size(), is(1));
     assertThat("Unexpected index.", indexKeys, hasItems("recipient.id"));
   }
