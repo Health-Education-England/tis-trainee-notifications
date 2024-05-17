@@ -22,7 +22,6 @@
 package uk.nhs.tis.trainee.notifications.model;
 
 import java.time.Instant;
-import java.time.LocalDate;
 import java.util.Map;
 import org.bson.types.ObjectId;
 import org.springframework.data.annotation.Id;
@@ -53,9 +52,7 @@ public record History(
     Instant readAt,
     NotificationStatus status,
     String statusDetail,
-    Instant lastRetry,
-    Object testObjectDate,
-    LocalDate testLocalDate) {
+    Instant lastRetry) {
 
   /**
    * A representation of a notified recipient.

@@ -21,7 +21,6 @@
 
 package uk.nhs.tis.trainee.notifications.config;
 
-import jakarta.annotation.PostConstruct;
 import java.time.LocalDate;
 import java.util.Date;
 import java.util.List;
@@ -32,14 +31,10 @@ import org.springframework.core.convert.converter.Converter;
 import org.springframework.data.convert.Jsr310Converters;
 import org.springframework.data.convert.ReadingConverter;
 import org.springframework.data.convert.WritingConverter;
-import org.springframework.data.domain.Sort.Direction;
 import org.springframework.data.mongodb.MongoDatabaseFactory;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.convert.MappingMongoConverter;
 import org.springframework.data.mongodb.core.convert.MongoCustomConversions;
-import org.springframework.data.mongodb.core.index.Index;
-import org.springframework.data.mongodb.core.index.IndexOperations;
-import uk.nhs.tis.trainee.notifications.model.History;
 
 /**
  * Additional configuration for MongoDB.
@@ -54,7 +49,8 @@ public class MongoConfiguration {
 
     List<Converter<?,?>> converters = List.of(
         LocalDateToDateConverter.INSTANCE,
-        DateToLocalDateConverter.INSTANCE);
+        DateToLocalDateConverter.INSTANCE,
+        DateToObjectConverter.INSTANCE);
 
     MongoCustomConversions customConversions = new MongoCustomConversions(converters);
     mongoConverter.setCustomConversions(customConversions);
@@ -63,12 +59,28 @@ public class MongoConfiguration {
   }
 
   @ReadingConverter
+  public static class DateToObjectConverter implements Converter<Date, Object> {
+
+    public static final DateToObjectConverter INSTANCE = new DateToObjectConverter();
+
+    public Object convert(Date source) {
+      if (source == null) {
+        return null;
+      }
+      try {
+        return DateToLocalDateConverter.INSTANCE.convert(source);
+      } catch (Exception e) {
+        return source;
+      }
+    }
+  }
+
+  @ReadingConverter
   public static class DateToLocalDateConverter implements Converter<Date, LocalDate> {
 
     public static final DateToLocalDateConverter INSTANCE = new DateToLocalDateConverter();
 
     public LocalDate convert(Date source) {
-      log.info("Reader: converting date {} to localdate", source);
       if (source == null) {
         return null;
       }
@@ -89,7 +101,6 @@ public class MongoConfiguration {
     public static final LocalDateToDateConverter INSTANCE = new LocalDateToDateConverter();
 
     public Date convert(LocalDate source) {
-      log.info("Writer: converting localDate {} to date", source);
       try {
         if (LocalDate.MIN.equals(source)) {
           return new Date(Long.MIN_VALUE);

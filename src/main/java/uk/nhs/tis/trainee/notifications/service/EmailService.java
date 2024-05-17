@@ -32,7 +32,6 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
-import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
@@ -154,7 +153,7 @@ public class EmailService {
       TemplateInfo templateInfo = new TemplateInfo(notificationType.getTemplateName(),
           templateVersion, templateVariables);
       History history = new History(notificationId, tisReferenceInfo, notificationType,
-          recipientInfo, templateInfo, Instant.now(), null, status, statusDetail, null, LocalDate.MIN, LocalDate.MAX);
+          recipientInfo, templateInfo, Instant.now(), null, status, statusDetail, null);
       historyService.save(history);
 
       log.info("Sent template {} to {}.", templateName, recipient);
@@ -195,7 +194,7 @@ public class EmailService {
           toResend.recipient().type(), updatedEmailAddress);
       History updatedHistory = new History(notificationId, toResend.tisReference(), toResend.type(),
           updatedRecipientInfo, updatedTemplateInfo, toResend.sentAt(), toResend.readAt(),
-          NotificationStatus.SENT, null, Instant.now(), LocalDate.MIN, LocalDate.MAX);
+          NotificationStatus.SENT, null, Instant.now());
       historyService.save(updatedHistory);
 
       log.info("Sent template {} to {}.", templateName, updatedEmailAddress);
