@@ -44,7 +44,7 @@
   <p>
     If your email address is likely to change, or you need support creating an account on TIS Self-Service then please contact us via <th:block th:switch="${contactHref}"
     ><span th:case="url"><a th:href="${localOfficeContact}"><span th:text="${localOfficeContact}"></span></a></span
-    ><span th:case="email"><a th:href="'mailto:' + ${localOfficeContact}"><span th:text="${localOfficeContact}"></span></a></span
+    ><span th:case="email"><a id="loMail" th:href="|mailto:${localOfficeContact}?subject=Notification of Placement - GMC: ${not #strings.isEmpty(gmcNumber) ? gmcNumber : 'unknown'}, Start Date: ${#temporals.format(startDate, 'dd/MM/yyyy')}|"><span th:text="${localOfficeContact}"></span></a></span
     ><span th:case="*"><span th:text="${localOfficeContact}"></span></span
     ></th:block> or see our <a href="https://tis-support.hee.nhs.uk/trainees/changes-to-account/">FAQ</a> for details.
   </p>

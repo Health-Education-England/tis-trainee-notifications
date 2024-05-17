@@ -405,7 +405,7 @@ public class NotificationService implements Job {
    * @param personId The person ID to search for.
    * @return The user trainee profile details, or null if not found.
    */
-  private UserDetails getTraineeDetails(String personId) {
+  public UserDetails getTraineeDetails(String personId) {
     try {
       return restTemplate.getForObject(serviceUrl + API_TRAINEE_DETAILS, UserDetails.class,
           Map.of(TIS_ID_FIELD, personId));

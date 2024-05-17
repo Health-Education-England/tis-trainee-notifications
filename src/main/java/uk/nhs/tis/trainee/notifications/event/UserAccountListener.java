@@ -56,6 +56,12 @@ public class UserAccountListener {
   private final String emailUpdatedOldVersion;
   private final String welcomeVersion;
 
+  /**
+   * Construct a listener for user account events.
+   *
+   * @param emailService The email service.
+   * @param inAppService The in-app service.
+   */
   public UserAccountListener(EmailService emailService, InAppService inAppService,
       UserAccountService userAccountService, @Value("${application.domain}") URI appDomain,
       @Value("${application.template-versions.email-updated-new.email}")

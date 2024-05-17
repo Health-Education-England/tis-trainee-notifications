@@ -34,7 +34,9 @@
           <th:block th:case="*"
           > please click on the following link for information on Sponsorship.
             <a
-              th:href="${localOfficeContactType} == 'email' ? |mailto:${localOfficeContact}| : ${localOfficeContact}"
+              th:href="${localOfficeContactType} == 'email' ?
+              |mailto:${localOfficeContact}?subject=Sponsorship - GMC: ${not #strings.isEmpty(gmcNumber) ? gmcNumber : 'unknown'}, Prog No: ${not #strings.isEmpty(programmeNumber) ? programmeNumber : 'unknown'}|
+              : ${localOfficeContact}"
               th:text="${localOfficeContact}"
               th:target="_blank"
             ></a

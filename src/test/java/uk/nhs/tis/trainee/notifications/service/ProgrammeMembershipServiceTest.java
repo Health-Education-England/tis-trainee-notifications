@@ -45,12 +45,14 @@ import static uk.nhs.tis.trainee.notifications.model.NotificationType.SPONSORSHI
 import static uk.nhs.tis.trainee.notifications.model.TisReferenceType.PROGRAMME_MEMBERSHIP;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.CONTACT_TYPE_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.PERSON_ID_FIELD;
+import static uk.nhs.tis.trainee.notifications.service.PlacementService.GMC_NUMBER_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.BLOCK_INDEMNITY_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.COJ_SYNCED_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.DEFERRAL_IF_MORE_THAN_DAYS;
 import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.LOCAL_OFFICE_CONTACT_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.LOCAL_OFFICE_CONTACT_TYPE_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.PROGRAMME_NAME_FIELD;
+import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.PROGRAMME_NUMBER_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.START_DATE_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.TIS_ID_FIELD;
 
@@ -73,6 +75,7 @@ import org.mockito.ArgumentCaptor;
 import org.quartz.JobDataMap;
 import org.quartz.SchedulerException;
 import uk.nhs.tis.trainee.notifications.dto.CojSignedEvent.ConditionsOfJoining;
+import uk.nhs.tis.trainee.notifications.dto.UserDetails;
 import uk.nhs.tis.trainee.notifications.model.Curriculum;
 import uk.nhs.tis.trainee.notifications.model.History;
 import uk.nhs.tis.trainee.notifications.model.History.RecipientInfo;
@@ -95,6 +98,7 @@ class ProgrammeMembershipServiceTest {
   private static final String TIS_ID = "123";
   private static final String PERSON_ID = "abc";
   private static final String PROGRAMME_NAME = "the programme";
+  private static final String PROGRAMME_NUMBER = "the programme number";
   private static final String MANAGING_DEANERY = "the local office";
   private static final LocalDate START_DATE = LocalDate.now().plusYears(1);
   //set a year in the future to allow all notifications to be scheduled
@@ -107,6 +111,11 @@ class ProgrammeMembershipServiceTest {
   private static final String LTFT_VERSION = "v3.4.5";
   private static final String DEFERRAL_VERSION = "v4.5.6";
   private static final String SPONSORSHIP_VERSION = "v5.6.7";
+  private static final String USER_EMAIL = "email@address";
+  private static final String USER_TITLE = "title";
+  private static final String USER_FAMILY_NAME = "family-name";
+  private static final String USER_GIVEN_NAME = "given-name";
+  private static final String USER_GMC = "111111";
 
   ProgrammeMembershipService service;
   HistoryService historyService;
@@ -259,12 +268,17 @@ class ProgrammeMembershipServiceTest {
       String notificationVersion, boolean notifiablePm) throws SchedulerException {
     ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
 
+    UserDetails userAccountDetails =
+        new UserDetails(
+            null, USER_EMAIL, USER_TITLE, USER_FAMILY_NAME, USER_GIVEN_NAME, USER_GMC);
+
     when(notificationService.meetsCriteria(programmeMembership, true,
         true)).thenReturn(true);
     when(notificationService.programmeMembershipIsNotifiable(programmeMembership,
         MessageType.IN_APP)).thenReturn(notifiablePm);
     when(notificationService.getOwnerContact(any(), any(), any(), any())).thenReturn("");
     when(notificationService.getHrefTypeForContact(any())).thenReturn("");
+    when(notificationService.getTraineeDetails(PERSON_ID)).thenReturn(userAccountDetails);
 
     service.addNotifications(programmeMembership);
 
@@ -283,7 +297,13 @@ class ProgrammeMembershipServiceTest {
     Map<String, Object> variables = variablesCaptor.getValue();
     assertThat("Unexpected programme name.", variables.get(PROGRAMME_NAME_FIELD),
         is(PROGRAMME_NAME));
+    assertThat("Unexpected programme number.", variables.get(PROGRAMME_NUMBER_FIELD),
+        is(PROGRAMME_NUMBER));
     assertThat("Unexpected start date.", variables.get(START_DATE_FIELD), is(START_DATE));
+    if (notificationType.equals(LTFT) || notificationType.equals(DEFERRAL)
+        || notificationType.equals(SPONSORSHIP)) {
+      assertThat("Unexpected GMC number.", variables.get(GMC_NUMBER_FIELD), is(USER_GMC));
+    }
 
     Boolean doNotStoreJustLog = doNotStoreJustLogCaptor.getValue();
     assertThat("Unexpected doNotStoreJustLog value.", doNotStoreJustLog, is(!notifiablePm));
@@ -311,7 +331,7 @@ class ProgrammeMembershipServiceTest {
         eq(INDEMNITY_INSURANCE_VERSION), variablesCaptor.capture(), anyBoolean());
 
     Map<String, Object> variables = variablesCaptor.getValue();
-    assertThat("Unexpected variable count.", variables.size(), is(3));
+    assertThat("Unexpected variable count.", variables.size(), is(4));
     assertThat("Unexpected programme name.", variables.get(PROGRAMME_NAME_FIELD),
         is(PROGRAMME_NAME));
     assertThat("Unexpected start date.", variables.get(START_DATE_FIELD), is(START_DATE));
@@ -333,6 +353,7 @@ class ProgrammeMembershipServiceTest {
     when(notificationService.meetsCriteria(programmeMembership, true, true)).thenReturn(true);
     when(notificationService.getOwnerContact(any(), any(), any(), any())).thenReturn("");
     when(notificationService.getHrefTypeForContact(any())).thenReturn("");
+    when(notificationService.getTraineeDetails(PERSON_ID)).thenReturn(null);
 
     service.addNotifications(programmeMembership);
 
@@ -404,7 +425,7 @@ class ProgrammeMembershipServiceTest {
         eq(SPONSORSHIP_VERSION), variablesCaptor.capture(), anyBoolean());
 
     Map<String, Object> variables = variablesCaptor.getValue();
-    assertThat("Unexpected variable count.", variables.size(), is(4));
+    assertThat("Unexpected variable count.", variables.size(), is(6));
     assertThat("Unexpected programme name.", variables.get(PROGRAMME_NAME_FIELD),
         is(PROGRAMME_NAME));
     assertThat("Unexpected start date.", variables.get(START_DATE_FIELD), is(START_DATE));
@@ -412,6 +433,77 @@ class ProgrammeMembershipServiceTest {
         is(contact));
     assertThat("Unexpected local office contact type.",
         variables.get(LOCAL_OFFICE_CONTACT_TYPE_FIELD), is(contactType.getHrefTypeName()));
+  }
+
+  @Test
+  void shouldAddUnknownGmcInInAppNotificationWhenTraineeDetailsNull()
+      throws SchedulerException {
+    Curriculum theCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, "any specialty", true);
+    ProgrammeMembership programmeMembership = new ProgrammeMembership();
+    programmeMembership.setTisId(TIS_ID);
+    programmeMembership.setPersonId(PERSON_ID);
+    programmeMembership.setProgrammeName(PROGRAMME_NAME);
+    programmeMembership.setStartDate(START_DATE);
+    programmeMembership.setCurricula(List.of(theCurriculum));
+    programmeMembership.setConditionsOfJoining(new ConditionsOfJoining(Instant.MIN));
+    programmeMembership.setManagingDeanery(MANAGING_DEANERY);
+
+    when(notificationService.meetsCriteria(programmeMembership, true, true)).thenReturn(true);
+
+    when(notificationService.getOwnerContact(any(), any(), any(), any())).thenReturn("");
+    when(notificationService.getHrefTypeForContact(any())).thenReturn("");
+    when(notificationService.getTraineeDetails(PERSON_ID)).thenReturn(null);
+
+    service.addNotifications(programmeMembership);
+
+    ArgumentCaptor<Map<String, Object>> variablesCaptor = ArgumentCaptor.captor();
+    verify(inAppService).createNotifications(eq(PERSON_ID), any(), eq(LTFT),
+        eq(LTFT_VERSION), variablesCaptor.capture(), anyBoolean());
+    verify(inAppService).createNotifications(eq(PERSON_ID), any(), eq(DEFERRAL),
+        eq(DEFERRAL_VERSION), variablesCaptor.capture(), anyBoolean());
+    verify(inAppService).createNotifications(eq(PERSON_ID), any(), eq(SPONSORSHIP),
+        eq(SPONSORSHIP_VERSION), variablesCaptor.capture(), anyBoolean());
+
+    Map<String, Object> variables = variablesCaptor.getValue();
+    assertThat("Unexpected GMC number.", variables.get(GMC_NUMBER_FIELD), is("unknown"));
+  }
+
+  @Test
+  void shouldAddUnknownGmcInInAppNotificationWhenMissingGmcInTraineeDetails()
+      throws SchedulerException {
+    Curriculum theCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, "any specialty", true);
+    ProgrammeMembership programmeMembership = new ProgrammeMembership();
+    programmeMembership.setTisId(TIS_ID);
+    programmeMembership.setPersonId(PERSON_ID);
+    programmeMembership.setProgrammeName(PROGRAMME_NAME);
+    programmeMembership.setStartDate(START_DATE);
+    programmeMembership.setCurricula(List.of(theCurriculum));
+    programmeMembership.setConditionsOfJoining(new ConditionsOfJoining(Instant.MIN));
+    programmeMembership.setManagingDeanery(MANAGING_DEANERY);
+
+    UserDetails userAccountDetails =
+        new UserDetails(
+            null, USER_EMAIL, USER_TITLE, USER_FAMILY_NAME, USER_GIVEN_NAME, null);
+
+    when(notificationService.meetsCriteria(programmeMembership, true, true)).thenReturn(true);
+
+    when(notificationService.getOwnerContact(any(), any(), any(), any())).thenReturn("");
+    when(notificationService.getHrefTypeForContact(any())).thenReturn("");
+    when(notificationService.getTraineeDetails(PERSON_ID)).thenReturn(null);
+    when(notificationService.getTraineeDetails(PERSON_ID)).thenReturn(userAccountDetails);
+
+    service.addNotifications(programmeMembership);
+
+    ArgumentCaptor<Map<String, Object>> variablesCaptor = ArgumentCaptor.captor();
+    verify(inAppService).createNotifications(eq(PERSON_ID), any(), eq(LTFT),
+        eq(LTFT_VERSION), variablesCaptor.capture(), anyBoolean());
+    verify(inAppService).createNotifications(eq(PERSON_ID), any(), eq(DEFERRAL),
+        eq(DEFERRAL_VERSION), variablesCaptor.capture(), anyBoolean());
+    verify(inAppService).createNotifications(eq(PERSON_ID), any(), eq(SPONSORSHIP),
+        eq(SPONSORSHIP_VERSION), variablesCaptor.capture(), anyBoolean());
+
+    Map<String, Object> variables = variablesCaptor.getValue();
+    assertThat("Unexpected GMC number.", variables.get(GMC_NUMBER_FIELD), is("unknown"));
   }
 
   @Test
@@ -659,6 +751,7 @@ class ProgrammeMembershipServiceTest {
     programmeMembership.setTisId(TIS_ID);
     programmeMembership.setPersonId(PERSON_ID);
     programmeMembership.setProgrammeName(PROGRAMME_NAME);
+    programmeMembership.setProgrammeNumber(PROGRAMME_NUMBER);
     programmeMembership.setStartDate(START_DATE);
     programmeMembership.setCurricula(List.of(theCurriculum));
     programmeMembership.setConditionsOfJoining(new ConditionsOfJoining(Instant.MIN));

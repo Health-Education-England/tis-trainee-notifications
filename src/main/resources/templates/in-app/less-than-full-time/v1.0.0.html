@@ -35,7 +35,9 @@
           <th:block th:case="*"
             >Please click on the following link for details on application process.
             <a
-              th:href="${localOfficeContactType} == 'email' ? |mailto:${localOfficeContact}| : ${localOfficeContact}"
+              th:href="${localOfficeContactType} == 'email' ?
+              |mailto:${localOfficeContact}?subject=Less Than Full Time - GMC: ${not #strings.isEmpty(gmcNumber) ? gmcNumber : 'unknown'}, Prog No: ${not #strings.isEmpty(programmeNumber) ? programmeNumber : 'unknown'}|
+              : ${localOfficeContact}"
               th:text="${localOfficeContact}"
               th:target="_blank"
             ></a

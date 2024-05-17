@@ -48,6 +48,7 @@ import org.quartz.SchedulerException;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import uk.nhs.tis.trainee.notifications.dto.HistoryDto;
+import uk.nhs.tis.trainee.notifications.dto.UserDetails;
 import uk.nhs.tis.trainee.notifications.model.History;
 import uk.nhs.tis.trainee.notifications.model.LocalOfficeContactType;
 import uk.nhs.tis.trainee.notifications.model.NotificationType;
@@ -68,6 +69,7 @@ public class PlacementService {
   public static final String PLACEMENT_SITE_FIELD = "site";
   public static final String LOCAL_OFFICE_CONTACT_FIELD = "localOfficeContact";
   public static final String LOCAL_OFFICE_CONTACT_TYPE_FIELD = "localOfficeContactType";
+  public static final String GMC_NUMBER_FIELD = "gmcNumber";
 
   public static final List<String> PLACEMENT_TYPES_TO_ACT_ON
       = List.of("In post", "In post - Acting up", "In Post - Extension");
@@ -290,29 +292,36 @@ public class PlacementService {
     if (meetsCriteria) {
       String owner = placement.getOwner();
       List<Map<String, String>> contactList = notificationService.getOwnerContactList(owner);
-
       String localOfficeContact = notificationService.getOwnerContact(contactList,
           LocalOfficeContactType.TSS_SUPPORT, null);
       String localOfficeContactType =
           notificationService.getHrefTypeForContact(localOfficeContact);
 
+      UserDetails userTraineeDetails = notificationService.getTraineeDetails(
+          placement.getPersonId());
+      String gmcNumber = (userTraineeDetails != null && userTraineeDetails.gmcNumber() != null)
+          ? userTraineeDetails.gmcNumber().trim() : "unknown";
+
       // PLACEMENT_INFORMATION
       createUniqueInAppNotification(placement, notificationsAlreadySent, PLACEMENT_INFORMATION,
           placementInfoVersion, Map.of(
               LOCAL_OFFICE_CONTACT_FIELD, localOfficeContact,
-              LOCAL_OFFICE_CONTACT_TYPE_FIELD, localOfficeContactType));
+              LOCAL_OFFICE_CONTACT_TYPE_FIELD, localOfficeContactType,
+              GMC_NUMBER_FIELD, gmcNumber));
 
       // PLACEMENT_USEFUL_INFORMATION
       createUniqueInAppNotification(placement, notificationsAlreadySent,
           USEFUL_INFORMATION, placementUsefulInfoVersion, Map.of(
               LOCAL_OFFICE_CONTACT_FIELD, localOfficeContact,
-              LOCAL_OFFICE_CONTACT_TYPE_FIELD, localOfficeContactType));
+              LOCAL_OFFICE_CONTACT_TYPE_FIELD, localOfficeContactType,
+              GMC_NUMBER_FIELD, gmcNumber));
 
       // NON_EMPLOYMENT
       createUniqueInAppNotification(placement, notificationsAlreadySent, NON_EMPLOYMENT,
           nonEmploymentVersion, Map.of(
               LOCAL_OFFICE_CONTACT_FIELD, localOfficeContact,
-              LOCAL_OFFICE_CONTACT_TYPE_FIELD, localOfficeContactType));
+              LOCAL_OFFICE_CONTACT_TYPE_FIELD, localOfficeContactType,
+              GMC_NUMBER_FIELD, gmcNumber));
     }
   }
 

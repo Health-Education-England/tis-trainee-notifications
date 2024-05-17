@@ -27,9 +27,17 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.emptyOrNullString;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static uk.nhs.tis.trainee.notifications.model.NotificationType.PLACEMENT_UPDATED_WEEK_12;
+import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_CREATED;
+import static uk.nhs.tis.trainee.notifications.service.NotificationService.TEMPLATE_CONTACT_HREF_FIELD;
+import static uk.nhs.tis.trainee.notifications.service.PlacementService.START_DATE_FIELD;
+import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.GMC_NUMBER_FIELD;
+import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.PROGRAMME_NUMBER_FIELD;
 
 import jakarta.mail.Session;
 import jakarta.mail.internet.MimeMessage;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -37,6 +45,7 @@ import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -59,7 +68,10 @@ class EmailServiceIntegrationTest {
   private static final String USER_ID = UUID.randomUUID().toString();
   private static final String RECIPIENT = "test@tis.nhs.uk";
   private static final String GMC = "111111";
-  private static final String API = "the-url/api/trainee-profile/account-details/{tisId}";
+  private static final String TEMPLATE_VERSION = "v1.0.0";
+  private static final String PROGRAM_NO = "SW111";
+  private static final LocalDate PLACEMENT_START_DATE = LocalDate.now();
+
 
   @MockBean
   private JavaMailSender mailSender;
@@ -155,7 +167,7 @@ class EmailServiceIntegrationTest {
     Document content = Jsoup.parse((String) message.getContent());
     Element body = content.body();
 
-    if (notificationType.equals(NotificationType.PLACEMENT_UPDATED_WEEK_12)) {
+    if (notificationType.equals(PLACEMENT_UPDATED_WEEK_12)) {
       Element greeting = body.children().get(getGreetingElementIndex(notificationType));
       assertThat("Unexpected element tag.", greeting.tagName(), is("p"));
       assertThat("Unexpected greeting.", greeting.text(), is("Dear Dr Anthony Gilliam,"));
@@ -184,7 +196,7 @@ class EmailServiceIntegrationTest {
     Document content = Jsoup.parse((String) message.getContent());
     Element body = content.body();
 
-    if (notificationType.equals(NotificationType.PLACEMENT_UPDATED_WEEK_12)) {
+    if (notificationType.equals(PLACEMENT_UPDATED_WEEK_12)) {
       Element greeting = body.children().get(getGreetingElementIndex(notificationType));
       assertThat("Unexpected element tag.", greeting.tagName(), is("p"));
       assertThat("Unexpected greeting.", greeting.text(), is("Dear Dr Anthony Maillig,"));
@@ -204,7 +216,7 @@ class EmailServiceIntegrationTest {
     when(userAccountService.getUserDetails(USER_ID)).thenReturn(
         new UserDetails(true, RECIPIENT, null, "Gilliam", "Anthony", null));
 
-    service.sendMessageToExistingUser(PERSON_ID, NotificationType.PLACEMENT_UPDATED_WEEK_12,
+    service.sendMessageToExistingUser(PERSON_ID, PLACEMENT_UPDATED_WEEK_12,
         templateVersion, Map.of("familyName", "Maillig", "gmcNumber", gmc), null);
 
     ArgumentCaptor<MimeMessage> messageCaptor = ArgumentCaptor.captor();
@@ -228,7 +240,7 @@ class EmailServiceIntegrationTest {
     when(userAccountService.getUserDetails(USER_ID)).thenReturn(
         new UserDetails(true, RECIPIENT, null, "Gilliam", "Anthony", null));
 
-    service.sendMessageToExistingUser(PERSON_ID, NotificationType.PLACEMENT_UPDATED_WEEK_12,
+    service.sendMessageToExistingUser(PERSON_ID, PLACEMENT_UPDATED_WEEK_12,
         templateVersion, Map.of("familyName", "Maillig", "gmcNumber", gmc), null);
 
     ArgumentCaptor<MimeMessage> messageCaptor = ArgumentCaptor.captor();
@@ -241,6 +253,130 @@ class EmailServiceIntegrationTest {
     Element survey = body.children().get(19);
     assertThat("Unexpected survey segment.",
         survey.text().contains("Did you find this email useful?"), is(false));
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"PLACEMENT_UPDATED_WEEK_12", "PROGRAMME_CREATED"})
+  void shouldIncludeGmcInMailtoSubjectWhenGmcAvailable(NotificationType notificationType)
+      throws Exception {
+    when(userAccountService.getUserDetails(USER_ID)).thenReturn(
+        new UserDetails(true, RECIPIENT, null, null, null, GMC));
+
+    service.sendMessageToExistingUser(PERSON_ID, notificationType, TEMPLATE_VERSION,
+        Map.of(TEMPLATE_CONTACT_HREF_FIELD, "email", GMC_NUMBER_FIELD, GMC), null);
+
+    ArgumentCaptor<MimeMessage> messageCaptor = ArgumentCaptor.captor();
+    verify(mailSender).send(messageCaptor.capture());
+
+    MimeMessage message = messageCaptor.getValue();
+    Document content = Jsoup.parse((String) message.getContent());
+    Element body = content.body();
+
+    String mailTo = body.getElementById("loMail").attributes().get("href");
+    assertThat("Unexpected gmc.", mailTo.contains("GMC: " + GMC), is(true));
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"PLACEMENT_UPDATED_WEEK_12", "PROGRAMME_CREATED"})
+  void shouldIncludeUnknownGmcInMailtoSubjectWhenGmcIsEmpty(NotificationType notificationType)
+      throws Exception {
+    when(userAccountService.getUserDetails(USER_ID)).thenReturn(
+        new UserDetails(true, RECIPIENT, null, null, null, GMC));
+
+    service.sendMessageToExistingUser(PERSON_ID, notificationType, TEMPLATE_VERSION,
+        Map.of(TEMPLATE_CONTACT_HREF_FIELD, "email", GMC_NUMBER_FIELD, ""), null);
+
+    ArgumentCaptor<MimeMessage> messageCaptor = ArgumentCaptor.captor();
+    verify(mailSender).send(messageCaptor.capture());
+
+    MimeMessage message = messageCaptor.getValue();
+    Document content = Jsoup.parse((String) message.getContent());
+    Element body = content.body();
+
+    String mailTo = body.getElementById("loMail").attributes().get("href");
+    assertThat("Unexpected gmc.", mailTo.contains("GMC: unknown"), is(true));
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"PLACEMENT_UPDATED_WEEK_12", "PROGRAMME_CREATED"})
+  void shouldIncludeUnknownGmcInMailtoSubjectWhenGmcIsMissing(NotificationType notificationType)
+      throws Exception {
+    when(userAccountService.getUserDetails(USER_ID)).thenReturn(
+        new UserDetails(true, RECIPIENT, null, null, null, null));
+
+    service.sendMessageToExistingUser(PERSON_ID, notificationType, TEMPLATE_VERSION,
+        Map.of(TEMPLATE_CONTACT_HREF_FIELD, "email"), null);
+
+    ArgumentCaptor<MimeMessage> messageCaptor = ArgumentCaptor.captor();
+    verify(mailSender).send(messageCaptor.capture());
+
+    MimeMessage message = messageCaptor.getValue();
+    Document content = Jsoup.parse((String) message.getContent());
+    Element body = content.body();
+
+    String mailTo = body.getElementById("loMail").attributes().get("href");
+    assertThat("Unexpected gmc.", mailTo.contains("GMC: unknown"), is(true));
+  }
+
+  @Test
+  void shouldIncludeProgNoInMailtoSubjectWhenProgNoAvailable() throws Exception {
+    when(userAccountService.getUserDetails(USER_ID)).thenReturn(
+        new UserDetails(true, RECIPIENT, null, null, null, GMC));
+
+    service.sendMessageToExistingUser(PERSON_ID, PROGRAMME_CREATED, TEMPLATE_VERSION,
+        Map.of(TEMPLATE_CONTACT_HREF_FIELD, "email", PROGRAMME_NUMBER_FIELD, PROGRAM_NO), null);
+
+    ArgumentCaptor<MimeMessage> messageCaptor = ArgumentCaptor.captor();
+    verify(mailSender).send(messageCaptor.capture());
+
+    MimeMessage message = messageCaptor.getValue();
+    Document content = Jsoup.parse((String) message.getContent());
+    Element body = content.body();
+
+    String mailTo = body.getElementById("loMail").attributes().get("href");
+    assertThat("Unexpected programme number.", mailTo.contains("Prog No: " + PROGRAM_NO), is(true));
+  }
+
+  @Test
+  void shouldIncludeUnknownProgNoInMailtoSubjectWhenProgNoIsMissing() throws Exception {
+    when(userAccountService.getUserDetails(USER_ID)).thenReturn(
+        new UserDetails(true, RECIPIENT, null, null, null, GMC));
+
+    service.sendMessageToExistingUser(PERSON_ID, PROGRAMME_CREATED, TEMPLATE_VERSION,
+        Map.of(TEMPLATE_CONTACT_HREF_FIELD, "email"), null);
+
+    ArgumentCaptor<MimeMessage> messageCaptor = ArgumentCaptor.captor();
+    verify(mailSender).send(messageCaptor.capture());
+
+    MimeMessage message = messageCaptor.getValue();
+    Document content = Jsoup.parse((String) message.getContent());
+    Element body = content.body();
+
+    String mailTo = body.getElementById("loMail").attributes().get("href");
+    assertThat("Unexpected programme number.", mailTo.contains("Prog No: unknown"), is(true));
+  }
+
+  @Test
+  void shouldIncludeStartDateInMailtoSubjectWhenStartDateAvailable() throws Exception {
+    when(userAccountService.getUserDetails(USER_ID)).thenReturn(
+        new UserDetails(true, RECIPIENT, null, null, null, GMC));
+
+    service.sendMessageToExistingUser(PERSON_ID, PLACEMENT_UPDATED_WEEK_12, TEMPLATE_VERSION,
+        Map.of(TEMPLATE_CONTACT_HREF_FIELD, "email", START_DATE_FIELD, PLACEMENT_START_DATE), null);
+
+    ArgumentCaptor<MimeMessage> messageCaptor = ArgumentCaptor.captor();
+    verify(mailSender).send(messageCaptor.capture());
+
+    DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+    String expectedStartDate = PLACEMENT_START_DATE.format(formatter);
+
+    MimeMessage message = messageCaptor.getValue();
+    Document content = Jsoup.parse((String) message.getContent());
+    Element body = content.body();
+
+    String mailTo = body.getElementById("loMail").attributes().get("href");
+    assertThat("Unexpected start date.", mailTo.contains("Start Date: " + expectedStartDate),
+        is(true));
   }
 
   int getGreetingElementIndex(NotificationType notificationType) {

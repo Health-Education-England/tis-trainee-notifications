@@ -32,6 +32,7 @@ import static uk.nhs.tis.trainee.notifications.service.NotificationService.PERSO
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.TEMPLATE_NOTIFICATION_TYPE_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.TEMPLATE_OWNER_FIELD;
 
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.Comparator;
@@ -47,6 +48,8 @@ import org.quartz.JobDataMap;
 import org.quartz.SchedulerException;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import uk.nhs.tis.trainee.notifications.dto.HistoryDto;
+import uk.nhs.tis.trainee.notifications.dto.UserDetails;
 import uk.nhs.tis.trainee.notifications.model.Curriculum;
 import uk.nhs.tis.trainee.notifications.model.History;
 import uk.nhs.tis.trainee.notifications.model.History.TisReferenceInfo;
@@ -65,11 +68,13 @@ public class ProgrammeMembershipService {
 
   public static final String TIS_ID_FIELD = "tisId";
   public static final String PROGRAMME_NAME_FIELD = "programmeName";
+  public static final String PROGRAMME_NUMBER_FIELD = "programmeNumber";
   public static final String START_DATE_FIELD = "startDate";
   public static final String BLOCK_INDEMNITY_FIELD = "hasBlockIndemnity";
   public static final String LOCAL_OFFICE_CONTACT_FIELD = "localOfficeContact";
   public static final String LOCAL_OFFICE_CONTACT_TYPE_FIELD = "localOfficeContactType";
   public static final String COJ_SYNCED_FIELD = "conditionsOfJoiningSyncedAt";
+  public static final String GMC_NUMBER_FIELD = "gmcNumber";
   public static final Integer DEFERRAL_IF_MORE_THAN_DAYS = 89;
 
   private static final List<String> INCLUDE_CURRICULUM_SUBTYPES
@@ -235,6 +240,7 @@ public class ProgrammeMembershipService {
       jobDataMap.put(TIS_ID_FIELD, programmeMembership.getTisId());
       jobDataMap.put(PERSON_ID_FIELD, programmeMembership.getPersonId());
       jobDataMap.put(PROGRAMME_NAME_FIELD, programmeMembership.getProgrammeName());
+      jobDataMap.put(PROGRAMME_NUMBER_FIELD, programmeMembership.getProgrammeNumber());
       jobDataMap.put(START_DATE_FIELD, programmeMembership.getStartDate());
       jobDataMap.put(TEMPLATE_OWNER_FIELD, programmeMembership.getManagingDeanery());
       jobDataMap.put(TEMPLATE_NOTIFICATION_TYPE_FIELD, PROGRAMME_CREATED);
@@ -276,6 +282,11 @@ public class ProgrammeMembershipService {
       String owner = programmeMembership.getManagingDeanery();
       List<Map<String, String>> contactList = notificationService.getOwnerContactList(owner);
 
+      UserDetails userTraineeDetails = notificationService.getTraineeDetails(
+          programmeMembership.getPersonId());
+      String gmcNumber = (userTraineeDetails != null && userTraineeDetails.gmcNumber() != null)
+          ? userTraineeDetails.gmcNumber().trim() : "unknown";
+
       // LTFT
       String localOfficeContactLtft = notificationService.getOwnerContact(contactList,
           LocalOfficeContactType.LTFT, LocalOfficeContactType.TSS_SUPPORT, "");
@@ -284,7 +295,8 @@ public class ProgrammeMembershipService {
       createUniqueInAppNotification(programmeMembership, notificationsAlreadySent, LTFT,
           ltftVersion, Map.of(
               LOCAL_OFFICE_CONTACT_FIELD, localOfficeContactLtft,
-              LOCAL_OFFICE_CONTACT_TYPE_FIELD, localOfficeContactTypeLtft));
+              LOCAL_OFFICE_CONTACT_TYPE_FIELD, localOfficeContactTypeLtft,
+              GMC_NUMBER_FIELD, gmcNumber));
 
       // DEFERRAL
       String localOfficeContactDeferral = notificationService.getOwnerContact(contactList,
@@ -294,7 +306,8 @@ public class ProgrammeMembershipService {
       createUniqueInAppNotification(programmeMembership, notificationsAlreadySent, DEFERRAL,
           deferralVersion, Map.of(
               LOCAL_OFFICE_CONTACT_FIELD, localOfficeContactDeferral,
-              LOCAL_OFFICE_CONTACT_TYPE_FIELD, localOfficeContactTypeDeferral));
+              LOCAL_OFFICE_CONTACT_TYPE_FIELD, localOfficeContactTypeDeferral,
+              GMC_NUMBER_FIELD, gmcNumber));
 
       // SPONSORSHIP
       String localOfficeContactSponsorship = notificationService.getOwnerContact(contactList,
@@ -304,7 +317,8 @@ public class ProgrammeMembershipService {
       createUniqueInAppNotification(programmeMembership, notificationsAlreadySent, SPONSORSHIP,
           sponsorshipVersion, Map.of(
               LOCAL_OFFICE_CONTACT_FIELD, localOfficeContactSponsorship,
-              LOCAL_OFFICE_CONTACT_TYPE_FIELD, localOfficeContactTypeSponsorship));
+              LOCAL_OFFICE_CONTACT_TYPE_FIELD, localOfficeContactTypeSponsorship,
+              GMC_NUMBER_FIELD, gmcNumber));
     }
   }
 
@@ -324,13 +338,13 @@ public class ProgrammeMembershipService {
     boolean isUnique = !notificationsAlreadySent.containsKey(notificationType);
 
     if (isUnique) {
-      TisReferenceInfo tisReference = new TisReferenceInfo(TisReferenceType.PROGRAMME_MEMBERSHIP,
-          programmeMembership.getTisId());
-
       Map<String, Object> variables = new HashMap<>(extraVariables);
       variables.put(PROGRAMME_NAME_FIELD, programmeMembership.getProgrammeName());
+      variables.put(PROGRAMME_NUMBER_FIELD, programmeMembership.getProgrammeNumber());
       variables.put(START_DATE_FIELD, programmeMembership.getStartDate());
 
+      TisReferenceInfo tisReference = new TisReferenceInfo(TisReferenceType.PROGRAMME_MEMBERSHIP,
+          programmeMembership.getTisId());
       boolean doNotSendJustLog = !notificationService.programmeMembershipIsNotifiable(
           programmeMembership, IN_APP);
 
