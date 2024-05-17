@@ -48,8 +48,6 @@ public class MongoConfiguration {
       MappingMongoConverter mongoConverter) {
 
     List<Converter<?, ?>> converters = List.of(
-        LocalDateToDateConverter.INSTANCE,
-        DateToLocalDateConverter.INSTANCE,
         DateToObjectConverter.INSTANCE);
 
     MongoCustomConversions customConversions = new MongoCustomConversions(converters);
@@ -68,53 +66,18 @@ public class MongoConfiguration {
         return null;
       }
       try {
-        return DateToLocalDateConverter.INSTANCE.convert(source);
+        long timestamp = source.getTime();
+        if (Long.MIN_VALUE == timestamp) {
+          return LocalDate.MIN;
+        }
+        if (Long.MAX_VALUE == timestamp) {
+          return LocalDate.MAX;
+        }
+        return Jsr310Converters.DateToLocalDateConverter.INSTANCE.convert(source);
       } catch (Exception e) {
         return source;
       }
     }
   }
 
-  @ReadingConverter
-  public static class DateToLocalDateConverter implements Converter<Date, LocalDate> {
-
-    public static final DateToLocalDateConverter INSTANCE = new DateToLocalDateConverter();
-
-    public LocalDate convert(Date source) {
-      if (source == null) {
-        return null;
-      }
-      long timestamp = source.getTime();
-      if (Long.MIN_VALUE == timestamp) {
-        return LocalDate.MIN;
-      }
-      if (Long.MAX_VALUE == timestamp) {
-        return LocalDate.MAX;
-      }
-      return Jsr310Converters.DateToLocalDateConverter.INSTANCE.convert(source);
-    }
-  }
-
-  @WritingConverter
-  public static class LocalDateToDateConverter implements Converter<LocalDate, Date> {
-
-    public static final LocalDateToDateConverter INSTANCE = new LocalDateToDateConverter();
-
-    public Date convert(LocalDate source) {
-      try {
-        if (LocalDate.MIN.equals(source)) {
-          return new Date(Long.MIN_VALUE);
-        }
-        if (LocalDate.MAX.equals(source)) {
-          return new Date(Long.MAX_VALUE);
-        }
-        return Jsr310Converters.LocalDateToDateConverter.INSTANCE.convert(source);
-      } catch (RuntimeException ex) {
-        log.error(
-            "Failed to convert from type [java.time.LocalDate] to type [java.util.Date] for value '{}'",
-            source, ex);
-        throw ex;
-      }
-    }
-  }
 }
