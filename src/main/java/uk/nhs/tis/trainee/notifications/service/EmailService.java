@@ -32,6 +32,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
@@ -131,7 +132,7 @@ public class EmailService {
     String templateName = templateService.getTemplatePath(EMAIL, notificationType, templateVersion);
     log.info("Sending template {} to {}.", templateName, recipient);
 
-    if (!doNotSendJustLog) {
+    //if (!doNotSendJustLog) {
       ObjectId notificationId = ObjectId.get();
       NotificationStatus status;
       String statusDetail = null;
@@ -139,7 +140,7 @@ public class EmailService {
       if (recipient != null) {
         MimeMessageHelper helper = buildMessageHelper(recipient, templateName, templateVariables,
             notificationId);
-        mailSender.send(helper.getMimeMessage());
+        //mailSender.send(helper.getMimeMessage());
         status = NotificationStatus.SENT;
       } else {
         log.info("No email address available for trainee {}, this failure will be recorded.",
@@ -153,14 +154,14 @@ public class EmailService {
       TemplateInfo templateInfo = new TemplateInfo(notificationType.getTemplateName(),
           templateVersion, templateVariables);
       History history = new History(notificationId, tisReferenceInfo, notificationType,
-          recipientInfo, templateInfo, Instant.now(), null, status, statusDetail, null);
+          recipientInfo, templateInfo, Instant.now(), null, status, statusDetail, null, LocalDate.MIN, LocalDate.MAX);
       historyService.save(history);
 
       log.info("Sent template {} to {}.", templateName, recipient);
-    } else {
+   // } else {
       log.info("For now, just logging mail to '{}' from template '{}' with variables '{}'",
           recipient, templateName, templateVariables);
-    }
+    //}
   }
 
   /**
@@ -194,7 +195,7 @@ public class EmailService {
           toResend.recipient().type(), updatedEmailAddress);
       History updatedHistory = new History(notificationId, toResend.tisReference(), toResend.type(),
           updatedRecipientInfo, updatedTemplateInfo, toResend.sentAt(), toResend.readAt(),
-          NotificationStatus.SENT, null, Instant.now());
+          NotificationStatus.SENT, null, Instant.now(), LocalDate.MIN, LocalDate.MAX);
       historyService.save(updatedHistory);
 
       log.info("Sent template {} to {}.", templateName, updatedEmailAddress);

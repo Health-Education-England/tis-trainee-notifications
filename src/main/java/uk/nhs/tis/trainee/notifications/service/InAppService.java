@@ -25,8 +25,10 @@ import static uk.nhs.tis.trainee.notifications.model.MessageType.IN_APP;
 import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.UNREAD;
 
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cglib.core.Local;
 import org.springframework.stereotype.Service;
 import uk.nhs.tis.trainee.notifications.model.History;
 import uk.nhs.tis.trainee.notifications.model.History.RecipientInfo;
@@ -67,7 +69,7 @@ public class InAppService {
         templateVariables);
 
     History history = new History(null, tisReference, notificationType, recipient, template,
-        sendAt, null, UNREAD, null, null);
+        sendAt, null, UNREAD, null, null, LocalDate.MIN, LocalDate.MAX);
     if (!doNotStoreJustLog) {
       historyService.save(history);
     } else {
