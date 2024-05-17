@@ -32,6 +32,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.ApplicationContext;
 import org.springframework.test.context.ActiveProfiles;
+import uk.nhs.tis.trainee.notifications.config.MongoCollectionConfiguration;
 import uk.nhs.tis.trainee.notifications.config.MongoConfiguration;
 
 @SpringBootTest
@@ -39,7 +40,7 @@ import uk.nhs.tis.trainee.notifications.config.MongoConfiguration;
 class TisTraineeNotificationsApplicationTest {
 
   @MockBean
-  private MongoConfiguration mongoConfiguration;
+  private MongoCollectionConfiguration mongoConfiguration;
 
   @MockBean
   private QuartzAutoConfiguration quartzConfiguration;
@@ -52,7 +53,7 @@ class TisTraineeNotificationsApplicationTest {
 
   @Test
   void contextLoads() {
-    assertThat("Unexpected bean.", context.getBean(MongoConfiguration.class),
+    assertThat("Unexpected bean.", context.getBean(MongoCollectionConfiguration.class),
         is(mongoConfiguration));
   }
 }

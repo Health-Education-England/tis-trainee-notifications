@@ -458,13 +458,8 @@ public class ProgrammeMembershipService {
       try {
         return (LocalDate) history.template().variables().get(START_DATE_FIELD);
       } catch (Exception e) {
-        try {
-          Date startDateAsDate = (Date) history.template().variables().get(START_DATE_FIELD);
-          return startDateAsDate.toInstant().atZone(timezone).toLocalDate();
-        } catch (Exception ee) {
-          log.error("Error: unparseable startDate in history (should be a LocalDate or Date): '{}'",
-              history.template().variables().get(START_DATE_FIELD));
-        }
+        log.error("Error: unparseable startDate in history (should be a LocalDate): '{}'",
+            history.template().variables().get(START_DATE_FIELD));
       }
     }
     return null;

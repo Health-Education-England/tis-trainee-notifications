@@ -131,7 +131,7 @@ public class EmailService {
     String templateName = templateService.getTemplatePath(EMAIL, notificationType, templateVersion);
     log.info("Sending template {} to {}.", templateName, recipient);
 
-    //if (!doNotSendJustLog) {
+    if (!doNotSendJustLog) {
       ObjectId notificationId = ObjectId.get();
       NotificationStatus status;
       String statusDetail = null;
@@ -139,7 +139,7 @@ public class EmailService {
       if (recipient != null) {
         MimeMessageHelper helper = buildMessageHelper(recipient, templateName, templateVariables,
             notificationId);
-        //mailSender.send(helper.getMimeMessage());
+        mailSender.send(helper.getMimeMessage());
         status = NotificationStatus.SENT;
       } else {
         log.info("No email address available for trainee {}, this failure will be recorded.",
@@ -157,10 +157,10 @@ public class EmailService {
       historyService.save(history);
 
       log.info("Sent template {} to {}.", templateName, recipient);
-   // } else {
+    } else {
       log.info("For now, just logging mail to '{}' from template '{}' with variables '{}'",
           recipient, templateName, templateVariables);
-    //}
+    }
   }
 
   /**
