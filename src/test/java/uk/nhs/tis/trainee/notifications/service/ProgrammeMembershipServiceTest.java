@@ -60,7 +60,6 @@ import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipServic
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
-import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -1061,30 +1060,6 @@ class ProgrammeMembershipServiceTest {
     boolean shouldSchedule
         = service.shouldScheduleNotification(PROGRAMME_CREATED, programmeMembership, alreadySent);
     assertThat("Unexpected should schedule value.", shouldSchedule, is(false));
-  }
-
-  @Test
-  void shouldScheduleNotificationIfHistoryStartDateIsDateNotLocalDate() {
-    RecipientInfo recipientInfo = new RecipientInfo("id", MessageType.EMAIL, "test@email.com");
-    Date originalStartDate = Date.from(START_DATE.atStartOfDay(timezone).toInstant()
-        .minus(DEFERRAL_IF_MORE_THAN_DAYS + 1, ChronoUnit.DAYS));
-    LocalDate originalSentAt = LocalDate.now().minusDays(100);
-    TemplateInfo templateInfo = new TemplateInfo(null, null,
-        Map.of(START_DATE_FIELD, originalStartDate));
-
-    History sentNotification = new History(ObjectId.get(),
-        new TisReferenceInfo(PROGRAMME_MEMBERSHIP, TIS_ID),
-        PROGRAMME_CREATED, recipientInfo,
-        templateInfo,
-        Instant.from(originalSentAt.atStartOfDay(timezone)), Instant.MAX,
-        SENT, null, null);
-    Map<NotificationType, History> alreadySent = Map.of(PROGRAMME_CREATED, sentNotification);
-
-    ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
-
-    boolean shouldSchedule
-        = service.shouldScheduleNotification(PROGRAMME_CREATED, programmeMembership, alreadySent);
-    assertThat("Unexpected should schedule value.", shouldSchedule, is(true));
   }
 
   @Test

@@ -33,12 +33,9 @@ import static uk.nhs.tis.trainee.notifications.service.NotificationService.TEMPL
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.TEMPLATE_OWNER_FIELD;
 
 import java.time.Duration;
-import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
-import java.time.format.DateTimeFormatter;
-import java.time.format.DateTimeParseException;
 import java.util.Comparator;
 import java.util.Date;
 import java.util.EnumMap;
@@ -46,7 +43,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
@@ -54,7 +50,6 @@ import org.quartz.JobDataMap;
 import org.quartz.SchedulerException;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
-import uk.nhs.tis.trainee.notifications.dto.HistoryDto;
 import uk.nhs.tis.trainee.notifications.dto.UserDetails;
 import uk.nhs.tis.trainee.notifications.model.Curriculum;
 import uk.nhs.tis.trainee.notifications.model.History;
@@ -349,16 +344,15 @@ public class ProgrammeMembershipService {
       Map<NotificationType, History> notificationsAlreadySent, NotificationType notificationType,
       String notificationVersion, Map<String, Object> extraVariables) {
 
-    if (isUnique) {
-      Map<String, Object> variables = new HashMap<>(extraVariables);
-      variables.put(PROGRAMME_NAME_FIELD, programmeMembership.getProgrammeName());
-      variables.put(PROGRAMME_NUMBER_FIELD, programmeMembership.getProgrammeNumber());
-      variables.put(START_DATE_FIELD, programmeMembership.getStartDate());
+    Map<String, Object> variables = new HashMap<>(extraVariables);
+    variables.put(PROGRAMME_NAME_FIELD, programmeMembership.getProgrammeName());
+    variables.put(PROGRAMME_NUMBER_FIELD, programmeMembership.getProgrammeNumber());
+    variables.put(START_DATE_FIELD, programmeMembership.getStartDate());
 
-      TisReferenceInfo tisReference = new TisReferenceInfo(TisReferenceType.PROGRAMME_MEMBERSHIP,
-          programmeMembership.getTisId());
-      boolean doNotSendJustLog = !notificationService.programmeMembershipIsNotifiable(
-          programmeMembership, IN_APP);
+    TisReferenceInfo tisReference = new TisReferenceInfo(TisReferenceType.PROGRAMME_MEMBERSHIP,
+        programmeMembership.getTisId());
+    boolean doNotSendJustLog = !notificationService.programmeMembershipIsNotifiable(
+        programmeMembership, IN_APP);
 
     boolean isUnique = !notificationsAlreadySent.containsKey(notificationType);
     if (isUnique) {
@@ -368,8 +362,8 @@ public class ProgrammeMembershipService {
       boolean shouldSchedule = shouldScheduleNotification(notificationType, programmeMembership,
           notificationsAlreadySent);
       if (shouldSchedule) {
-        Date scheduleWhen = whenScheduleDeferredNotification(notificationType, programmeMembership,
-            notificationsAlreadySent);
+        Date scheduleWhen = whenScheduleDeferredNotification(notificationType,
+            programmeMembership, notificationsAlreadySent);
         if (scheduleWhen == null) {
           inAppService.createNotifications(programmeMembership.getPersonId(), tisReference,
               notificationType, notificationVersion, variables, doNotSendJustLog);
@@ -458,7 +452,6 @@ public class ProgrammeMembershipService {
     return null; //send new notification immediately
   }
 
-
   /**
    * Get the programme start date from a saved history item.
    *
@@ -473,13 +466,8 @@ public class ProgrammeMembershipService {
       try {
         return (LocalDate) history.template().variables().get(START_DATE_FIELD);
       } catch (Exception e) {
-        try {
-          Date startDateAsDate = (Date) history.template().variables().get(START_DATE_FIELD);
-          return startDateAsDate.toInstant().atZone(timezone).toLocalDate();
-        } catch (Exception ee) {
-          log.error("Error: unparseable startDate in history (should be a LocalDate or Date): '{}'",
-              history.template().variables().get(START_DATE_FIELD));
-        }
+        log.error("Error: unparseable startDate in history (should be a LocalDate): '{}'",
+            history.template().variables().get(START_DATE_FIELD));
       }
     }
     return null;
