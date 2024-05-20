@@ -21,32 +21,79 @@
 
 package uk.nhs.tis.trainee.notifications.config;
 
-import jakarta.annotation.PostConstruct;
+import java.time.LocalDate;
+import java.util.Date;
+import java.util.List;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.data.domain.Sort.Direction;
+import org.springframework.core.convert.converter.Converter;
+import org.springframework.data.convert.Jsr310Converters;
+import org.springframework.data.convert.ReadingConverter;
+import org.springframework.data.mongodb.MongoDatabaseFactory;
 import org.springframework.data.mongodb.core.MongoTemplate;
-import org.springframework.data.mongodb.core.index.Index;
-import org.springframework.data.mongodb.core.index.IndexOperations;
-import uk.nhs.tis.trainee.notifications.model.History;
+import org.springframework.data.mongodb.core.convert.MappingMongoConverter;
+import org.springframework.data.mongodb.core.convert.MongoCustomConversions;
 
 /**
  * Additional configuration for MongoDB.
  */
 @Configuration
+@Slf4j
 public class MongoConfiguration {
 
-  private final MongoTemplate template;
+  /**
+   * Mongo template with custom converter.
+   *
+   * @param dbFactory The Mongo Database Factory to use.
+   * @param mongoConverter The Mapping Mongo Converter to use.
+   * @return the Mongo template.
+   */
+  @Bean
+  public MongoTemplate mongoTemplate(MongoDatabaseFactory dbFactory,
+      MappingMongoConverter mongoConverter) {
 
-  MongoConfiguration(MongoTemplate template) {
-    this.template = template;
+    List<Converter<?, ?>> converters = List.of(
+        DateToObjectConverter.INSTANCE);
+
+    MongoCustomConversions customConversions = new MongoCustomConversions(converters);
+    mongoConverter.setCustomConversions(customConversions);
+    mongoConverter.afterPropertiesSet();
+    return new MongoTemplate(dbFactory, mongoConverter);
   }
 
   /**
-   * Add custom indexes to the Mongo collections.
+   * Map dates to LocalDate when the target is an Object.
    */
-  @PostConstruct
-  public void initIndexes() {
-    IndexOperations indexOps = template.indexOps(History.class);
-    indexOps.ensureIndex(new Index().on("recipient.id", Direction.ASC));
+  @ReadingConverter
+  public static class DateToObjectConverter implements Converter<Date, Object> {
+
+    public static final DateToObjectConverter INSTANCE = new DateToObjectConverter();
+
+    /**
+     * Convert a Date to an Object of type LocalDate.
+     *
+     * @param source the source object to convert, which must be an instance of {@code S}
+     *               (never {@code null})
+     * @return The LocalDate Object if it can be converted, otherwise null or the source Date.
+     */
+    public Object convert(Date source) {
+      if (source == null) {
+        return null;
+      }
+      try {
+        long timestamp = source.getTime();
+        if (Long.MIN_VALUE == timestamp) {
+          return LocalDate.MIN;
+        }
+        if (Long.MAX_VALUE == timestamp) {
+          return LocalDate.MAX;
+        }
+        return Jsr310Converters.DateToLocalDateConverter.INSTANCE.convert(source);
+      } catch (Exception e) {
+        return source;
+      }
+    }
   }
+
 }

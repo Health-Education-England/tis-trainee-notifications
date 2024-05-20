@@ -30,7 +30,6 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.util.List;
-import java.util.stream.Collectors;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -39,16 +38,16 @@ import org.springframework.data.mongodb.core.index.IndexDefinition;
 import org.springframework.data.mongodb.core.index.IndexOperations;
 import uk.nhs.tis.trainee.notifications.model.History;
 
-class MongoConfigurationTest {
+class MongoCollectionConfigurationTest {
 
-  private MongoConfiguration configuration;
+  private MongoCollectionConfiguration configuration;
 
   private MongoTemplate template;
 
   @BeforeEach
   void setUp() {
     template = mock(MongoTemplate.class);
-    configuration = new MongoConfiguration(template);
+    configuration = new MongoCollectionConfiguration(template);
   }
 
   @Test
@@ -66,7 +65,7 @@ class MongoConfigurationTest {
 
     List<String> indexKeys = indexes.stream()
         .flatMap(i -> i.getIndexKeys().keySet().stream())
-        .collect(Collectors.toList());
+            .toList();
     assertThat("Unexpected number of index keys.", indexKeys.size(), is(1));
     assertThat("Unexpected index.", indexKeys, hasItems("recipient.id"));
   }
