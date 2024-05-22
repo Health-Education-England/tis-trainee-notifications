@@ -81,6 +81,7 @@ public class PlacementListener {
       Placement placement = mapper.toEntity(event.recrd().getData());
       placement.setTisId(event.tisId()); //delete messages used to have empty record data
       placementService.deleteNotifications(placement);
+      placementService.deleteScheduledInAppNotifications(placement);
     } else {
       log.info("Ignoring non placement delete event: {}", event);
     }
