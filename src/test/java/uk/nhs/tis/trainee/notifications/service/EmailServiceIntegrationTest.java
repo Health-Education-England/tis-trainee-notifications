@@ -99,7 +99,7 @@ class EmailServiceIntegrationTest {
       "uk.nhs.tis.trainee.notifications.MethodArgumentUtil#getEmailTemplateTypeAndVersions")
   void shouldIncludeSubjectInTemplates(NotificationType notificationType, String templateVersion)
       throws Exception {
-    when(userAccountService.getUserDetails(USER_ID)).thenReturn(
+    when(userAccountService.getUserDetailsById(USER_ID)).thenReturn(
         new UserDetails(true, RECIPIENT, null, null, null, null));
 
     service.sendMessageToExistingUser(PERSON_ID, notificationType, templateVersion, Map.of(), null);
@@ -116,7 +116,7 @@ class EmailServiceIntegrationTest {
       "uk.nhs.tis.trainee.notifications.MethodArgumentUtil#getEmailTemplateTypeAndVersions")
   void shouldIncludeContentInTemplates(NotificationType notificationType, String templateVersion)
       throws Exception {
-    when(userAccountService.getUserDetails(USER_ID)).thenReturn(
+    when(userAccountService.getUserDetailsById(USER_ID)).thenReturn(
         new UserDetails(true, RECIPIENT, null, null, null, null));
 
     service.sendMessageToExistingUser(PERSON_ID, notificationType, templateVersion, Map.of(), null);
@@ -133,7 +133,7 @@ class EmailServiceIntegrationTest {
       "uk.nhs.tis.trainee.notifications.MethodArgumentUtil#getEmailTemplateTypeAndVersions")
   void shouldGreetExistingUsersConsistentlyWhenNameNotAvailable(NotificationType notificationType,
       String templateVersion) throws Exception {
-    when(userAccountService.getUserDetails(USER_ID)).thenReturn(
+    when(userAccountService.getUserDetailsById(USER_ID)).thenReturn(
         new UserDetails(true, RECIPIENT, null, null, null, null));
 
     service.sendMessageToExistingUser(PERSON_ID, notificationType, templateVersion, Map.of(), null);
@@ -155,7 +155,7 @@ class EmailServiceIntegrationTest {
       "uk.nhs.tis.trainee.notifications.MethodArgumentUtil#getEmailTemplateTypeAndVersions")
   void shouldGreetExistingUsersConsistentlyWhenNameAvailable(NotificationType notificationType,
       String templateVersion) throws Exception {
-    when(userAccountService.getUserDetails(USER_ID)).thenReturn(
+    when(userAccountService.getUserDetailsById(USER_ID)).thenReturn(
         new UserDetails(true, RECIPIENT, null, "Gilliam", "Anthony", null));
 
     service.sendMessageToExistingUser(PERSON_ID, notificationType, templateVersion, Map.of(), null);
@@ -183,7 +183,7 @@ class EmailServiceIntegrationTest {
       "uk.nhs.tis.trainee.notifications.MethodArgumentUtil#getEmailTemplateTypeAndVersions")
   void shouldGreetExistingUsersConsistentlyWhenNameProvided(NotificationType notificationType,
       String templateVersion) throws Exception {
-    when(userAccountService.getUserDetails(USER_ID)).thenReturn(
+    when(userAccountService.getUserDetailsById(USER_ID)).thenReturn(
         new UserDetails(true, RECIPIENT, null, "Gilliam", "Anthony", null));
 
     service.sendMessageToExistingUser(PERSON_ID, notificationType, templateVersion,
@@ -213,7 +213,7 @@ class EmailServiceIntegrationTest {
       throws Exception {
     //version is fixed, since a different test will inevitably be needed for later revisions
     String templateVersion = "v1.0.0";
-    when(userAccountService.getUserDetails(USER_ID)).thenReturn(
+    when(userAccountService.getUserDetailsById(USER_ID)).thenReturn(
         new UserDetails(true, RECIPIENT, null, "Gilliam", "Anthony", null));
 
     service.sendMessageToExistingUser(PERSON_ID, PLACEMENT_UPDATED_WEEK_12,
@@ -237,7 +237,7 @@ class EmailServiceIntegrationTest {
       throws Exception {
     //version is fixed, since a different test will inevitably be needed for later revisions
     String templateVersion = "v1.0.0";
-    when(userAccountService.getUserDetails(USER_ID)).thenReturn(
+    when(userAccountService.getUserDetailsById(USER_ID)).thenReturn(
         new UserDetails(true, RECIPIENT, null, "Gilliam", "Anthony", null));
 
     service.sendMessageToExistingUser(PERSON_ID, PLACEMENT_UPDATED_WEEK_12,
@@ -259,7 +259,7 @@ class EmailServiceIntegrationTest {
   @ValueSource(strings = {"PLACEMENT_UPDATED_WEEK_12", "PROGRAMME_CREATED"})
   void shouldIncludeGmcInMailtoSubjectWhenGmcAvailable(NotificationType notificationType)
       throws Exception {
-    when(userAccountService.getUserDetails(USER_ID)).thenReturn(
+    when(userAccountService.getUserDetailsById(USER_ID)).thenReturn(
         new UserDetails(true, RECIPIENT, null, null, null, GMC));
 
     service.sendMessageToExistingUser(PERSON_ID, notificationType, TEMPLATE_VERSION,
@@ -280,7 +280,7 @@ class EmailServiceIntegrationTest {
   @ValueSource(strings = {"PLACEMENT_UPDATED_WEEK_12", "PROGRAMME_CREATED"})
   void shouldIncludeUnknownGmcInMailtoSubjectWhenGmcIsEmpty(NotificationType notificationType)
       throws Exception {
-    when(userAccountService.getUserDetails(USER_ID)).thenReturn(
+    when(userAccountService.getUserDetailsById(USER_ID)).thenReturn(
         new UserDetails(true, RECIPIENT, null, null, null, GMC));
 
     service.sendMessageToExistingUser(PERSON_ID, notificationType, TEMPLATE_VERSION,
@@ -301,7 +301,7 @@ class EmailServiceIntegrationTest {
   @ValueSource(strings = {"PLACEMENT_UPDATED_WEEK_12", "PROGRAMME_CREATED"})
   void shouldIncludeUnknownGmcInMailtoSubjectWhenGmcIsMissing(NotificationType notificationType)
       throws Exception {
-    when(userAccountService.getUserDetails(USER_ID)).thenReturn(
+    when(userAccountService.getUserDetailsById(USER_ID)).thenReturn(
         new UserDetails(true, RECIPIENT, null, null, null, null));
 
     service.sendMessageToExistingUser(PERSON_ID, notificationType, TEMPLATE_VERSION,
@@ -320,7 +320,7 @@ class EmailServiceIntegrationTest {
 
   @Test
   void shouldIncludeProgNoInMailtoSubjectWhenProgNoAvailable() throws Exception {
-    when(userAccountService.getUserDetails(USER_ID)).thenReturn(
+    when(userAccountService.getUserDetailsById(USER_ID)).thenReturn(
         new UserDetails(true, RECIPIENT, null, null, null, GMC));
 
     service.sendMessageToExistingUser(PERSON_ID, PROGRAMME_CREATED, TEMPLATE_VERSION,
@@ -339,7 +339,7 @@ class EmailServiceIntegrationTest {
 
   @Test
   void shouldIncludeUnknownProgNoInMailtoSubjectWhenProgNoIsMissing() throws Exception {
-    when(userAccountService.getUserDetails(USER_ID)).thenReturn(
+    when(userAccountService.getUserDetailsById(USER_ID)).thenReturn(
         new UserDetails(true, RECIPIENT, null, null, null, GMC));
 
     service.sendMessageToExistingUser(PERSON_ID, PROGRAMME_CREATED, TEMPLATE_VERSION,
@@ -358,7 +358,7 @@ class EmailServiceIntegrationTest {
 
   @Test
   void shouldIncludeStartDateInMailtoSubjectWhenStartDateAvailable() throws Exception {
-    when(userAccountService.getUserDetails(USER_ID)).thenReturn(
+    when(userAccountService.getUserDetailsById(USER_ID)).thenReturn(
         new UserDetails(true, RECIPIENT, null, null, null, GMC));
 
     service.sendMessageToExistingUser(PERSON_ID, PLACEMENT_UPDATED_WEEK_12, TEMPLATE_VERSION,

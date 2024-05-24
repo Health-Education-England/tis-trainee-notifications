@@ -126,7 +126,7 @@ class CredentialListenerIntegrationTest {
   void shouldSendDefaultRevocationNoticeWhenTemplateVariablesNotAvailable(String missingValue)
       throws Exception {
     CredentialEvent event = new CredentialEvent(null, missingValue, null, TRAINEE_ID);
-    when(userAccountService.getUserDetails(USER_ID)).thenReturn(
+    when(userAccountService.getUserDetailsById(USER_ID)).thenReturn(
         new UserDetails(true, EMAIL, TITLE, missingValue, missingValue, GMC));
 
     // Spy on the email service and inject a missing domain.
@@ -171,7 +171,7 @@ class CredentialListenerIntegrationTest {
   @Test
   void shouldSendFullyTailoredRevocationNoticeWhenAllTemplateVariablesAvailable() throws Exception {
     CredentialEvent event = new CredentialEvent(null, CREDENTIAL_TYPE, ISSUED_AT, TRAINEE_ID);
-    when(userAccountService.getUserDetails(USER_ID)).thenReturn(
+    when(userAccountService.getUserDetailsById(USER_ID)).thenReturn(
         new UserDetails(true, EMAIL, TITLE, FAMILY_NAME, GIVEN_NAME, GMC));
 
     listener.handleCredentialRevoked(event);
@@ -212,7 +212,7 @@ class CredentialListenerIntegrationTest {
   @Test
   void shouldSendRevocationNoticeWithTailoredNameWhenAvailable() throws Exception {
     CredentialEvent event = new CredentialEvent(null, null, null, TRAINEE_ID);
-    when(userAccountService.getUserDetails(USER_ID)).thenReturn(
+    when(userAccountService.getUserDetailsById(USER_ID)).thenReturn(
         new UserDetails(true, EMAIL, TITLE, FAMILY_NAME, GIVEN_NAME, GMC));
 
     listener.handleCredentialRevoked(event);
@@ -250,7 +250,7 @@ class CredentialListenerIntegrationTest {
   void shouldSendRevocationNoticeWithTailoredCredentialTypeWhenAvailable(String credentialType)
       throws Exception {
     CredentialEvent event = new CredentialEvent(null, credentialType, null, TRAINEE_ID);
-    when(userAccountService.getUserDetails(USER_ID)).thenReturn(
+    when(userAccountService.getUserDetailsById(USER_ID)).thenReturn(
         new UserDetails(true, EMAIL, TITLE, null, null, GMC));
 
     listener.handleCredentialRevoked(event);
@@ -290,7 +290,7 @@ class CredentialListenerIntegrationTest {
   @Test
   void shouldSendRevocationNoticeWithTailoredIssuedAtWhenAvailable() throws Exception {
     CredentialEvent event = new CredentialEvent(null, null, ISSUED_AT, TRAINEE_ID);
-    when(userAccountService.getUserDetails(USER_ID)).thenReturn(
+    when(userAccountService.getUserDetailsById(USER_ID)).thenReturn(
         new UserDetails(true, EMAIL, TITLE, null, null, GMC));
 
     listener.handleCredentialRevoked(event);
@@ -328,7 +328,7 @@ class CredentialListenerIntegrationTest {
   @Test
   void shouldSendRevocationNoticeWithTailoredDomainWhenAvailable() throws Exception {
     CredentialEvent event = new CredentialEvent(null, null, null, TRAINEE_ID);
-    when(userAccountService.getUserDetails(USER_ID)).thenReturn(
+    when(userAccountService.getUserDetailsById(USER_ID)).thenReturn(
         new UserDetails(true, EMAIL, TITLE, null, null, GMC));
 
     listener.handleCredentialRevoked(event);
@@ -364,7 +364,7 @@ class CredentialListenerIntegrationTest {
   @Test
   void shouldSendRevocationNoticeTailoredForTrainingPlacement() throws Exception {
     CredentialEvent event = new CredentialEvent(null, "Training Placement", null, TRAINEE_ID);
-    when(userAccountService.getUserDetails(USER_ID)).thenReturn(
+    when(userAccountService.getUserDetailsById(USER_ID)).thenReturn(
         new UserDetails(true, EMAIL, TITLE, null, null, GMC));
 
     listener.handleCredentialRevoked(event);
@@ -392,7 +392,7 @@ class CredentialListenerIntegrationTest {
   @Test
   void shouldSendRevocationNoticeTailoredForTrainingProgramme() throws Exception {
     CredentialEvent event = new CredentialEvent(null, "Training Programme", null, TRAINEE_ID);
-    when(userAccountService.getUserDetails(USER_ID)).thenReturn(
+    when(userAccountService.getUserDetailsById(USER_ID)).thenReturn(
         new UserDetails(true, EMAIL, TITLE, null, null, GMC));
 
     listener.handleCredentialRevoked(event);
@@ -420,7 +420,7 @@ class CredentialListenerIntegrationTest {
   @Test
   void shouldStoreCredentialRevokedNotificationHistoryWhenMessageSent() throws MessagingException {
     CredentialEvent event = new CredentialEvent(null, CREDENTIAL_TYPE, ISSUED_AT, TRAINEE_ID);
-    when(userAccountService.getUserDetails(USER_ID)).thenReturn(
+    when(userAccountService.getUserDetailsById(USER_ID)).thenReturn(
         new UserDetails(true, EMAIL, TITLE, FAMILY_NAME, GIVEN_NAME, GMC));
 
     listener.handleCredentialRevoked(event);
