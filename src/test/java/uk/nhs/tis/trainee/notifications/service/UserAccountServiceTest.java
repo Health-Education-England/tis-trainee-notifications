@@ -43,10 +43,9 @@ import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
 import software.amazon.awssdk.core.pagination.sync.SdkIterable;
 import software.amazon.awssdk.services.cognitoidentityprovider.CognitoIdentityProviderClient;
-import software.amazon.awssdk.services.cognitoidentityprovider.model.AdminGetUserRequest;
-import software.amazon.awssdk.services.cognitoidentityprovider.model.AdminGetUserResponse;
 import software.amazon.awssdk.services.cognitoidentityprovider.model.AttributeType;
 import software.amazon.awssdk.services.cognitoidentityprovider.model.ListUsersRequest;
+import software.amazon.awssdk.services.cognitoidentityprovider.model.ListUsersResponse;
 import software.amazon.awssdk.services.cognitoidentityprovider.model.UserNotFoundException;
 import software.amazon.awssdk.services.cognitoidentityprovider.model.UserType;
 import software.amazon.awssdk.services.cognitoidentityprovider.paginators.ListUsersIterable;
@@ -201,17 +200,33 @@ class UserAccountServiceTest {
   }
 
   @Test
-  void shouldGetUserDetailsWhenUserFound() {
-    AdminGetUserResponse response = AdminGetUserResponse.builder()
-        .userAttributes(
+  void shouldRequestUserDetailsByEmail() {
+    UserType user = UserType.builder().build();
+    ListUsersResponse response = ListUsersResponse.builder().users(user).build();
+
+    ArgumentCaptor<ListUsersRequest> requestCaptor = ArgumentCaptor.captor();
+    when(cognitoClient.listUsers(requestCaptor.capture())).thenReturn(response);
+
+    service.getUserDetailsByEmail(EMAIL);
+
+    ListUsersRequest request = requestCaptor.getValue();
+    assertThat("Unexpected user pool.", request.userPoolId(), is(USER_POOL_ID));
+    assertThat("Unexpected user filter.", request.filter(), is("email=\"" + EMAIL + "\""));
+  }
+
+  @Test
+  void shouldGetUserDetailsWhenUserFoundByEmail() {
+    UserType user = UserType.builder()
+        .attributes(
             AttributeType.builder().name("email").value(EMAIL).build(),
             AttributeType.builder().name("family_name").value(FAMILY_NAME).build(),
-            AttributeType.builder().name("given_name").value(GIVEN_NAME).build()
-        ).build();
+            AttributeType.builder().name("given_name").value(GIVEN_NAME).build())
+        .build();
 
-    when(cognitoClient.adminGetUser(any(AdminGetUserRequest.class))).thenReturn(response);
+    ListUsersResponse response = ListUsersResponse.builder().users(user).build();
+    when(cognitoClient.listUsers(any(ListUsersRequest.class))).thenReturn(response);
 
-    UserDetails userDetails = service.getUserDetails(USER_ID_1);
+    UserDetails userDetails = service.getUserDetailsByEmail(EMAIL);
 
     assertThat("Unexpected isRegistered.", userDetails.isRegistered(), is(true));
     assertThat("Unexpected email.", userDetails.email(), is(EMAIL));
@@ -222,21 +237,79 @@ class UserAccountServiceTest {
   }
 
   @Test
-  void shouldGetEmptyUserDetailsWhenUserFoundWithMissingAttributes() {
-    AdminGetUserResponse response = AdminGetUserResponse.builder().build();
-    when(cognitoClient.adminGetUser(any(AdminGetUserRequest.class))).thenReturn(response);
+  void shouldGetEmptyUserDetailsWhenUserFoundByEmailWithMissingAttributes() {
+    UserType user = UserType.builder().build();
+    ListUsersResponse response = ListUsersResponse.builder().users(user).build();
+    when(cognitoClient.listUsers(any(ListUsersRequest.class))).thenReturn(response);
 
-    UserDetails userDetails = service.getUserDetails(USER_ID_1);
+    UserDetails userDetails = service.getUserDetailsByEmail(EMAIL);
 
     assertThat("Unexpected email.", userDetails.email(), nullValue());
     assertThat("Unexpected family name.", userDetails.familyName(), nullValue());
   }
 
   @Test
-  void shouldThrowExceptionGettingUserDetailsWhenUserNotFound() {
-    when(cognitoClient.adminGetUser(any(AdminGetUserRequest.class))).thenThrow(
-        UserNotFoundException.class);
+  void shouldThrowExceptionGettingUserDetailsWhenUserNotFoundByEmail() {
+    when(cognitoClient.listUsers(any(ListUsersRequest.class))).thenReturn(
+        ListUsersResponse.builder().build());
 
-    assertThrows(UserNotFoundException.class, () -> service.getUserDetails(USER_ID_1));
+    assertThrows(UserNotFoundException.class, () -> service.getUserDetailsByEmail(EMAIL));
+  }
+
+  @Test
+  void shouldRequestUserDetailsById() {
+    UserType user = UserType.builder().build();
+    ListUsersResponse response = ListUsersResponse.builder().users(user).build();
+
+    ArgumentCaptor<ListUsersRequest> requestCaptor = ArgumentCaptor.captor();
+    when(cognitoClient.listUsers(requestCaptor.capture())).thenReturn(response);
+
+    service.getUserDetailsById(USER_ID_1);
+
+    ListUsersRequest request = requestCaptor.getValue();
+    assertThat("Unexpected user pool.", request.userPoolId(), is(USER_POOL_ID));
+    assertThat("Unexpected user filter.", request.filter(), is("sub=\"" + USER_ID_1 + "\""));
+  }
+
+  @Test
+  void shouldGetUserDetailsWhenUserFoundById() {
+    UserType user = UserType.builder()
+        .attributes(
+            AttributeType.builder().name("email").value(EMAIL).build(),
+            AttributeType.builder().name("family_name").value(FAMILY_NAME).build(),
+            AttributeType.builder().name("given_name").value(GIVEN_NAME).build())
+        .build();
+
+    ListUsersResponse response = ListUsersResponse.builder().users(user).build();
+    when(cognitoClient.listUsers(any(ListUsersRequest.class))).thenReturn(response);
+
+    UserDetails userDetails = service.getUserDetailsById(USER_ID_1);
+
+    assertThat("Unexpected isRegistered.", userDetails.isRegistered(), is(true));
+    assertThat("Unexpected email.", userDetails.email(), is(EMAIL));
+    assertThat("Unexpected title.", userDetails.title(), is(nullValue()));
+    assertThat("Unexpected family name.", userDetails.familyName(), is(FAMILY_NAME));
+    assertThat("Unexpected given name.", userDetails.givenName(), is(GIVEN_NAME));
+    assertThat("Unexpected gmc number.", userDetails.gmcNumber(), is(nullValue()));
+  }
+
+  @Test
+  void shouldGetEmptyUserDetailsWhenUserFoundByIdWithMissingAttributes() {
+    UserType user = UserType.builder().build();
+    ListUsersResponse response = ListUsersResponse.builder().users(user).build();
+    when(cognitoClient.listUsers(any(ListUsersRequest.class))).thenReturn(response);
+
+    UserDetails userDetails = service.getUserDetailsById(USER_ID_1);
+
+    assertThat("Unexpected email.", userDetails.email(), nullValue());
+    assertThat("Unexpected family name.", userDetails.familyName(), nullValue());
+  }
+
+  @Test
+  void shouldThrowExceptionGettingUserDetailsWhenUserNotFoundById() {
+    when(cognitoClient.listUsers(any(ListUsersRequest.class))).thenReturn(
+        ListUsersResponse.builder().build());
+
+    assertThrows(UserNotFoundException.class, () -> service.getUserDetailsById(USER_ID_1));
   }
 }

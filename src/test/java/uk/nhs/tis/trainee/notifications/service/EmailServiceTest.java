@@ -104,7 +104,7 @@ class EmailServiceTest {
     userAccountService = mock(UserAccountService.class);
     historyService = mock(HistoryService.class);
     when(userAccountService.getUserAccountIds(TRAINEE_ID)).thenReturn(Set.of(USER_ID));
-    when(userAccountService.getUserDetails(USER_ID)).thenReturn(
+    when(userAccountService.getUserDetailsById(USER_ID)).thenReturn(
         new UserDetails(true, RECIPIENT, null, null, null, GMC));
 
     mailSender = mock(JavaMailSender.class);
@@ -149,7 +149,7 @@ class EmailServiceTest {
 
   @Test
   void shouldThrowExceptionWhenSendingToExistingUserAndUserDetailsNotFound() {
-    when(userAccountService.getUserDetails(USER_ID)).thenThrow(UserNotFoundException.class);
+    when(userAccountService.getUserDetailsById(USER_ID)).thenThrow(UserNotFoundException.class);
 
     assertThrows(UserNotFoundException.class,
         () -> service.sendMessageToExistingUser(TRAINEE_ID, NOTIFICATION_TYPE, null,
@@ -159,7 +159,7 @@ class EmailServiceTest {
   @ParameterizedTest
   @NullAndEmptySource
   void shouldThrowExceptionWhenSendingToExistingUserAndEmailNotFound(String email) {
-    when(userAccountService.getUserDetails(USER_ID)).thenReturn(
+    when(userAccountService.getUserDetailsById(USER_ID)).thenReturn(
         new UserDetails(true, email, "Mr", "Gilliam", "Anthony", GMC));
 
     assertThrows(IllegalArgumentException.class,
@@ -169,7 +169,7 @@ class EmailServiceTest {
 
   @Test
   void shouldThrowExceptionWhenSendingWithNoNotificationType() {
-    when(userAccountService.getUserDetails(USER_ID)).thenReturn(
+    when(userAccountService.getUserDetailsById(USER_ID)).thenReturn(
         new UserDetails(true, RECIPIENT, "Mr", "Gilliam", "Anthony", GMC));
 
     assertThrows(NullPointerException.class,
@@ -179,7 +179,7 @@ class EmailServiceTest {
 
   @Test
   void shouldGetNameFromUserAccountWhenNoNameProvided() throws MessagingException {
-    when(userAccountService.getUserDetails(USER_ID)).thenReturn(
+    when(userAccountService.getUserDetailsById(USER_ID)).thenReturn(
         new UserDetails(true, RECIPIENT, "Mr", "Gilliam", "Anthony", GMC));
 
     service.sendMessageToExistingUser(TRAINEE_ID, NOTIFICATION_TYPE, "", Map.of(),
@@ -195,7 +195,7 @@ class EmailServiceTest {
 
   @Test
   void shouldUseProvidedNameWhenNameProvided() throws MessagingException {
-    when(userAccountService.getUserDetails(USER_ID)).thenReturn(
+    when(userAccountService.getUserDetailsById(USER_ID)).thenReturn(
         new UserDetails(true, RECIPIENT, "Mr", "Gilliam", "Anthony", GMC));
 
     service.sendMessageToExistingUser(TRAINEE_ID, NOTIFICATION_TYPE, "",
@@ -253,7 +253,7 @@ class EmailServiceTest {
 
   @Test
   void shouldSendMessageToUserAccountEmail() throws MessagingException {
-    when(userAccountService.getUserDetails(USER_ID)).thenReturn(
+    when(userAccountService.getUserDetailsById(USER_ID)).thenReturn(
         new UserDetails(true, "anthony.gilliam@tis.nhs.uk", "", "",
             "", GMC));
 
@@ -377,7 +377,7 @@ class EmailServiceTest {
   @EnumSource(NotificationType.class)
   void shouldStoreHistoryWhenMessageSent(NotificationType notificationType)
       throws MessagingException {
-    when(userAccountService.getUserDetails(USER_ID)).thenReturn(
+    when(userAccountService.getUserDetailsById(USER_ID)).thenReturn(
         new UserDetails(true, RECIPIENT, "Mr", "Gilliam",
             "Anthony", GMC));
     String templateVersion = "v1.2.3";
@@ -422,7 +422,7 @@ class EmailServiceTest {
   @EnumSource(NotificationType.class)
   void shouldUpdateHistoryWhenMessageResent(NotificationType notificationType)
       throws MessagingException {
-    when(userAccountService.getUserDetails(USER_ID)).thenReturn(
+    when(userAccountService.getUserDetailsById(USER_ID)).thenReturn(
         new UserDetails(true, RECIPIENT, "Mr", "Gilliam",
             "Anthony", GMC));
     String templateVersion = "v1.2.3";
@@ -476,7 +476,7 @@ class EmailServiceTest {
   @EnumSource(value = MessageType.class, mode = Mode.EXCLUDE, names = "EMAIL")
   void shouldNotResendNonEmailMessageTypes(MessageType messageType)
       throws MessagingException {
-    when(userAccountService.getUserDetails(USER_ID)).thenReturn(
+    when(userAccountService.getUserDetailsById(USER_ID)).thenReturn(
         new UserDetails(true, RECIPIENT, "Mr", "Gilliam",
             "Anthony", GMC));
     String templateVersion = "v1.2.3";
@@ -576,6 +576,40 @@ class EmailServiceTest {
 
     assertDoesNotThrow(() -> service.sendMessage(TRAINEE_ID, RECIPIENT, NOTIFICATION_TYPE,
         "v1.2.3", new HashMap<>(), null, true));
+  }
+
+  @Test
+  void shouldGetRecipientAccountByEmail() {
+    service.getRecipientAccountByEmail(RECIPIENT);
+
+    verify(userAccountService).getUserDetailsByEmail(RECIPIENT);
+  }
+
+  @Test
+  void shouldThrowExceptionGettingRecipientAccountByIdWhenNoMatchingTraineeId() {
+    when(userAccountService.getUserAccountIds(TRAINEE_ID)).thenReturn(Set.of());
+
+    assertThrows(IllegalArgumentException.class, () -> service.getRecipientAccount(TRAINEE_ID));
+
+    verify(userAccountService, never()).getUserDetailsById(USER_ID);
+  }
+
+  @Test
+  void shouldGetRecipientAccountByIdWhenSingleMatchingTraineeId() {
+    when(userAccountService.getUserAccountIds(TRAINEE_ID)).thenReturn(Set.of(USER_ID));
+
+    service.getRecipientAccount(TRAINEE_ID);
+
+    verify(userAccountService).getUserDetailsById(USER_ID);
+  }
+
+  @Test
+  void shouldThrowExceptionGettingRecipientAccountByIdWhenMultipleMatchingTraineeIds() {
+    when(userAccountService.getUserAccountIds(TRAINEE_ID)).thenReturn(Set.of("one", "two"));
+
+    assertThrows(IllegalArgumentException.class, () -> service.getRecipientAccount(TRAINEE_ID));
+
+    verify(userAccountService, never()).getUserDetailsById(USER_ID);
   }
 
   @Test

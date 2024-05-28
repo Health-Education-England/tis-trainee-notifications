@@ -245,7 +245,7 @@ public class EmailService {
    * @throws UserNotFoundException if the user account could not be found.
    */
   public UserDetails getRecipientAccountByEmail(String email) throws UserNotFoundException {
-    return userAccountService.getUserDetails(email);
+    return userAccountService.getUserDetailsByEmail(email);
   }
 
   /**
@@ -259,7 +259,7 @@ public class EmailService {
 
     return switch (userAccountIds.size()) {
       case 0 -> throw new IllegalArgumentException("No user account found for the given ID.");
-      case 1 -> userAccountService.getUserDetails(userAccountIds.iterator().next());
+      case 1 -> userAccountService.getUserDetailsById(userAccountIds.iterator().next());
       default ->
           throw new IllegalArgumentException("Multiple user accounts found for the given ID.");
     };

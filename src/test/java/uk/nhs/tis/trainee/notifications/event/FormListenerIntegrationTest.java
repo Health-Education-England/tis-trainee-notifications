@@ -129,7 +129,7 @@ class FormListenerIntegrationTest {
     FormUpdateEvent event = new FormUpdateEvent(missingValue, missingValue, PERSON_ID,
         missingValue, null, FORM_CONTENT);
 
-    when(userAccountService.getUserDetails(USER_ID)).thenReturn(
+    when(userAccountService.getUserDetailsById(USER_ID)).thenReturn(
         new UserDetails(true, EMAIL, TITLE, missingValue, missingValue, GMC));
 
     // Spy on the email service and inject a missing domain.
@@ -175,7 +175,7 @@ class FormListenerIntegrationTest {
       throws Exception {
     FormUpdateEvent event = new FormUpdateEvent(FORM_NAME, FORM_SUBMITTED, PERSON_ID,
         FORM_TYPE, FORM_UPDATED_AT, FORM_CONTENT);
-    when(userAccountService.getUserDetails(USER_ID)).thenReturn(
+    when(userAccountService.getUserDetailsById(USER_ID)).thenReturn(
         new UserDetails(true, EMAIL, TITLE, FAMILY_NAME, GIVEN_NAME, GMC));
 
     listener.handleFormUpdate(event);
@@ -219,7 +219,7 @@ class FormListenerIntegrationTest {
       throws Exception {
     FormUpdateEvent event = new FormUpdateEvent(FORM_NAME, FORM_UNSUBMITTED, PERSON_ID,
         FORM_TYPE, FORM_UPDATED_AT, FORM_CONTENT);
-    when(userAccountService.getUserDetails(USER_ID)).thenReturn(
+    when(userAccountService.getUserDetailsById(USER_ID)).thenReturn(
         new UserDetails(true, EMAIL, TITLE, FAMILY_NAME, GIVEN_NAME, GMC));
 
     listener.handleFormUpdate(event);
@@ -263,7 +263,7 @@ class FormListenerIntegrationTest {
       throws Exception {
     FormUpdateEvent event = new FormUpdateEvent(FORM_NAME, FORM_DELETED, PERSON_ID,
         FORM_TYPE, FORM_UPDATED_AT, FORM_CONTENT);
-    when(userAccountService.getUserDetails(USER_ID)).thenReturn(
+    when(userAccountService.getUserDetailsById(USER_ID)).thenReturn(
         new UserDetails(true, EMAIL, TITLE, FAMILY_NAME, GIVEN_NAME, GMC));
 
     listener.handleFormUpdate(event);
@@ -304,7 +304,7 @@ class FormListenerIntegrationTest {
   void shouldStoreFormUpdatedNotificationHistoryWhenMessageSent() throws MessagingException {
     FormUpdateEvent event = new FormUpdateEvent(FORM_NAME, FORM_SUBMITTED, PERSON_ID,
         FORM_TYPE, FORM_UPDATED_AT, FORM_CONTENT);
-    when(userAccountService.getUserDetails(USER_ID)).thenReturn(
+    when(userAccountService.getUserDetailsById(USER_ID)).thenReturn(
         new UserDetails(true, EMAIL, TITLE, FAMILY_NAME, GIVEN_NAME, GMC));
 
     listener.handleFormUpdate(event);

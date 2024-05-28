@@ -99,7 +99,7 @@ public class UserAccountListener {
     UUID userId = event.userId();
     log.info("Handling account update event for user {}.", userId);
 
-    UserDetails userDetails = userAccountService.getUserDetails(userId.toString());
+    UserDetails userDetails = userAccountService.getUserDetailsById(userId.toString());
 
     Map<String, Object> newEmailVariables = new HashMap<>();
     newEmailVariables.put("familyName", userDetails.familyName());

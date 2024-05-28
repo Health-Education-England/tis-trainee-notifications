@@ -121,7 +121,7 @@ class ConditionsOfJoiningListenerIntegrationTest {
       throws Exception {
     CojSignedEvent event = new CojSignedEvent(PERSON_ID,
         new ConditionsOfJoining(null));
-    when(userAccountService.getUserDetails(USER_ID)).thenReturn(
+    when(userAccountService.getUserDetailsById(USER_ID)).thenReturn(
         new UserDetails(true, EMAIL, TITLE, missingValue, missingValue, GMC));
 
     // Spy on the email service and inject a missing domain.
@@ -167,7 +167,7 @@ class ConditionsOfJoiningListenerIntegrationTest {
   void shouldSendFullyTailoredCojConfirmationWhenAllTemplateVariablesAvailable() throws Exception {
     CojSignedEvent event = new CojSignedEvent(PERSON_ID,
         new ConditionsOfJoining(SYNCED_AT));
-    when(userAccountService.getUserDetails(USER_ID)).thenReturn(
+    when(userAccountService.getUserDetailsById(USER_ID)).thenReturn(
         new UserDetails(true, EMAIL, TITLE, FAMILY_NAME, GIVEN_NAME, GMC));
 
     listener.handleConditionsOfJoiningReceived(event);
@@ -207,7 +207,7 @@ class ConditionsOfJoiningListenerIntegrationTest {
   void shouldSendCojConfirmationWithTailoredNameWhenAvailable() throws Exception {
     CojSignedEvent event = new CojSignedEvent(PERSON_ID,
         new ConditionsOfJoining(null));
-    when(userAccountService.getUserDetails(USER_ID)).thenReturn(
+    when(userAccountService.getUserDetailsById(USER_ID)).thenReturn(
         new UserDetails(true, EMAIL, TITLE, FAMILY_NAME, GIVEN_NAME, GMC));
 
     listener.handleConditionsOfJoiningReceived(event);
@@ -243,7 +243,7 @@ class ConditionsOfJoiningListenerIntegrationTest {
   void shouldSendCojConfirmationWithTailoredLocalOfficeWhenAvailable() throws Exception {
     CojSignedEvent event = new CojSignedEvent(PERSON_ID,
         new ConditionsOfJoining(null));
-    when(userAccountService.getUserDetails(USER_ID)).thenReturn(
+    when(userAccountService.getUserDetailsById(USER_ID)).thenReturn(
         new UserDetails(true, EMAIL, TITLE, null, null, GMC));
 
     listener.handleConditionsOfJoiningReceived(event);
@@ -281,7 +281,7 @@ class ConditionsOfJoiningListenerIntegrationTest {
   void shouldSendCojConfirmationWithTailoredSyncedAtWhenAvailable() throws Exception {
     CojSignedEvent event = new CojSignedEvent(PERSON_ID,
         new ConditionsOfJoining(SYNCED_AT));
-    when(userAccountService.getUserDetails(USER_ID)).thenReturn(
+    when(userAccountService.getUserDetailsById(USER_ID)).thenReturn(
         new UserDetails(true, EMAIL, TITLE, null, null, GMC));
 
     listener.handleConditionsOfJoiningReceived(event);
@@ -319,7 +319,7 @@ class ConditionsOfJoiningListenerIntegrationTest {
   void shouldSendCojConfirmationWithTailoredDomainWhenAvailable() throws Exception {
     CojSignedEvent event = new CojSignedEvent(PERSON_ID,
         new ConditionsOfJoining(null));
-    when(userAccountService.getUserDetails(USER_ID)).thenReturn(
+    when(userAccountService.getUserDetailsById(USER_ID)).thenReturn(
         new UserDetails(true, EMAIL, TITLE, null, null, GMC));
 
     listener.handleConditionsOfJoiningReceived(event);
@@ -355,7 +355,7 @@ class ConditionsOfJoiningListenerIntegrationTest {
   void shouldStoreCojReceivedNotificationHistoryWhenMessageSent() throws MessagingException {
     CojSignedEvent event = new CojSignedEvent(PERSON_ID,
         new ConditionsOfJoining(SYNCED_AT));
-    when(userAccountService.getUserDetails(USER_ID)).thenReturn(
+    when(userAccountService.getUserDetailsById(USER_ID)).thenReturn(
         new UserDetails(true, EMAIL, TITLE, FAMILY_NAME, GIVEN_NAME, GMC));
 
     listener.handleConditionsOfJoiningReceived(event);

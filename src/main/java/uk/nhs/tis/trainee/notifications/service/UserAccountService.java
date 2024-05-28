@@ -35,10 +35,10 @@ import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StopWatch;
 import software.amazon.awssdk.services.cognitoidentityprovider.CognitoIdentityProviderClient;
-import software.amazon.awssdk.services.cognitoidentityprovider.model.AdminGetUserRequest;
-import software.amazon.awssdk.services.cognitoidentityprovider.model.AdminGetUserResponse;
 import software.amazon.awssdk.services.cognitoidentityprovider.model.AttributeType;
 import software.amazon.awssdk.services.cognitoidentityprovider.model.ListUsersRequest;
+import software.amazon.awssdk.services.cognitoidentityprovider.model.ListUsersResponse;
+import software.amazon.awssdk.services.cognitoidentityprovider.model.UserNotFoundException;
 import software.amazon.awssdk.services.cognitoidentityprovider.model.UserType;
 import software.amazon.awssdk.services.cognitoidentityprovider.paginators.ListUsersIterable;
 import uk.nhs.tis.trainee.notifications.dto.UserDetails;
@@ -123,19 +123,51 @@ public class UserAccountService {
   }
 
   /**
+   * Get the user account details for a given user email.
+   *
+   * @param email The user email to get the account details for.
+   * @return The found user account details.
+   */
+  public UserDetails getUserDetailsByEmail(String email) {
+    log.info("Getting user details for account email {}", email);
+    ListUsersRequest request = ListUsersRequest.builder()
+        .userPoolId(userPoolId)
+        .filter(String.format("email=\"%s\"", email))
+        .build();
+
+    return getUserDetails(request);
+  }
+
+  /**
    * Get the user account details for a given user ID.
    *
    * @param userAccountId The user ID to get the details of.
    * @return The found user account details.
    */
-  public UserDetails getUserDetails(String userAccountId) {
-    log.info("Getting user details for account {}", userAccountId);
-    AdminGetUserRequest request = AdminGetUserRequest.builder()
+  public UserDetails getUserDetailsById(String userAccountId) {
+    log.info("Getting user details for account ID {}", userAccountId);
+    ListUsersRequest request = ListUsersRequest.builder()
         .userPoolId(userPoolId)
-        .username(userAccountId)
+        .filter(String.format("sub=\"%s\"", userAccountId))
         .build();
-    AdminGetUserResponse response = cognitoClient.adminGetUser(request);
-    Map<String, String> attributes = response.userAttributes().stream()
+
+    return getUserDetails(request);
+  }
+
+  /**
+   * Get the user account details.
+   *
+   * @param request The get user request to use.
+   * @return The found user account details.
+   */
+  private UserDetails getUserDetails(ListUsersRequest request) {
+    ListUsersResponse response = cognitoClient.listUsers(request);
+
+    if (!response.hasUsers()) {
+      throw UserNotFoundException.builder().message("No matching user exists.").build();
+    }
+
+    Map<String, String> attributes = response.users().get(0).attributes().stream()
         .collect(Collectors.toMap(AttributeType::name, AttributeType::value));
 
     return new UserDetails(

@@ -91,7 +91,7 @@ class UserAccountListenerTest {
   @ValueSource(strings = {"EMAIL_UPDATED_OLD", "EMAIL_UPDATED_NEW"})
   void shouldThrowExceptionWhenEmailUpdateNotificationFails(NotificationType notificationType)
       throws MessagingException {
-    when(userAccountService.getUserDetails(USER_ID.toString())).thenReturn(
+    when(userAccountService.getUserDetailsById(USER_ID.toString())).thenReturn(
         UserDetails.builder().build());
 
     doThrow(MessagingException.class).when(emailService)
@@ -106,7 +106,7 @@ class UserAccountListenerTest {
     UserDetails userDetails = UserDetails.builder()
         .familyName(FAMILY_NAME)
         .build();
-    when(userAccountService.getUserDetails(USER_ID.toString())).thenReturn(userDetails);
+    when(userAccountService.getUserDetailsById(USER_ID.toString())).thenReturn(userDetails);
 
     AccountUpdatedEvent event = new AccountUpdatedEvent(USER_ID, TRAINEE_ID, EMAIL_OLD, EMAIL);
     listener.handleAccountUpdate(event);
@@ -128,7 +128,7 @@ class UserAccountListenerTest {
     UserDetails userDetails = UserDetails.builder()
         .familyName(FAMILY_NAME)
         .build();
-    when(userAccountService.getUserDetails(USER_ID.toString())).thenReturn(userDetails);
+    when(userAccountService.getUserDetailsById(USER_ID.toString())).thenReturn(userDetails);
 
     AccountUpdatedEvent event = new AccountUpdatedEvent(USER_ID, TRAINEE_ID, EMAIL_OLD, EMAIL);
     listener.handleAccountUpdate(event);
