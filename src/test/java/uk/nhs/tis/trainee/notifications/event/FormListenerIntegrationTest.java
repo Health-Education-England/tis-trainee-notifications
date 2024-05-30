@@ -97,6 +97,12 @@ class FormListenerIntegrationTest {
       + "updated.";
   private static final String DEFAULT_NEXT_STEPS = "If this is unexpected then please contact your "
       + "local NHS England office for further details.";
+  private static final String DEFAULT_DISCLAIMER = "This email is intended only for use by the "
+      + "named addressee. It may contain confidential and/or privileged information. If you are "
+      + "not the intended recipient, you should contact us immediately and should not disclose, "
+      + "use, or rely on this email. We do not accept any liability arising from a third-party "
+      + "taking action, or refraining from taking action, on the basis of information contained "
+      + "in this email. Thank you.";
 
   @MockBean
   private JavaMailSender mailSender;
@@ -149,14 +155,19 @@ class FormListenerIntegrationTest {
     Document content = Jsoup.parse((String) message.getContent());
 
     Elements bodyChildren = content.body().children();
-    assertThat("Unexpected body children count.", bodyChildren.size(), is(2));
+    assertThat("Unexpected body children count.", bodyChildren.size(), is(5));
 
-    Element greeting = bodyChildren.get(0);
-    assertThat("Unexpected element tag.", greeting.tagName(), is("p"));
+    Element logo = bodyChildren.get(0);
+    assertThat("Unexpected element tag.", logo.tagName(), is("div"));
+
+    Element greeting = bodyChildren.get(1);
     assertThat("Unexpected greeting.", greeting.text(), is(DEFAULT_GREETING));
 
     assertThat("Unexpected missing event content.", content.getElementById("OTHER"),
         notNullValue());
+
+    Element disclaimer = bodyChildren.get(4);
+    assertThat("Unexpected disclaimer.", disclaimer.text(), is(DEFAULT_DISCLAIMER));
 
     Element eventDetail = content.getElementById("OTHER").children().get(0);
     assertThat("Unexpected element tag.", eventDetail.tagName(), is("p"));
@@ -187,11 +198,16 @@ class FormListenerIntegrationTest {
     Document content = Jsoup.parse((String) message.getContent());
 
     Elements bodyChildren = content.body().children();
-    assertThat("Unexpected body children count.", bodyChildren.size(), is(2));
+    assertThat("Unexpected body children count.", bodyChildren.size(), is(5));
 
-    Element greeting = bodyChildren.get(0);
-    assertThat("Unexpected element tag.", greeting.tagName(), is("p"));
+    Element logo = bodyChildren.get(0);
+    assertThat("Unexpected element tag.", logo.tagName(), is("div"));
+
+    Element greeting = bodyChildren.get(1);
     assertThat("Unexpected greeting.", greeting.text(), is("Dear Dr Gilliam,"));
+
+    Element disclaimer = bodyChildren.get(4);
+    assertThat("Unexpected disclaimer.", disclaimer.text(), is(DEFAULT_DISCLAIMER));
 
     assertThat("Unexpected missing event content.", content.getElementById(FORM_SUBMITTED),
         notNullValue());
@@ -231,14 +247,19 @@ class FormListenerIntegrationTest {
     Document content = Jsoup.parse((String) message.getContent());
 
     Elements bodyChildren = content.body().children();
-    assertThat("Unexpected body children count.", bodyChildren.size(), is(2));
+    assertThat("Unexpected body children count.", bodyChildren.size(), is(5));
 
-    Element greeting = bodyChildren.get(0);
-    assertThat("Unexpected element tag.", greeting.tagName(), is("p"));
+    Element logo = bodyChildren.get(0);
+    assertThat("Unexpected element tag.", logo.tagName(), is("div"));
+
+    Element greeting = bodyChildren.get(1);
     assertThat("Unexpected greeting.", greeting.text(), is("Dear Dr Gilliam,"));
 
     assertThat("Unexpected missing event content.", content.getElementById(FORM_UNSUBMITTED),
         notNullValue());
+
+    Element disclaimer = bodyChildren.get(4);
+    assertThat("Unexpected disclaimer.", disclaimer.text(), is(DEFAULT_DISCLAIMER));
 
     Element eventDetail = content.getElementById(FORM_UNSUBMITTED).children().get(0);
     assertThat("Unexpected element tag.", eventDetail.tagName(), is("p"));
@@ -275,14 +296,19 @@ class FormListenerIntegrationTest {
     Document content = Jsoup.parse((String) message.getContent());
 
     Elements bodyChildren = content.body().children();
-    assertThat("Unexpected body children count.", bodyChildren.size(), is(2));
+    assertThat("Unexpected body children count.", bodyChildren.size(), is(5));
 
-    Element greeting = bodyChildren.get(0);
-    assertThat("Unexpected element tag.", greeting.tagName(), is("p"));
+    Element logo = bodyChildren.get(0);
+    assertThat("Unexpected element tag.", logo.tagName(), is("div"));
+
+    Element greeting = bodyChildren.get(1);
     assertThat("Unexpected greeting.", greeting.text(), is("Dear Dr Gilliam,"));
 
     assertThat("Unexpected missing event content.", content.getElementById(FORM_DELETED),
         notNullValue());
+
+    Element disclaimer = bodyChildren.get(4);
+    assertThat("Unexpected disclaimer.", disclaimer.text(), is(DEFAULT_DISCLAIMER));
 
     Element eventDetail = content.getElementById(FORM_DELETED).children().get(0);
     assertThat("Unexpected element tag.", eventDetail.tagName(), is("p"));

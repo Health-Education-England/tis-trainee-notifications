@@ -96,6 +96,12 @@ class CredentialListenerIntegrationTest {
       + " credential has been revoked due to a change made by your local NHS England office.";
   private static final String DEFAULT_NEXT_STEPS = "To review the change and re-issue the"
       + " credential, please visit TIS Self-Service.";
+  private static final String DEFAULT_DISCLAIMER = "This email is intended only for use by the "
+      + "named addressee. It may contain confidential and/or privileged information. If you are "
+      + "not the intended recipient, you should contact us immediately and should not disclose, "
+      + "use, or rely on this email. We do not accept any liability arising from a third-party "
+      + "taking action, or refraining from taking action, on the basis of information contained "
+      + "in this email. Thank you.";
 
   @MockBean
   private JavaMailSender mailSender;
@@ -148,19 +154,24 @@ class CredentialListenerIntegrationTest {
 
     Document content = Jsoup.parse((String) message.getContent());
     Elements bodyChildren = content.body().children();
-    assertThat("Unexpected body children count.", bodyChildren.size(), is(3));
+    assertThat("Unexpected body children count.", bodyChildren.size(), is(6));
 
-    Element greeting = bodyChildren.get(0);
-    assertThat("Unexpected element tag.", greeting.tagName(), is("p"));
+    Element logo = bodyChildren.get(0);
+    assertThat("Unexpected element tag.", logo.tagName(), is("div"));
+
+    Element greeting = bodyChildren.get(1);
     assertThat("Unexpected greeting.", greeting.text(), is(DEFAULT_GREETING));
 
-    Element eventDetail = bodyChildren.get(1);
+    Element eventDetail = bodyChildren.get(2);
     assertThat("Unexpected element tag.", eventDetail.tagName(), is("p"));
     assertThat("Unexpected event detail.", eventDetail.text(), is(DEFAULT_DETAIL));
 
-    Element nextSteps = bodyChildren.get(2);
+    Element nextSteps = bodyChildren.get(3);
     assertThat("Unexpected element tag.", nextSteps.tagName(), is("p"));
     assertThat("Unexpected next steps.", nextSteps.text(), is(DEFAULT_NEXT_STEPS));
+
+    Element disclaimer = bodyChildren.get(5);
+    assertThat("Unexpected disclaimer.", disclaimer.text(), is(DEFAULT_DISCLAIMER));
 
     Elements nextStepsLinks = nextSteps.getElementsByTag("a");
     assertThat("Unexpected next steps link count.", nextStepsLinks.size(), is(1));
@@ -185,23 +196,28 @@ class CredentialListenerIntegrationTest {
 
     Document content = Jsoup.parse((String) message.getContent());
     Elements bodyChildren = content.body().children();
-    assertThat("Unexpected body children count.", bodyChildren.size(), is(3));
+    assertThat("Unexpected body children count.", bodyChildren.size(), is(6));
 
-    Element greeting = bodyChildren.get(0);
-    assertThat("Unexpected element tag.", greeting.tagName(), is("p"));
+    Element logo = bodyChildren.get(0);
+    assertThat("Unexpected element tag.", logo.tagName(), is("div"));
+
+    Element greeting = bodyChildren.get(1);
     assertThat("Unexpected greeting.", greeting.text(), is("Dear Dr Gilliam,"));
 
-    Element eventDetail = bodyChildren.get(1);
+    Element eventDetail = bodyChildren.get(2);
     assertThat("Unexpected element tag.", eventDetail.tagName(), is("p"));
     assertThat("Unexpected event detail.", eventDetail.text(),
         is("You previously issued a TestCredential DSP credential on 01 January 2024, this"
             + " credential has been revoked due to a change made by your local NHS England"
             + " office."));
 
-    Element nextSteps = bodyChildren.get(2);
+    Element nextSteps = bodyChildren.get(3);
     assertThat("Unexpected element tag.", nextSteps.tagName(), is("p"));
     assertThat("Unexpected next steps.", nextSteps.text(),
         is("To review the change and re-issue the credential, please visit TIS Self-Service."));
+
+    Element disclaimer = bodyChildren.get(5);
+    assertThat("Unexpected disclaimer.", disclaimer.text(), is(DEFAULT_DISCLAIMER));
 
     Elements nextStepsLinks = nextSteps.getElementsByTag("a");
     assertThat("Unexpected next steps link count.", nextStepsLinks.size(), is(1));
@@ -225,19 +241,24 @@ class CredentialListenerIntegrationTest {
 
     Document content = Jsoup.parse((String) message.getContent());
     Elements bodyChildren = content.body().children();
-    assertThat("Unexpected body children count.", bodyChildren.size(), is(3));
+    assertThat("Unexpected body children count.", bodyChildren.size(), is(6));
 
-    Element greeting = bodyChildren.get(0);
-    assertThat("Unexpected element tag.", greeting.tagName(), is("p"));
+    Element logo = bodyChildren.get(0);
+    assertThat("Unexpected element tag.", logo.tagName(), is("div"));
+
+    Element greeting = bodyChildren.get(1);
     assertThat("Unexpected greeting.", greeting.text(), is("Dear Dr Gilliam,"));
 
-    Element eventDetail = bodyChildren.get(1);
+    Element eventDetail = bodyChildren.get(2);
     assertThat("Unexpected element tag.", eventDetail.tagName(), is("p"));
     assertThat("Unexpected event detail.", eventDetail.text(), is(DEFAULT_DETAIL));
 
-    Element nextSteps = bodyChildren.get(2);
+    Element nextSteps = bodyChildren.get(3);
     assertThat("Unexpected element tag.", nextSteps.tagName(), is("p"));
     assertThat("Unexpected next steps.", nextSteps.text(), is(DEFAULT_NEXT_STEPS));
+
+    Element disclaimer = bodyChildren.get(5);
+    assertThat("Unexpected disclaimer.", disclaimer.text(), is(DEFAULT_DISCLAIMER));
 
     Elements nextStepsLinks = nextSteps.getElementsByTag("a");
     assertThat("Unexpected next steps link count.", nextStepsLinks.size(), is(1));
@@ -264,21 +285,26 @@ class CredentialListenerIntegrationTest {
 
     Document content = Jsoup.parse((String) message.getContent());
     Elements bodyChildren = content.body().children();
-    assertThat("Unexpected body children count.", bodyChildren.size(), is(3));
+    assertThat("Unexpected body children count.", bodyChildren.size(), is(6));
 
-    Element greeting = bodyChildren.get(0);
-    assertThat("Unexpected element tag.", greeting.tagName(), is("p"));
+    Element logo = bodyChildren.get(0);
+    assertThat("Unexpected element tag.", logo.tagName(), is("div"));
+
+    Element greeting = bodyChildren.get(1);
     assertThat("Unexpected greeting.", greeting.text(), is(DEFAULT_GREETING));
 
-    Element eventDetail = bodyChildren.get(1);
+    Element eventDetail = bodyChildren.get(2);
     assertThat("Unexpected element tag.", eventDetail.tagName(), is("p"));
     assertThat("Unexpected event detail.", eventDetail.text(),
         is("You previously issued a " + credentialType + " DSP credential, this credential has been"
             + " revoked due to a change made by your local NHS England office."));
 
-    Element nextSteps = bodyChildren.get(2);
+    Element nextSteps = bodyChildren.get(3);
     assertThat("Unexpected element tag.", nextSteps.tagName(), is("p"));
     assertThat("Unexpected next steps.", nextSteps.text(), is(DEFAULT_NEXT_STEPS));
+
+    Element disclaimer = bodyChildren.get(5);
+    assertThat("Unexpected disclaimer.", disclaimer.text(), is(DEFAULT_DISCLAIMER));
 
     Elements nextStepsLinks = nextSteps.getElementsByTag("a");
     assertThat("Unexpected next steps link count.", nextStepsLinks.size(), is(1));
@@ -303,21 +329,26 @@ class CredentialListenerIntegrationTest {
 
     Document content = Jsoup.parse((String) message.getContent());
     Elements bodyChildren = content.body().children();
-    assertThat("Unexpected body children count.", bodyChildren.size(), is(3));
+    assertThat("Unexpected body children count.", bodyChildren.size(), is(6));
 
-    Element greeting = bodyChildren.get(0);
-    assertThat("Unexpected element tag.", greeting.tagName(), is("p"));
+    Element logo = bodyChildren.get(0);
+    assertThat("Unexpected element tag.", logo.tagName(), is("div"));
+
+    Element greeting = bodyChildren.get(1);
     assertThat("Unexpected greeting.", greeting.text(), is(DEFAULT_GREETING));
 
-    Element eventDetail = bodyChildren.get(1);
+    Element eventDetail = bodyChildren.get(2);
     assertThat("Unexpected element tag.", eventDetail.tagName(), is("p"));
     assertThat("Unexpected event detail.", eventDetail.text(),
         is("You previously issued a DSP credential on 01 January 2024, this credential has been"
             + " revoked due to a change made by your local NHS England office."));
 
-    Element nextSteps = bodyChildren.get(2);
+    Element nextSteps = bodyChildren.get(3);
     assertThat("Unexpected element tag.", nextSteps.tagName(), is("p"));
     assertThat("Unexpected next steps.", nextSteps.text(), is(DEFAULT_NEXT_STEPS));
+
+    Element disclaimer = bodyChildren.get(5);
+    assertThat("Unexpected disclaimer.", disclaimer.text(), is(DEFAULT_DISCLAIMER));
 
     Elements nextStepsLinks = nextSteps.getElementsByTag("a");
     assertThat("Unexpected next steps link count.", nextStepsLinks.size(), is(1));
@@ -341,19 +372,24 @@ class CredentialListenerIntegrationTest {
 
     Document content = Jsoup.parse((String) message.getContent());
     Elements bodyChildren = content.body().children();
-    assertThat("Unexpected body children count.", bodyChildren.size(), is(3));
+    assertThat("Unexpected body children count.", bodyChildren.size(), is(6));
 
-    Element greeting = bodyChildren.get(0);
-    assertThat("Unexpected element tag.", greeting.tagName(), is("p"));
+    Element logo = bodyChildren.get(0);
+    assertThat("Unexpected element tag.", logo.tagName(), is("div"));
+
+    Element greeting = bodyChildren.get(1);
     assertThat("Unexpected greeting.", greeting.text(), is(DEFAULT_GREETING));
 
-    Element eventDetail = bodyChildren.get(1);
+    Element eventDetail = bodyChildren.get(2);
     assertThat("Unexpected element tag.", eventDetail.tagName(), is("p"));
     assertThat("Unexpected event detail.", eventDetail.text(), is(DEFAULT_DETAIL));
 
-    Element nextSteps = bodyChildren.get(2);
+    Element nextSteps = bodyChildren.get(3);
     assertThat("Unexpected element tag.", nextSteps.tagName(), is("p"));
     assertThat("Unexpected next steps.", nextSteps.text(), is(DEFAULT_NEXT_STEPS));
+
+    Element disclaimer = bodyChildren.get(5);
+    assertThat("Unexpected disclaimer.", disclaimer.text(), is(DEFAULT_DISCLAIMER));
 
     Elements nextStepsLinks = nextSteps.getElementsByTag("a");
     assertThat("Unexpected next steps link count.", nextStepsLinks.size(), is(1));
@@ -379,7 +415,7 @@ class CredentialListenerIntegrationTest {
     Document content = Jsoup.parse((String) message.getContent());
     Elements bodyChildren = content.body().children();
 
-    Element nextSteps = bodyChildren.get(2);
+    Element nextSteps = bodyChildren.get(3);
     assertThat("Unexpected element tag.", nextSteps.tagName(), is("p"));
     assertThat("Unexpected next steps.", nextSteps.text(), is(DEFAULT_NEXT_STEPS));
 
@@ -407,7 +443,7 @@ class CredentialListenerIntegrationTest {
     Document content = Jsoup.parse((String) message.getContent());
     Elements bodyChildren = content.body().children();
 
-    Element nextSteps = bodyChildren.get(2);
+    Element nextSteps = bodyChildren.get(3);
     assertThat("Unexpected element tag.", nextSteps.tagName(), is("p"));
     assertThat("Unexpected next steps.", nextSteps.text(), is(DEFAULT_NEXT_STEPS));
 
