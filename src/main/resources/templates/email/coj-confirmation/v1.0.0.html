@@ -11,6 +11,7 @@
     <h2>Content</h2>
     <th:block th:fragment="content">
       <div th:replace="fragments/retry/v1.0.0 :: body"></div>
+      <div style="text-align:right"><img style="margin-right:25px" src='https://trainee.tis.nhs.uk/nhse-logo.png' alt="NHS England logo"/></div>
       <p th:replace="~{fragments/greeting/v1.0.0 :: p}"></p>
       <p>
         We want to inform you that your local NHS England office has received your signed Conditions of Joining<span
@@ -24,6 +25,7 @@
           >TIS Self-Service</a
         >.
       </p>
+      <div th:replace="fragments/disclaimer/v1.0.0 :: body"></div>
     </th:block>
   </body>
 </html>
