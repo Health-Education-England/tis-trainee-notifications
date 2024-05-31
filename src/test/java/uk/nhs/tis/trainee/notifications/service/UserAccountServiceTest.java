@@ -32,6 +32,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
@@ -252,6 +253,16 @@ class UserAccountServiceTest {
   void shouldThrowExceptionGettingUserDetailsWhenUserNotFoundByEmail() {
     when(cognitoClient.listUsers(any(ListUsersRequest.class))).thenReturn(
         ListUsersResponse.builder().build());
+
+    assertThrows(UserNotFoundException.class, () -> service.getUserDetailsByEmail(EMAIL));
+  }
+
+  @Test
+  void shouldThrowExceptionGettingUserDetailsWhenUsersFoundByEmailIsEmptyCollection() {
+    ListUsersResponse listUsersResponse
+        = ListUsersResponse.builder().users(new ArrayList<>()).build();
+    when(cognitoClient.listUsers(any(ListUsersRequest.class))).thenReturn(
+        listUsersResponse);
 
     assertThrows(UserNotFoundException.class, () -> service.getUserDetailsByEmail(EMAIL));
   }

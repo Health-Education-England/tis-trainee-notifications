@@ -163,7 +163,7 @@ public class UserAccountService {
   private UserDetails getUserDetails(ListUsersRequest request) {
     ListUsersResponse response = cognitoClient.listUsers(request);
 
-    if (!response.hasUsers()) {
+    if (!response.hasUsers() || response.users().isEmpty()) {
       throw UserNotFoundException.builder().message("No matching user exists.").build();
     }
 
