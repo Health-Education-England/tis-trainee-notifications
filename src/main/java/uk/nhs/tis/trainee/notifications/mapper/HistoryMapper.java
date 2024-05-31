@@ -84,6 +84,45 @@ public interface HistoryMapper {
   HistoryDto toDto(History entity, String subjectText);
 
   /**
+   * Convert a history entity to a history DTO.
+   *
+   * @param entity The history entity to convert.
+   * @param status A pre-generated status for in-app.
+   * @return The converted history DTOs.
+   */
+  @Mapping(target = "id", expression = "java(entity.id().toString())")
+  @Mapping(target = "type", source = "entity.recipient.type")
+  @Mapping(target = "tisReference", source = "entity.tisReference")
+  @Mapping(target = "subject", source = "entity.type")
+  @Mapping(target = "subjectText", ignore = true)
+  @Mapping(target = "contact", source = "entity.recipient.contact")
+  @Mapping(target = "sentAt", source = "entity.sentAt")
+  @Mapping(target = "readAt", source = "entity.readAt")
+  @Mapping(target = "status", source = "status")
+  @Mapping(target = "statusDetail", source = "entity.statusDetail")
+  HistoryDto toDto(History entity, NotificationStatus status);
+
+  /**
+   * Convert a history entity to a history DTO.
+   *
+   * @param entity      The history entity to convert.
+   * @param subjectText A pre-generated subject text.
+   * @param status A pre-generated status for in-app.
+   * @return The converted history DTOs.
+   */
+  @Mapping(target = "id", expression = "java(entity.id().toString())")
+  @Mapping(target = "type", source = "entity.recipient.type")
+  @Mapping(target = "tisReference", source = "entity.tisReference")
+  @Mapping(target = "subject", source = "entity.type")
+  @Mapping(target = "subjectText", source = "subjectText")
+  @Mapping(target = "contact", source = "entity.recipient.contact")
+  @Mapping(target = "sentAt", source = "entity.sentAt")
+  @Mapping(target = "readAt", source = "entity.readAt")
+  @Mapping(target = "status", source = "status")
+  @Mapping(target = "statusDetail", source = "entity.statusDetail")
+  HistoryDto toDto(History entity, String subjectText, NotificationStatus status);
+
+  /**
    * Update the status of the given history entity.
    *
    * @param entity The history to update the status of.

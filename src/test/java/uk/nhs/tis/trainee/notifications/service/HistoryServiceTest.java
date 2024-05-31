@@ -37,7 +37,9 @@ import static org.mockito.Mockito.when;
 import static uk.nhs.tis.trainee.notifications.model.MessageType.EMAIL;
 import static uk.nhs.tis.trainee.notifications.model.MessageType.IN_APP;
 import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.FAILED;
+import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.SCHEDULED;
 import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.SENT;
+import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.UNREAD;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.COJ_CONFIRMATION;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_CREATED;
 
@@ -155,7 +157,7 @@ class HistoryServiceTest {
 
   @ParameterizedTest
   @EnumSource(value = NotificationStatus.class, mode = Mode.EXCLUDE, names = {"ARCHIVED", "READ",
-      "UNREAD"})
+      "SCHEDULED", "UNREAD"})
   void shouldUpdateValidStatusWhenEmailHistoryFound(NotificationStatus status) {
     ObjectId notificationId = new ObjectId(NOTIFICATION_ID);
     RecipientInfo recipientInfo = new RecipientInfo(TRAINEE_ID, EMAIL, TRAINEE_CONTACT);
@@ -190,7 +192,7 @@ class HistoryServiceTest {
 
   @ParameterizedTest
   @EnumSource(value = NotificationStatus.class, mode = Mode.EXCLUDE, names = {"ARCHIVED", "READ",
-      "UNREAD"})
+      "SCHEDULED", "UNREAD"})
   void shouldThrowExceptionWhenUpdatingInAppHistoryWithInvalidStatus(NotificationStatus status) {
     ObjectId notificationId = new ObjectId(NOTIFICATION_ID);
     RecipientInfo recipientInfo = new RecipientInfo(TRAINEE_ID, IN_APP, TRAINEE_CONTACT);
@@ -275,7 +277,7 @@ class HistoryServiceTest {
 
   @ParameterizedTest
   @EnumSource(value = NotificationStatus.class, mode = Mode.EXCLUDE, names = {"ARCHIVED", "READ",
-      "UNREAD"})
+      "SCHEDULED", "UNREAD"})
   void shouldUpdateValidStatusForTraineeWhenEmailHistoryFound(NotificationStatus status) {
     ObjectId notificationId = new ObjectId(NOTIFICATION_ID);
     RecipientInfo recipientInfo = new RecipientInfo(TRAINEE_ID, EMAIL, TRAINEE_CONTACT);
@@ -310,7 +312,7 @@ class HistoryServiceTest {
 
   @ParameterizedTest
   @EnumSource(value = NotificationStatus.class, mode = Mode.EXCLUDE, names = {"ARCHIVED", "READ",
-      "UNREAD"})
+      "SCHEDULED", "UNREAD"})
   void shouldThrowExceptionWhenUpdatingInAppHistoryForTraineeWithInvalidStatus(
       NotificationStatus status) {
     ObjectId notificationId = new ObjectId(NOTIFICATION_ID);
@@ -757,6 +759,66 @@ class HistoryServiceTest {
 
     HistoryDto historyDto = historyDtos.get(0);
     assertThat("Unexpected history subject text.", historyDto.subjectText(), nullValue());
+  }
+
+  @ParameterizedTest
+  @EnumSource(NotificationType.class)
+  void shouldSetScheduledStatusInFoundHistoryWhenInAppNotificationWithFutureSentAt(
+      NotificationType notificationType) {
+    RecipientInfo recipientInfo = new RecipientInfo(TRAINEE_ID, IN_APP, TRAINEE_CONTACT);
+    TemplateInfo templateInfo = new TemplateInfo(TEMPLATE_NAME, TEMPLATE_VERSION,
+        TEMPLATE_VARIABLES);
+    TisReferenceInfo tisReferenceInfo = new TisReferenceInfo(TIS_REFERENCE_TYPE, TIS_REFERENCE_ID);
+
+    ObjectId id1 = ObjectId.get();
+    History history1 = new History(id1, tisReferenceInfo, notificationType, recipientInfo,
+        templateInfo, Instant.MAX, null, UNREAD, null, null);
+
+    when(repository.findAllByRecipient_IdOrderBySentAtDesc(TRAINEE_ID)).thenReturn(
+        List.of(history1));
+
+    String templatePath = "type/test/template/v1.2.3";
+    when(templateService.getTemplatePath(IN_APP, TEMPLATE_NAME, TEMPLATE_VERSION)).thenReturn(
+        templatePath);
+    when(templateService.process(templatePath, Set.of("subject"), TEMPLATE_VARIABLES)).thenReturn(
+        "rebuiltSubject");
+
+    List<HistoryDto> historyDtos = service.findAllForTrainee(TRAINEE_ID);
+
+    assertThat("Unexpected history count.", historyDtos.size(), is(1));
+
+    HistoryDto historyDto = historyDtos.get(0);
+    assertThat("Unexpected history status.", historyDto.status(), is(SCHEDULED));
+  }
+
+  @ParameterizedTest
+  @EnumSource(NotificationType.class)
+  void shouldNotChangeStatusInFoundHistoryWhenInAppNotificationWithPastSentAt(
+      NotificationType notificationType) {
+    RecipientInfo recipientInfo = new RecipientInfo(TRAINEE_ID, IN_APP, TRAINEE_CONTACT);
+    TemplateInfo templateInfo = new TemplateInfo(TEMPLATE_NAME, TEMPLATE_VERSION,
+        TEMPLATE_VARIABLES);
+    TisReferenceInfo tisReferenceInfo = new TisReferenceInfo(TIS_REFERENCE_TYPE, TIS_REFERENCE_ID);
+
+    ObjectId id1 = ObjectId.get();
+    History history1 = new History(id1, tisReferenceInfo, notificationType, recipientInfo,
+        templateInfo, Instant.MIN, null, UNREAD, null, null);
+
+    when(repository.findAllByRecipient_IdOrderBySentAtDesc(TRAINEE_ID)).thenReturn(
+        List.of(history1));
+
+    String templatePath = "type/test/template/v1.2.3";
+    when(templateService.getTemplatePath(IN_APP, TEMPLATE_NAME, TEMPLATE_VERSION)).thenReturn(
+        templatePath);
+    when(templateService.process(templatePath, Set.of("subject"), TEMPLATE_VARIABLES)).thenReturn(
+        "rebuiltSubject");
+
+    List<HistoryDto> historyDtos = service.findAllForTrainee(TRAINEE_ID);
+
+    assertThat("Unexpected history count.", historyDtos.size(), is(1));
+
+    HistoryDto historyDto = historyDtos.get(0);
+    assertThat("Unexpected history status.", historyDto.status(), is(UNREAD));
   }
 
   @Test
