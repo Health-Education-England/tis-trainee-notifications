@@ -45,6 +45,8 @@ import uk.nhs.tis.trainee.notifications.model.History;
 @Service
 public class EventBroadcastService {
 
+  public final static String MESSAGE_GROUP_ID_PREFIX = "notifications_event";
+
   private final SnsClient snsClient;
 
   private final EventNotificationProperties eventNotificationProperties;
@@ -111,7 +113,7 @@ public class EventBroadcastService {
 
     if (snsTopic.arn().endsWith(".fifo")) {
       // Create a message group to ensure FIFO per unique object.
-      String messageGroup = String.format("%s_%s_%s", "notifications", "event", id);
+      String messageGroup = String.format("%s_%s", MESSAGE_GROUP_ID_PREFIX, id);
       request.messageGroupId(messageGroup);
     }
 
