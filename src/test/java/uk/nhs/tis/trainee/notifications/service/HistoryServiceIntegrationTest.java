@@ -44,11 +44,13 @@ import org.bson.types.ObjectId;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.ActiveProfiles;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -84,6 +86,9 @@ class HistoryServiceIntegrationTest {
   private static final Instant SENT_AT = Instant.now().truncatedTo(ChronoUnit.MILLIS);
   private static final Instant READ_AT = Instant.now().plus(Duration.ofDays(1))
       .truncatedTo(ChronoUnit.MILLIS);
+
+  @MockBean
+  EventBroadcastService eventBroadcastService;
 
   @Autowired
   private HistoryService service;
