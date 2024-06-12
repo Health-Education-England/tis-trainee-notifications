@@ -60,6 +60,7 @@ public class HistoryService {
 
   private final HistoryRepository repository;
   private final TemplateService templateService;
+  private final EventBroadcastService eventBroadcastService;
   private final HistoryMapper mapper;
 
   /**
@@ -70,9 +71,10 @@ public class HistoryService {
    * @param mapper          The mapper between History data types.
    */
   public HistoryService(HistoryRepository repository, TemplateService templateService,
-      HistoryMapper mapper) {
+      EventBroadcastService eventBroadcastService, HistoryMapper mapper) {
     this.repository = repository;
     this.templateService = templateService;
+    this.eventBroadcastService = eventBroadcastService;
     this.mapper = mapper;
   }
 
@@ -83,7 +85,9 @@ public class HistoryService {
    * @return The saved notification history.
    */
   public History save(History history) {
-    return repository.save(history);
+    History savedHistory = repository.save(history);
+    eventBroadcastService.publishNotificationsEvent(history);
+    return savedHistory;
   }
 
   /**
@@ -151,6 +155,7 @@ public class HistoryService {
 
     history = mapper.updateStatus(history, status, detail);
     history = repository.save(history);
+    eventBroadcastService.publishNotificationsEvent(history);
     return Optional.of(toDto(history));
   }
 

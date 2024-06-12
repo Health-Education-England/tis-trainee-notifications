@@ -10,7 +10,7 @@ plugins {
 }
 
 group = "uk.nhs.tis.trainee"
-version = "1.26.3"
+version = "1.27.0"
 
 configurations {
   compileOnly {
@@ -42,6 +42,7 @@ dependencies {
   testImplementation("org.springframework.boot:spring-boot-starter-test")
 
   implementation("io.awspring.cloud:spring-cloud-aws-starter-ses")
+  implementation("io.awspring.cloud:spring-cloud-aws-starter-sns")
   implementation("io.awspring.cloud:spring-cloud-aws-starter-sqs")
   implementation("software.amazon.awssdk:cognitoidentityprovider")
   implementation("com.amazonaws:aws-xray-recorder-sdk-spring:2.15.1")

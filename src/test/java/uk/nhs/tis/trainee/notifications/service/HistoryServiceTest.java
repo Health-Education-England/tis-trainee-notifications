@@ -85,12 +85,15 @@ class HistoryServiceTest {
   private HistoryService service;
   private HistoryRepository repository;
   private TemplateService templateService;
+  private EventBroadcastService eventBroadcastService;
 
   @BeforeEach
   void setUp() {
     repository = mock(HistoryRepository.class);
     templateService = mock(TemplateService.class);
-    service = new HistoryService(repository, templateService, new HistoryMapperImpl());
+    eventBroadcastService = mock(EventBroadcastService.class);
+    service = new HistoryService(repository, templateService, eventBroadcastService,
+        new HistoryMapperImpl());
   }
 
   @ParameterizedTest

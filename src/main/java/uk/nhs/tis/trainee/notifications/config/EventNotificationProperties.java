@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright 2023 Crown Copyright (Health Education England)
+ * Copyright 2024 Crown Copyright (Health Education England)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
  * associated documentation files (the "Software"), to deal in the Software without restriction,
@@ -16,25 +16,29 @@
  * NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
  * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
  * DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ *  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package uk.nhs.tis.trainee.notifications;
+package uk.nhs.tis.trainee.notifications.config;
 
-import io.mongock.runner.springboot.EnableMongock;
-import org.springframework.boot.SpringApplication;
-import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.boot.context.properties.ConfigurationPropertiesScan;
+import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**
- * An application for the management and sending of trainee notifications.
+ * A representation of the notifications event endpoint properties.
+ *
+ * @param notificationsEvent The notification event ARN
  */
-@EnableMongock
-@SpringBootApplication
-@ConfigurationPropertiesScan
-public class TisTraineeNotificationsApplication {
+@ConfigurationProperties(prefix = "application.sns")
+public record EventNotificationProperties(
+    SnsRoute notificationsEvent) {
 
-  public static void main(String[] args) {
-    SpringApplication.run(TisTraineeNotificationsApplication.class);
+  /**
+   * An SNS route with a message attribute for routing purposes.
+   *
+   * @param arn              The SNS ARN.
+   * @param messageAttribute The message attribute to use.
+   */
+  public record SnsRoute(String arn, String messageAttribute) {
+
   }
 }

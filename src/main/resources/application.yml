@@ -30,6 +30,9 @@ application:
     placement-deleted: ${PLACEMENT_DELETED_QUEUE}
     programme-membership-updated: ${PROGRAMME_MEMBERSHIP_UPDATED_QUEUE}
     programme-membership-deleted: ${PROGRAMME_MEMBERSHIP_DELETED_QUEUE}
+  sns:
+    notifications-event:
+      arn: ${NOTIFICATIONS_EVENT_TOPIC_ARN:}
   template-versions:
     coj-confirmation:
       email: v1.0.0
