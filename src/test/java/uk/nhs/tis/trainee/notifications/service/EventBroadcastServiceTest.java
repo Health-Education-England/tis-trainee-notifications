@@ -194,10 +194,7 @@ class EventBroadcastServiceTest {
     Map<String, Object> message = objectMapper.readValue(request.message(),
         new TypeReference<>() {
         });
-    LinkedHashMap<?, ?> id
-        = objectMapper.convertValue(message.get("id"), LinkedHashMap.class);
-    assertThat("Unexpected message history id.", id.get("timestamp"),
-        is(HISTORY_ID.getTimestamp()));
+    assertThat("Unexpected message id.", message.get("id"), is(HISTORY_ID.toString()));
 
     LinkedHashMap<?, ?> tisReference
         = objectMapper.convertValue(message.get("tisReference"), LinkedHashMap.class);

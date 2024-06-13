@@ -36,6 +36,7 @@ import software.amazon.awssdk.services.sns.model.PublishRequest.Builder;
 import software.amazon.awssdk.services.sns.model.SnsException;
 import uk.nhs.tis.trainee.notifications.config.EventNotificationProperties;
 import uk.nhs.tis.trainee.notifications.config.EventNotificationProperties.SnsRoute;
+import uk.nhs.tis.trainee.notifications.config.ObjectIdSerializerModule;
 import uk.nhs.tis.trainee.notifications.model.History;
 
 /**
@@ -63,9 +64,11 @@ public class EventBroadcastService {
    * @param history The history event to publish.
    */
   public void publishNotificationsEvent(History history) {
+
     ObjectMapper objectMapper = new ObjectMapper()
         .registerModule(new JavaTimeModule())
-        .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+        .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS)
+        .registerModule(new ObjectIdSerializerModule());
 
     PublishRequest request = null;
     SnsRoute snsTopic = eventNotificationProperties.notificationsEvent();
