@@ -21,14 +21,8 @@
 
 package uk.nhs.tis.trainee.notifications.config;
 
-import com.fasterxml.jackson.core.JsonGenerator;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.Version;
-import com.fasterxml.jackson.databind.JsonSerializer;
-import com.fasterxml.jackson.databind.SerializerProvider;
 import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;
-import java.io.IOException;
 import org.bson.types.ObjectId;
 
 /**
@@ -36,6 +30,9 @@ import org.bson.types.ObjectId;
  */
 public class ObjectIdSerializerModule extends SimpleModule {
 
+  /**
+   * Initialise the custom serializer module for ObjectIds.
+   */
   public ObjectIdSerializerModule() {
     this.addSerializer(ObjectId.class, new ToStringSerializer());
   }
