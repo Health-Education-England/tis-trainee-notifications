@@ -55,7 +55,9 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.EnumSource.Mode;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.mockito.ArgumentCaptor;
 import uk.nhs.tis.trainee.notifications.dto.HistoryDto;
+import uk.nhs.tis.trainee.notifications.mapper.HistoryMapper;
 import uk.nhs.tis.trainee.notifications.mapper.HistoryMapperImpl;
 import uk.nhs.tis.trainee.notifications.model.History;
 import uk.nhs.tis.trainee.notifications.model.History.RecipientInfo;
@@ -86,6 +88,7 @@ class HistoryServiceTest {
   private HistoryRepository repository;
   private TemplateService templateService;
   private EventBroadcastService eventBroadcastService;
+  private HistoryMapper mapper = new HistoryMapperImpl();
 
   @BeforeEach
   void setUp() {
@@ -93,7 +96,7 @@ class HistoryServiceTest {
     templateService = mock(TemplateService.class);
     eventBroadcastService = mock(EventBroadcastService.class);
     service = new HistoryService(repository, templateService, eventBroadcastService,
-        new HistoryMapperImpl());
+        mapper);
   }
 
   @ParameterizedTest
@@ -127,6 +130,8 @@ class HistoryServiceTest {
     assertThat("Unexpected read at.", savedHistory.readAt(), is(read));
     assertThat("Unexpected status.", savedHistory.status(), is(SENT));
     assertThat("Unexpected status detail.", savedHistory.statusDetail(), nullValue());
+
+    verify(eventBroadcastService).publishNotificationsEvent(history);
   }
 
   @ParameterizedTest
@@ -154,6 +159,7 @@ class HistoryServiceTest {
         () -> service.updateStatus(NOTIFICATION_ID, status, ""));
 
     verify(repository, never()).save(any());
+    verifyNoInteractions(eventBroadcastService);
   }
 
   @ParameterizedTest
@@ -189,6 +195,13 @@ class HistoryServiceTest {
     assertThat("Unexpected contact.", history.contact(), is(TRAINEE_CONTACT));
     assertThat("Unexpected sent at.", history.sentAt(), is(Instant.MIN));
     assertThat("Unexpected read at.", history.readAt(), is(Instant.MAX));
+
+    ArgumentCaptor<History> historyPublished = ArgumentCaptor.forClass(History.class);
+    verify(eventBroadcastService).publishNotificationsEvent(historyPublished.capture());
+
+    History historyPublishedValue = historyPublished.getValue();
+    assertThat("Unexpected history published.", mapper.toDto(historyPublishedValue),
+        is(history));
   }
 
   @ParameterizedTest
@@ -206,6 +219,7 @@ class HistoryServiceTest {
         () -> service.updateStatus(NOTIFICATION_ID, status, ""));
 
     verify(repository, never()).save(any());
+    verifyNoInteractions(eventBroadcastService);
   }
 
   @ParameterizedTest
@@ -246,6 +260,13 @@ class HistoryServiceTest {
     assertThat("Unexpected contact.", history.contact(), is(TRAINEE_CONTACT));
     assertThat("Unexpected sent at.", history.sentAt(), is(Instant.MIN));
     assertThat("Unexpected read at.", history.readAt(), is(Instant.MAX));
+
+    ArgumentCaptor<History> historyPublished = ArgumentCaptor.forClass(History.class);
+    verify(eventBroadcastService).publishNotificationsEvent(historyPublished.capture());
+
+    History historyPublishedValue = historyPublished.getValue();
+    HistoryDto publishedDto = mapper.toDto(historyPublishedValue, "Test Subject");
+    assertThat("Unexpected history published.", publishedDto, is(history));
   }
 
   @ParameterizedTest
@@ -274,6 +295,7 @@ class HistoryServiceTest {
         () -> service.updateStatus(TRAINEE_ID, NOTIFICATION_ID, status));
 
     verify(repository, never()).save(any());
+    verifyNoInteractions(eventBroadcastService);
   }
 
   @ParameterizedTest
@@ -309,6 +331,13 @@ class HistoryServiceTest {
     assertThat("Unexpected contact.", history.contact(), is(TRAINEE_CONTACT));
     assertThat("Unexpected sent at.", history.sentAt(), is(Instant.MIN));
     assertThat("Unexpected read at.", history.readAt(), is(Instant.MAX));
+
+    ArgumentCaptor<History> historyPublished = ArgumentCaptor.forClass(History.class);
+    verify(eventBroadcastService).publishNotificationsEvent(historyPublished.capture());
+
+    History historyPublishedValue = historyPublished.getValue();
+    assertThat("Unexpected history published.", mapper.toDto(historyPublishedValue),
+        is(history));
   }
 
   @ParameterizedTest
@@ -328,6 +357,7 @@ class HistoryServiceTest {
         () -> service.updateStatus(TRAINEE_ID, NOTIFICATION_ID, status));
 
     verify(repository, never()).save(any());
+    verifyNoInteractions(eventBroadcastService);
   }
 
   @ParameterizedTest
@@ -368,6 +398,14 @@ class HistoryServiceTest {
     assertThat("Unexpected contact.", history.contact(), is(TRAINEE_CONTACT));
     assertThat("Unexpected sent at.", history.sentAt(), is(Instant.MIN));
     assertThat("Unexpected read at.", history.readAt(), is(Instant.MAX));
+
+    ArgumentCaptor<History> historyPublished = ArgumentCaptor.forClass(History.class);
+    verify(eventBroadcastService).publishNotificationsEvent(historyPublished.capture());
+
+    History historyPublishedValue = historyPublished.getValue();
+    HistoryDto publishedDto = mapper.toDto(historyPublishedValue, "Test Subject");
+    assertThat("Unexpected history published.", publishedDto,
+        is(history));
   }
 
   @Test

@@ -45,7 +45,7 @@ import uk.nhs.tis.trainee.notifications.model.History;
 @Service
 public class EventBroadcastService {
 
-  public final static String MESSAGE_GROUP_ID_PREFIX = "notifications_event";
+  public static final String MESSAGE_GROUP_ID_PREFIX = "notifications_event";
 
   private final SnsClient snsClient;
 

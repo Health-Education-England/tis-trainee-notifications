@@ -32,6 +32,8 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.SENT;
+import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_CREATED;
+import static uk.nhs.tis.trainee.notifications.model.TisReferenceType.PLACEMENT;
 import static uk.nhs.tis.trainee.notifications.service.EventBroadcastService.MESSAGE_GROUP_ID_PREFIX;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -56,6 +58,8 @@ import uk.nhs.tis.trainee.notifications.model.History;
 import uk.nhs.tis.trainee.notifications.model.History.RecipientInfo;
 import uk.nhs.tis.trainee.notifications.model.History.TemplateInfo;
 import uk.nhs.tis.trainee.notifications.model.History.TisReferenceInfo;
+import uk.nhs.tis.trainee.notifications.model.MessageType;
+import uk.nhs.tis.trainee.notifications.model.NotificationStatus;
 import uk.nhs.tis.trainee.notifications.model.NotificationType;
 import uk.nhs.tis.trainee.notifications.model.TisReferenceType;
 
@@ -66,15 +70,23 @@ class EventBroadcastServiceTest {
 
   private static final String TRAINEE_ID = "40";
   private static final String TRAINEE_CONTACT = "test@tis.nhs.uk";
+  private static final MessageType MESSAGE_TYPE = MessageType.EMAIL;
 
-  private static final String NOTIFICATION_ID = ObjectId.get().toString();
+  private static final NotificationType NOTIFICATION_TYPE = PROGRAMME_CREATED;
   private static final ObjectId HISTORY_ID = ObjectId.get();
 
   private static final String TEMPLATE_NAME = "test/template";
   private static final String TEMPLATE_VERSION = "v1.2.3";
   private static final Map<String, Object> TEMPLATE_VARIABLES = Map.of("key1", "value1");
 
-  private static final TisReferenceType TIS_REFERENCE_TYPE = TisReferenceType.PLACEMENT;
+  private static final Instant SENT_AT = Instant.MIN;
+  private static final Instant READ_AT = Instant.now();
+  private static final Instant LAST_RETRY = Instant.now().minus(Duration.ofDays(1));
+
+  private static final NotificationStatus NOTIFICATION_STATUS = SENT;
+  private static final String NOTIFICATION_STATUS_DETAIL = "some detail";
+
+  private static final TisReferenceType TIS_REFERENCE_TYPE = PLACEMENT;
   private static final String TIS_REFERENCE_ID = UUID.randomUUID().toString();
 
   private EventBroadcastService service;
@@ -94,13 +106,7 @@ class EventBroadcastServiceTest {
 
   @Test
   void shouldNotPublishNotificationEventIfSnsIsNull() {
-    RecipientInfo recipientInfo = new RecipientInfo(null, null, null);
-    TemplateInfo templateInfo = new TemplateInfo(null, null, Map.of());
-    TisReferenceInfo tisReferenceInfo = new TisReferenceInfo(null, null);
-    Instant sent = Instant.now();
-    Instant read = Instant.now().plus(Duration.ofDays(1));
-    History history = new History(null, tisReferenceInfo, NotificationType.PROGRAMME_CREATED,
-        recipientInfo, templateInfo, sent, read, SENT, null, null);
+    History history = buildDummyHistory();
 
     eventNotificationProperties = new EventNotificationProperties(null);
     service = new EventBroadcastService(snsClient, eventNotificationProperties);
@@ -119,13 +125,7 @@ class EventBroadcastServiceTest {
 
   @Test
   void shouldNotThrowSnsExceptionsWhenBroadcastingEvent() {
-    RecipientInfo recipientInfo = new RecipientInfo(null, null, null);
-    TemplateInfo templateInfo = new TemplateInfo(null, null, Map.of());
-    TisReferenceInfo tisReferenceInfo = new TisReferenceInfo(null, null);
-    Instant sent = Instant.now();
-    Instant read = Instant.now().plus(Duration.ofDays(1));
-    History history = new History(null, tisReferenceInfo, NotificationType.PROGRAMME_CREATED,
-        recipientInfo, templateInfo, sent, read, SENT, null, null);
+    History history = buildDummyHistory();
 
     when(snsClient.publish(any(PublishRequest.class))).thenThrow(SnsException.builder().build());
 
@@ -134,13 +134,7 @@ class EventBroadcastServiceTest {
 
   @Test
   void shouldSetMessageGroupIdOnIssuedEventWhenFifoQueue() {
-    RecipientInfo recipientInfo = new RecipientInfo(null, null, null);
-    TemplateInfo templateInfo = new TemplateInfo(null, null, Map.of());
-    TisReferenceInfo tisReferenceInfo = new TisReferenceInfo(null, null);
-    Instant sent = Instant.now();
-    Instant read = Instant.now().plus(Duration.ofDays(1));
-    History history = new History(HISTORY_ID, tisReferenceInfo, NotificationType.PROGRAMME_CREATED,
-        recipientInfo, templateInfo, sent, read, SENT, null, null);
+    History history = buildDummyHistory();
 
     SnsRoute fifoSns = new SnsRoute(MESSAGE_ARN + ".fifo", MESSAGE_ATTRIBUTE);
     eventNotificationProperties = new EventNotificationProperties(fifoSns);
@@ -160,13 +154,7 @@ class EventBroadcastServiceTest {
 
   @Test
   void shouldNotSetMessageAttributeIfNotRequired() {
-    RecipientInfo recipientInfo = new RecipientInfo(null, null, null);
-    TemplateInfo templateInfo = new TemplateInfo(null, null, Map.of());
-    TisReferenceInfo tisReferenceInfo = new TisReferenceInfo(null, null);
-    Instant sent = Instant.now();
-    Instant read = Instant.now().plus(Duration.ofDays(1));
-    History history = new History(HISTORY_ID, tisReferenceInfo, NotificationType.PROGRAMME_CREATED,
-        recipientInfo, templateInfo, sent, read, SENT, null, null);
+    History history = buildDummyHistory();
 
     eventNotificationProperties
         = new EventNotificationProperties(new SnsRoute(MESSAGE_ARN, null));
@@ -187,13 +175,13 @@ class EventBroadcastServiceTest {
 
   @Test
   void shouldPublishNotificationEvent() throws JsonProcessingException {
-    RecipientInfo recipientInfo = new RecipientInfo(null, null, null);
-    TemplateInfo templateInfo = new TemplateInfo(null, null, Map.of());
+    RecipientInfo recipientInfo = new RecipientInfo(TRAINEE_ID, MESSAGE_TYPE, TRAINEE_CONTACT);
+    TemplateInfo templateInfo
+        = new TemplateInfo(TEMPLATE_NAME, TEMPLATE_VERSION, TEMPLATE_VARIABLES);
     TisReferenceInfo tisReferenceInfo = new TisReferenceInfo(TIS_REFERENCE_TYPE, TIS_REFERENCE_ID);
-    Instant sent = Instant.now();
-    Instant read = Instant.now().plus(Duration.ofDays(1));
-    History history = new History(HISTORY_ID, tisReferenceInfo, NotificationType.PROGRAMME_CREATED,
-        recipientInfo, templateInfo, sent, read, SENT, null, null);
+    History history = new History(HISTORY_ID, tisReferenceInfo, NOTIFICATION_TYPE,
+        recipientInfo, templateInfo, SENT_AT, READ_AT, NOTIFICATION_STATUS,
+        NOTIFICATION_STATUS_DETAIL, LAST_RETRY);
 
     service.publishNotificationsEvent(history);
 
@@ -210,7 +198,6 @@ class EventBroadcastServiceTest {
         = objectMapper.convertValue(message.get("id"), LinkedHashMap.class);
     assertThat("Unexpected message history id.", id.get("timestamp"),
         is(HISTORY_ID.getTimestamp()));
-    //TODO: more attribs
 
     LinkedHashMap<?, ?> tisReference
         = objectMapper.convertValue(message.get("tisReference"), LinkedHashMap.class);
@@ -219,6 +206,44 @@ class EventBroadcastServiceTest {
     assertThat("Unexpected message tis reference id.",
         tisReference.get("id"), is(TIS_REFERENCE_ID));
 
+    assertThat("Unexpected message notification type.", message.get("type"),
+        is(NOTIFICATION_TYPE.toString()));
+
+    LinkedHashMap<?, ?> recipient
+        = objectMapper.convertValue(message.get("recipient"), LinkedHashMap.class);
+    assertThat("Unexpected message recipient id.",
+        recipient.get("id"), is(TRAINEE_ID));
+    assertThat("Unexpected message recipient message type.",
+        recipient.get("type"), is(MESSAGE_TYPE.toString()));
+    assertThat("Unexpected message recipient contact.",
+        recipient.get("contact"), is(TRAINEE_CONTACT));
+
+    LinkedHashMap<?, ?> template
+        = objectMapper.convertValue(message.get("template"), LinkedHashMap.class);
+    assertThat("Unexpected template name.",
+        template.get("name"), is(TEMPLATE_NAME));
+    assertThat("Unexpected template version.",
+        template.get("version"), is(TEMPLATE_VERSION));
+    LinkedHashMap<?, ?> templateVariables
+        = objectMapper.convertValue(template.get("variables"), LinkedHashMap.class);
+    assertThat("Unexpected template variables.",
+        templateVariables.get("key1"), is("value1"));
+
+    assertThat("Unexpected message sent at.", message.get("sentAt"),
+        is(SENT_AT.toString()));
+
+    assertThat("Unexpected message read at.", message.get("readAt"),
+        is(READ_AT.toString()));
+
+    assertThat("Unexpected message notification status.", message.get("status"),
+        is(NOTIFICATION_STATUS.toString()));
+
+    assertThat("Unexpected message notification status detail.", message.get("statusDetail"),
+        is(NOTIFICATION_STATUS_DETAIL.toString()));
+
+    assertThat("Unexpected message last retry.", message.get("lastRetry"),
+        is(LAST_RETRY.toString()));
+
     Map<String, MessageAttributeValue> messageAttributes = request.messageAttributes();
     assertThat("Unexpected message attribute value.",
         messageAttributes.get("event_type").stringValue(), is(MESSAGE_ATTRIBUTE));
@@ -226,5 +251,18 @@ class EventBroadcastServiceTest {
         messageAttributes.get("event_type").dataType(), is("String"));
 
     verifyNoMoreInteractions(snsClient);
+  }
+
+  /**
+   * Return a largely empty history for test purposes.
+   *
+   * @return the History entity.
+   */
+  private History buildDummyHistory() {
+    RecipientInfo recipientInfo = new RecipientInfo(null, null, null);
+    TemplateInfo templateInfo = new TemplateInfo(null, null, Map.of());
+    TisReferenceInfo tisReferenceInfo = new TisReferenceInfo(null, null);
+    return new History(HISTORY_ID, tisReferenceInfo, NOTIFICATION_TYPE,
+        recipientInfo, templateInfo, SENT_AT, READ_AT, NOTIFICATION_STATUS, null, null);
   }
 }
