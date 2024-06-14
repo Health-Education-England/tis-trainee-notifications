@@ -24,6 +24,7 @@ package uk.nhs.tis.trainee.notifications.service;
 import static uk.nhs.tis.trainee.notifications.model.MessageType.EMAIL;
 import static uk.nhs.tis.trainee.notifications.model.MessageType.IN_APP;
 import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.ARCHIVED;
+import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.DELETED;
 import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.FAILED;
 import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.READ;
 import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.SENT;
@@ -237,6 +238,7 @@ public class HistoryService {
    */
   public void deleteHistoryForTrainee(ObjectId id, String traineeId) {
     repository.deleteByIdAndRecipient_Id(id, traineeId);
+    eventBroadcastService.publishNotificationsDeleteEvent(id);
     log.info("Removed notification history {} for {}", id, traineeId);
   }
 

@@ -25,6 +25,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import java.time.Instant;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.bson.types.ObjectId;
@@ -38,6 +39,7 @@ import uk.nhs.tis.trainee.notifications.config.EventNotificationProperties;
 import uk.nhs.tis.trainee.notifications.config.EventNotificationProperties.SnsRoute;
 import uk.nhs.tis.trainee.notifications.config.ObjectIdSerializerModule;
 import uk.nhs.tis.trainee.notifications.model.History;
+import uk.nhs.tis.trainee.notifications.model.NotificationStatus;
 
 /**
  * A service for broadcasting form events to SNS.
@@ -81,8 +83,7 @@ public class EventBroadcastService {
     if (request != null) {
       try {
         snsClient.publish(request);
-        log.info("Broadcast event sent to SNS for notification event {}.",
-            history.id());
+        log.info("Broadcast event sent to SNS for notification event {}.", history.id());
       } catch (SnsException e) {
         String message = String.format(
             "Failed to broadcast event to SNS topic '%s' for notification event '%s'",
@@ -90,6 +91,18 @@ public class EventBroadcastService {
         log.error(message, e);
       }
     }
+  }
+
+  /**
+   * Publish a blank record with NotificationStatus DELETED for a deleted history item.
+   *
+   * @param id The History id.
+   */
+  public void publishNotificationsDeleteEvent(ObjectId id) {
+    Instant sentAt = Instant.now();
+    History history = new History(id, null, null, null, null,
+        sentAt, null, NotificationStatus.DELETED, null, null);
+    publishNotificationsEvent(history);
   }
 
   /**

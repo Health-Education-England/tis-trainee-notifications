@@ -22,6 +22,8 @@
 package uk.nhs.tis.trainee.notifications.service;
 
 import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.CoreMatchers.notNullValue;
+import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -31,6 +33,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
+import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.DELETED;
 import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.SENT;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_CREATED;
 import static uk.nhs.tis.trainee.notifications.model.TisReferenceType.PLACEMENT;
@@ -248,6 +251,42 @@ class EventBroadcastServiceTest {
         messageAttributes.get("event_type").dataType(), is("String"));
 
     verifyNoMoreInteractions(snsClient);
+  }
+
+  @Test
+  void shouldPublishDeleteNotificationEvent() throws JsonProcessingException {
+    service.publishNotificationsDeleteEvent(HISTORY_ID);
+
+    ArgumentCaptor<PublishRequest> requestCaptor = ArgumentCaptor.forClass(PublishRequest.class);
+    verify(snsClient).publish(requestCaptor.capture());
+
+    PublishRequest request = requestCaptor.getValue();
+    assertThat("Unexpected topic ARN.", request.topicArn(), is(MESSAGE_ARN));
+
+    Map<String, Object> message = objectMapper.readValue(request.message(),
+        new TypeReference<>() {
+        });
+    assertThat("Unexpected message id.", message.get("id"),
+        is(HISTORY_ID.toString()));
+    assertThat("Unexpected message notification status.", message.get("status"),
+        is(DELETED.toString()));
+    assertThat("Unexpected message sent at.", message.get("sentAt"),
+        is(notNullValue()));
+
+    assertThat("Unexpected message TIS reference.", message.get("tisReference"),
+        is(nullValue()));
+    assertThat("Unexpected message notification type.", message.get("type"),
+        is(nullValue()));
+    assertThat("Unexpected message recipient.", message.get("recipient"),
+        is(nullValue()));
+    assertThat("Unexpected message template.", message.get("template"),
+        is(nullValue()));
+    assertThat("Unexpected message read at.", message.get("readAt"),
+        is(nullValue()));
+    assertThat("Unexpected message notification status detail.", message.get("statusDetail"),
+        is(nullValue()));
+    assertThat("Unexpected message last retry.", message.get("lastRetry"),
+        is(nullValue()));
   }
 
   /**

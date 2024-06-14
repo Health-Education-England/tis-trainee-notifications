@@ -146,7 +146,8 @@ class HistoryServiceTest {
   }
 
   @ParameterizedTest
-  @EnumSource(value = NotificationStatus.class, mode = Mode.EXCLUDE, names = {"FAILED", "SENT"})
+  @EnumSource(value = NotificationStatus.class, mode = Mode.EXCLUDE,
+      names = {"FAILED", "SENT", "DELETED"})
   void shouldThrowExceptionWhenUpdatingEmailHistoryWithInvalidStatus(NotificationStatus status) {
     ObjectId notificationId = new ObjectId(NOTIFICATION_ID);
     RecipientInfo recipientInfo = new RecipientInfo(TRAINEE_ID, EMAIL, TRAINEE_CONTACT);
@@ -163,8 +164,8 @@ class HistoryServiceTest {
   }
 
   @ParameterizedTest
-  @EnumSource(value = NotificationStatus.class, mode = Mode.EXCLUDE, names = {"ARCHIVED", "READ",
-      "UNREAD"})
+  @EnumSource(value = NotificationStatus.class, mode = Mode.EXCLUDE,
+      names = {"ARCHIVED", "READ", "UNREAD", "DELETED"})
   void shouldUpdateValidStatusWhenEmailHistoryFound(NotificationStatus status) {
     ObjectId notificationId = new ObjectId(NOTIFICATION_ID);
     RecipientInfo recipientInfo = new RecipientInfo(TRAINEE_ID, EMAIL, TRAINEE_CONTACT);
@@ -205,8 +206,8 @@ class HistoryServiceTest {
   }
 
   @ParameterizedTest
-  @EnumSource(value = NotificationStatus.class, mode = Mode.EXCLUDE, names = {"ARCHIVED", "READ",
-      "UNREAD"})
+  @EnumSource(value = NotificationStatus.class, mode = Mode.EXCLUDE,
+      names = {"ARCHIVED", "READ", "UNREAD", "DELETED"})
   void shouldThrowExceptionWhenUpdatingInAppHistoryWithInvalidStatus(NotificationStatus status) {
     ObjectId notificationId = new ObjectId(NOTIFICATION_ID);
     RecipientInfo recipientInfo = new RecipientInfo(TRAINEE_ID, IN_APP, TRAINEE_CONTACT);
@@ -223,7 +224,8 @@ class HistoryServiceTest {
   }
 
   @ParameterizedTest
-  @EnumSource(value = NotificationStatus.class, mode = Mode.EXCLUDE, names = {"FAILED", "SENT"})
+  @EnumSource(value = NotificationStatus.class, mode = Mode.EXCLUDE,
+      names = {"FAILED", "SENT", "DELETED"})
   void shouldUpdateValidStatusWhenInAppHistoryFound(NotificationStatus status) {
     ObjectId notificationId = new ObjectId(NOTIFICATION_ID);
     RecipientInfo recipientInfo = new RecipientInfo(TRAINEE_ID, IN_APP, TRAINEE_CONTACT);
@@ -299,8 +301,8 @@ class HistoryServiceTest {
   }
 
   @ParameterizedTest
-  @EnumSource(value = NotificationStatus.class, mode = Mode.EXCLUDE, names = {"ARCHIVED", "READ",
-      "UNREAD"})
+  @EnumSource(value = NotificationStatus.class, mode = Mode.EXCLUDE,
+      names = {"ARCHIVED", "READ", "UNREAD", "DELETED"})
   void shouldUpdateValidStatusForTraineeWhenEmailHistoryFound(NotificationStatus status) {
     ObjectId notificationId = new ObjectId(NOTIFICATION_ID);
     RecipientInfo recipientInfo = new RecipientInfo(TRAINEE_ID, EMAIL, TRAINEE_CONTACT);
@@ -341,8 +343,8 @@ class HistoryServiceTest {
   }
 
   @ParameterizedTest
-  @EnumSource(value = NotificationStatus.class, mode = Mode.EXCLUDE, names = {"ARCHIVED", "READ",
-      "UNREAD"})
+  @EnumSource(value = NotificationStatus.class, mode = Mode.EXCLUDE,
+      names = {"ARCHIVED", "READ", "UNREAD", "DELETED"})
   void shouldThrowExceptionWhenUpdatingInAppHistoryForTraineeWithInvalidStatus(
       NotificationStatus status) {
     ObjectId notificationId = new ObjectId(NOTIFICATION_ID);
@@ -361,7 +363,8 @@ class HistoryServiceTest {
   }
 
   @ParameterizedTest
-  @EnumSource(value = NotificationStatus.class, mode = Mode.EXCLUDE, names = {"FAILED", "SENT"})
+  @EnumSource(value = NotificationStatus.class, mode = Mode.EXCLUDE,
+      names = {"FAILED", "SENT", "DELETED"})
   void shouldUpdateValidStatusForTraineeWhenInAppHistoryFound(NotificationStatus status) {
     ObjectId notificationId = new ObjectId(NOTIFICATION_ID);
     RecipientInfo recipientInfo = new RecipientInfo(TRAINEE_ID, IN_APP, TRAINEE_CONTACT);
@@ -714,6 +717,7 @@ class HistoryServiceTest {
     service.deleteHistoryForTrainee(HISTORY_ID, TRAINEE_ID);
 
     verify(repository).deleteByIdAndRecipient_Id(HISTORY_ID, TRAINEE_ID);
+    verify(eventBroadcastService).publishNotificationsDeleteEvent(HISTORY_ID);
   }
 
   @ParameterizedTest
