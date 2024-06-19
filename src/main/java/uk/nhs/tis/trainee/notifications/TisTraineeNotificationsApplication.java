@@ -24,12 +24,14 @@ package uk.nhs.tis.trainee.notifications;
 import io.mongock.runner.springboot.EnableMongock;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.context.properties.ConfigurationPropertiesScan;
 
 /**
  * An application for the management and sending of trainee notifications.
  */
 @EnableMongock
 @SpringBootApplication
+@ConfigurationPropertiesScan
 public class TisTraineeNotificationsApplication {
 
   public static void main(String[] args) {

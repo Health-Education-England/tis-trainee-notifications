@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright 2023 Crown Copyright (Health Education England)
+ * Copyright 2024 Crown Copyright (Health Education England)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
  * associated documentation files (the "Software"), to deal in the Software without restriction,
@@ -16,14 +16,29 @@
  * NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
  * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
  * DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ *  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package uk.nhs.tis.trainee.notifications.model;
+package uk.nhs.tis.trainee.notifications.config;
+
+import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**
- * An enumeration of possible notification statuses.
+ * A representation of the notifications event endpoint properties.
+ *
+ * @param notificationsEvent The notification event ARN
  */
-public enum NotificationStatus {
-  ARCHIVED, FAILED, READ, SENT, UNREAD, DELETED
+@ConfigurationProperties(prefix = "application.sns")
+public record EventNotificationProperties(
+    SnsRoute notificationsEvent) {
+
+  /**
+   * An SNS route with a message attribute for routing purposes.
+   *
+   * @param arn              The SNS ARN.
+   * @param messageAttribute The message attribute to use.
+   */
+  public record SnsRoute(String arn, String messageAttribute) {
+
+  }
 }

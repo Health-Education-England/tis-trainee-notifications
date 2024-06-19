@@ -35,21 +35,22 @@ associated document for details of how to provide the region.
 
 #### Environmental Variables
 
-| Name                    | Description                                                        | Default   |
-|-------------------------|--------------------------------------------------------------------|-----------|
-| ACCOUNT_CONFIRMED_QUEUE | The queue URL for account confirmation events.                     |           |
-| APP_DOMAIN              | The domain to be used for links in email notifications. (Optional) |           |
-| AWS_XRAY_DAEMON_ADDRESS | The AWS XRay daemon host. (Optional)                               |           |
-| COGNITO_USER_POOL_ID    | The user pool to get user details from.                            |           |
-| COJ_RECEIVED_QUEUE      | The queue URL for Conditions of Joining received events.           |           |
-| ENVIRONMENT             | The environment to log events against.                             | local     |
-| EMAIL_SENDER            | Where email notifications are to be sent from.                     |           |
-| REDIS_HOST              | Redis server host                                                  | localhost |
-| REDIS_PASSWORD          | Login password of the redis server.                                | password  |
-| REDIS_PORT              | Redis server port.                                                 | 6379      |
-| REDIS_SSL               | Whether to enable SSL support.                                     | false     |
-| REDIS_USERNAME          | Login username of the redis server                                 | default   |
-| SENTRY_DSN              | A Sentry error monitoring Data Source Name. (Optional)             |           |
+| Name                          | Description                                                        | Default   |
+|-------------------------------|--------------------------------------------------------------------|-----------|
+| ACCOUNT_CONFIRMED_QUEUE       | The queue URL for account confirmation events.                     |           |
+| APP_DOMAIN                    | The domain to be used for links in email notifications. (Optional) |           |
+| AWS_XRAY_DAEMON_ADDRESS       | The AWS XRay daemon host. (Optional)                               |           |
+| COGNITO_USER_POOL_ID          | The user pool to get user details from.                            |           |
+| COJ_RECEIVED_QUEUE            | The queue URL for Conditions of Joining received events.           |           |
+| ENVIRONMENT                   | The environment to log events against.                             | local     |
+| EMAIL_SENDER                  | Where email notifications are to be sent from.                     |           |
+| NOTIFICATIONS_EVENT_TOPIC_ARN | Broadcast endpoint for notification events                         |           |
+| REDIS_HOST                    | Redis server host                                                  | localhost |
+| REDIS_PASSWORD                | Login password of the redis server.                                | password  |
+| REDIS_PORT                    | Redis server port.                                                 | 6379      |
+| REDIS_SSL                     | Whether to enable SSL support.                                     | false     |
+| REDIS_USERNAME                | Login username of the redis server                                 | default   |
+| SENTRY_DSN                    | A Sentry error monitoring Data Source Name. (Optional)             |           |
 
 #### Usage Examples
 
