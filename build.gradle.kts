@@ -76,7 +76,7 @@ dependencies {
   testImplementation("com.playtika.testcontainers:embedded-mysql:$playtikaTestcontainersVersion")
   testImplementation("com.playtika.testcontainers:embedded-redis:$playtikaTestcontainersVersion")
   testImplementation("com.h2database:h2")
-  testImplementation("org.testcontainers:junit-jupiter:1.19.6")
+  testImplementation("org.testcontainers:junit-jupiter:1.19.8")
 
   testImplementation("org.jsoup:jsoup:1.17.2")
 }
