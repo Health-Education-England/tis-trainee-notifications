@@ -87,7 +87,7 @@ public class HistoryService {
    */
   public History save(History history) {
     History savedHistory = repository.save(history);
-    eventBroadcastService.publishNotificationsEvent(history);
+    eventBroadcastService.publishNotificationsEvent(savedHistory);
     return savedHistory;
   }
 

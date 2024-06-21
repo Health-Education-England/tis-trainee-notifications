@@ -131,7 +131,8 @@ class HistoryServiceTest {
     assertThat("Unexpected status.", savedHistory.status(), is(SENT));
     assertThat("Unexpected status detail.", savedHistory.statusDetail(), nullValue());
 
-    verify(eventBroadcastService).publishNotificationsEvent(history);
+    //some Histories are saved with null id; the saved object will have a proper id assigned to it.
+    verify(eventBroadcastService).publishNotificationsEvent(savedHistory);
   }
 
   @ParameterizedTest
