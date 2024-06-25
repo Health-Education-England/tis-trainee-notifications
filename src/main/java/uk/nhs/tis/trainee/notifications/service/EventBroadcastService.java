@@ -21,6 +21,8 @@
 
 package uk.nhs.tis.trainee.notifications.service;
 
+import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.DELETED;
+
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
@@ -100,8 +102,11 @@ public class EventBroadcastService {
    */
   public void publishNotificationsDeleteEvent(ObjectId id) {
     Instant sentAt = Instant.now();
-    History history = new History(id, null, null, null, null,
-        sentAt, null, NotificationStatus.DELETED, null, null);
+    History history = History.builder()
+        .id(id)
+        .sentAt(sentAt)
+        .status(DELETED)
+        .build();
     publishNotificationsEvent(history);
   }
 

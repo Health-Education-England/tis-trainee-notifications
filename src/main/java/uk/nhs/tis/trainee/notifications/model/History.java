@@ -23,6 +23,7 @@ package uk.nhs.tis.trainee.notifications.model;
 
 import java.time.Instant;
 import java.util.Map;
+import lombok.Builder;
 import org.bson.types.ObjectId;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
@@ -41,6 +42,7 @@ import org.springframework.data.mongodb.core.mapping.Field;
  * @param statusDetail Any additional detail about the status.
  */
 @Document(collection = "History")
+@Builder
 public record History(
     @Id
     ObjectId id,

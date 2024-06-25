@@ -787,10 +787,17 @@ class PlacementServiceTest {
     placement.setSite(SITE);
 
     History.RecipientInfo recipientInfo = new History.RecipientInfo(PERSON_ID, IN_APP, null);
-    History history1 = new History(HISTORY_ID_1, new TisReferenceInfo(PLACEMENT, TIS_ID), null,
-        recipientInfo, null, null, null, UNREAD, null, null);
-    History history2 = new History(HISTORY_ID_2, null, null, recipientInfo, null,
-        null, null, UNREAD, null, null);
+    History history1 = History.builder()
+        .id(HISTORY_ID_1)
+        .tisReference(new TisReferenceInfo(PLACEMENT, TIS_ID))
+        .recipient(recipientInfo)
+        .status(UNREAD)
+        .build();
+    History history2 = History.builder()
+        .id(HISTORY_ID_2)
+        .recipient(recipientInfo)
+        .status(UNREAD)
+        .build();
 
     when(historyService.findAllScheduledInAppForTrainee(PERSON_ID, PLACEMENT, TIS_ID))
         .thenReturn(List.of(history1, history2));
