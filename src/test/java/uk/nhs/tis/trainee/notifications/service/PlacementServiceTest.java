@@ -38,7 +38,6 @@ import static org.mockito.Mockito.when;
 import static uk.nhs.tis.trainee.notifications.model.MessageType.IN_APP;
 import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.SENT;
 import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.UNREAD;
-import static uk.nhs.tis.trainee.notifications.model.NotificationType.COJ_CONFIRMATION;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.NON_EMPLOYMENT;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PLACEMENT_INFORMATION;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PLACEMENT_UPDATED_WEEK_12;
@@ -57,7 +56,6 @@ import static uk.nhs.tis.trainee.notifications.service.PlacementService.PLACEMEN
 import static uk.nhs.tis.trainee.notifications.service.PlacementService.START_DATE_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.PlacementService.TIS_ID_FIELD;
 
-import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
