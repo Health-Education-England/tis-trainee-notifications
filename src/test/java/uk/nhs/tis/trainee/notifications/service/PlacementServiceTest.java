@@ -38,6 +38,7 @@ import static org.mockito.Mockito.when;
 import static uk.nhs.tis.trainee.notifications.model.MessageType.IN_APP;
 import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.SENT;
 import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.UNREAD;
+import static uk.nhs.tis.trainee.notifications.model.NotificationType.COJ_CONFIRMATION;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.NON_EMPLOYMENT;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PLACEMENT_INFORMATION;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PLACEMENT_UPDATED_WEEK_12;
@@ -56,6 +57,7 @@ import static uk.nhs.tis.trainee.notifications.service.PlacementService.PLACEMEN
 import static uk.nhs.tis.trainee.notifications.service.PlacementService.START_DATE_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.PlacementService.TIS_ID_FIELD;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
@@ -787,10 +789,17 @@ class PlacementServiceTest {
     placement.setSite(SITE);
 
     History.RecipientInfo recipientInfo = new History.RecipientInfo(PERSON_ID, IN_APP, null);
-    History history1 = new History(HISTORY_ID_1, new TisReferenceInfo(PLACEMENT, TIS_ID), null,
-        recipientInfo, null, null, null, UNREAD, null, null);
-    History history2 = new History(HISTORY_ID_2, null, null, recipientInfo, null,
-        null, null, UNREAD, null, null);
+    History history1 = History.builder()
+        .id(HISTORY_ID_1)
+        .tisReference(new TisReferenceInfo(PLACEMENT, TIS_ID))
+        .recipient(recipientInfo)
+        .status(UNREAD)
+        .build();
+    History history2 = History.builder()
+        .id(HISTORY_ID_2)
+        .recipient(recipientInfo)
+        .status(UNREAD)
+        .build();
 
     when(historyService.findAllScheduledInAppForTrainee(PERSON_ID, PLACEMENT, TIS_ID))
         .thenReturn(List.of(history1, history2));

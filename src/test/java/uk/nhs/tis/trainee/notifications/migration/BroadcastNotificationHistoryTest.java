@@ -33,6 +33,7 @@ import static org.mockito.Mockito.when;
 
 import com.mongodb.MongoException;
 import java.util.stream.Stream;
+import org.bson.types.ObjectId;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -58,9 +59,12 @@ class BroadcastNotificationHistoryTest {
 
   @Test
   void shouldBroadcastNotificationHistory() {
-    History history = new History(null, null, null, null,
-        null, null, null, null, null, null);
-    when(template.stream(any(), eq(History.class), eq("History"))).thenReturn(Stream.of(history));
+    ObjectId id1 = ObjectId.get();
+    ObjectId id2 = ObjectId.get();
+    History history1 = History.builder().id(id1).build();
+    History history2 = History.builder().id(id2).build();
+    when(template.stream(any(), eq(History.class), eq("History")))
+        .thenReturn(Stream.of(history1, history2));
 
     migration.migrate();
 
@@ -70,7 +74,8 @@ class BroadcastNotificationHistoryTest {
     Query query = queryCaptor.getValue();
     assertThat("Unexpected query.", query.equals(new Query()), is(true));
 
-    verify(service).publishNotificationsEvent(history);
+    verify(service).publishNotificationsEvent(history1);
+    verify(service).publishNotificationsEvent(history2);
     verifyNoMoreInteractions(service);
   }
 

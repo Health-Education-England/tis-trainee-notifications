@@ -69,8 +69,10 @@ class MongoConfigurationIntegrationTest {
     ObjectId objectId = ObjectId.get();
     Map<String, Object> variables = Map.of("date", Date.from(Instant.now()));
     TemplateInfo templateInfo = new TemplateInfo(null, null, variables);
-    History history = new History(objectId, null, null, null, templateInfo, null,
-        null, null, null, null);
+    History history = History.builder()
+        .id(objectId)
+        .template(templateInfo)
+        .build();
 
     template.save(history);
 
@@ -87,8 +89,10 @@ class MongoConfigurationIntegrationTest {
     Map<String, Object> variables = new HashMap<>();
     variables.put("date", null);
     TemplateInfo templateInfo = new TemplateInfo(null, null, variables);
-    History history = new History(objectId, null, null, null, templateInfo, null,
-        null, null, null, null);
+    History history = History.builder()
+        .id(objectId)
+        .template(templateInfo)
+        .build();
 
     template.save(history);
 
@@ -104,8 +108,10 @@ class MongoConfigurationIntegrationTest {
     ObjectId objectId = ObjectId.get();
     Map<String, Object> variables = Map.of("date", new Date(Long.MIN_VALUE));
     TemplateInfo templateInfo = new TemplateInfo(null, null, variables);
-    History history = new History(objectId, null, null, null, templateInfo, null,
-        null, null, null, null);
+    History history = History.builder()
+        .id(objectId)
+        .template(templateInfo)
+        .build();
 
     template.save(history);
 
@@ -121,8 +127,10 @@ class MongoConfigurationIntegrationTest {
     ObjectId objectId = ObjectId.get();
     Map<String, Object> variables = Map.of("date", new Date(Long.MAX_VALUE));
     TemplateInfo templateInfo = new TemplateInfo(null, null, variables);
-    History history = new History(objectId, null, null, null, templateInfo, null,
-        null, null, null, null);
+    History history = History.builder()
+        .id(objectId)
+        .template(templateInfo)
+        .build();
 
     template.save(history);
 
