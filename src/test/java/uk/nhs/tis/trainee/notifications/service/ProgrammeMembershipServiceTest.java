@@ -114,6 +114,7 @@ class ProgrammeMembershipServiceTest {
   private static final String LTFT_VERSION = "v3.4.5";
   private static final String DEFERRAL_VERSION = "v4.5.6";
   private static final String SPONSORSHIP_VERSION = "v5.6.7";
+  private static final String DAY_ONE_VERSION = "v6.7.8";
   private static final String USER_EMAIL = "email@address";
   private static final String USER_TITLE = "title";
   private static final String USER_FAMILY_NAME = "family-name";
@@ -131,7 +132,7 @@ class ProgrammeMembershipServiceTest {
     inAppService = mock(InAppService.class);
     notificationService = mock(NotificationService.class);
     service = new ProgrammeMembershipService(historyService, inAppService, notificationService,
-        timezone, DEFERRAL_VERSION, E_PORTFOLIO_VERSION,
+        timezone, DAY_ONE_VERSION, DEFERRAL_VERSION, E_PORTFOLIO_VERSION,
         INDEMNITY_INSURANCE_VERSION, LTFT_VERSION, SPONSORSHIP_VERSION);
   }
 
@@ -266,7 +267,9 @@ class ProgrammeMembershipServiceTest {
       DEFERRAL | v4.5.6 | true
       DEFERRAL | v4.5.6 | false
       SPONSORSHIP | v5.6.7 | true
-      SPONSORSHIP | v5.6.7 | false""")
+      SPONSORSHIP | v5.6.7 | false
+      DAY_ONE | v6.7.8 | true
+      DAY_ONE | v6.7.8 | false""")
   void shouldAddInAppNotificationsWhenNotExcludedAndMeetsCriteria(NotificationType notificationType,
       String notificationVersion, boolean notifiablePm) throws SchedulerException {
     ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
@@ -523,7 +526,7 @@ class ProgrammeMembershipServiceTest {
 
   @ParameterizedTest
   @EnumSource(value = NotificationType.class, mode = Mode.INCLUDE, names = {"DEFERRAL",
-      "E_PORTFOLIO", "INDEMNITY_INSURANCE", "LTFT", "SPONSORSHIP"})
+      "E_PORTFOLIO", "INDEMNITY_INSURANCE", "LTFT", "SPONSORSHIP", "DAY_ONE"})
   void shouldNotAddInAppNotificationsWhenNotUnique(NotificationType notificationType)
       throws SchedulerException {
     ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();

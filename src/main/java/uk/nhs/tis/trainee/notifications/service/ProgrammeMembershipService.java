@@ -22,6 +22,7 @@
 package uk.nhs.tis.trainee.notifications.service;
 
 import static uk.nhs.tis.trainee.notifications.model.MessageType.IN_APP;
+import static uk.nhs.tis.trainee.notifications.model.NotificationType.DAY_ONE;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.DEFERRAL;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.E_PORTFOLIO;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.INDEMNITY_INSURANCE;
@@ -89,6 +90,7 @@ public class ProgrammeMembershipService {
 
   private final ZoneId timezone;
 
+  private final String dayOneVersion;
   private final String deferralVersion;
   private final String eportfolioVersion;
   private final String indemnityInsuranceVersion;
@@ -101,6 +103,7 @@ public class ProgrammeMembershipService {
    * @param historyService            The history service to use.
    * @param inAppService              The in-app service to use.
    * @param notificationService       The notification service to use.
+   * @param dayOneVersion             The day one version.
    * @param deferralVersion           The deferral version.
    * @param eportfolioVersion         The ePortfolio version.
    * @param indemnityInsuranceVersion The indemnity insurance version.
@@ -109,6 +112,7 @@ public class ProgrammeMembershipService {
    */
   public ProgrammeMembershipService(HistoryService historyService, InAppService inAppService,
       NotificationService notificationService, @Value("${application.timezone}") ZoneId timezone,
+      @Value("${application.template-versions.day-one.in-app}") String dayOneVersion,
       @Value("${application.template-versions.deferral.in-app}") String deferralVersion,
       @Value("${application.template-versions.e-portfolio.in-app}") String eportfolioVersion,
       @Value("${application.template-versions.indemnity-insurance.in-app}")
@@ -119,6 +123,7 @@ public class ProgrammeMembershipService {
     this.inAppService = inAppService;
     this.notificationService = notificationService;
     this.timezone = timezone;
+    this.dayOneVersion = dayOneVersion;
     this.deferralVersion = deferralVersion;
     this.eportfolioVersion = eportfolioVersion;
     this.indemnityInsuranceVersion = indemnityInsuranceVersion;
@@ -182,6 +187,8 @@ public class ProgrammeMembershipService {
     notificationTypes.add(INDEMNITY_INSURANCE);
     notificationTypes.add(LTFT);
     notificationTypes.add(SPONSORSHIP);
+    notificationTypes.add(DAY_ONE);
+
 
     for (NotificationType milestone : notificationTypes) {
       Optional<History> sentItem = correspondence.stream()
@@ -327,6 +334,10 @@ public class ProgrammeMembershipService {
               LOCAL_OFFICE_CONTACT_FIELD, localOfficeContactSponsorship,
               LOCAL_OFFICE_CONTACT_TYPE_FIELD, localOfficeContactTypeSponsorship,
               GMC_NUMBER_FIELD, gmcNumber));
+
+      // DAY_ONE
+      createUniqueInAppNotification(programmeMembership, notificationsAlreadySent, DAY_ONE,
+          dayOneVersion, Map.of());
     }
   }
 
