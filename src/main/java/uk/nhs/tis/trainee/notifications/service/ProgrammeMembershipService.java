@@ -29,6 +29,7 @@ import static uk.nhs.tis.trainee.notifications.model.NotificationType.INDEMNITY_
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.LTFT;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_CREATED;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.SPONSORSHIP;
+import static uk.nhs.tis.trainee.notifications.model.TisReferenceType.PROGRAMME_MEMBERSHIP;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.PERSON_ID_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.TEMPLATE_NOTIFICATION_TYPE_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.TEMPLATE_OWNER_FIELD;
@@ -212,7 +213,9 @@ public class ProgrammeMembershipService {
   public void addNotifications(ProgrammeMembership programmeMembership)
       throws SchedulerException {
 
-    deleteNotifications(programmeMembership); //first delete any stale notifications
+    //first delete any stale notifications
+    deleteNotifications(programmeMembership);
+    deleteScheduledInAppNotifications(programmeMembership);
 
     boolean isExcluded = isExcluded(programmeMembership);
     log.info("Programme membership {}: excluded {}.", programmeMembership.getTisId(), isExcluded);
@@ -367,8 +370,15 @@ public class ProgrammeMembershipService {
 
     boolean isUnique = !notificationsAlreadySent.containsKey(notificationType);
     if (isUnique) {
-      inAppService.createNotifications(programmeMembership.getPersonId(), tisReference,
-          notificationType, notificationVersion, variables, doNotSendJustLog);
+      // send on programme start day for future Day One notification
+      if (notificationType.equals(DAY_ONE)) {
+        inAppService.createNotifications(programmeMembership.getPersonId(), tisReference,
+            notificationType, notificationVersion, variables, doNotSendJustLog,
+            programmeMembership.getStartDate().atStartOfDay(timezone).toInstant());
+      } else {
+        inAppService.createNotifications(programmeMembership.getPersonId(), tisReference,
+            notificationType, notificationVersion, variables, doNotSendJustLog);
+      }
     } else {
       boolean shouldSchedule = shouldScheduleNotification(notificationType, programmeMembership,
           notificationsAlreadySent);
@@ -400,6 +410,22 @@ public class ProgrammeMembershipService {
 
       String jobId = milestone.toString() + "-" + programmeMembership.getTisId();
       notificationService.removeNotification(jobId); //remove existing notification if it exists
+    }
+  }
+
+  /**
+   * Remove scheduled in-app notifications for a programme membership.
+   *
+   * @param programmeMembership The programmeMembership.
+   */
+  protected void deleteScheduledInAppNotifications(ProgrammeMembership programmeMembership) {
+
+    List<History> scheduledHistories = historyService
+        .findAllScheduledInAppForTrainee(programmeMembership.getPersonId(), PROGRAMME_MEMBERSHIP,
+            programmeMembership.getTisId());
+
+    for (History history : scheduledHistories) {
+      historyService.deleteHistoryForTrainee(history.id(), programmeMembership.getPersonId());
     }
   }
 

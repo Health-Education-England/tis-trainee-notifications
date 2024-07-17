@@ -36,8 +36,10 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
+import static uk.nhs.tis.trainee.notifications.model.MessageType.IN_APP;
 import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.SENT;
 import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.UNREAD;
+import static uk.nhs.tis.trainee.notifications.model.NotificationType.DAY_ONE;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.DEFERRAL;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.INDEMNITY_INSURANCE;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.LTFT;
@@ -120,6 +122,8 @@ class ProgrammeMembershipServiceTest {
   private static final String USER_FAMILY_NAME = "family-name";
   private static final String USER_GIVEN_NAME = "given-name";
   private static final String USER_GMC = "111111";
+  private static final ObjectId HISTORY_ID_1 = ObjectId.get();
+  private static final ObjectId HISTORY_ID_2 = ObjectId.get();
 
   ProgrammeMembershipService service;
   HistoryService historyService;
@@ -292,9 +296,15 @@ class ProgrammeMembershipServiceTest {
         TisReferenceInfo.class);
     ArgumentCaptor<Map<String, Object>> variablesCaptor = ArgumentCaptor.captor();
     ArgumentCaptor<Boolean> doNotStoreJustLogCaptor = ArgumentCaptor.captor();
-    verify(inAppService).createNotifications(eq(PERSON_ID), referenceInfoCaptor.capture(),
-        eq(notificationType), eq(notificationVersion), variablesCaptor.capture(),
-        doNotStoreJustLogCaptor.capture());
+    if (notificationType.equals(DAY_ONE)) {
+      verify(inAppService).createNotifications(eq(PERSON_ID), referenceInfoCaptor.capture(),
+          eq(notificationType), eq(notificationVersion), variablesCaptor.capture(),
+          doNotStoreJustLogCaptor.capture(), eq(START_DATE.atStartOfDay(timezone).toInstant()));
+    } else {
+      verify(inAppService).createNotifications(eq(PERSON_ID), referenceInfoCaptor.capture(),
+          eq(notificationType), eq(notificationVersion), variablesCaptor.capture(),
+          doNotStoreJustLogCaptor.capture());
+    }
 
     TisReferenceInfo referenceInfo = referenceInfoCaptor.getValue();
     assertThat("Unexpected reference type.", referenceInfo.type(), is(PROGRAMME_MEMBERSHIP));
@@ -1265,6 +1275,45 @@ class ProgrammeMembershipServiceTest {
       String jobId = milestone.toString() + "-" + TIS_ID;
       verify(notificationService).removeNotification(jobId);
     }
+  }
+
+  @Test
+  void shouldDeleteScheduledInAppNotifications() {
+    ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
+
+    History.RecipientInfo recipientInfo = new History.RecipientInfo(PERSON_ID, IN_APP, null);
+    History history1 = History.builder()
+        .id(HISTORY_ID_1)
+        .tisReference(new TisReferenceInfo(PROGRAMME_MEMBERSHIP, TIS_ID))
+        .recipient(recipientInfo)
+        .status(UNREAD)
+        .build();
+    History history2 = History.builder()
+        .id(HISTORY_ID_2)
+        .tisReference(new TisReferenceInfo(PROGRAMME_MEMBERSHIP, TIS_ID))
+        .recipient(recipientInfo)
+        .status(UNREAD)
+        .build();
+
+    when(historyService.findAllScheduledInAppForTrainee(PERSON_ID, PROGRAMME_MEMBERSHIP, TIS_ID))
+        .thenReturn(List.of(history1, history2));
+
+    service.deleteScheduledInAppNotifications(programmeMembership);
+
+    verify(historyService).deleteHistoryForTrainee(HISTORY_ID_1, PERSON_ID);
+    verify(historyService).deleteHistoryForTrainee(HISTORY_ID_2, PERSON_ID);
+  }
+
+  @Test
+  void shouldNotDeleteWhenNoScheduledInAppNotifications() {
+    ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
+
+    when(historyService.findAllScheduledInAppForTrainee(PERSON_ID, PROGRAMME_MEMBERSHIP, TIS_ID))
+        .thenReturn(List.of());
+
+    service.deleteScheduledInAppNotifications(programmeMembership);
+
+    verify(historyService, never()).deleteHistoryForTrainee(any(), any());
   }
 
   @Test
