@@ -71,6 +71,7 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -100,6 +101,7 @@ import uk.nhs.tis.trainee.notifications.model.NotificationType;
 import uk.nhs.tis.trainee.notifications.model.Placement;
 import uk.nhs.tis.trainee.notifications.model.ProgrammeMembership;
 
+@Slf4j
 class NotificationServiceTest {
 
   private static final String TEMPLATE_VERSION = "template-version";
@@ -739,7 +741,9 @@ class NotificationServiceTest {
         .toInstant();
 
     Instant scheduledDate = service.calculateInAppDisplayDate(startDate, daysBeforeStart);
-
+    log.info("Timezone for test: {}", ZoneId.systemDefault());
+    log.info("Expected date: {}", expectedMilestone);
+    log.info("Actual date: {}", scheduledDate);
     assertThat("Unexpected display date", scheduledDate, is(expectedMilestone));
   }
 

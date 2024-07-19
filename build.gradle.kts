@@ -10,7 +10,7 @@ plugins {
 }
 
 group = "uk.nhs.tis.trainee"
-version = "1.28.0"
+version = "1.28.1"
 
 configurations {
   compileOnly {
@@ -50,6 +50,7 @@ dependencies {
   implementation("com.mysql:mysql-connector-j")
   implementation("org.flywaydb:flyway-core")
   implementation("org.flywaydb:flyway-mysql")
+  testImplementation("org.projectlombok:lombok:1.18.28")
 
   // Lombok
   compileOnly("org.projectlombok:lombok")
