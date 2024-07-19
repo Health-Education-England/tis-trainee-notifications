@@ -115,4 +115,5 @@ tasks.jacocoTestReport {
 tasks.test {
   finalizedBy(tasks.jacocoTestReport)
   useJUnitPlatform()
+  testLogging { showStandardStreams = true }
 }
