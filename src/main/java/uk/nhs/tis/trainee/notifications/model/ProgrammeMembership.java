@@ -41,4 +41,6 @@ public class ProgrammeMembership {
   private LocalDate startDate;
   private List<Curriculum> curricula = new ArrayList<>();
   private ConditionsOfJoining conditionsOfJoining;
+  private String responsibleOfficer;
+  private String designatedBody;
 }

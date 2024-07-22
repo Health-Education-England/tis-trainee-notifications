@@ -52,10 +52,12 @@ import static uk.nhs.tis.trainee.notifications.service.PlacementService.GMC_NUMB
 import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.BLOCK_INDEMNITY_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.COJ_SYNCED_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.DEFERRAL_IF_MORE_THAN_DAYS;
+import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.DESIGNATED_BODY_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.LOCAL_OFFICE_CONTACT_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.LOCAL_OFFICE_CONTACT_TYPE_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.PROGRAMME_NAME_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.PROGRAMME_NUMBER_FIELD;
+import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.RO_NAME_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.START_DATE_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.TIS_ID_FIELD;
 
@@ -124,6 +126,8 @@ class ProgrammeMembershipServiceTest {
   private static final String USER_GMC = "111111";
   private static final ObjectId HISTORY_ID_1 = ObjectId.get();
   private static final ObjectId HISTORY_ID_2 = ObjectId.get();
+  private static final String RO_NAME = "ro-name";
+  private static final String DESIGNATED_BODY = "deisgnatedBody";
 
   ProgrammeMembershipService service;
   HistoryService historyService;
@@ -347,7 +351,7 @@ class ProgrammeMembershipServiceTest {
         eq(INDEMNITY_INSURANCE_VERSION), variablesCaptor.capture(), anyBoolean());
 
     Map<String, Object> variables = variablesCaptor.getValue();
-    assertThat("Unexpected variable count.", variables.size(), is(4));
+    assertThat("Unexpected variable count.", variables.size(), is(6));
     assertThat("Unexpected programme name.", variables.get(PROGRAMME_NAME_FIELD),
         is(PROGRAMME_NAME));
     assertThat("Unexpected start date.", variables.get(START_DATE_FIELD), is(START_DATE));
@@ -441,10 +445,13 @@ class ProgrammeMembershipServiceTest {
         eq(SPONSORSHIP_VERSION), variablesCaptor.capture(), anyBoolean());
 
     Map<String, Object> variables = variablesCaptor.getValue();
-    assertThat("Unexpected variable count.", variables.size(), is(6));
+    assertThat("Unexpected variable count.", variables.size(), is(8));
     assertThat("Unexpected programme name.", variables.get(PROGRAMME_NAME_FIELD),
         is(PROGRAMME_NAME));
     assertThat("Unexpected start date.", variables.get(START_DATE_FIELD), is(START_DATE));
+    assertThat("Unexpected responsible officer.", variables.get(RO_NAME_FIELD), is(RO_NAME));
+    assertThat("Unexpected designated body.", variables.get(DESIGNATED_BODY_FIELD),
+        is(DESIGNATED_BODY));
     assertThat("Unexpected local office contact.", variables.get(LOCAL_OFFICE_CONTACT_FIELD),
         is(contact));
     assertThat("Unexpected local office contact type.",
@@ -1348,6 +1355,8 @@ class ProgrammeMembershipServiceTest {
     programmeMembership.setCurricula(List.of(theCurriculum));
     programmeMembership.setConditionsOfJoining(new ConditionsOfJoining(Instant.MIN));
     programmeMembership.setManagingDeanery(MANAGING_DEANERY);
+    programmeMembership.setResponsibleOfficer(RO_NAME);
+    programmeMembership.setDesignatedBody(DESIGNATED_BODY);
     return programmeMembership;
   }
 }

@@ -78,6 +78,8 @@ public class ProgrammeMembershipService {
   public static final String LOCAL_OFFICE_CONTACT_TYPE_FIELD = "localOfficeContactType";
   public static final String COJ_SYNCED_FIELD = "conditionsOfJoiningSyncedAt";
   public static final String GMC_NUMBER_FIELD = "gmcNumber";
+  public static final String RO_NAME_FIELD = "roName";
+  public static final String DESIGNATED_BODY_FIELD = "designatedBody";
   public static final Integer DEFERRAL_IF_MORE_THAN_DAYS = 89;
 
   private static final List<String> INCLUDE_CURRICULUM_SUBTYPES
@@ -362,6 +364,8 @@ public class ProgrammeMembershipService {
     variables.put(PROGRAMME_NAME_FIELD, programmeMembership.getProgrammeName());
     variables.put(PROGRAMME_NUMBER_FIELD, programmeMembership.getProgrammeNumber());
     variables.put(START_DATE_FIELD, programmeMembership.getStartDate());
+    variables.put(RO_NAME_FIELD, programmeMembership.getResponsibleOfficer());
+    variables.put(DESIGNATED_BODY_FIELD, programmeMembership.getDesignatedBody());
 
     TisReferenceInfo tisReference = new TisReferenceInfo(TisReferenceType.PROGRAMME_MEMBERSHIP,
         programmeMembership.getTisId());

@@ -24,8 +24,8 @@
         <b>Connecting yourself to your Responsible Officer (RO)</b>
       </p>
       <p>
-        Please note it is your responsibility to ensure you connect to your Responsible Officer [insert RO name]
-        and Designated body [insert designated body] via your GMC Online account on the day you start your new Training programme.
+        Please note it is your responsibility to ensure you connect to your Responsible Officer <span th:text="${not #strings.isEmpty(roName)} ? ${roName} : _">(responsible officer missing)</span>
+        and Designated body <span th:text="${not #strings.isEmpty(designatedBody)} ? ${designatedBody} : _">(designated body missing)</span> via your GMC Online account on the day you start your new Training programme.
       </p>
       <p>
         Further information can be found <a href="https://www.gmc-uk.org/registration-and-licensing/managing-your-registration/revalidation/my-db-tool" th:target="_blank">
