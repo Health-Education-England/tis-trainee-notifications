@@ -92,6 +92,7 @@ import uk.nhs.tis.trainee.notifications.model.LocalOfficeContactType;
 import uk.nhs.tis.trainee.notifications.model.MessageType;
 import uk.nhs.tis.trainee.notifications.model.NotificationType;
 import uk.nhs.tis.trainee.notifications.model.ProgrammeMembership;
+import uk.nhs.tis.trainee.notifications.model.ResponsibleOfficer;
 import uk.nhs.tis.trainee.notifications.model.TisReferenceType;
 
 class ProgrammeMembershipServiceTest {
@@ -126,8 +127,9 @@ class ProgrammeMembershipServiceTest {
   private static final String USER_GMC = "111111";
   private static final ObjectId HISTORY_ID_1 = ObjectId.get();
   private static final ObjectId HISTORY_ID_2 = ObjectId.get();
-  private static final String RO_NAME = "ro-name";
   private static final String DESIGNATED_BODY = "deisgnatedBody";
+  private static final String RO_FIRST_NAME = "RO First Name";
+  private static final String RO_LAST_NAME = "RO Last Name";
 
   ProgrammeMembershipService service;
   HistoryService historyService;
@@ -449,7 +451,8 @@ class ProgrammeMembershipServiceTest {
     assertThat("Unexpected programme name.", variables.get(PROGRAMME_NAME_FIELD),
         is(PROGRAMME_NAME));
     assertThat("Unexpected start date.", variables.get(START_DATE_FIELD), is(START_DATE));
-    assertThat("Unexpected responsible officer.", variables.get(RO_NAME_FIELD), is(RO_NAME));
+    assertThat("Unexpected responsible officer.", variables.get(RO_NAME_FIELD),
+        is(RO_FIRST_NAME + " " + RO_LAST_NAME));
     assertThat("Unexpected designated body.", variables.get(DESIGNATED_BODY_FIELD),
         is(DESIGNATED_BODY));
     assertThat("Unexpected local office contact.", variables.get(LOCAL_OFFICE_CONTACT_FIELD),
@@ -565,6 +568,96 @@ class ProgrammeMembershipServiceTest {
 
     verify(inAppService, never()).createNotifications(any(), any(), eq(notificationType), any(),
         any());
+  }
+
+  @Test
+  void shouldReturnEmptyRoNameWhenRoIsMissing() throws SchedulerException {
+    ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
+    programmeMembership.setResponsibleOfficer(null);
+
+    when(notificationService.meetsCriteria(programmeMembership, true,
+        true)).thenReturn(true);
+    when(notificationService.getOwnerContact(any(), any(), any(), any())).thenReturn("");
+    when(notificationService.getHrefTypeForContact(any())).thenReturn("");
+
+    service.addNotifications(programmeMembership);
+
+    ArgumentCaptor<Map<String, Object>> variablesCaptor = ArgumentCaptor.captor();
+    verify(inAppService).createNotifications(eq(PERSON_ID), any(), eq(DAY_ONE), eq(DAY_ONE_VERSION),
+        variablesCaptor.capture(), anyBoolean(), eq(START_DATE.atStartOfDay(timezone).toInstant()));
+
+    Map<String, Object> variables = variablesCaptor.getValue();
+    assertThat("Unexpected responsible officer.", variables.get(RO_NAME_FIELD),
+        is(""));
+  }
+
+  @Test
+  void shouldReturnEmptyRoNameWhenRoFirstAndLastNameAreMissing() throws SchedulerException {
+    ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
+    ResponsibleOfficer theRo = new ResponsibleOfficer("roEmail", "", null,
+        "roGmc", "roPhone");
+    programmeMembership.setResponsibleOfficer(theRo);
+
+    when(notificationService.meetsCriteria(programmeMembership, true,
+        true)).thenReturn(true);
+    when(notificationService.getOwnerContact(any(), any(), any(), any())).thenReturn("");
+    when(notificationService.getHrefTypeForContact(any())).thenReturn("");
+
+    service.addNotifications(programmeMembership);
+
+    ArgumentCaptor<Map<String, Object>> variablesCaptor = ArgumentCaptor.captor();
+    verify(inAppService).createNotifications(eq(PERSON_ID), any(), eq(DAY_ONE), eq(DAY_ONE_VERSION),
+        variablesCaptor.capture(), anyBoolean(), eq(START_DATE.atStartOfDay(timezone).toInstant()));
+
+    Map<String, Object> variables = variablesCaptor.getValue();
+    assertThat("Unexpected responsible officer.", variables.get(RO_NAME_FIELD),
+        is(""));
+  }
+
+  @Test
+  void shouldReturnTrimRoFirstNameWhenRoLastNameIsMissing() throws SchedulerException {
+    ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
+    ResponsibleOfficer theRo = new ResponsibleOfficer("roEmail", RO_FIRST_NAME, "",
+        "roGmc", "roPhone");
+    programmeMembership.setResponsibleOfficer(theRo);
+
+    when(notificationService.meetsCriteria(programmeMembership, true,
+        true)).thenReturn(true);
+    when(notificationService.getOwnerContact(any(), any(), any(), any())).thenReturn("");
+    when(notificationService.getHrefTypeForContact(any())).thenReturn("");
+
+    service.addNotifications(programmeMembership);
+
+    ArgumentCaptor<Map<String, Object>> variablesCaptor = ArgumentCaptor.captor();
+    verify(inAppService).createNotifications(eq(PERSON_ID), any(), eq(DAY_ONE), eq(DAY_ONE_VERSION),
+        variablesCaptor.capture(), anyBoolean(), eq(START_DATE.atStartOfDay(timezone).toInstant()));
+
+    Map<String, Object> variables = variablesCaptor.getValue();
+    assertThat("Unexpected responsible officer.", variables.get(RO_NAME_FIELD),
+        is(RO_FIRST_NAME));
+  }
+
+  @Test
+  void shouldReturnTrimRoLastNameWhenRoFirstNameIsMissing() throws SchedulerException {
+    ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
+    ResponsibleOfficer theRo = new ResponsibleOfficer("roEmail", null, RO_LAST_NAME,
+        "roGmc", "roPhone");
+    programmeMembership.setResponsibleOfficer(theRo);
+
+    when(notificationService.meetsCriteria(programmeMembership, true,
+        true)).thenReturn(true);
+    when(notificationService.getOwnerContact(any(), any(), any(), any())).thenReturn("");
+    when(notificationService.getHrefTypeForContact(any())).thenReturn("");
+
+    service.addNotifications(programmeMembership);
+
+    ArgumentCaptor<Map<String, Object>> variablesCaptor = ArgumentCaptor.captor();
+    verify(inAppService).createNotifications(eq(PERSON_ID), any(), eq(DAY_ONE), eq(DAY_ONE_VERSION),
+        variablesCaptor.capture(), anyBoolean(), eq(START_DATE.atStartOfDay(timezone).toInstant()));
+
+    Map<String, Object> variables = variablesCaptor.getValue();
+    assertThat("Unexpected responsible officer.", variables.get(RO_NAME_FIELD),
+        is(RO_LAST_NAME));
   }
 
   @Test
@@ -1346,6 +1439,8 @@ class ProgrammeMembershipServiceTest {
    */
   private ProgrammeMembership getDefaultProgrammeMembership() {
     Curriculum theCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, "any specialty", false);
+    ResponsibleOfficer theRo = new ResponsibleOfficer("roEmail", RO_FIRST_NAME, RO_LAST_NAME,
+        "roGmc", "roPhone");
     ProgrammeMembership programmeMembership = new ProgrammeMembership();
     programmeMembership.setTisId(TIS_ID);
     programmeMembership.setPersonId(PERSON_ID);
@@ -1355,7 +1450,7 @@ class ProgrammeMembershipServiceTest {
     programmeMembership.setCurricula(List.of(theCurriculum));
     programmeMembership.setConditionsOfJoining(new ConditionsOfJoining(Instant.MIN));
     programmeMembership.setManagingDeanery(MANAGING_DEANERY);
-    programmeMembership.setResponsibleOfficer(RO_NAME);
+    programmeMembership.setResponsibleOfficer(theRo);
     programmeMembership.setDesignatedBody(DESIGNATED_BODY);
     return programmeMembership;
   }

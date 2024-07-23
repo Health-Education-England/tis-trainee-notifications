@@ -36,6 +36,7 @@ import uk.nhs.tis.trainee.notifications.dto.ProgrammeMembershipEvent;
 import uk.nhs.tis.trainee.notifications.dto.RecordDto;
 import uk.nhs.tis.trainee.notifications.model.Curriculum;
 import uk.nhs.tis.trainee.notifications.model.ProgrammeMembership;
+import uk.nhs.tis.trainee.notifications.model.ResponsibleOfficer;
 
 class ProgrammeMembershipMapperTest {
 
@@ -44,6 +45,8 @@ class ProgrammeMembershipMapperTest {
   private static final String CURRICULUM_SUB_TYPE = "sub-type";
   private static final String CURRICULUM_SPECIALTY = "specialty";
   private static final Instant COJ_SYNCED_AT = Instant.now();
+  private static final String RO_FIRST_NAME = "RO First Name";
+  private static final String RO_LAST_NAME = "RO Last Name";
 
   private ProgrammeMembershipMapper mapper;
 
@@ -60,6 +63,9 @@ class ProgrammeMembershipMapperTest {
     programmeMembership.setStartDate(START_DATE);
     Curriculum curriculum = new Curriculum(CURRICULUM_SUB_TYPE, CURRICULUM_SPECIALTY, false);
     programmeMembership.setCurricula(List.of(curriculum));
+    ResponsibleOfficer ro = new ResponsibleOfficer("email@email.com", RO_FIRST_NAME,
+        RO_LAST_NAME, "1234567", "0141111111111");
+    programmeMembership.setResponsibleOfficer(ro);
 
     ProgrammeMembership returnedPm = mapper.toEntity(event.recrd().getData());
 
@@ -68,6 +74,7 @@ class ProgrammeMembershipMapperTest {
     assertThat("Unexpected curricula.", returnedPm.getCurricula(), is(List.of(curriculum)));
     assertThat("Unexpected Conditions of joining.", returnedPm.getConditionsOfJoining(),
         is(new ConditionsOfJoining(COJ_SYNCED_AT)));
+    assertThat("Unexpected Responsible Officer.", returnedPm.getResponsibleOfficer(), is(ro));
   }
 
   /**
@@ -88,6 +95,12 @@ class ProgrammeMembershipMapperTest {
         "{\"signedAt\":\"2023-06-05T20:44:29.943Z\","
             + "\"version\":\"GG9\","
             + "\"syncedAt\":\"" + COJ_SYNCED_AT + "\"}");
+    dataMap.put("responsibleOfficer",
+        "{\"emailAddress\":\"email@email.com\","
+            + "\"firstName\":\"" + RO_FIRST_NAME + "\","
+            + "\"lastName\":\"" + RO_LAST_NAME + "\","
+            + "\"gmcNumber\":\"1234567\","
+            + "\"phoneNumber\":\"0141111111111\"}");
     RecordDto data = new RecordDto();
     data.setData(dataMap);
     return new ProgrammeMembershipEvent(TIS_ID, data);

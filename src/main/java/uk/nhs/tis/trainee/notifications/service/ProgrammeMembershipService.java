@@ -59,6 +59,7 @@ import uk.nhs.tis.trainee.notifications.model.History.TisReferenceInfo;
 import uk.nhs.tis.trainee.notifications.model.LocalOfficeContactType;
 import uk.nhs.tis.trainee.notifications.model.NotificationType;
 import uk.nhs.tis.trainee.notifications.model.ProgrammeMembership;
+import uk.nhs.tis.trainee.notifications.model.ResponsibleOfficer;
 import uk.nhs.tis.trainee.notifications.model.TisReferenceType;
 
 /**
@@ -364,7 +365,7 @@ public class ProgrammeMembershipService {
     variables.put(PROGRAMME_NAME_FIELD, programmeMembership.getProgrammeName());
     variables.put(PROGRAMME_NUMBER_FIELD, programmeMembership.getProgrammeNumber());
     variables.put(START_DATE_FIELD, programmeMembership.getStartDate());
-    variables.put(RO_NAME_FIELD, programmeMembership.getResponsibleOfficer());
+    variables.put(RO_NAME_FIELD, getRoName(programmeMembership.getResponsibleOfficer()));
     variables.put(DESIGNATED_BODY_FIELD, programmeMembership.getDesignatedBody());
 
     TisReferenceInfo tisReference = new TisReferenceInfo(TisReferenceType.PROGRAMME_MEMBERSHIP,
@@ -512,5 +513,21 @@ public class ProgrammeMembershipService {
       }
     }
     return null;
+  }
+
+  /**
+   * Get the RO name from RO first name and last name.
+   *
+   * @param responsibleOfficer The details of the responsible officer.
+   * @return The ro name to be shown in notifications, or empty string if it is missing.
+   */
+  private String getRoName(ResponsibleOfficer responsibleOfficer) {
+
+    if (responsibleOfficer != null) {
+      return ((responsibleOfficer.firstName() == null ? "" : responsibleOfficer.firstName())
+          + " " + (responsibleOfficer.lastName() == null ? "" : responsibleOfficer.lastName())
+      ).trim();
+    }
+    return "";
   }
 }

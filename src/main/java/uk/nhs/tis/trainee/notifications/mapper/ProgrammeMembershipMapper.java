@@ -35,6 +35,7 @@ import org.mapstruct.ReportingPolicy;
 import uk.nhs.tis.trainee.notifications.dto.CojSignedEvent.ConditionsOfJoining;
 import uk.nhs.tis.trainee.notifications.model.Curriculum;
 import uk.nhs.tis.trainee.notifications.model.ProgrammeMembership;
+import uk.nhs.tis.trainee.notifications.model.ResponsibleOfficer;
 
 /**
  * A mapper to map between TIS Data and Programme Membership Data.
@@ -82,6 +83,23 @@ public interface ProgrammeMembershipMapper {
         .registerModule(new JavaTimeModule())
         .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
     return objectMapper.readValue(cojString,
+        new TypeReference<>() {
+        });
+  }
+
+  /**
+   * Map a serialized Responsible Officer.
+   *
+   * @param roString The serialized Responsible Officer.
+   * @return The Responsible Officer record.
+   * @throws JsonProcessingException if the RO is malformed.
+   */
+  default ResponsibleOfficer toResponsibleOfficer(String roString)
+      throws JsonProcessingException {
+    ObjectMapper objectMapper = new ObjectMapper()
+        .registerModule(new JavaTimeModule())
+        .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+    return objectMapper.readValue(roString,
         new TypeReference<>() {
         });
   }
