@@ -87,20 +87,29 @@ class ProgrammeMembershipMapperTest {
     dataMap.put("tisId", TIS_ID);
     dataMap.put("startDate", START_DATE.toString());
     dataMap.put("another-pm-property", "some value");
-    dataMap.put("curricula",
-        "[{\"curriculumSubType\": \"" + CURRICULUM_SUB_TYPE + "\", "
-            + "\"curriculumSpecialty\": \"" + CURRICULUM_SPECIALTY + "\", "
-            + "\"another-curriculum-property\": \"some value\"}]");
-    dataMap.put("conditionsOfJoining",
-        "{\"signedAt\":\"2023-06-05T20:44:29.943Z\","
-            + "\"version\":\"GG9\","
-            + "\"syncedAt\":\"" + COJ_SYNCED_AT + "\"}");
-    dataMap.put("responsibleOfficer",
-        "{\"emailAddress\":\"email@email.com\","
-            + "\"firstName\":\"" + RO_FIRST_NAME + "\","
-            + "\"lastName\":\"" + RO_LAST_NAME + "\","
-            + "\"gmcNumber\":\"1234567\","
-            + "\"phoneNumber\":\"0141111111111\"}");
+    dataMap.put("curricula", """
+        [{
+          "curriculumSubType": "%s",
+          "curriculumSpecialty": "%s",
+          "another-curriculum-property": "some value"
+        }]
+        """.formatted(CURRICULUM_SUB_TYPE, CURRICULUM_SPECIALTY));
+    dataMap.put("conditionsOfJoining", """
+        {
+          "signedAt": "2023-06-05T20:44:29.943Z",
+          "version": "GG9",
+          "syncedAt": "%s"
+        }
+        """.formatted(COJ_SYNCED_AT));
+    dataMap.put("responsibleOfficer", """
+        {
+          "emailAddress": "email@email.com",
+          "firstName": "%s",
+          "lastName": "%s",
+          "gmcNumber": "1234567",
+          "phoneNumber": "0141111111111"
+        }
+        """.formatted(RO_FIRST_NAME, RO_LAST_NAME));
     RecordDto data = new RecordDto();
     data.setData(dataMap);
     return new ProgrammeMembershipEvent(TIS_ID, data);
