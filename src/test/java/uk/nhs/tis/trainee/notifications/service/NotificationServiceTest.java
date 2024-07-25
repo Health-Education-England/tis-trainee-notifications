@@ -512,7 +512,7 @@ class NotificationServiceTest {
     LocalDate expectedDate = START_DATE.minusDays(0);
     Date when = Date.from(expectedDate
         .atStartOfDay()
-        .atZone(ZoneId.systemDefault())
+        .atZone(ZoneId.of(TIMEZONE))
         .toInstant());
 
     service.scheduleNotification(jobId, programmeJobDataMap, when);
@@ -534,7 +534,7 @@ class NotificationServiceTest {
     LocalDate expectedDate = START_DATE.minusDays(84);
     Date when = Date.from(expectedDate
         .atStartOfDay()
-        .atZone(ZoneId.systemDefault())
+        .atZone(ZoneId.of(TIMEZONE))
         .toInstant());
 
     service.scheduleNotification(jobId, placementJobDataMap, when);
@@ -710,7 +710,7 @@ class NotificationServiceTest {
     LocalDate milestoneDate = startDate.minusDays(daysBeforeStart);
     Date expectedMilestone = Date.from(milestoneDate
         .atStartOfDay()
-        .atZone(ZoneId.systemDefault())
+        .atZone(ZoneId.of(TIMEZONE))
         .toInstant());
 
     Date scheduledDate = service.getScheduleDate(startDate, daysBeforeStart);
@@ -735,7 +735,7 @@ class NotificationServiceTest {
     LocalDate milestoneDate = startDate.minusDays(daysBeforeStart);
     Instant expectedMilestone = milestoneDate
         .atStartOfDay()
-        .atZone(ZoneId.systemDefault())
+        .atZone(ZoneId.of(TIMEZONE))
         .toInstant();
 
     Instant scheduledDate = service.calculateInAppDisplayDate(startDate, daysBeforeStart);

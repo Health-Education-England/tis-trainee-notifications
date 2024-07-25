@@ -36,8 +36,10 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
+import static uk.nhs.tis.trainee.notifications.model.MessageType.IN_APP;
 import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.SENT;
 import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.UNREAD;
+import static uk.nhs.tis.trainee.notifications.model.NotificationType.DAY_ONE;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.DEFERRAL;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.INDEMNITY_INSURANCE;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.LTFT;
@@ -50,10 +52,12 @@ import static uk.nhs.tis.trainee.notifications.service.PlacementService.GMC_NUMB
 import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.BLOCK_INDEMNITY_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.COJ_SYNCED_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.DEFERRAL_IF_MORE_THAN_DAYS;
+import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.DESIGNATED_BODY_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.LOCAL_OFFICE_CONTACT_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.LOCAL_OFFICE_CONTACT_TYPE_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.PROGRAMME_NAME_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.PROGRAMME_NUMBER_FIELD;
+import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.RO_NAME_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.START_DATE_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.TIS_ID_FIELD;
 
@@ -88,6 +92,7 @@ import uk.nhs.tis.trainee.notifications.model.LocalOfficeContactType;
 import uk.nhs.tis.trainee.notifications.model.MessageType;
 import uk.nhs.tis.trainee.notifications.model.NotificationType;
 import uk.nhs.tis.trainee.notifications.model.ProgrammeMembership;
+import uk.nhs.tis.trainee.notifications.model.ResponsibleOfficer;
 import uk.nhs.tis.trainee.notifications.model.TisReferenceType;
 
 class ProgrammeMembershipServiceTest {
@@ -114,11 +119,17 @@ class ProgrammeMembershipServiceTest {
   private static final String LTFT_VERSION = "v3.4.5";
   private static final String DEFERRAL_VERSION = "v4.5.6";
   private static final String SPONSORSHIP_VERSION = "v5.6.7";
+  private static final String DAY_ONE_VERSION = "v6.7.8";
   private static final String USER_EMAIL = "email@address";
   private static final String USER_TITLE = "title";
   private static final String USER_FAMILY_NAME = "family-name";
   private static final String USER_GIVEN_NAME = "given-name";
   private static final String USER_GMC = "111111";
+  private static final ObjectId HISTORY_ID_1 = ObjectId.get();
+  private static final ObjectId HISTORY_ID_2 = ObjectId.get();
+  private static final String DESIGNATED_BODY = "deisgnatedBody";
+  private static final String RO_FIRST_NAME = "RO First Name";
+  private static final String RO_LAST_NAME = "RO Last Name";
 
   ProgrammeMembershipService service;
   HistoryService historyService;
@@ -131,7 +142,7 @@ class ProgrammeMembershipServiceTest {
     inAppService = mock(InAppService.class);
     notificationService = mock(NotificationService.class);
     service = new ProgrammeMembershipService(historyService, inAppService, notificationService,
-        timezone, DEFERRAL_VERSION, E_PORTFOLIO_VERSION,
+        timezone, DAY_ONE_VERSION, DEFERRAL_VERSION, E_PORTFOLIO_VERSION,
         INDEMNITY_INSURANCE_VERSION, LTFT_VERSION, SPONSORSHIP_VERSION);
   }
 
@@ -266,7 +277,9 @@ class ProgrammeMembershipServiceTest {
       DEFERRAL | v4.5.6 | true
       DEFERRAL | v4.5.6 | false
       SPONSORSHIP | v5.6.7 | true
-      SPONSORSHIP | v5.6.7 | false""")
+      SPONSORSHIP | v5.6.7 | false
+      DAY_ONE | v6.7.8 | true
+      DAY_ONE | v6.7.8 | false""")
   void shouldAddInAppNotificationsWhenNotExcludedAndMeetsCriteria(NotificationType notificationType,
       String notificationVersion, boolean notifiablePm) throws SchedulerException {
     ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
@@ -289,9 +302,15 @@ class ProgrammeMembershipServiceTest {
         TisReferenceInfo.class);
     ArgumentCaptor<Map<String, Object>> variablesCaptor = ArgumentCaptor.captor();
     ArgumentCaptor<Boolean> doNotStoreJustLogCaptor = ArgumentCaptor.captor();
-    verify(inAppService).createNotifications(eq(PERSON_ID), referenceInfoCaptor.capture(),
-        eq(notificationType), eq(notificationVersion), variablesCaptor.capture(),
-        doNotStoreJustLogCaptor.capture());
+    if (notificationType.equals(DAY_ONE)) {
+      verify(inAppService).createNotifications(eq(PERSON_ID), referenceInfoCaptor.capture(),
+          eq(notificationType), eq(notificationVersion), variablesCaptor.capture(),
+          doNotStoreJustLogCaptor.capture(), eq(START_DATE.atStartOfDay(timezone).toInstant()));
+    } else {
+      verify(inAppService).createNotifications(eq(PERSON_ID), referenceInfoCaptor.capture(),
+          eq(notificationType), eq(notificationVersion), variablesCaptor.capture(),
+          doNotStoreJustLogCaptor.capture());
+    }
 
     TisReferenceInfo referenceInfo = referenceInfoCaptor.getValue();
     assertThat("Unexpected reference type.", referenceInfo.type(), is(PROGRAMME_MEMBERSHIP));
@@ -334,7 +353,7 @@ class ProgrammeMembershipServiceTest {
         eq(INDEMNITY_INSURANCE_VERSION), variablesCaptor.capture(), anyBoolean());
 
     Map<String, Object> variables = variablesCaptor.getValue();
-    assertThat("Unexpected variable count.", variables.size(), is(4));
+    assertThat("Unexpected variable count.", variables.size(), is(6));
     assertThat("Unexpected programme name.", variables.get(PROGRAMME_NAME_FIELD),
         is(PROGRAMME_NAME));
     assertThat("Unexpected start date.", variables.get(START_DATE_FIELD), is(START_DATE));
@@ -428,10 +447,14 @@ class ProgrammeMembershipServiceTest {
         eq(SPONSORSHIP_VERSION), variablesCaptor.capture(), anyBoolean());
 
     Map<String, Object> variables = variablesCaptor.getValue();
-    assertThat("Unexpected variable count.", variables.size(), is(6));
+    assertThat("Unexpected variable count.", variables.size(), is(8));
     assertThat("Unexpected programme name.", variables.get(PROGRAMME_NAME_FIELD),
         is(PROGRAMME_NAME));
     assertThat("Unexpected start date.", variables.get(START_DATE_FIELD), is(START_DATE));
+    assertThat("Unexpected responsible officer.", variables.get(RO_NAME_FIELD),
+        is(RO_FIRST_NAME + " " + RO_LAST_NAME));
+    assertThat("Unexpected designated body.", variables.get(DESIGNATED_BODY_FIELD),
+        is(DESIGNATED_BODY));
     assertThat("Unexpected local office contact.", variables.get(LOCAL_OFFICE_CONTACT_FIELD),
         is(contact));
     assertThat("Unexpected local office contact type.",
@@ -523,7 +546,7 @@ class ProgrammeMembershipServiceTest {
 
   @ParameterizedTest
   @EnumSource(value = NotificationType.class, mode = Mode.INCLUDE, names = {"DEFERRAL",
-      "E_PORTFOLIO", "INDEMNITY_INSURANCE", "LTFT", "SPONSORSHIP"})
+      "E_PORTFOLIO", "INDEMNITY_INSURANCE", "LTFT", "SPONSORSHIP", "DAY_ONE"})
   void shouldNotAddInAppNotificationsWhenNotUnique(NotificationType notificationType)
       throws SchedulerException {
     ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
@@ -545,6 +568,96 @@ class ProgrammeMembershipServiceTest {
 
     verify(inAppService, never()).createNotifications(any(), any(), eq(notificationType), any(),
         any());
+  }
+
+  @Test
+  void shouldReturnEmptyRoNameWhenRoIsMissing() throws SchedulerException {
+    ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
+    programmeMembership.setResponsibleOfficer(null);
+
+    when(notificationService.meetsCriteria(programmeMembership, true,
+        true)).thenReturn(true);
+    when(notificationService.getOwnerContact(any(), any(), any(), any())).thenReturn("");
+    when(notificationService.getHrefTypeForContact(any())).thenReturn("");
+
+    service.addNotifications(programmeMembership);
+
+    ArgumentCaptor<Map<String, Object>> variablesCaptor = ArgumentCaptor.captor();
+    verify(inAppService).createNotifications(eq(PERSON_ID), any(), eq(DAY_ONE), eq(DAY_ONE_VERSION),
+        variablesCaptor.capture(), anyBoolean(), eq(START_DATE.atStartOfDay(timezone).toInstant()));
+
+    Map<String, Object> variables = variablesCaptor.getValue();
+    assertThat("Unexpected responsible officer.", variables.get(RO_NAME_FIELD),
+        is(""));
+  }
+
+  @Test
+  void shouldReturnEmptyRoNameWhenRoFirstAndLastNameAreMissing() throws SchedulerException {
+    ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
+    ResponsibleOfficer theRo = new ResponsibleOfficer("roEmail", "", null,
+        "roGmc", "roPhone");
+    programmeMembership.setResponsibleOfficer(theRo);
+
+    when(notificationService.meetsCriteria(programmeMembership, true,
+        true)).thenReturn(true);
+    when(notificationService.getOwnerContact(any(), any(), any(), any())).thenReturn("");
+    when(notificationService.getHrefTypeForContact(any())).thenReturn("");
+
+    service.addNotifications(programmeMembership);
+
+    ArgumentCaptor<Map<String, Object>> variablesCaptor = ArgumentCaptor.captor();
+    verify(inAppService).createNotifications(eq(PERSON_ID), any(), eq(DAY_ONE), eq(DAY_ONE_VERSION),
+        variablesCaptor.capture(), anyBoolean(), eq(START_DATE.atStartOfDay(timezone).toInstant()));
+
+    Map<String, Object> variables = variablesCaptor.getValue();
+    assertThat("Unexpected responsible officer.", variables.get(RO_NAME_FIELD),
+        is(""));
+  }
+
+  @Test
+  void shouldReturnTrimRoFirstNameWhenRoLastNameIsMissing() throws SchedulerException {
+    ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
+    ResponsibleOfficer theRo = new ResponsibleOfficer("roEmail", RO_FIRST_NAME, "",
+        "roGmc", "roPhone");
+    programmeMembership.setResponsibleOfficer(theRo);
+
+    when(notificationService.meetsCriteria(programmeMembership, true,
+        true)).thenReturn(true);
+    when(notificationService.getOwnerContact(any(), any(), any(), any())).thenReturn("");
+    when(notificationService.getHrefTypeForContact(any())).thenReturn("");
+
+    service.addNotifications(programmeMembership);
+
+    ArgumentCaptor<Map<String, Object>> variablesCaptor = ArgumentCaptor.captor();
+    verify(inAppService).createNotifications(eq(PERSON_ID), any(), eq(DAY_ONE), eq(DAY_ONE_VERSION),
+        variablesCaptor.capture(), anyBoolean(), eq(START_DATE.atStartOfDay(timezone).toInstant()));
+
+    Map<String, Object> variables = variablesCaptor.getValue();
+    assertThat("Unexpected responsible officer.", variables.get(RO_NAME_FIELD),
+        is(RO_FIRST_NAME));
+  }
+
+  @Test
+  void shouldReturnTrimRoLastNameWhenRoFirstNameIsMissing() throws SchedulerException {
+    ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
+    ResponsibleOfficer theRo = new ResponsibleOfficer("roEmail", null, RO_LAST_NAME,
+        "roGmc", "roPhone");
+    programmeMembership.setResponsibleOfficer(theRo);
+
+    when(notificationService.meetsCriteria(programmeMembership, true,
+        true)).thenReturn(true);
+    when(notificationService.getOwnerContact(any(), any(), any(), any())).thenReturn("");
+    when(notificationService.getHrefTypeForContact(any())).thenReturn("");
+
+    service.addNotifications(programmeMembership);
+
+    ArgumentCaptor<Map<String, Object>> variablesCaptor = ArgumentCaptor.captor();
+    verify(inAppService).createNotifications(eq(PERSON_ID), any(), eq(DAY_ONE), eq(DAY_ONE_VERSION),
+        variablesCaptor.capture(), anyBoolean(), eq(START_DATE.atStartOfDay(timezone).toInstant()));
+
+    Map<String, Object> variables = variablesCaptor.getValue();
+    assertThat("Unexpected responsible officer.", variables.get(RO_NAME_FIELD),
+        is(RO_LAST_NAME));
   }
 
   @Test
@@ -1265,6 +1378,45 @@ class ProgrammeMembershipServiceTest {
   }
 
   @Test
+  void shouldDeleteScheduledInAppNotifications() {
+    ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
+
+    History.RecipientInfo recipientInfo = new History.RecipientInfo(PERSON_ID, IN_APP, null);
+    History history1 = History.builder()
+        .id(HISTORY_ID_1)
+        .tisReference(new TisReferenceInfo(PROGRAMME_MEMBERSHIP, TIS_ID))
+        .recipient(recipientInfo)
+        .status(UNREAD)
+        .build();
+    History history2 = History.builder()
+        .id(HISTORY_ID_2)
+        .tisReference(new TisReferenceInfo(PROGRAMME_MEMBERSHIP, TIS_ID))
+        .recipient(recipientInfo)
+        .status(UNREAD)
+        .build();
+
+    when(historyService.findAllScheduledInAppForTrainee(PERSON_ID, PROGRAMME_MEMBERSHIP, TIS_ID))
+        .thenReturn(List.of(history1, history2));
+
+    service.deleteScheduledInAppNotifications(programmeMembership);
+
+    verify(historyService).deleteHistoryForTrainee(HISTORY_ID_1, PERSON_ID);
+    verify(historyService).deleteHistoryForTrainee(HISTORY_ID_2, PERSON_ID);
+  }
+
+  @Test
+  void shouldNotDeleteWhenNoScheduledInAppNotifications() {
+    ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
+
+    when(historyService.findAllScheduledInAppForTrainee(PERSON_ID, PROGRAMME_MEMBERSHIP, TIS_ID))
+        .thenReturn(List.of());
+
+    service.deleteScheduledInAppNotifications(programmeMembership);
+
+    verify(historyService, never()).deleteHistoryForTrainee(any(), any());
+  }
+
+  @Test
   void shouldIgnoreMissingConditionsOfJoining() throws SchedulerException {
     ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
     programmeMembership.setConditionsOfJoining(null);
@@ -1287,6 +1439,8 @@ class ProgrammeMembershipServiceTest {
    */
   private ProgrammeMembership getDefaultProgrammeMembership() {
     Curriculum theCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, "any specialty", false);
+    ResponsibleOfficer theRo = new ResponsibleOfficer("roEmail", RO_FIRST_NAME, RO_LAST_NAME,
+        "roGmc", "roPhone");
     ProgrammeMembership programmeMembership = new ProgrammeMembership();
     programmeMembership.setTisId(TIS_ID);
     programmeMembership.setPersonId(PERSON_ID);
@@ -1296,6 +1450,8 @@ class ProgrammeMembershipServiceTest {
     programmeMembership.setCurricula(List.of(theCurriculum));
     programmeMembership.setConditionsOfJoining(new ConditionsOfJoining(Instant.MIN));
     programmeMembership.setManagingDeanery(MANAGING_DEANERY);
+    programmeMembership.setResponsibleOfficer(theRo);
+    programmeMembership.setDesignatedBody(DESIGNATED_BODY);
     return programmeMembership;
   }
 }

@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <title>Day One</title>
+  </head>
+  <body>
+    <h1>In-App Notification</h1>
+    <h2>Subject</h2>
+    <th:block th:fragment="subject">Day One</th:block>
+    <h2>Content</h2>
+    <th:block th:fragment="content">
+      <p>
+        For your programme
+        <th:block th:text="${not #strings.isEmpty(programmeName)} ? ${programmeName} : _"
+          >(programme name missing)</th:block
+        >
+        starting on
+        <th:block th:text="${startDate} ? |${#temporals.format(startDate, 'dd MMMM yyyy')}| : _"
+          >(start date missing)</th:block
+        >, please see the below information.
+      </p>
+      <p>
+        <strong>Connecting yourself to your Responsible Officer (RO)</strong>
+      </p>
+      <p>
+        Please note it is your responsibility to ensure you connect to your Responsible Officer (<span th:text="${not #strings.isEmpty(roName)} ? ${roName} : _">responsible officer missing</span>)
+        and Designated body (<span th:text="${not #strings.isEmpty(designatedBody)} ? ${designatedBody} : _">designated body missing</span>) via your GMC Online account on the day you start your new Training programme.
+      </p>
+      <p>
+        Further information can be found <a href="https://www.gmc-uk.org/registration-and-licensing/managing-your-registration/revalidation/my-db-tool" th:target="_blank">
+        here</a>.
+      </p>
+      <p>
+        Please ensure you are connecting to the Postgraduate Dean responsible for the programme you are training in and not your employer.
+      </p>
+      <p>
+        Please connect to your RO within <strong>7 calendar days</strong> of commencing in your current training programme.
+      </p>
+      <p>
+        You must remain connected for the duration of your programme this includes any period Out of Programme(OOP) and statutory leave.
+      </p>
+      <p>
+        Some programmes share a Responsible Officer for a Programme so please ensure you use the details we have provided as this may differ to what you expect.
+        For example, you may be training in South London but asked to connect to North West London for the purpose of revalidation.
+      </p>
+      <p>
+        <strong>Military Trainees should follow instructions provided by the Defence Deanery regarding their connection</strong>
+      </p>
+    </th:block>
+  </body>
+</html>

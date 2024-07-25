@@ -22,12 +22,14 @@
 package uk.nhs.tis.trainee.notifications.service;
 
 import static uk.nhs.tis.trainee.notifications.model.MessageType.IN_APP;
+import static uk.nhs.tis.trainee.notifications.model.NotificationType.DAY_ONE;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.DEFERRAL;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.E_PORTFOLIO;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.INDEMNITY_INSURANCE;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.LTFT;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_CREATED;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.SPONSORSHIP;
+import static uk.nhs.tis.trainee.notifications.model.TisReferenceType.PROGRAMME_MEMBERSHIP;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.PERSON_ID_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.TEMPLATE_NOTIFICATION_TYPE_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.TEMPLATE_OWNER_FIELD;
@@ -57,6 +59,7 @@ import uk.nhs.tis.trainee.notifications.model.History.TisReferenceInfo;
 import uk.nhs.tis.trainee.notifications.model.LocalOfficeContactType;
 import uk.nhs.tis.trainee.notifications.model.NotificationType;
 import uk.nhs.tis.trainee.notifications.model.ProgrammeMembership;
+import uk.nhs.tis.trainee.notifications.model.ResponsibleOfficer;
 import uk.nhs.tis.trainee.notifications.model.TisReferenceType;
 
 /**
@@ -76,6 +79,8 @@ public class ProgrammeMembershipService {
   public static final String LOCAL_OFFICE_CONTACT_TYPE_FIELD = "localOfficeContactType";
   public static final String COJ_SYNCED_FIELD = "conditionsOfJoiningSyncedAt";
   public static final String GMC_NUMBER_FIELD = "gmcNumber";
+  public static final String RO_NAME_FIELD = "roName";
+  public static final String DESIGNATED_BODY_FIELD = "designatedBody";
   public static final Integer DEFERRAL_IF_MORE_THAN_DAYS = 89;
 
   private static final List<String> INCLUDE_CURRICULUM_SUBTYPES
@@ -89,6 +94,7 @@ public class ProgrammeMembershipService {
 
   private final ZoneId timezone;
 
+  private final String dayOneVersion;
   private final String deferralVersion;
   private final String eportfolioVersion;
   private final String indemnityInsuranceVersion;
@@ -101,6 +107,7 @@ public class ProgrammeMembershipService {
    * @param historyService            The history service to use.
    * @param inAppService              The in-app service to use.
    * @param notificationService       The notification service to use.
+   * @param dayOneVersion             The day one version.
    * @param deferralVersion           The deferral version.
    * @param eportfolioVersion         The ePortfolio version.
    * @param indemnityInsuranceVersion The indemnity insurance version.
@@ -109,6 +116,7 @@ public class ProgrammeMembershipService {
    */
   public ProgrammeMembershipService(HistoryService historyService, InAppService inAppService,
       NotificationService notificationService, @Value("${application.timezone}") ZoneId timezone,
+      @Value("${application.template-versions.day-one.in-app}") String dayOneVersion,
       @Value("${application.template-versions.deferral.in-app}") String deferralVersion,
       @Value("${application.template-versions.e-portfolio.in-app}") String eportfolioVersion,
       @Value("${application.template-versions.indemnity-insurance.in-app}")
@@ -119,6 +127,7 @@ public class ProgrammeMembershipService {
     this.inAppService = inAppService;
     this.notificationService = notificationService;
     this.timezone = timezone;
+    this.dayOneVersion = dayOneVersion;
     this.deferralVersion = deferralVersion;
     this.eportfolioVersion = eportfolioVersion;
     this.indemnityInsuranceVersion = indemnityInsuranceVersion;
@@ -182,6 +191,8 @@ public class ProgrammeMembershipService {
     notificationTypes.add(INDEMNITY_INSURANCE);
     notificationTypes.add(LTFT);
     notificationTypes.add(SPONSORSHIP);
+    notificationTypes.add(DAY_ONE);
+
 
     for (NotificationType milestone : notificationTypes) {
       Optional<History> sentItem = correspondence.stream()
@@ -205,7 +216,9 @@ public class ProgrammeMembershipService {
   public void addNotifications(ProgrammeMembership programmeMembership)
       throws SchedulerException {
 
-    deleteNotifications(programmeMembership); //first delete any stale notifications
+    //first delete any stale notifications
+    deleteNotifications(programmeMembership);
+    deleteScheduledInAppNotifications(programmeMembership);
 
     boolean isExcluded = isExcluded(programmeMembership);
     log.info("Programme membership {}: excluded {}.", programmeMembership.getTisId(), isExcluded);
@@ -327,6 +340,10 @@ public class ProgrammeMembershipService {
               LOCAL_OFFICE_CONTACT_FIELD, localOfficeContactSponsorship,
               LOCAL_OFFICE_CONTACT_TYPE_FIELD, localOfficeContactTypeSponsorship,
               GMC_NUMBER_FIELD, gmcNumber));
+
+      // DAY_ONE
+      createUniqueInAppNotification(programmeMembership, notificationsAlreadySent, DAY_ONE,
+          dayOneVersion, Map.of());
     }
   }
 
@@ -348,6 +365,8 @@ public class ProgrammeMembershipService {
     variables.put(PROGRAMME_NAME_FIELD, programmeMembership.getProgrammeName());
     variables.put(PROGRAMME_NUMBER_FIELD, programmeMembership.getProgrammeNumber());
     variables.put(START_DATE_FIELD, programmeMembership.getStartDate());
+    variables.put(RO_NAME_FIELD, getRoName(programmeMembership.getResponsibleOfficer()));
+    variables.put(DESIGNATED_BODY_FIELD, programmeMembership.getDesignatedBody());
 
     TisReferenceInfo tisReference = new TisReferenceInfo(TisReferenceType.PROGRAMME_MEMBERSHIP,
         programmeMembership.getTisId());
@@ -356,8 +375,15 @@ public class ProgrammeMembershipService {
 
     boolean isUnique = !notificationsAlreadySent.containsKey(notificationType);
     if (isUnique) {
-      inAppService.createNotifications(programmeMembership.getPersonId(), tisReference,
-          notificationType, notificationVersion, variables, doNotSendJustLog);
+      // send on programme start day for future Day One notification
+      if (notificationType.equals(DAY_ONE)) {
+        inAppService.createNotifications(programmeMembership.getPersonId(), tisReference,
+            notificationType, notificationVersion, variables, doNotSendJustLog,
+            programmeMembership.getStartDate().atStartOfDay(timezone).toInstant());
+      } else {
+        inAppService.createNotifications(programmeMembership.getPersonId(), tisReference,
+            notificationType, notificationVersion, variables, doNotSendJustLog);
+      }
     } else {
       boolean shouldSchedule = shouldScheduleNotification(notificationType, programmeMembership,
           notificationsAlreadySent);
@@ -389,6 +415,22 @@ public class ProgrammeMembershipService {
 
       String jobId = milestone.toString() + "-" + programmeMembership.getTisId();
       notificationService.removeNotification(jobId); //remove existing notification if it exists
+    }
+  }
+
+  /**
+   * Remove scheduled in-app notifications for a programme membership.
+   *
+   * @param programmeMembership The programmeMembership.
+   */
+  protected void deleteScheduledInAppNotifications(ProgrammeMembership programmeMembership) {
+
+    List<History> scheduledHistories = historyService
+        .findAllScheduledInAppForTrainee(programmeMembership.getPersonId(), PROGRAMME_MEMBERSHIP,
+            programmeMembership.getTisId());
+
+    for (History history : scheduledHistories) {
+      historyService.deleteHistoryForTrainee(history.id(), programmeMembership.getPersonId());
     }
   }
 
@@ -471,5 +513,21 @@ public class ProgrammeMembershipService {
       }
     }
     return null;
+  }
+
+  /**
+   * Get the RO name from RO first name and last name.
+   *
+   * @param responsibleOfficer The details of the responsible officer.
+   * @return The ro name to be shown in notifications, or empty string if it is missing.
+   */
+  private String getRoName(ResponsibleOfficer responsibleOfficer) {
+
+    if (responsibleOfficer != null) {
+      return ((responsibleOfficer.firstName() == null ? "" : responsibleOfficer.firstName())
+          + " " + (responsibleOfficer.lastName() == null ? "" : responsibleOfficer.lastName())
+      ).trim();
+    }
+    return "";
   }
 }

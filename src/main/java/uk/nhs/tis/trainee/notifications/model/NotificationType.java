@@ -35,6 +35,7 @@ public enum NotificationType {
 
   COJ_CONFIRMATION("coj-confirmation"),
   CREDENTIAL_REVOKED("credential-revoked"),
+  DAY_ONE("day-one"),
   DEFERRAL("deferral"),
   E_PORTFOLIO("e-portfolio"),
   EMAIL_UPDATED_NEW("email-updated-new"),
@@ -74,7 +75,8 @@ public enum NotificationType {
       E_PORTFOLIO,
       INDEMNITY_INSURANCE,
       LTFT,
-      SPONSORSHIP);
+      SPONSORSHIP,
+      DAY_ONE);
 
   private final String templateName;
 }

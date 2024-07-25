@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright 2023 Crown Copyright (Health Education England)
+ * Copyright 2024 Crown Copyright (Health Education England)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
  * associated documentation files (the "Software"), to deal in the Software without restriction,
@@ -21,26 +21,24 @@
 
 package uk.nhs.tis.trainee.notifications.model;
 
-import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.List;
-import lombok.Data;
-import uk.nhs.tis.trainee.notifications.dto.CojSignedEvent.ConditionsOfJoining;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 /**
- * A programme membership.
+ * A Programme membership's Responsible Officer.
+ *
+ * @param emailAddress   The RO email address.
+ * @param firstName The RO first name.
+ * @param lastName The RO last name.
+ * @param gmcNumber The RO gmc number.
+ * @param phoneNumber The RO phone number.
  */
-@Data
-public class ProgrammeMembership {
+@JsonIgnoreProperties(ignoreUnknown = true)
+public record ResponsibleOfficer(
+    String emailAddress,
+    String firstName,
+    String lastName,
+    String gmcNumber,
+    String phoneNumber
+) {
 
-  private String tisId;
-  private String personId;
-  private String programmeName;
-  private String programmeNumber;
-  private String managingDeanery;
-  private LocalDate startDate;
-  private List<Curriculum> curricula = new ArrayList<>();
-  private ConditionsOfJoining conditionsOfJoining;
-  private ResponsibleOfficer responsibleOfficer;
-  private String designatedBody;
 }
