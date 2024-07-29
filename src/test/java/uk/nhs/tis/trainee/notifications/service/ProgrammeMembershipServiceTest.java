@@ -1411,16 +1411,26 @@ class ProgrammeMembershipServiceTest {
     verify(notificationService).executeNow(any(), any());
   }
 
-//  @Test
-//  void shouldNotEncounterSchedulerExceptions() throws SchedulerException {
-//    doThrow(new SchedulerException())
-//        .when(notificationService).scheduleNotification(any(), any(), any());
-//
-//    ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
-//
-//    assertDoesNotThrow(() -> service.addNotifications(programmeMembership),
-//        "Unexpected addNotifications failure");
-//  }
+  @Test
+  void shouldNotEncounterSchedulerExceptions() throws SchedulerException {
+    LocalDate mostRecentSentAt = LocalDate.now().minusDays(50);
+    List<History> sentNotifications = new ArrayList<>();
+    sentNotifications.add(new History(ObjectId.get(),
+        new TisReferenceInfo(PROGRAMME_MEMBERSHIP, TIS_ID),
+        PROGRAMME_DAY_ONE, any(),
+        new TemplateInfo(null, null, null),
+        Instant.from(mostRecentSentAt.atStartOfDay(timezone)), Instant.MAX,
+        SENT, null, null));
+    when(historyService.findAllHistoryForTrainee(PERSON_ID)).thenReturn(sentNotifications);
+
+    doThrow(new SchedulerException())
+        .when(notificationService).scheduleNotification(any(), any(), any());
+
+    ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
+
+    assertDoesNotThrow(() -> service.addNotifications(programmeMembership),
+        "Unexpected addNotifications failure");
+  }
 
   @Test
   void shouldDeleteNotifications() throws SchedulerException {
