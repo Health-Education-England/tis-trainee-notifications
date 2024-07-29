@@ -191,7 +191,8 @@ public class NotificationService implements Job {
         NotificationType.valueOf(jobDetails.get(TEMPLATE_NOTIFICATION_TYPE_FIELD).toString());
 
     //only consider sending programme-created mails; ignore the programme-updated-* notifications
-    if (notificationType == NotificationType.PROGRAMME_CREATED) {
+    if (notificationType == NotificationType.PROGRAMME_CREATED
+        || notificationType == NotificationType.PROGRAMME_DAY_ONE) {
 
       isActionableJob = true;
       jobName = jobDetails.getString(ProgrammeMembershipService.PROGRAMME_NAME_FIELD);
