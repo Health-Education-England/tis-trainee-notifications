@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org" xmlns="http://www.w3.org/1999/html">
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+</head>
+<body>
+<h1>Email Message</h1>
+<h2>Subject</h2>
+<th:block th:fragment="subject">NHS England - <span
+    th:text="${not #strings.isEmpty(localOfficeName)} ? ${localOfficeName} : 'your local office'" th:remove="tag"></span
+  > - Onboarding to your Training Programme</th:block>
+<h2>Content</h2>
+<th:block th:fragment="content">
+  <div th:replace="fragments/retry/v1.0.0 :: body"></div>
+  <div style="text-align:right"><img style="margin-right:25px" src='https://trainee.tis.nhs.uk/nhse-logo.png' alt="NHS England logo"/></div>
+  <div th:replace="fragments/greeting/v1.0.0 :: body"></div>
+  <p>Congratulations on your appointment to the <span
+      th:text="${not #strings.isEmpty(programmeName)} ? ${programmeName} : 'programme'"></span> Programme in <span
+      th:text="${not #strings.isEmpty(localOfficeName)} ? ${localOfficeName} : 'your local office'"></span
+  >.</p>
+  <p>Please take some time to read this email in its entirety. It contains vital information to help you start the onboarding process for your training programme, and there are some actions that you will need to do straight away.</p>
+  <p>Please note:</p>
+  <p><ul>
+    <li>We are in the process of ensuring your Training Programme Director(s) (TPDs) have your details.</li>
+    <li>Also, please be aware NHS England is not your employer. We act on behalf of your Postgraduate Dean and manage your training programme for the duration of your training.</li>
+  </ul>
+  </p>
+
+  <p><b><u>Timeline</u></b></p>
+  <p>Over the next couple of months, you will receive a series of automated messages from NHS England via TSS (TIS Self-Service) and email communications from colleagues within <span th:text="${not #strings.isEmpty(localOfficeName)} ? ${localOfficeName} : 'your local office'"></span
+  > with some vital pieces of information.</p>
+
+  <p><b><u>Placement Confirmation</u></b></p>
+  <p>At 12 weeks prior to your commencement in post, you will receive a placement notification from us. Please note this does not constitute an offer of employment but is a confirmation of the placement you will be due to undertake and mirrors the information that has been provided to your employing organisation.</p>
+  <p>At this point, your employing organisation will follow the <a href="https://www.nhsemployers.org/topics-0/employment-standards-and-regulation">NHS Employment Check Standards</a>.</p>
+  <p><b><u>National Training Number (NTN)</u></b></p>
+  <p>Subject to you completing all actions on TIS Self-Service, on the first day of your programme (<span
+      th:text="${not #strings.isEmpty(startDate)} ? |${#temporals.format(startDate, 'dd MMMM yyyy')}| : _">start date missing</span>), you will receive your National Training Number (NTN). It is also vitally important you connect to your Postgraduate Dean for Revalidation and ensure you are connected to the correct Deanery as your Designated Body on GMC Online. Please do <b>not</b> do this before <span
+      th:text="${not #strings.isEmpty(startDate)} ? |${#temporals.format(startDate, 'dd MMMM yyyy')}| : _">(start date missing)</span>. It is essential you do not connect to your trust or employing body. The notice containing your NTN will explain how to do this.</p>
+
+  <p><b><u>Pre-employment checks and processes</u></b></p>
+  <p>Both NHS England and your employing organisation understand that you will be busy in this transition period to the start of your upcoming training programme, but we wish to emphasise the importance of engaging with all organisations with the onboarding process.</p>
+  <p>Your employing organisation will be contacting you about pre-employment checks from 12 weeks prior to starting. It is essential you avoid delaying these processes so as not to cause any disruption to your employment or training programme. <b>The Medical Staffing teams will be processing a large number of new starters to their organisation and so any delay may impact their ability to add you to their employment systems, such as payroll.</b></p>
+  <p>Please ensure you contact your employing organisation if you have not heard anything by <b>8 weeks</b> prior to your start date. Your employing organisation's details will be contained in the placement confirmation email that you will receive 12 weeks before starting.</p>
+  <p>This timescale is in line with the <a href="https://www.hee.nhs.uk/our-work/medical-recruitment/code-practice-medical-recruitment">Code of Practice</a> agreed in conjunction with the BMA and NHS Employers.</p>
+  <p>Their pre-employment checks will include:</p><ul>
+    <li>Your right to work</li>
+    <li>If you have a criminal record</li>
+    <li>Employment history and references</li>
+    <li>Professional Registration and qualifications</li>
+    <li>Fitness to work</li>
+  </ul>
+
+  <p><b><u>Actions</u></b></p>
+  <p><b>Accessing TIS Self-Service (TSS)</b></p><ul>
+    <li>TIS Self-Service (TSS) gives you access to your training information. You will need to use TSS to submit essential forms, sign training agreements and complete actions that are presented on the Action Summary.</li>
+    <th:block th:switch="${isRegistered}"
+    ><li th:case="true">We have a registered account for you on TIS Self-Service against the email address <b><span th:text="${email}"></span></b>. To access details for onboarding onto your programme and actions to complete please sign in to <a href="https://trainee.tis.nhs.uk">TIS Self-Service</a>.</li>
+      <li th:case="false">According to our records, you do not currently have a TIS Self-Service account. Please create one by visiting <a href="https://trainee.tis.nhs.uk/">TIS Self-Service</a>. Please ensure you create an account using the email address we have against our records: <b><span th:text="${email}"></span></b>.</li></th:block>
+    <li>If your email address is likely to change, or you need support signing up on TIS Self-Service, then contact us via <th:block th:switch="${contactHref}"
+    ><span th:case="url"><a th:href="${localOfficeContact}"><span th:text="${localOfficeContact}"></span></a></span
+    ><span th:case="email"><a id="loMail" th:href="|mailto:${localOfficeContact}?subject=Onboarding to Programme - GMC: ${not #strings.isEmpty(gmcNumber) ? gmcNumber : 'unknown'}, Prog No: ${not #strings.isEmpty(programmeNumber) ? programmeNumber : 'unknown'}|"><span th:text="${localOfficeContact}"></span></a></span
+    ><span th:case="*"><span th:text="${localOfficeContact}"></span></span
+    ></th:block> or see our <a href="https://tis-support.hee.nhs.uk/trainees/changes-to-account/">FAQ</a> for details.</li>
+    <li>Once you access TIS Self-Service, you will be presented with a set of actions and notifications to read relating to your training programme. Please complete the actions and read the notification as requested.</li>
+  </ul>
+  <p>For more information regarding the onboarding process please visit our website: <a th:href="${localOfficeWebsite}"><span th:text="${localOfficeWebsite}"></span></a>.</p>
+  <p><b>We are currently piloting the onboarding of doctors to this new service. You may come across a series of questions about this within the TIS Self-Service app. We appreciate your feedback to help us improve the process and make it easier for you to access the necessary information.</b></p>
+  <p>We look forward to welcoming you to <span th:text="${not #strings.isEmpty(localOfficeName)} ? ${localOfficeName} : 'your local office'"></span>.</p>
+  <p>Kind Regards,</p>
+  <p><span th:text="${not #strings.isEmpty(localOfficeName)} ? ${localOfficeName} : 'Your local office'"></span> (Please note Health Education England is now part of NHS England. Our systems will be updated in due course.)</p>
+  <p>Workforce, Training and Education</p>
+  <p>NHS England</p>
+  <div th:replace="fragments/disclaimer/v1.0.0 :: body"></div>
+  <hr>
+  <div>
+    <p>Did you find this New starter email useful? <a th:href="'https://docs.google.com/forms/d/e/1FAIpQLSfdHBQZNVrFfycyYzTB0yrM6SWawZF4Aq3OnNwvSzWdFtPnkQ/formResponse?usp=pp_url&entry.424677117=Yes&entry.1732442592=' + ${hashedEmail} + '&submit=Submit'"
+    ><img src='https://trainee.tis.nhs.uk/thumbs-up.png' alt="thumbs up"/></a>&nbsp;<a th:href="'https://docs.google.com/forms/d/e/1FAIpQLSfdHBQZNVrFfycyYzTB0yrM6SWawZF4Aq3OnNwvSzWdFtPnkQ/formResponse?usp=pp_url&entry.424677117=No&entry.1732442592=' + ${hashedEmail} + '&submit=Submit'"
+    ><img src='https://trainee.tis.nhs.uk/thumbs-down.png' alt="thumbs down"/></a>.</p>
+    <p>If you would like to offer further feedback, please complete the <a href="https://forms.gle/a4HABm3fVBtgcB3K7">short survey</a>.</p>
+  </div>
+</th:block>
+</body>
+</html>
