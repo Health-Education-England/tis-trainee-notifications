@@ -28,6 +28,7 @@ import static uk.nhs.tis.trainee.notifications.model.NotificationType.E_PORTFOLI
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.INDEMNITY_INSURANCE;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.LTFT;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_CREATED;
+import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_DAY_ONE;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.SPONSORSHIP;
 import static uk.nhs.tis.trainee.notifications.model.TisReferenceType.PROGRAMME_MEMBERSHIP;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.PERSON_ID_FIELD;
@@ -192,6 +193,7 @@ public class ProgrammeMembershipService {
     notificationTypes.add(LTFT);
     notificationTypes.add(SPONSORSHIP);
     notificationTypes.add(DAY_ONE);
+    notificationTypes.add(PROGRAMME_DAY_ONE);
 
 
     for (NotificationType milestone : notificationTypes) {
@@ -243,36 +245,65 @@ public class ProgrammeMembershipService {
   private void createDirectProgrammeNotifications(ProgrammeMembership programmeMembership,
       Map<NotificationType, History> notificationsAlreadySent) throws SchedulerException {
 
-    //only handle 'programme created' notifications
-    boolean shouldSchedule = shouldScheduleNotification(PROGRAMME_CREATED, programmeMembership,
-        notificationsAlreadySent);
+    LocalDate startDate = programmeMembership.getStartDate();
 
-    if (shouldSchedule) {
+    // Note the status of the trainee will be retrieved when the job is executed, as will
+    // their name and email address and LO contact details.
+
+    // PROGRAMME_CREATED
+    boolean shouldScheduleProgrammeCreated = shouldScheduleNotification(PROGRAMME_CREATED,
+        programmeMembership, notificationsAlreadySent);
+    if (shouldScheduleProgrammeCreated) {
       log.info("Processing notification {} for {}.", PROGRAMME_CREATED,
           programmeMembership.getTisId());
 
-      JobDataMap jobDataMap = new JobDataMap();
-      jobDataMap.put(TIS_ID_FIELD, programmeMembership.getTisId());
-      jobDataMap.put(PERSON_ID_FIELD, programmeMembership.getPersonId());
-      jobDataMap.put(PROGRAMME_NAME_FIELD, programmeMembership.getProgrammeName());
-      jobDataMap.put(PROGRAMME_NUMBER_FIELD, programmeMembership.getProgrammeNumber());
-      jobDataMap.put(START_DATE_FIELD, programmeMembership.getStartDate());
-      jobDataMap.put(TEMPLATE_OWNER_FIELD, programmeMembership.getManagingDeanery());
-      jobDataMap.put(TEMPLATE_NOTIFICATION_TYPE_FIELD, PROGRAMME_CREATED);
+      JobDataMap pmCreatedJobDataMap = new JobDataMap();
+      pmCreatedJobDataMap.put(TEMPLATE_NOTIFICATION_TYPE_FIELD, PROGRAMME_CREATED);
+      pmCreatedJobDataMap.put(TIS_ID_FIELD, programmeMembership.getTisId());
+      pmCreatedJobDataMap.put(PERSON_ID_FIELD, programmeMembership.getPersonId());
+      pmCreatedJobDataMap.put(PROGRAMME_NAME_FIELD, programmeMembership.getProgrammeName());
+      pmCreatedJobDataMap.put(PROGRAMME_NUMBER_FIELD, programmeMembership.getProgrammeNumber());
+      pmCreatedJobDataMap.put(START_DATE_FIELD, startDate);
+      pmCreatedJobDataMap.put(TEMPLATE_OWNER_FIELD, programmeMembership.getManagingDeanery());
       if (programmeMembership.getConditionsOfJoining() != null) {
-        jobDataMap.put(COJ_SYNCED_FIELD,
+        pmCreatedJobDataMap.put(COJ_SYNCED_FIELD,
             programmeMembership.getConditionsOfJoining().syncedAt());
       }
-      // Note the status of the trainee will be retrieved when the job is executed, as will
-      // their name and email address and LO contact details.
 
       String jobId = PROGRAMME_CREATED + "-" + programmeMembership.getTisId();
       Date scheduleWhen = whenScheduleDeferredNotification(PROGRAMME_CREATED, programmeMembership,
           notificationsAlreadySent);
       if (scheduleWhen == null) {
-        notificationService.executeNow(jobId, jobDataMap);
+        notificationService.executeNow(jobId, pmCreatedJobDataMap);
       } else {
-        notificationService.scheduleNotification(jobId, jobDataMap, scheduleWhen);
+        notificationService.scheduleNotification(jobId, pmCreatedJobDataMap, scheduleWhen);
+      }
+    }
+
+    // PROGRAMME_DAY_ONE
+    boolean shouldScheduleProgrammeDayOne = shouldScheduleNotification(PROGRAMME_DAY_ONE,
+        programmeMembership, notificationsAlreadySent);
+    if (shouldScheduleProgrammeDayOne) {
+      log.info("Processing notification {} for {}.", PROGRAMME_DAY_ONE,
+          programmeMembership.getTisId());
+
+      JobDataMap pmDayOneJobDataMap = new JobDataMap();
+      pmDayOneJobDataMap.put(TIS_ID_FIELD, programmeMembership.getTisId());
+      pmDayOneJobDataMap.put(PERSON_ID_FIELD, programmeMembership.getPersonId());
+      pmDayOneJobDataMap.put(PROGRAMME_NAME_FIELD, programmeMembership.getProgrammeName());
+      pmDayOneJobDataMap.put(PROGRAMME_NUMBER_FIELD, programmeMembership.getProgrammeNumber());
+      pmDayOneJobDataMap.put(START_DATE_FIELD, startDate);
+      pmDayOneJobDataMap.put(TEMPLATE_OWNER_FIELD, programmeMembership.getManagingDeanery());
+      pmDayOneJobDataMap.put(TEMPLATE_NOTIFICATION_TYPE_FIELD, PROGRAMME_DAY_ONE);
+      pmDayOneJobDataMap.put(RO_NAME_FIELD, getRoName(programmeMembership.getResponsibleOfficer()));
+      pmDayOneJobDataMap.put(DESIGNATED_BODY_FIELD, programmeMembership.getDesignatedBody());
+
+      String jobId = PROGRAMME_DAY_ONE + "-" + programmeMembership.getTisId();
+      if (startDate.isBefore(LocalDate.now(timezone).plusDays(1))) {
+        notificationService.executeNow(jobId, pmDayOneJobDataMap);
+      } else {
+        notificationService.scheduleNotification(jobId, pmDayOneJobDataMap,
+            Date.from(startDate.atStartOfDay(timezone).toInstant()));
       }
     }
   }
@@ -403,7 +434,7 @@ public class ProgrammeMembershipService {
   }
 
   /**
-   * Remove notifications for a programme membership.
+   * Remove notifications for a programme membership from scheduler.
    *
    * @param programmeMembership The programme membership.
    * @throws SchedulerException if any one of the notification jobs could not be removed.

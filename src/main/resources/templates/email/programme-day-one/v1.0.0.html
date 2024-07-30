@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org" xmlns="http://www.w3.org/1999/html">
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+</head>
+<body>
+<h1>Email Message</h1>
+<h2>Subject</h2>
+<th:block th:fragment="subject">NHS England - <span
+    th:text="${not #strings.isEmpty(localOfficeName)} ? ${localOfficeName} : 'your local office'" th:remove="tag"></span
+  > - Onboarding to your Training Programme</th:block>
+<h2>Content</h2>
+<th:block th:fragment="content">
+  <div th:replace="fragments/retry/v1.0.0 :: body"></div>
+  <div style="text-align:right"><img style="margin-right:25px" src='https://trainee.tis.nhs.uk/nhse-logo.png' alt="NHS England logo"/></div>
+  <p th:if="${#strings.isEmpty(givenName) AND #strings.isEmpty(familyName)}">Dear Doctor,</p>
+  <p th:if="${not (#strings.isEmpty(givenName) OR #strings.isEmpty(familyName))}">Dear <span th:text="${not #strings.isEmpty(title)} ? ${title} : 'Dr'"></span
+  > <span th:text="${not #strings.isEmpty(givenName)} ? ${givenName} : _"></span> <span th:text="${not #strings.isEmpty(familyName)} ? ${familyName} : _"></span>,</p>
+  <p>Congratulations on your appointment to the <strong><span
+      th:text="${not #strings.isEmpty(programmeName)} ? ${programmeName} : 'programme'"></span></strong> starting on <strong><span
+    th:text="${not #strings.isEmpty(startDate)} ? |${#temporals.format(startDate, 'dd MMMM yyyy')}| : _">(start date missing)</span></strong>.</p>
+  <p>We appreciate this is a busy time for you but please set some time aside to read this letter in
+    its entirety as it contains some vital information regarding your training and the registration process.</p>
+  <p><strong>National Training Number</strong></p>
+  <p>As per previous communication, subject to you completing all actions on TIS Self-Service (TSS)
+    you will be issued with Training Number (NTN). Please sign into TIS Self-Service (TSS) to review any outstanding actions.</p>
+  <p><strong>Connecting to your Responsible officer and Designated body</strong></p>
+  <p>You are required to connect to your Responsible officer and Designated Body.
+    Please connect with your responsible officer (<span th:text="${not #strings.isEmpty(roName)} ? ${roName} : _">responsible officer missing</span>) &
+    designated body (<span th:text="${not #strings.isEmpty(designatedBody)} ? ${designatedBody} : _">designated body missing</span>).
+    For further information on how to connect please sign into TIS Self-Service (TSS) and review the in-app notifications.</p>
+  <p><strong>Accessing TIS Self-Service (TSS)</strong></p>
+  <ul><th:block th:switch="${isRegistered}"
+  ><li th:case="true">We have a registered account for you on TIS Self-Service against the email address <strong><span th:text="${email}"></span></strong>.
+    To access details on your programme, and actions to complete please sign into <a href="https://trainee.tis.nhs.uk">TIS Self-Service</a>.</li>
+    <li th:case="false">We have no TIS Self-Service account associated with your records.
+      Please create one by visiting <a href="https://trainee.tis.nhs.uk/">TIS Self-Service</a>.
+      Please ensure you use the email address we have against our records, which is: <strong><span th:text="${email}"></span></strong>.</li></th:block>
+    <li>If your email address is likely to change, or you need support signing up on TIS Self-Service then please ensure that you contact via
+      <th:block th:switch="${contactHref}"
+    ><span th:case="url"><a th:href="${localOfficeContact}"><span th:text="${localOfficeContact}"></span></a></span
+    ><span th:case="email"><a id="loMail" th:href="|mailto:${localOfficeContact}?subject=Onboarding to Programme - GMC: ${not #strings.isEmpty(gmcNumber) ? gmcNumber : 'unknown'}, Prog No: ${not #strings.isEmpty(programmeNumber) ? programmeNumber : 'unknown'}|"><span th:text="${localOfficeContact}"></span></a></span
+    ><span th:case="*"><span th:text="${localOfficeContact}"></span></span
+    ></th:block> or see our <a href="https://tis-support.hee.nhs.uk/trainees/changes-to-account/">FAQ</a> for details.</li>
+  </ul>
+  <p>If you need further information on LTFT, Deferral, Sponsorship etc please go into the in-app notifications on TIS Self-Service.</p>
+  <p>Please ensure you contact us if any of your information or circumstances change <strong><th:block th:switch="${contactHref}"
+  ><span th:case="url"><a th:href="${localOfficeContact}"><span th:text="${localOfficeContact}"></span></a></span
+  ><span th:case="email"><a th:href="|mailto:${localOfficeContact}?subject=Onboarding to Programme (Information Change) - GMC: ${not #strings.isEmpty(gmcNumber) ? gmcNumber : 'unknown'}, Prog No: ${not #strings.isEmpty(programmeNumber) ? programmeNumber : 'unknown'}|"><span th:text="${localOfficeContact}"></span></a></span
+  ><span th:case="*"><span th:text="${localOfficeContact}"></span></span
+  ></th:block></strong></p>
+  <p><strong>We are currently piloting this process. You may come across a series of questions about this within the TIS Self-Service app.
+    We appreciate your feedback to help us improve the process and make it easy for you to access the necessary information.</strong></p>
+  <p>Kind Regards,</p>
+  <p><span th:text="${not #strings.isEmpty(localOfficeName)} ? ${localOfficeName} : 'Your local office'"></span> (Please note Health Education England is now part of NHS England. Our systems will be updated in due course.)</p>
+  <p>Workforce, Training and Education</p>
+  <p>NHS England</p>
+  <div th:replace="fragments/disclaimer/v1.0.0 :: body"></div>
+  <hr>
+  <div>
+    <p>Did you find this Day One email useful? <a th:href="'https://docs.google.com/forms/d/e/1FAIpQLSfdHBQZNVrFfycyYzTB0yrM6SWawZF4Aq3OnNwvSzWdFtPnkQ/formResponse?usp=pp_url&entry.424677117=Yes&entry.1732442592=' + ${hashedEmail} + '&submit=Submit'"
+    ><img src='https://trainee.tis.nhs.uk/thumbs-up.png' alt="thumbs up"/></a>&nbsp;<a th:href="'https://docs.google.com/forms/d/e/1FAIpQLSfdHBQZNVrFfycyYzTB0yrM6SWawZF4Aq3OnNwvSzWdFtPnkQ/formResponse?usp=pp_url&entry.424677117=No&entry.1732442592=' + ${hashedEmail} + '&submit=Submit'"
+    ><img src='https://trainee.tis.nhs.uk/thumbs-down.png' alt="thumbs down"/></a>.</p>
+    <p>If you would like to offer further feedback, please complete the <a href="https://forms.gle/a4HABm3fVBtgcB3K7">short survey</a>.</p>
+  </div>
+</th:block>
+</body>
+</html>
