@@ -53,7 +53,8 @@ public enum NotificationType {
   PROGRAMME_UPDATED_WEEK_0("programme-updated-week-0"),
   PROGRAMME_CREATED("programme-created"),
   SPONSORSHIP("sponsorship"),
-  WELCOME("welcome");
+  WELCOME("welcome"),
+  DINGERS_TEST("dingers-test");
 
   /**
    * The set of Programme Updated notification types.

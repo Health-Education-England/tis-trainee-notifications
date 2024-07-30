@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <title>Dingers Test Title</title>
+  </head>
+  <body>
+    <h1>Email Message</h1>
+    <h2>Subject</h2>
+    <th:block th:fragment="subject">Dingers Test Subject</th:block>
+    <h2>Content</h2>
+    <th:block th:fragment="content">
+      <p th:replace="~{fragments/greeting/v1.0.0 :: p}"></p>
+      <p>Dingers Test Content</p>
+    </th:block>
+  </body>
+</html>
