@@ -247,17 +247,6 @@ public class ProgrammeMembershipService {
 
     LocalDate startDate = programmeMembership.getStartDate();
 
-    JobDataMap jobDataMap = new JobDataMap();
-    jobDataMap.put(TIS_ID_FIELD, programmeMembership.getTisId());
-    jobDataMap.put(PERSON_ID_FIELD, programmeMembership.getPersonId());
-    jobDataMap.put(PROGRAMME_NAME_FIELD, programmeMembership.getProgrammeName());
-    jobDataMap.put(PROGRAMME_NUMBER_FIELD, programmeMembership.getProgrammeNumber());
-    jobDataMap.put(START_DATE_FIELD, startDate);
-    jobDataMap.put(TEMPLATE_OWNER_FIELD, programmeMembership.getManagingDeanery());
-    if (programmeMembership.getConditionsOfJoining() != null) {
-      jobDataMap.put(COJ_SYNCED_FIELD,
-          programmeMembership.getConditionsOfJoining().syncedAt());
-    }
     // Note the status of the trainee will be retrieved when the job is executed, as will
     // their name and email address and LO contact details.
 
@@ -268,15 +257,26 @@ public class ProgrammeMembershipService {
       log.info("Processing notification {} for {}.", PROGRAMME_CREATED,
           programmeMembership.getTisId());
 
-      jobDataMap.put(TEMPLATE_NOTIFICATION_TYPE_FIELD, PROGRAMME_CREATED);
+      JobDataMap pmCreatedJobDataMap = new JobDataMap();
+      pmCreatedJobDataMap.put(TEMPLATE_NOTIFICATION_TYPE_FIELD, PROGRAMME_CREATED);
+      pmCreatedJobDataMap.put(TIS_ID_FIELD, programmeMembership.getTisId());
+      pmCreatedJobDataMap.put(PERSON_ID_FIELD, programmeMembership.getPersonId());
+      pmCreatedJobDataMap.put(PROGRAMME_NAME_FIELD, programmeMembership.getProgrammeName());
+      pmCreatedJobDataMap.put(PROGRAMME_NUMBER_FIELD, programmeMembership.getProgrammeNumber());
+      pmCreatedJobDataMap.put(START_DATE_FIELD, startDate);
+      pmCreatedJobDataMap.put(TEMPLATE_OWNER_FIELD, programmeMembership.getManagingDeanery());
+      if (programmeMembership.getConditionsOfJoining() != null) {
+        pmCreatedJobDataMap.put(COJ_SYNCED_FIELD,
+            programmeMembership.getConditionsOfJoining().syncedAt());
+      }
 
       String jobId = PROGRAMME_CREATED + "-" + programmeMembership.getTisId();
       Date scheduleWhen = whenScheduleDeferredNotification(PROGRAMME_CREATED, programmeMembership,
           notificationsAlreadySent);
       if (scheduleWhen == null) {
-        notificationService.executeNow(jobId, jobDataMap);
+        notificationService.executeNow(jobId, pmCreatedJobDataMap);
       } else {
-        notificationService.scheduleNotification(jobId, jobDataMap, scheduleWhen);
+        notificationService.scheduleNotification(jobId, pmCreatedJobDataMap, scheduleWhen);
       }
     }
 
@@ -287,15 +287,22 @@ public class ProgrammeMembershipService {
       log.info("Processing notification {} for {}.", PROGRAMME_DAY_ONE,
           programmeMembership.getTisId());
 
-      jobDataMap.put(TEMPLATE_NOTIFICATION_TYPE_FIELD, PROGRAMME_DAY_ONE);
-      jobDataMap.put(RO_NAME_FIELD, getRoName(programmeMembership.getResponsibleOfficer()));
-      jobDataMap.put(DESIGNATED_BODY_FIELD, programmeMembership.getDesignatedBody());
+      JobDataMap pmDayOneJobDataMap = new JobDataMap();
+      pmDayOneJobDataMap.put(TIS_ID_FIELD, programmeMembership.getTisId());
+      pmDayOneJobDataMap.put(PERSON_ID_FIELD, programmeMembership.getPersonId());
+      pmDayOneJobDataMap.put(PROGRAMME_NAME_FIELD, programmeMembership.getProgrammeName());
+      pmDayOneJobDataMap.put(PROGRAMME_NUMBER_FIELD, programmeMembership.getProgrammeNumber());
+      pmDayOneJobDataMap.put(START_DATE_FIELD, startDate);
+      pmDayOneJobDataMap.put(TEMPLATE_OWNER_FIELD, programmeMembership.getManagingDeanery());
+      pmDayOneJobDataMap.put(TEMPLATE_NOTIFICATION_TYPE_FIELD, PROGRAMME_DAY_ONE);
+      pmDayOneJobDataMap.put(RO_NAME_FIELD, getRoName(programmeMembership.getResponsibleOfficer()));
+      pmDayOneJobDataMap.put(DESIGNATED_BODY_FIELD, programmeMembership.getDesignatedBody());
 
       String jobId = PROGRAMME_DAY_ONE + "-" + programmeMembership.getTisId();
       if (startDate.isBefore(LocalDate.now(timezone).plusDays(1))) {
-        notificationService.executeNow(jobId, jobDataMap);
+        notificationService.executeNow(jobId, pmDayOneJobDataMap);
       } else {
-        notificationService.scheduleNotification(jobId, jobDataMap,
+        notificationService.scheduleNotification(jobId, pmDayOneJobDataMap,
             Date.from(startDate.atStartOfDay(timezone).toInstant()));
       }
     }
