@@ -426,7 +426,7 @@ class NotificationServiceTest {
 
   @ParameterizedTest
   @EnumSource(value = NotificationType.class, mode = Mode.EXCLUDE,
-      names = {"PLACEMENT_UPDATED_WEEK_12", "PROGRAMME_CREATED", "PROGRAMME_DAY_ONE"})
+      names = {"PLACEMENT_UPDATED_WEEK_12", "PROGRAMME_CREATED"})
   void shouldIgnoreNonProgrammeOrPlacementJobs(NotificationType notificationType)
       throws MessagingException {
     UserDetails userAccountDetails =

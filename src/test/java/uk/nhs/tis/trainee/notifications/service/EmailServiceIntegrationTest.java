@@ -29,7 +29,6 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PLACEMENT_UPDATED_WEEK_12;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_CREATED;
-import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_DAY_ONE;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.TEMPLATE_CONTACT_HREF_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.PlacementService.START_DATE_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.GMC_NUMBER_FIELD;
@@ -168,8 +167,7 @@ class EmailServiceIntegrationTest {
     Document content = Jsoup.parse((String) message.getContent());
     Element body = content.body();
 
-    if (notificationType.equals(PLACEMENT_UPDATED_WEEK_12)
-        || notificationType.equals(PROGRAMME_DAY_ONE)) {
+    if (notificationType.equals(PLACEMENT_UPDATED_WEEK_12)) {
       Element greeting = body.children().get(getGreetingElementIndex(notificationType));
       assertThat("Unexpected element tag.", greeting.tagName(), is("p"));
       assertThat("Unexpected greeting.", greeting.text(), is("Dear Dr Anthony Gilliam,"));
@@ -198,8 +196,7 @@ class EmailServiceIntegrationTest {
     Document content = Jsoup.parse((String) message.getContent());
     Element body = content.body();
 
-    if (notificationType.equals(PLACEMENT_UPDATED_WEEK_12)
-        || notificationType.equals(PROGRAMME_DAY_ONE)) {
+    if (notificationType.equals(PLACEMENT_UPDATED_WEEK_12)) {
       Element greeting = body.children().get(getGreetingElementIndex(notificationType));
       assertThat("Unexpected element tag.", greeting.tagName(), is("p"));
       assertThat("Unexpected greeting.", greeting.text(), is("Dear Dr Anthony Maillig,"));
@@ -259,7 +256,7 @@ class EmailServiceIntegrationTest {
   }
 
   @ParameterizedTest
-  @ValueSource(strings = {"PLACEMENT_UPDATED_WEEK_12", "PROGRAMME_CREATED", "PROGRAMME_DAY_ONE"})
+  @ValueSource(strings = {"PLACEMENT_UPDATED_WEEK_12", "PROGRAMME_CREATED"})
   void shouldIncludeGmcInMailtoSubjectWhenGmcAvailable(NotificationType notificationType)
       throws Exception {
     when(userAccountService.getUserDetailsById(USER_ID)).thenReturn(
@@ -280,7 +277,7 @@ class EmailServiceIntegrationTest {
   }
 
   @ParameterizedTest
-  @ValueSource(strings = {"PLACEMENT_UPDATED_WEEK_12", "PROGRAMME_CREATED", "PROGRAMME_DAY_ONE"})
+  @ValueSource(strings = {"PLACEMENT_UPDATED_WEEK_12", "PROGRAMME_CREATED"})
   void shouldIncludeUnknownGmcInMailtoSubjectWhenGmcIsEmpty(NotificationType notificationType)
       throws Exception {
     when(userAccountService.getUserDetailsById(USER_ID)).thenReturn(
@@ -301,7 +298,7 @@ class EmailServiceIntegrationTest {
   }
 
   @ParameterizedTest
-  @ValueSource(strings = {"PLACEMENT_UPDATED_WEEK_12", "PROGRAMME_CREATED", "PROGRAMME_DAY_ONE"})
+  @ValueSource(strings = {"PLACEMENT_UPDATED_WEEK_12", "PROGRAMME_CREATED"})
   void shouldIncludeUnknownGmcInMailtoSubjectWhenGmcIsMissing(NotificationType notificationType)
       throws Exception {
     when(userAccountService.getUserDetailsById(USER_ID)).thenReturn(
@@ -384,8 +381,8 @@ class EmailServiceIntegrationTest {
 
   int getGreetingElementIndex(NotificationType notificationType) {
     return switch (notificationType) {
-      case PLACEMENT_UPDATED_WEEK_12, PROGRAMME_CREATED, PROGRAMME_DAY_ONE, EMAIL_UPDATED_NEW,
-          EMAIL_UPDATED_OLD, COJ_CONFIRMATION, CREDENTIAL_REVOKED, FORM_UPDATED -> 1;
+      case PLACEMENT_UPDATED_WEEK_12, PROGRAMME_CREATED, EMAIL_UPDATED_NEW, EMAIL_UPDATED_OLD,
+          COJ_CONFIRMATION, CREDENTIAL_REVOKED, FORM_UPDATED -> 1;
       default -> 0;
     };
   }

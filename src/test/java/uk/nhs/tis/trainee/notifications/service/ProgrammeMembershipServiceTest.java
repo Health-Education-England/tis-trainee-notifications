@@ -44,7 +44,6 @@ import static uk.nhs.tis.trainee.notifications.model.NotificationType.DEFERRAL;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.INDEMNITY_INSURANCE;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.LTFT;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_CREATED;
-import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_DAY_ONE;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.SPONSORSHIP;
 import static uk.nhs.tis.trainee.notifications.model.TisReferenceType.PROGRAMME_MEMBERSHIP;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.CONTACT_TYPE_FIELD;
@@ -669,19 +668,19 @@ class ProgrammeMembershipServiceTest {
 
     service.addNotifications(programmeMembership);
 
-    // PROGRAMME_CREATED
     ArgumentCaptor<String> stringCaptor = ArgumentCaptor.captor();
     ArgumentCaptor<JobDataMap> jobDataMapCaptor = ArgumentCaptor.captor();
     verify(notificationService).executeNow(
         stringCaptor.capture(),
         jobDataMapCaptor.capture());
+    verify(notificationService, never()).scheduleNotification(any(), any(), any());
 
+    //verify the details of the notification added
     String jobId = stringCaptor.getValue();
     String expectedJobId = PROGRAMME_CREATED + "-" + TIS_ID;
     assertThat("Unexpected job id.", jobId, is(expectedJobId));
 
     JobDataMap jobDataMap = jobDataMapCaptor.getValue();
-    assertThat("Unexpected variable count.", jobDataMap.size(), is(8));
     assertThat("Unexpected tisId.", jobDataMap.get(TIS_ID_FIELD), is(TIS_ID));
     assertThat("Unexpected personId.", jobDataMap.get(PERSON_ID_FIELD), is(PERSON_ID));
     assertThat("Unexpected programme.", jobDataMap.get(PROGRAMME_NAME_FIELD),
@@ -689,42 +688,6 @@ class ProgrammeMembershipServiceTest {
     assertThat("Unexpected start date.", jobDataMap.get(START_DATE_FIELD), is(START_DATE));
     assertThat("Unexpected CoJ synced at.", jobDataMap.get(COJ_SYNCED_FIELD),
         is(Instant.MIN));
-
-    // PROGRAMME_DAY_ONE
-    ArgumentCaptor<String> dayOneStringCaptor = ArgumentCaptor.captor();
-    ArgumentCaptor<JobDataMap> dayOneJobDataMapCaptor = ArgumentCaptor.captor();
-    verify(notificationService).scheduleNotification(
-        dayOneStringCaptor.capture(),
-        dayOneJobDataMapCaptor.capture(),
-        eq(Date.from(START_DATE.atStartOfDay(timezone).toInstant())));
-
-    String dayOneJobId = dayOneStringCaptor.getValue();
-    String dayOneExpectedJobId = PROGRAMME_DAY_ONE + "-" + TIS_ID;
-    assertThat("Unexpected job id.", dayOneJobId, is(dayOneExpectedJobId));
-
-    JobDataMap dayOneJobDataMap = dayOneJobDataMapCaptor.getValue();
-    assertThat("Unexpected variable count.", dayOneJobDataMap.size(), is(9));
-    assertThat("Unexpected tisId.", dayOneJobDataMap.get(TIS_ID_FIELD), is(TIS_ID));
-    assertThat("Unexpected personId.", dayOneJobDataMap.get(PERSON_ID_FIELD), is(PERSON_ID));
-    assertThat("Unexpected programme.", dayOneJobDataMap.get(PROGRAMME_NAME_FIELD),
-        is(PROGRAMME_NAME));
-    assertThat("Unexpected start date.", dayOneJobDataMap.get(START_DATE_FIELD), is(START_DATE));
-    assertThat("Unexpected ro name.", dayOneJobDataMap.get(RO_NAME_FIELD),
-        is(RO_FIRST_NAME + " " + RO_LAST_NAME));
-    assertThat("Unexpected designated body.", dayOneJobDataMap.get(DESIGNATED_BODY_FIELD),
-        is(DESIGNATED_BODY));
-  }
-
-  @Test
-  void shouldSendDayOneEmailNowWhenTodayIsStartDay() throws SchedulerException {
-    when(historyService.findAllHistoryForTrainee(PERSON_ID)).thenReturn(new ArrayList<>());
-
-    ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
-    programmeMembership.setStartDate(LocalDate.now());
-
-    service.addNotifications(programmeMembership);
-
-    verify(notificationService).executeNow(eq(PROGRAMME_DAY_ONE + "-" + TIS_ID), any());
   }
 
   @Test
@@ -736,11 +699,6 @@ class ProgrammeMembershipServiceTest {
     sentNotifications.add(new History(ObjectId.get(),
         new TisReferenceInfo(PROGRAMME_MEMBERSHIP, TIS_ID),
         PROGRAMME_CREATED, recipientInfo,
-        templateInfo,
-        Instant.MIN, Instant.MAX, SENT, null, null));
-    sentNotifications.add(new History(ObjectId.get(),
-        new TisReferenceInfo(PROGRAMME_MEMBERSHIP, TIS_ID),
-        PROGRAMME_DAY_ONE, recipientInfo,
         templateInfo,
         Instant.MIN, Instant.MAX, SENT, null, null));
 
@@ -801,23 +759,14 @@ class ProgrammeMembershipServiceTest {
         templateInfo,
         Instant.from(originalSentAt.atStartOfDay(timezone)), Instant.MAX,
         SENT, null, null));
-    sentNotifications.add(new History(ObjectId.get(),
-        new TisReferenceInfo(PROGRAMME_MEMBERSHIP, TIS_ID),
-        PROGRAMME_DAY_ONE, recipientInfo,
-        templateInfo,
-        Instant.from(originalSentAt.atStartOfDay(timezone)), Instant.MAX,
-        SENT, null, null));
 
     when(historyService.findAllHistoryForTrainee(PERSON_ID)).thenReturn(sentNotifications);
 
     ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
     service.addNotifications(programmeMembership);
 
-    String programmeCreatedExpectedJobId = PROGRAMME_CREATED + "-" + TIS_ID;
-    verify(notificationService).executeNow(eq(programmeCreatedExpectedJobId), any());
-
-    String dayOneExpectedJobId = PROGRAMME_DAY_ONE + "-" + TIS_ID;
-    verify(notificationService).scheduleNotification(eq(dayOneExpectedJobId), any(), any());
+    verify(notificationService, never()).scheduleNotification(any(), any(), any());
+    verify(notificationService).executeNow(any(), any());
   }
 
   @Test
@@ -875,23 +824,14 @@ class ProgrammeMembershipServiceTest {
         templateInfo,
         null, null,
         SENT, null, null));
-    sentNotifications.add(new History(ObjectId.get(),
-        new TisReferenceInfo(PROGRAMME_MEMBERSHIP, TIS_ID),
-        PROGRAMME_DAY_ONE, recipientInfo,
-        templateInfo,
-        null, null,
-        SENT, null, null));
 
     when(historyService.findAllHistoryForTrainee(PERSON_ID)).thenReturn(sentNotifications);
 
     ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
     service.addNotifications(programmeMembership);
 
-    String programmeCreatedExpectedJobId = PROGRAMME_CREATED + "-" + TIS_ID;
-    verify(notificationService).executeNow(eq(programmeCreatedExpectedJobId), any());
-
-    String dayOneExpectedJobId = PROGRAMME_DAY_ONE + "-" + TIS_ID;
-    verify(notificationService).scheduleNotification(eq(dayOneExpectedJobId), any(), any());
+    verify(notificationService, never()).scheduleNotification(any(), any(), any());
+    verify(notificationService).executeNow(any(), any());
   }
 
   @Test
@@ -1127,18 +1067,6 @@ class ProgrammeMembershipServiceTest {
         previousTemplateInfo,
         Instant.from(previousSentAt.atStartOfDay(timezone)), Instant.MAX,
         SENT, null, null));
-    sentNotifications.add(new History(ObjectId.get(),
-        new TisReferenceInfo(PROGRAMME_MEMBERSHIP, TIS_ID),
-        PROGRAMME_DAY_ONE, recipientInfo,
-        mostRecentTemplateInfo,
-        Instant.from(mostRecentSentAt.atStartOfDay(timezone)), Instant.MAX,
-        SENT, null, null));
-    sentNotifications.add(new History(ObjectId.get(),
-        new TisReferenceInfo(PROGRAMME_MEMBERSHIP, TIS_ID),
-        PROGRAMME_DAY_ONE, recipientInfo,
-        previousTemplateInfo,
-        Instant.from(previousSentAt.atStartOfDay(timezone)), Instant.MAX,
-        SENT, null, null));
 
     when(historyService.findAllHistoryForTrainee(PERSON_ID)).thenReturn(sentNotifications);
 
@@ -1330,8 +1258,7 @@ class ProgrammeMembershipServiceTest {
   }
 
   @ParameterizedTest
-  @EnumSource(value = NotificationType.class, mode = Mode.EXCLUDE,
-      names = {"PROGRAMME_CREATED", "PROGRAMME_DAY_ONE"})
+  @EnumSource(value = NotificationType.class, mode = Mode.EXCLUDE, names = "PROGRAMME_CREATED")
   void shouldIgnoreNonPmCreatedSentNotifications(NotificationType notificationType)
       throws SchedulerException {
     List<History> sentNotifications = new ArrayList<>();
@@ -1428,16 +1355,6 @@ class ProgrammeMembershipServiceTest {
 
   @Test
   void shouldNotEncounterSchedulerExceptions() throws SchedulerException {
-    LocalDate mostRecentSentAt = LocalDate.now().minusDays(50);
-    List<History> sentNotifications = new ArrayList<>();
-    sentNotifications.add(new History(ObjectId.get(),
-        new TisReferenceInfo(PROGRAMME_MEMBERSHIP, TIS_ID),
-        PROGRAMME_DAY_ONE, any(),
-        new TemplateInfo(null, null, null),
-        Instant.from(mostRecentSentAt.atStartOfDay(timezone)), Instant.MAX,
-        SENT, null, null));
-    when(historyService.findAllHistoryForTrainee(PERSON_ID)).thenReturn(sentNotifications);
-
     doThrow(new SchedulerException())
         .when(notificationService).scheduleNotification(any(), any(), any());
 
