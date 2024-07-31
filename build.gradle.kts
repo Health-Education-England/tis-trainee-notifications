@@ -71,12 +71,13 @@ dependencies {
   implementation("io.sentry:sentry-logback:${sentryVersion}")
 
   testImplementation("org.springframework.cloud:spring-cloud-starter-bootstrap")
-  val playtikaTestcontainersVersion = "3.1.5"
-  testImplementation("com.playtika.testcontainers:embedded-mongodb:$playtikaTestcontainersVersion")
-  testImplementation("com.playtika.testcontainers:embedded-mysql:$playtikaTestcontainersVersion")
-  testImplementation("com.playtika.testcontainers:embedded-redis:$playtikaTestcontainersVersion")
+  testImplementation("com.playtika.testcontainers:embedded-redis:3.1.5")
   testImplementation("com.h2database:h2")
-  testImplementation("org.testcontainers:junit-jupiter:1.19.8")
+
+  testImplementation("org.springframework.boot:spring-boot-testcontainers")
+  testImplementation("org.testcontainers:mongodb")
+  testImplementation("org.testcontainers:mysql")
+  testImplementation("org.testcontainers:junit-jupiter")
 
   testImplementation("org.jsoup:jsoup:1.17.2")
 }
