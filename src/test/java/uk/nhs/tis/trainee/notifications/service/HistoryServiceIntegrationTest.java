@@ -26,7 +26,7 @@ import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
-import static org.springframework.test.annotation.DirtiesContext.ClassMode.AFTER_EACH_TEST_METHOD;
+import static uk.nhs.tis.trainee.notifications.TestContainerConfiguration.MONGODB;
 import static uk.nhs.tis.trainee.notifications.model.MessageType.EMAIL;
 import static uk.nhs.tis.trainee.notifications.model.MessageType.IN_APP;
 import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.SENT;
@@ -44,14 +44,17 @@ import org.bson.types.ObjectId;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
-import org.springframework.test.annotation.DirtiesContext;
+import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.test.context.ActiveProfiles;
+import org.testcontainers.containers.MongoDBContainer;
+import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import uk.nhs.tis.trainee.notifications.dto.HistoryDto;
 import uk.nhs.tis.trainee.notifications.model.History;
@@ -60,11 +63,11 @@ import uk.nhs.tis.trainee.notifications.model.History.TemplateInfo;
 import uk.nhs.tis.trainee.notifications.model.History.TisReferenceInfo;
 import uk.nhs.tis.trainee.notifications.model.NotificationType;
 import uk.nhs.tis.trainee.notifications.model.TisReferenceType;
+import uk.nhs.tis.trainee.notifications.repository.HistoryRepository;
 
-@SpringBootTest(properties = {"embedded.containers.enabled=true", "embedded.mongodb.enabled=true"})
-@ActiveProfiles({"mongodb", "test"})
+@SpringBootTest
+@ActiveProfiles("test")
 @Testcontainers(disabledWithoutDocker = true)
-@DirtiesContext(classMode = AFTER_EACH_TEST_METHOD)
 class HistoryServiceIntegrationTest {
 
   private static final String TRAINEE_ID = UUID.randomUUID().toString();
@@ -86,11 +89,20 @@ class HistoryServiceIntegrationTest {
   private static final Instant READ_AT = Instant.now().plus(Duration.ofDays(1))
       .truncatedTo(ChronoUnit.MILLIS);
 
+  @Container
+  @ServiceConnection
+  private static final MongoDBContainer MONGODB_CONTAINER = new MongoDBContainer(MONGODB);
+
   @MockBean
   EventBroadcastService eventBroadcastService;
 
   @Autowired
   private HistoryService service;
+
+  @BeforeEach
+  void setUp(@Autowired HistoryRepository repository) {
+    repository.deleteAll();
+  }
 
   @Test
   void shouldSaveHistory() {
