@@ -47,21 +47,20 @@ public enum NotificationType {
   PLACEMENT_INFORMATION("placement-information"),
   USEFUL_INFORMATION("placement-useful-information"),
   PLACEMENT_UPDATED_WEEK_12("placement-updated-week-12"),
-  PROGRAMME_DAY_ONE("programme-day-one"),
   PROGRAMME_UPDATED_WEEK_8("programme-updated-week-8"),
   PROGRAMME_UPDATED_WEEK_4("programme-updated-week-4"),
   PROGRAMME_UPDATED_WEEK_1("programme-updated-week-1"),
   PROGRAMME_UPDATED_WEEK_0("programme-updated-week-0"),
   PROGRAMME_CREATED("programme-created"),
   SPONSORSHIP("sponsorship"),
-  WELCOME("welcome");
+  WELCOME("welcome"),
+  DINGERS_TEST("dingers-test");
 
   /**
-   * The set of Programme Updated email notification types.
+   * The set of Programme Updated notification types.
    */
   @Getter
   private static final Set<NotificationType> programmeUpdateNotificationTypes = EnumSet.of(
-      PROGRAMME_DAY_ONE,
       PROGRAMME_UPDATED_WEEK_8,
       PROGRAMME_UPDATED_WEEK_4,
       PROGRAMME_UPDATED_WEEK_1,
@@ -69,7 +68,7 @@ public enum NotificationType {
       PROGRAMME_CREATED);
 
   /**
-   * The set of Programme Updated in-app notification types.
+   * The set of Programme Updated notification types.
    */
   @Getter
   private static final Set<NotificationType> programmeInAppNotificationTypes = EnumSet.of(
