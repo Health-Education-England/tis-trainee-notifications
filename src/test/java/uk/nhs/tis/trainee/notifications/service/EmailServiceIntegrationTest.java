@@ -382,6 +382,28 @@ class EmailServiceIntegrationTest {
         is(true));
   }
 
+  @Test
+  void shouldUseNewNtnTerminologyInDayOneMail() throws Exception {
+    when(userAccountService.getUserDetailsById(USER_ID)).thenReturn(
+        new UserDetails(true, RECIPIENT, null, null, null, GMC));
+
+    service.sendMessageToExistingUser(PERSON_ID, PROGRAMME_DAY_ONE, TEMPLATE_VERSION,
+        Map.of(TEMPLATE_CONTACT_HREF_FIELD, "email", START_DATE_FIELD, PLACEMENT_START_DATE), null);
+
+    ArgumentCaptor<MimeMessage> messageCaptor = ArgumentCaptor.captor();
+    verify(mailSender).send(messageCaptor.capture());
+
+    MimeMessage message = messageCaptor.getValue();
+    Document content = Jsoup.parse((String) message.getContent());
+    Element body = content.body();
+
+    String bodyText = body.wholeText();
+    assertThat("Unexpected NTN description.", bodyText.contains("Training Number (NTN/DRN)"),
+        is(true));
+    assertThat("Unexpected Training Number title.", bodyText.contains("National Training Number"),
+        is(false));
+  }
+
   int getGreetingElementIndex(NotificationType notificationType) {
     return switch (notificationType) {
       case PLACEMENT_UPDATED_WEEK_12, PROGRAMME_CREATED, PROGRAMME_DAY_ONE, EMAIL_UPDATED_NEW,
