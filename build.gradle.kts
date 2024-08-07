@@ -45,7 +45,7 @@ dependencies {
   implementation("io.awspring.cloud:spring-cloud-aws-starter-sns")
   implementation("io.awspring.cloud:spring-cloud-aws-starter-sqs")
   implementation("software.amazon.awssdk:cognitoidentityprovider")
-  implementation("com.amazonaws:aws-xray-recorder-sdk-spring:2.15.1")
+  implementation("com.amazonaws:aws-xray-recorder-sdk-spring:2.17.0")
 
   implementation("com.mysql:mysql-connector-j")
   implementation("org.flywaydb:flyway-core")
