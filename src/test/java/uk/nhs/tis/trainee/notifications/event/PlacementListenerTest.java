@@ -97,8 +97,8 @@ class PlacementListenerTest {
 
     listener.handlePlacementDelete(event);
 
-    verify(placementService).deleteNotifications(placementCaptor.capture());
-    verify(placementService).deleteScheduledInAppNotifications(placementCaptor.capture());
+    verify(placementService).deleteNotificationsFromScheduler(placementCaptor.capture());
+    verify(placementService).deleteScheduledNotificationsFromDb(placementCaptor.capture());
 
     Placement placement = placementCaptor.getValue();
     assertThat("Unexpected placement id", placement.getTisId(), is(TIS_ID));

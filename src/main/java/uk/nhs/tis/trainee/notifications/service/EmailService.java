@@ -136,6 +136,16 @@ public class EmailService {
       NotificationStatus status;
       String statusDetail = null;
 
+      // find scheduled history from DB
+      History scheduledHistory = null;
+      if (tisReferenceInfo != null) {
+        scheduledHistory = historyService.findScheduledEmailForTraineeByRefAndType(
+            traineeId, tisReferenceInfo.type(), tisReferenceInfo.id(), notificationType);
+        if (scheduledHistory != null) {
+          notificationId = scheduledHistory.id();
+        }
+      }
+
       if (recipient != null) {
         MimeMessageHelper helper = buildMessageHelper(recipient, templateName, templateVariables,
             notificationId);

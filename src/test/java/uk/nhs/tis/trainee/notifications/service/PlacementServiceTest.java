@@ -493,7 +493,7 @@ class PlacementServiceTest {
     Placement placement = new Placement();
     placement.setTisId(TIS_ID);
 
-    service.deleteNotifications(placement);
+    service.deleteNotificationsFromScheduler(placement);
 
     String jobId = PLACEMENT_UPDATED_WEEK_12 + "-" + TIS_ID;
     verify(notificationService).removeNotification(jobId);
@@ -799,10 +799,10 @@ class PlacementServiceTest {
         .status(UNREAD)
         .build();
 
-    when(historyService.findAllScheduledInAppForTrainee(PERSON_ID, PLACEMENT, TIS_ID))
+    when(historyService.findAllScheduledForTrainee(PERSON_ID, PLACEMENT, TIS_ID))
         .thenReturn(List.of(history1, history2));
 
-    service.deleteScheduledInAppNotifications(placement);
+    service.deleteScheduledNotificationsFromDb(placement);
 
     verify(historyService).deleteHistoryForTrainee(HISTORY_ID_1, PERSON_ID);
     verify(historyService).deleteHistoryForTrainee(HISTORY_ID_2, PERSON_ID);
@@ -819,10 +819,10 @@ class PlacementServiceTest {
     placement.setSpecialty(SPECIALTY);
     placement.setSite(SITE);
 
-    when(historyService.findAllScheduledInAppForTrainee(PERSON_ID, PLACEMENT, TIS_ID))
+    when(historyService.findAllScheduledForTrainee(PERSON_ID, PLACEMENT, TIS_ID))
         .thenReturn(List.of());
 
-    service.deleteScheduledInAppNotifications(placement);
+    service.deleteScheduledNotificationsFromDb(placement);
 
     verify(historyService, never()).deleteHistoryForTrainee(any(), any());
   }

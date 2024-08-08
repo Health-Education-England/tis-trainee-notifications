@@ -27,6 +27,7 @@ import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.ARCHIVED
 import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.DELETED;
 import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.FAILED;
 import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.READ;
+import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.SCHEDULED;
 import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.SENT;
 import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.UNREAD;
 
@@ -44,6 +45,7 @@ import uk.nhs.tis.trainee.notifications.model.History;
 import uk.nhs.tis.trainee.notifications.model.History.TemplateInfo;
 import uk.nhs.tis.trainee.notifications.model.MessageType;
 import uk.nhs.tis.trainee.notifications.model.NotificationStatus;
+import uk.nhs.tis.trainee.notifications.model.NotificationType;
 import uk.nhs.tis.trainee.notifications.model.TisReferenceType;
 import uk.nhs.tis.trainee.notifications.repository.HistoryRepository;
 
@@ -56,7 +58,7 @@ public class HistoryService {
 
   private static final Map<MessageType, Set<NotificationStatus>> VALID_STATUSES = Map.of(
       EMAIL, Set.of(FAILED, SENT),
-      IN_APP, Set.of(ARCHIVED, READ, UNREAD)
+      IN_APP, Set.of(ARCHIVED, READ, SCHEDULED, UNREAD)
   );
 
   private final HistoryRepository repository;
@@ -211,23 +213,45 @@ public class HistoryService {
   }
 
   /**
-   * Find all scheduled in-app notifications for the given Trainee.
+   * Find all scheduled notifications for the given Trainee from DB.
    *
    * @param traineeId The ID of the trainee to get notifications for.
    * @param tisReferenceType The reference type of the object.
    * @param refId The reference ID of the TisReferenceType.
    * @return The found notifications, empty if none found.
    */
-  public List<History> findAllScheduledInAppForTrainee(
+  public List<History> findAllScheduledForTrainee(
       String traineeId, TisReferenceType tisReferenceType, String refId) {
     List<History> history = repository.findAllByRecipient_IdOrderBySentAtDesc(traineeId);
 
     return history.stream()
         .takeWhile(h -> h.sentAt().isAfter(Instant.now()))
-        .filter(h -> h.recipient().type().equals(IN_APP))
         .filter(h -> h.tisReference().id().equals(refId)
             && h.tisReference().type().equals(tisReferenceType))
         .toList();
+  }
+
+  /**
+   * Find scheduled email notification for the given Trainee by reference and type from DB.
+   *
+   * @param traineeId The ID of the trainee to get notifications for.
+   * @param tisReferenceType The reference type of the object.
+   * @param refId The reference ID of the TisReferenceType.
+   * @param notificationType The notification Type of the notification.
+   * @return The found notifications, empty if none found.
+   */
+  public History findScheduledEmailForTraineeByRefAndType(String traineeId,
+      TisReferenceType tisReferenceType, String refId, NotificationType notificationType) {
+    List<History> history = repository.findAllByRecipient_IdOrderBySentAtDesc(traineeId);
+
+    return history.stream()
+        .filter(h -> h.recipient().type().equals(EMAIL))
+        .filter(h -> h.status().equals(SCHEDULED))
+        .filter(h -> h.tisReference().id().equals(refId)
+            && h.tisReference().type().equals(tisReferenceType))
+        .filter(h -> h.type().equals(notificationType))
+        .findFirst()
+        .orElse(null);
   }
 
   /**
@@ -251,15 +275,20 @@ public class HistoryService {
    */
   private HistoryDto toDto(History history) {
     String subject = null;
+    NotificationStatus status = history.status();
 
     if (history.recipient().type() == IN_APP) {
       subject = rebuildMessage(history, Set.of("subject")).orElse("");
+
+      if (history.sentAt().isAfter(Instant.now())) {
+        status = SCHEDULED;
+      }
     }
 
     if (subject == null || subject.isEmpty()) {
-      return mapper.toDto(history);
+      return mapper.toDto(history, status);
     } else {
-      return mapper.toDto(history, subject);
+      return mapper.toDto(history, subject, status);
     }
   }
 
