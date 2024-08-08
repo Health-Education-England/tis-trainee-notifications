@@ -38,6 +38,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static uk.nhs.tis.trainee.notifications.model.MessageType.EMAIL;
 import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.FAILED;
+import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.SCHEDULED;
 import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.SENT;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_CREATED;
 import static uk.nhs.tis.trainee.notifications.model.TisReferenceType.PLACEMENT;
@@ -377,6 +378,8 @@ class EmailServiceTest {
   @EnumSource(NotificationType.class)
   void shouldStoreHistoryWhenMessageSent(NotificationType notificationType)
       throws MessagingException {
+    when(historyService.findScheduledEmailForTraineeByRefAndType(any(), any(), any(), any())).
+        thenReturn(null);
     when(userAccountService.getUserDetailsById(USER_ID)).thenReturn(
         new UserDetails(true, RECIPIENT, "Mr", "Gilliam",
             "Anthony", GMC));
@@ -391,6 +394,56 @@ class EmailServiceTest {
 
     History history = historyCaptor.getValue();
     assertThat("Unexpected notification id.", history.id(), notNullValue());
+    assertThat("Unexpected notification type.", history.type(), is(notificationType));
+    assertThat("Unexpected sent at.", history.sentAt(), notNullValue());
+    assertThat("Unexpected status.", history.status(), is(SENT));
+    assertThat("Unexpected status detail.", history.statusDetail(), nullValue());
+
+    RecipientInfo recipient = history.recipient();
+    assertThat("Unexpected recipient id.", recipient.id(), is(TRAINEE_ID));
+    assertThat("Unexpected message type.", recipient.type(), is(EMAIL));
+    assertThat("Unexpected contact.", recipient.contact(), is(RECIPIENT));
+
+    TisReferenceInfo tisReference = history.tisReference();
+    assertThat("Unexpected reference table.", tisReference.type(), is(REFERENCE_TABLE));
+    assertThat("Unexpected reference id key.", tisReference.id(), is(REFERENCE_KEY));
+
+    TemplateInfo templateInfo = history.template();
+    assertThat("Unexpected template name.", templateInfo.name(),
+        is(notificationType.getTemplateName()));
+    assertThat("Unexpected template version.", templateInfo.version(), is(templateVersion));
+
+    Map<String, Object> storedVariables = templateInfo.variables();
+    assertThat("Unexpected template variable count.", storedVariables.size(), is(5));
+    assertThat("Unexpected template variable.", storedVariables.get("key1"), is("value1"));
+    assertThat("Unexpected template variable.", storedVariables.get("familyName"),
+        is("Gilliam"));
+    assertThat("Unexpected template variable.", storedVariables.get("domain"), is(APP_DOMAIN));
+  }
+
+  @ParameterizedTest
+  @EnumSource(NotificationType.class)
+  void shouldUpdateHistoryWhenScheduledHistoryFound(NotificationType notificationType)
+      throws MessagingException {
+    ObjectId notificationId = ObjectId.get();
+    History scheduledHistory = new History(notificationId, null, notificationType,
+        null, null, null, null, SCHEDULED, null, null);
+    when(historyService.findScheduledEmailForTraineeByRefAndType(any(), any(), any(), any())).
+        thenReturn(scheduledHistory);
+    when(userAccountService.getUserDetailsById(USER_ID)).thenReturn(
+        new UserDetails(true, RECIPIENT, "Mr", "Gilliam",
+            "Anthony", GMC));
+    String templateVersion = "v1.2.3";
+    TisReferenceInfo tisReferenceInfo = new TisReferenceInfo(REFERENCE_TABLE, REFERENCE_KEY);
+
+    service.sendMessageToExistingUser(TRAINEE_ID, notificationType, templateVersion,
+        Map.of("key1", "value1"), tisReferenceInfo);
+
+    ArgumentCaptor<History> historyCaptor = ArgumentCaptor.captor();
+    verify(historyService).save(historyCaptor.capture());
+
+    History history = historyCaptor.getValue();
+    assertThat("Unexpected notification id.", history.id(), is(notificationId));
     assertThat("Unexpected notification type.", history.type(), is(notificationType));
     assertThat("Unexpected sent at.", history.sentAt(), notNullValue());
     assertThat("Unexpected status.", history.status(), is(SENT));

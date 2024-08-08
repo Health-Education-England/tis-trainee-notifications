@@ -219,8 +219,8 @@ public class ProgrammeMembershipService {
       throws SchedulerException {
 
     //first delete any stale notifications
-    deleteNotifications(programmeMembership);
-    deleteScheduledInAppNotifications(programmeMembership);
+    deleteNotificationsFromScheduler(programmeMembership);
+    deleteScheduledNotificationsFromDb(programmeMembership);
 
     boolean isExcluded = isExcluded(programmeMembership);
     log.info("Programme membership {}: excluded {}.", programmeMembership.getTisId(), isExcluded);
@@ -439,7 +439,7 @@ public class ProgrammeMembershipService {
    * @param programmeMembership The programme membership.
    * @throws SchedulerException if any one of the notification jobs could not be removed.
    */
-  public void deleteNotifications(ProgrammeMembership programmeMembership)
+  public void deleteNotificationsFromScheduler(ProgrammeMembership programmeMembership)
       throws SchedulerException {
 
     for (NotificationType milestone : NotificationType.getProgrammeUpdateNotificationTypes()) {
@@ -450,14 +450,14 @@ public class ProgrammeMembershipService {
   }
 
   /**
-   * Remove scheduled in-app notifications for a programme membership.
+   * Remove scheduled notifications for a programme membership from DB.
    *
    * @param programmeMembership The programmeMembership.
    */
-  protected void deleteScheduledInAppNotifications(ProgrammeMembership programmeMembership) {
+  public void deleteScheduledNotificationsFromDb(ProgrammeMembership programmeMembership) {
 
     List<History> scheduledHistories = historyService
-        .findAllScheduledInAppForTrainee(programmeMembership.getPersonId(), PROGRAMME_MEMBERSHIP,
+        .findAllScheduledForTrainee(programmeMembership.getPersonId(), PROGRAMME_MEMBERSHIP,
             programmeMembership.getTisId());
 
     for (History history : scheduledHistories) {

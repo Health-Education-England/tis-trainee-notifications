@@ -1452,7 +1452,7 @@ class ProgrammeMembershipServiceTest {
     ProgrammeMembership programmeMembership = new ProgrammeMembership();
     programmeMembership.setTisId(TIS_ID);
 
-    service.deleteNotifications(programmeMembership);
+    service.deleteNotificationsFromScheduler(programmeMembership);
 
     for (NotificationType milestone : NotificationType.getProgrammeUpdateNotificationTypes()) {
       String jobId = milestone.toString() + "-" + TIS_ID;
@@ -1478,10 +1478,10 @@ class ProgrammeMembershipServiceTest {
         .status(UNREAD)
         .build();
 
-    when(historyService.findAllScheduledInAppForTrainee(PERSON_ID, PROGRAMME_MEMBERSHIP, TIS_ID))
+    when(historyService.findAllScheduledForTrainee(PERSON_ID, PROGRAMME_MEMBERSHIP, TIS_ID))
         .thenReturn(List.of(history1, history2));
 
-    service.deleteScheduledInAppNotifications(programmeMembership);
+    service.deleteScheduledNotificationsFromDb(programmeMembership);
 
     verify(historyService).deleteHistoryForTrainee(HISTORY_ID_1, PERSON_ID);
     verify(historyService).deleteHistoryForTrainee(HISTORY_ID_2, PERSON_ID);
@@ -1491,10 +1491,10 @@ class ProgrammeMembershipServiceTest {
   void shouldNotDeleteWhenNoScheduledInAppNotifications() {
     ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
 
-    when(historyService.findAllScheduledInAppForTrainee(PERSON_ID, PROGRAMME_MEMBERSHIP, TIS_ID))
+    when(historyService.findAllScheduledForTrainee(PERSON_ID, PROGRAMME_MEMBERSHIP, TIS_ID))
         .thenReturn(List.of());
 
-    service.deleteScheduledInAppNotifications(programmeMembership);
+    service.deleteScheduledNotificationsFromDb(programmeMembership);
 
     verify(historyService, never()).deleteHistoryForTrainee(any(), any());
   }

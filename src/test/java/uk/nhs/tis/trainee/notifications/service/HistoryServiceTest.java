@@ -610,7 +610,7 @@ class HistoryServiceTest {
   void shouldFindNoHistoryForTraineeWhenScheduledInAppNotificationsNotExist() {
     when(repository.findAllByRecipient_IdOrderBySentAtDesc(TRAINEE_ID)).thenReturn(List.of());
 
-    List<History> history = service.findAllScheduledInAppForTrainee(
+    List<History> history = service.findAllScheduledForTrainee(
         TRAINEE_ID, TIS_REFERENCE_TYPE, TIS_REFERENCE_ID);
 
     assertThat("Unexpected history count.", history.size(), is(0));
@@ -618,7 +618,7 @@ class HistoryServiceTest {
 
   @ParameterizedTest
   @MethodSource("uk.nhs.tis.trainee.notifications.MethodArgumentUtil#getTemplateCombinations")
-  void shouldFindHistoryForTraineeWhenScheduledInAppNotificationsExist(MessageType messageType,
+  void shouldFindHistoryForTraineeWhenScheduledNotificationsExist(MessageType messageType,
                                                              NotificationType notificationType) {
     RecipientInfo recipientInfo = new RecipientInfo(TRAINEE_ID, messageType, TRAINEE_CONTACT);
     TemplateInfo templateInfo = new TemplateInfo(TEMPLATE_NAME, TEMPLATE_VERSION,
@@ -643,24 +643,20 @@ class HistoryServiceTest {
 
     when(templateService.process(any(), any(), anyMap())).thenReturn("");
 
-    List<History> history = service.findAllScheduledInAppForTrainee(
+    List<History> history = service.findAllScheduledForTrainee(
         TRAINEE_ID, TIS_REFERENCE_TYPE, TIS_REFERENCE_ID);
 
-    if (messageType.equals(IN_APP)) {
-      assertThat("Unexpected history count.", history.size(), is(1));
+    assertThat("Unexpected history count.", history.size(), is(1));
 
-      History returnedHistory1 = history.get(0);
-      assertThat("Unexpected history id.", returnedHistory1.id(), is(id3));
-      TisReferenceInfo referenceInfo2 = history.get(0).tisReference();
-      assertThat("Unexpected history TIS reference type.", referenceInfo2.type(),
-          is(TIS_REFERENCE_TYPE));
-      assertThat("Unexpected history TIS reference id.", referenceInfo2.id(),
-          is(TIS_REFERENCE_ID));
-      assertThat("Unexpected history sent at.", returnedHistory1.sentAt(), is(Instant.MAX));
-      assertThat("Unexpected history read at.", returnedHistory1.readAt(), is(Instant.MIN));
-    } else {
-      assertThat("Unexpected history count.", history.size(), is(0));
-    }
+    History returnedHistory1 = history.get(0);
+    assertThat("Unexpected history id.", returnedHistory1.id(), is(id3));
+    TisReferenceInfo referenceInfo2 = history.get(0).tisReference();
+    assertThat("Unexpected history TIS reference type.", referenceInfo2.type(),
+        is(TIS_REFERENCE_TYPE));
+    assertThat("Unexpected history TIS reference id.", referenceInfo2.id(),
+        is(TIS_REFERENCE_ID));
+    assertThat("Unexpected history sent at.", returnedHistory1.sentAt(), is(Instant.MAX));
+    assertThat("Unexpected history read at.", returnedHistory1.readAt(), is(Instant.MIN));
   }
 
   @Test
