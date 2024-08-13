@@ -363,6 +363,8 @@ class HistoryServiceIntegrationTest {
         new TisReferenceInfo(TisReferenceType.PROGRAMME_MEMBERSHIP, TIS_REFERENCE_ID_2);
     TisReferenceInfo tisReferenceInfo4 =
         new TisReferenceInfo(TisReferenceType.PLACEMENT, TIS_REFERENCE_ID);
+    TisReferenceInfo tisReferenceInfo5 =
+        new TisReferenceInfo(TisReferenceType.PLACEMENT, TIS_REFERENCE_ID_2);
 
     Instant now = Instant.now().truncatedTo(ChronoUnit.MILLIS);
     service.save(new History(null, tisReferenceInfo1, FORM_UPDATED, recipientInfo, templateInfo,
@@ -372,6 +374,8 @@ class HistoryServiceIntegrationTest {
     service.save(new History(null, tisReferenceInfo3, PROGRAMME_DAY_ONE, recipientInfo,
         templateInfo, now, now, SCHEDULED, null, null));
     service.save(new History(null, tisReferenceInfo4, PROGRAMME_DAY_ONE, recipientInfo,
+        templateInfo, now, now, SCHEDULED, null, null));
+    service.save(new History(null, tisReferenceInfo5, PROGRAMME_DAY_ONE, recipientInfo,
         templateInfo, now, now, SCHEDULED, null, null));
 
     History foundHistory = service.findScheduledEmailForTraineeByRefAndType(

@@ -512,10 +512,24 @@ class NotificationServiceTest {
         eq(false));
   }
 
+  @ParameterizedTest
+  @EnumSource(value = NotificationType.class, mode = Mode.EXCLUDE,
+      names = {"PLACEMENT_UPDATED_WEEK_12", "PROGRAMME_CREATED", "PROGRAMME_DAY_ONE"})
+  void shouldNotSendEmailWhenNotificationTypeNotCorrect(NotificationType notificationType) {
+
+    when(messagingControllerService.isValidRecipient(any(), any())).thenReturn(true);
+    when(messagingControllerService.isProgrammeMembershipNewStarter(any(), any())).thenReturn(true);
+    when(messagingControllerService.isProgrammeMembershipInPilot2024(any(), any())).thenReturn(
+        true);
+
+    boolean result = service.shouldActuallySendEmail(notificationType, PERSON_ID, TIS_ID);
+
+    assertThat("Unexpected actuallySendEmail boolean.", result, is(false));
+  }
+
   @Test
   void shouldScheduleProgrammeMembershipNotification() throws SchedulerException {
     NotificationType notificationType = NotificationType.PROGRAMME_CREATED;
-    String jobId = notificationType + "-" + TIS_ID;
 
     LocalDate expectedDate = START_DATE.minusDays(0);
     Date when = Date.from(expectedDate
@@ -529,7 +543,13 @@ class NotificationServiceTest {
     when(emailService.getRecipientAccountByEmail(USER_EMAIL)).thenReturn(userAccountDetails);
     when(restTemplate.getForObject(ACCOUNT_DETAILS_URL, UserDetails.class,
         Map.of(TIS_ID_FIELD, PERSON_ID))).thenReturn(userAccountDetails);
+    when(messagingControllerService.isValidRecipient(any(), any())).thenReturn(true);
+    when(messagingControllerService.isProgrammeMembershipNewStarter(any(), any()))
+        .thenReturn(true);
+    when(messagingControllerService.isProgrammeMembershipInPilot2024(any(), any()))
+        .thenReturn(true);
 
+    String jobId = notificationType + "-" + TIS_ID;
     service.scheduleNotification(jobId, programmeJobDataMap, when);
 
     // create job in scheduler
@@ -578,7 +598,6 @@ class NotificationServiceTest {
   @Test
   void shouldSchedulePlacementNotification() throws SchedulerException {
     NotificationType notificationType = NotificationType.PLACEMENT_UPDATED_WEEK_12;
-    String jobId = notificationType + "-" + TIS_ID;
 
     LocalDate expectedDate = START_DATE.minusDays(84);
     Date when = Date.from(expectedDate
@@ -592,7 +611,13 @@ class NotificationServiceTest {
     when(emailService.getRecipientAccountByEmail(USER_EMAIL)).thenReturn(userAccountDetails);
     when(restTemplate.getForObject(ACCOUNT_DETAILS_URL, UserDetails.class,
         Map.of(TIS_ID_FIELD, PERSON_ID))).thenReturn(userAccountDetails);
+    when(messagingControllerService.isValidRecipient(any(), any())).thenReturn(true);
+    when(messagingControllerService.isProgrammeMembershipNewStarter(any(), any()))
+        .thenReturn(true);
+    when(messagingControllerService.isPlacementInPilot2024(any(), any()))
+        .thenReturn(true);
 
+    String jobId = notificationType + "-" + TIS_ID;
     service.scheduleNotification(jobId, placementJobDataMap, when);
 
     // create job in scheduler
@@ -636,6 +661,178 @@ class NotificationServiceTest {
         is(START_DATE));
     assertThat("Unexpected template variable.", storedVariables.get(PERSON_ID_FIELD),
         is(PERSON_ID));
+  }
+
+  @Test
+  void shouldNotSaveSchedulePmNotificationHistoryWhenRecipientNotValid() throws SchedulerException {
+    NotificationType notificationType = NotificationType.PROGRAMME_CREATED;
+
+    LocalDate expectedDate = START_DATE.minusDays(0);
+    Date when = Date.from(expectedDate
+        .atStartOfDay()
+        .atZone(ZoneId.of(TIMEZONE))
+        .toInstant());
+
+    UserDetails userAccountDetails =
+        new UserDetails(
+            false, USER_EMAIL, USER_TITLE, USER_FAMILY_NAME, USER_GIVEN_NAME, USER_GMC);
+    when(emailService.getRecipientAccountByEmail(USER_EMAIL)).thenReturn(userAccountDetails);
+    when(restTemplate.getForObject(ACCOUNT_DETAILS_URL, UserDetails.class,
+        Map.of(TIS_ID_FIELD, PERSON_ID))).thenReturn(userAccountDetails);
+    when(messagingControllerService.isValidRecipient(any(), any())).thenReturn(false);
+    when(messagingControllerService.isProgrammeMembershipNewStarter(any(), any()))
+        .thenReturn(true);
+    when(messagingControllerService.isProgrammeMembershipInPilot2024(any(), any()))
+        .thenReturn(true);
+
+    String jobId = notificationType + "-" + TIS_ID;
+    service.scheduleNotification(jobId, programmeJobDataMap, when);
+
+    verify(historyService, never()).save(any());
+  }
+
+  @Test
+  void shouldNotSaveSchedulePmNotificationHistoryWhenNotNewStarter() throws SchedulerException {
+    NotificationType notificationType = NotificationType.PROGRAMME_CREATED;
+
+    LocalDate expectedDate = START_DATE.minusDays(0);
+    Date when = Date.from(expectedDate
+        .atStartOfDay()
+        .atZone(ZoneId.of(TIMEZONE))
+        .toInstant());
+
+    UserDetails userAccountDetails =
+        new UserDetails(
+            false, USER_EMAIL, USER_TITLE, USER_FAMILY_NAME, USER_GIVEN_NAME, USER_GMC);
+    when(emailService.getRecipientAccountByEmail(USER_EMAIL)).thenReturn(userAccountDetails);
+    when(restTemplate.getForObject(ACCOUNT_DETAILS_URL, UserDetails.class,
+        Map.of(TIS_ID_FIELD, PERSON_ID))).thenReturn(userAccountDetails);
+    when(messagingControllerService.isValidRecipient(any(), any())).thenReturn(true);
+    when(messagingControllerService.isProgrammeMembershipNewStarter(any(), any()))
+        .thenReturn(false);
+    when(messagingControllerService.isProgrammeMembershipInPilot2024(any(), any()))
+        .thenReturn(true);
+
+    String jobId = notificationType + "-" + TIS_ID;
+    service.scheduleNotification(jobId, programmeJobDataMap, when);
+
+    verify(historyService, never()).save(any());
+  }
+
+  @Test
+  void shouldNotSaveSchedulePmNotificationHistoryWhenNotInPilot() throws SchedulerException {
+    NotificationType notificationType = NotificationType.PROGRAMME_DAY_ONE;
+
+    LocalDate expectedDate = START_DATE.minusDays(0);
+    Date when = Date.from(expectedDate
+        .atStartOfDay()
+        .atZone(ZoneId.of(TIMEZONE))
+        .toInstant());
+
+    UserDetails userAccountDetails =
+        new UserDetails(
+            false, USER_EMAIL, USER_TITLE, USER_FAMILY_NAME, USER_GIVEN_NAME, USER_GMC);
+    when(emailService.getRecipientAccountByEmail(USER_EMAIL)).thenReturn(userAccountDetails);
+    when(restTemplate.getForObject(ACCOUNT_DETAILS_URL, UserDetails.class,
+        Map.of(TIS_ID_FIELD, PERSON_ID))).thenReturn(userAccountDetails);
+    when(messagingControllerService.isValidRecipient(any(), any())).thenReturn(true);
+    when(messagingControllerService.isProgrammeMembershipNewStarter(any(), any()))
+        .thenReturn(true);
+    when(messagingControllerService.isProgrammeMembershipInPilot2024(any(), any()))
+        .thenReturn(false);
+
+    String jobId = notificationType + "-" + TIS_ID;
+    service.scheduleNotification(jobId, programmeJobDataMap, when);
+
+    verify(historyService, never()).save(any());
+  }
+
+  @Test
+  void shouldNotSaveSchedulePlacementNotificationWhenRecipientNotValid() throws SchedulerException {
+    NotificationType notificationType = NotificationType.PLACEMENT_UPDATED_WEEK_12;
+
+    LocalDate expectedDate = START_DATE.minusDays(84);
+    Date when = Date.from(expectedDate
+        .atStartOfDay()
+        .atZone(ZoneId.of(TIMEZONE))
+        .toInstant());
+
+    UserDetails userAccountDetails =
+        new UserDetails(
+            false, USER_EMAIL, USER_TITLE, USER_FAMILY_NAME, USER_GIVEN_NAME, USER_GMC);
+    when(emailService.getRecipientAccountByEmail(USER_EMAIL)).thenReturn(userAccountDetails);
+    when(restTemplate.getForObject(ACCOUNT_DETAILS_URL, UserDetails.class,
+        Map.of(TIS_ID_FIELD, PERSON_ID))).thenReturn(userAccountDetails);
+    when(messagingControllerService.isValidRecipient(any(), any())).thenReturn(false);
+    when(messagingControllerService.isProgrammeMembershipNewStarter(any(), any()))
+        .thenReturn(true);
+    when(messagingControllerService.isPlacementInPilot2024(any(), any()))
+        .thenReturn(true);
+
+    String jobId = notificationType + "-" + TIS_ID;
+    service.scheduleNotification(jobId, placementJobDataMap, when);
+
+    verify(historyService, never()).save(any());
+  }
+
+  @Test
+  void shouldNotSaveSchedulePlacementNotificationWhenNotInPilot() throws SchedulerException {
+    NotificationType notificationType = NotificationType.PLACEMENT_UPDATED_WEEK_12;
+
+    LocalDate expectedDate = START_DATE.minusDays(84);
+    Date when = Date.from(expectedDate
+        .atStartOfDay()
+        .atZone(ZoneId.of(TIMEZONE))
+        .toInstant());
+
+    UserDetails userAccountDetails =
+        new UserDetails(
+            false, USER_EMAIL, USER_TITLE, USER_FAMILY_NAME, USER_GIVEN_NAME, USER_GMC);
+    when(emailService.getRecipientAccountByEmail(USER_EMAIL)).thenReturn(userAccountDetails);
+    when(restTemplate.getForObject(ACCOUNT_DETAILS_URL, UserDetails.class,
+        Map.of(TIS_ID_FIELD, PERSON_ID))).thenReturn(userAccountDetails);
+    when(messagingControllerService.isValidRecipient(any(), any())).thenReturn(true);
+    when(messagingControllerService.isProgrammeMembershipNewStarter(any(), any()))
+        .thenReturn(true);
+    when(messagingControllerService.isPlacementInPilot2024(any(), any()))
+        .thenReturn(false);
+
+    String jobId = notificationType + "-" + TIS_ID;
+    service.scheduleNotification(jobId, placementJobDataMap, when);
+
+    verify(historyService, never()).save(any());
+  }
+
+  @ParameterizedTest
+  @EnumSource(value = NotificationType.class, mode = Mode.EXCLUDE,
+      names = {"PLACEMENT_UPDATED_WEEK_12", "PROGRAMME_CREATED", "PROGRAMME_DAY_ONE"})
+  void shouldNotSaveScheduleNotificationWhenNotCorrectNotificationType(
+      NotificationType notificationType) {
+
+    placementJobDataMap.put(TEMPLATE_NOTIFICATION_TYPE_FIELD,
+        notificationType.toString());
+
+    LocalDate expectedDate = START_DATE.minusDays(84);
+    Date when = Date.from(expectedDate
+        .atStartOfDay()
+        .atZone(ZoneId.of(TIMEZONE))
+        .toInstant());
+
+    UserDetails userAccountDetails =
+        new UserDetails(
+            false, USER_EMAIL, USER_TITLE, USER_FAMILY_NAME, USER_GIVEN_NAME, USER_GMC);
+    when(emailService.getRecipientAccountByEmail(USER_EMAIL)).thenReturn(userAccountDetails);
+    when(restTemplate.getForObject(ACCOUNT_DETAILS_URL, UserDetails.class,
+        Map.of(TIS_ID_FIELD, PERSON_ID))).thenReturn(userAccountDetails);
+    when(messagingControllerService.isValidRecipient(any(), any())).thenReturn(true);
+    when(messagingControllerService.isProgrammeMembershipNewStarter(any(), any()))
+        .thenReturn(true);
+    when(messagingControllerService.isPlacementInPilot2024(any(), any()))
+        .thenReturn(true);
+
+    service.saveScheduleHistory(placementJobDataMap, when);
+
+    verify(historyService, never()).save(any());
   }
 
   @Test

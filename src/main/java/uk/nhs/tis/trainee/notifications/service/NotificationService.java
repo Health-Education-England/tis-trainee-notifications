@@ -152,14 +152,11 @@ public class NotificationService implements Job {
    * @return the result map with status details if successful.
    */
   public Map<String, String> executeNow(String jobKey, JobDataMap jobDetails) {
-    boolean isActionableJob = false; //default to ignore jobs
-    boolean actuallySendEmail = false; //default to logging email only
     String jobName = "";
     Map<String, String> result = new HashMap<>();
 
     // get job details according to notification type
     String personId = jobDetails.getString(PERSON_ID_FIELD);
-    boolean inWhitelist = notificationsWhitelist.contains(personId);
 
     TisReferenceInfo tisReferenceInfo = null;
     LocalDate startDate = null;
@@ -178,38 +175,25 @@ public class NotificationService implements Job {
     if (notificationType == NotificationType.PROGRAMME_CREATED
         || notificationType == NotificationType.PROGRAMME_DAY_ONE) {
 
-      isActionableJob = true;
       jobName = jobDetails.getString(ProgrammeMembershipService.PROGRAMME_NAME_FIELD);
       startDate = (LocalDate) jobDetails.get(ProgrammeMembershipService.START_DATE_FIELD);
       tisReferenceInfo = new TisReferenceInfo(PROGRAMME_MEMBERSHIP,
           jobDetails.get(ProgrammeMembershipService.TIS_ID_FIELD).toString());
 
-      ProgrammeMembership minimalPm = new ProgrammeMembership();
-      minimalPm.setPersonId(personId);
-      minimalPm.setTisId(tisReferenceInfo.id());
-      actuallySendEmail
-          = inWhitelist
-          || (messagingControllerService.isValidRecipient(personId, MessageType.EMAIL)
-          && meetsCriteria(minimalPm, true, true));
-
     } else if (notificationType == NotificationType.PLACEMENT_UPDATED_WEEK_12) {
 
-      isActionableJob = true;
       jobName = jobDetails.getString(PlacementService.PLACEMENT_TYPE_FIELD);
       startDate = (LocalDate) jobDetails.get(PlacementService.START_DATE_FIELD);
       tisReferenceInfo = new TisReferenceInfo(PLACEMENT,
           jobDetails.get(PlacementService.TIS_ID_FIELD).toString());
-
-      actuallySendEmail = inWhitelist
-          || (messagingControllerService.isValidRecipient(personId, MessageType.EMAIL)
-          && messagingControllerService.isPlacementInPilot2024(personId, tisReferenceInfo.id()));
     }
 
-    if (isActionableJob) {
+    if (tisReferenceInfo != null) {
       if (userAccountDetails != null) {
         try {
           emailService.sendMessage(personId, userAccountDetails.email(), notificationType,
-              templateVersion, jobDetails.getWrappedMap(), tisReferenceInfo, !actuallySendEmail);
+              templateVersion, jobDetails.getWrappedMap(), tisReferenceInfo,
+              !shouldActuallySendEmail(notificationType, personId, tisReferenceInfo.id()));
         } catch (MessagingException e) {
           throw new RuntimeException(e);
         }
@@ -405,6 +389,41 @@ public class NotificationService implements Job {
   }
 
   /**
+   * Determine if the email should actually be sent out.
+   *
+   * @param notificationType The notification type.
+   * @param personId The person Id.
+   * @param tisReferenceId The TIS reference Id.
+   * @return the boolean if the email should be sent out.
+   */
+  protected boolean shouldActuallySendEmail(NotificationType notificationType, String personId,
+                                            String tisReferenceId) {
+    boolean actuallySendEmail = false; // default to log email only
+    boolean inWhitelist = notificationsWhitelist.contains(personId);
+
+    //only consider sending programme-created mails; ignore the programme-updated-* notifications
+    if (notificationType == NotificationType.PROGRAMME_CREATED
+        || notificationType == NotificationType.PROGRAMME_DAY_ONE) {
+
+      ProgrammeMembership minimalPm = new ProgrammeMembership();
+      minimalPm.setPersonId(personId);
+      minimalPm.setTisId(tisReferenceId);
+      actuallySendEmail
+          = inWhitelist
+          || (messagingControllerService.isValidRecipient(personId, MessageType.EMAIL)
+          && meetsCriteria(minimalPm, true, true));
+
+    } else if (notificationType == NotificationType.PLACEMENT_UPDATED_WEEK_12) {
+
+      actuallySendEmail = inWhitelist
+          || (messagingControllerService.isValidRecipient(personId, MessageType.EMAIL)
+          && messagingControllerService.isPlacementInPilot2024(personId, tisReferenceId));
+    }
+
+    return actuallySendEmail;
+  }
+
+  /**
    * Store history in DB for scheduled notification.
    *
    * @param jobDetails The job details.
@@ -412,36 +431,46 @@ public class NotificationService implements Job {
   protected void saveScheduleHistory(JobDataMap jobDetails, Date when) {
     jobDetails = enrichJobDetails(jobDetails);
 
+    String personId = jobDetails.getString(PERSON_ID_FIELD);
     NotificationType notificationType =
         NotificationType.valueOf(jobDetails.get(TEMPLATE_NOTIFICATION_TYPE_FIELD).toString());
 
+    // get TIS Reference Info
     TisReferenceInfo tisReferenceInfo = null;
     if (notificationType == NotificationType.PROGRAMME_CREATED
         || notificationType == NotificationType.PROGRAMME_DAY_ONE) {
       tisReferenceInfo = new TisReferenceInfo(PROGRAMME_MEMBERSHIP,
           jobDetails.get(ProgrammeMembershipService.TIS_ID_FIELD).toString());
+
     } else if (notificationType == NotificationType.PLACEMENT_UPDATED_WEEK_12) {
       tisReferenceInfo = new TisReferenceInfo(PLACEMENT,
           jobDetails.get(PlacementService.TIS_ID_FIELD).toString());
     }
 
+    // get Recipient Info
     History.RecipientInfo recipientInfo = new History.RecipientInfo(
-        jobDetails.getString(PERSON_ID_FIELD), EMAIL, jobDetails.getString("email"));
+        personId, EMAIL, jobDetails.getString("email"));
     History.TemplateInfo templateInfo = new History.TemplateInfo(notificationType.getTemplateName(),
         templateVersion, jobDetails.getWrappedMap());
 
-    History history = new History(
-        ObjectId.get(),
-        tisReferenceInfo,
-        notificationType,
-        recipientInfo,
-        templateInfo,
-        when.toInstant(),
-        null,
-        NotificationStatus.SCHEDULED,
-        null,
-        null);
-    historyService.save(history);
+    // Only save then notificationType is correct and in Pilot
+    if (tisReferenceInfo != null
+        && shouldActuallySendEmail(notificationType, personId, tisReferenceInfo.id())) {
+
+      // Save SCHEDULED History in DB
+      History history = new History(
+          ObjectId.get(),
+          tisReferenceInfo,
+          notificationType,
+          recipientInfo,
+          templateInfo,
+          when.toInstant(),
+          null,
+          NotificationStatus.SCHEDULED,
+          null,
+          null);
+      historyService.save(history);
+    }
   }
 
   /**
