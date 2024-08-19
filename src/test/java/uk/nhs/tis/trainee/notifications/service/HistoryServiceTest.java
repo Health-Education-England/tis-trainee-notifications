@@ -37,7 +37,9 @@ import static org.mockito.Mockito.when;
 import static uk.nhs.tis.trainee.notifications.model.MessageType.EMAIL;
 import static uk.nhs.tis.trainee.notifications.model.MessageType.IN_APP;
 import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.FAILED;
+import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.SCHEDULED;
 import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.SENT;
+import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.UNREAD;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.COJ_CONFIRMATION;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_CREATED;
 
@@ -166,7 +168,7 @@ class HistoryServiceTest {
 
   @ParameterizedTest
   @EnumSource(value = NotificationStatus.class, mode = Mode.EXCLUDE,
-      names = {"ARCHIVED", "READ", "UNREAD", "DELETED"})
+      names = {"ARCHIVED", "READ", "UNREAD", "SCHEDULED", "DELETED"})
   void shouldUpdateValidStatusWhenEmailHistoryFound(NotificationStatus status) {
     ObjectId notificationId = new ObjectId(NOTIFICATION_ID);
     RecipientInfo recipientInfo = new RecipientInfo(TRAINEE_ID, EMAIL, TRAINEE_CONTACT);
@@ -207,8 +209,8 @@ class HistoryServiceTest {
   }
 
   @ParameterizedTest
-  @EnumSource(value = NotificationStatus.class, mode = Mode.EXCLUDE,
-      names = {"ARCHIVED", "READ", "UNREAD", "DELETED"})
+  @EnumSource(value = NotificationStatus.class, mode = Mode.EXCLUDE, names = {"ARCHIVED", "READ",
+      "SCHEDULED", "UNREAD", "DELETED"})
   void shouldThrowExceptionWhenUpdatingInAppHistoryWithInvalidStatus(NotificationStatus status) {
     ObjectId notificationId = new ObjectId(NOTIFICATION_ID);
     RecipientInfo recipientInfo = new RecipientInfo(TRAINEE_ID, IN_APP, TRAINEE_CONTACT);
@@ -302,8 +304,8 @@ class HistoryServiceTest {
   }
 
   @ParameterizedTest
-  @EnumSource(value = NotificationStatus.class, mode = Mode.EXCLUDE,
-      names = {"ARCHIVED", "READ", "UNREAD", "DELETED"})
+  @EnumSource(value = NotificationStatus.class, mode = Mode.EXCLUDE, names = {"ARCHIVED", "READ",
+      "SCHEDULED", "UNREAD", "DELETED"})
   void shouldUpdateValidStatusForTraineeWhenEmailHistoryFound(NotificationStatus status) {
     ObjectId notificationId = new ObjectId(NOTIFICATION_ID);
     RecipientInfo recipientInfo = new RecipientInfo(TRAINEE_ID, EMAIL, TRAINEE_CONTACT);
@@ -344,8 +346,8 @@ class HistoryServiceTest {
   }
 
   @ParameterizedTest
-  @EnumSource(value = NotificationStatus.class, mode = Mode.EXCLUDE,
-      names = {"ARCHIVED", "READ", "UNREAD", "DELETED"})
+  @EnumSource(value = NotificationStatus.class, mode = Mode.EXCLUDE, names = {"ARCHIVED", "READ",
+      "SCHEDULED", "UNREAD", "DELETED"})
   void shouldThrowExceptionWhenUpdatingInAppHistoryForTraineeWithInvalidStatus(
       NotificationStatus status) {
     ObjectId notificationId = new ObjectId(NOTIFICATION_ID);
@@ -364,8 +366,8 @@ class HistoryServiceTest {
   }
 
   @ParameterizedTest
-  @EnumSource(value = NotificationStatus.class, mode = Mode.EXCLUDE,
-      names = {"FAILED", "SENT", "DELETED"})
+  @EnumSource(value = NotificationStatus.class, mode = Mode.EXCLUDE, names = {"FAILED", "SENT",
+      "DELETED"})
   void shouldUpdateValidStatusForTraineeWhenInAppHistoryFound(NotificationStatus status) {
     ObjectId notificationId = new ObjectId(NOTIFICATION_ID);
     RecipientInfo recipientInfo = new RecipientInfo(TRAINEE_ID, IN_APP, TRAINEE_CONTACT);
@@ -608,7 +610,7 @@ class HistoryServiceTest {
   void shouldFindNoHistoryForTraineeWhenScheduledInAppNotificationsNotExist() {
     when(repository.findAllByRecipient_IdOrderBySentAtDesc(TRAINEE_ID)).thenReturn(List.of());
 
-    List<History> history = service.findAllScheduledInAppForTrainee(
+    List<History> history = service.findAllScheduledForTrainee(
         TRAINEE_ID, TIS_REFERENCE_TYPE, TIS_REFERENCE_ID);
 
     assertThat("Unexpected history count.", history.size(), is(0));
@@ -616,7 +618,7 @@ class HistoryServiceTest {
 
   @ParameterizedTest
   @MethodSource("uk.nhs.tis.trainee.notifications.MethodArgumentUtil#getTemplateCombinations")
-  void shouldFindHistoryForTraineeWhenScheduledInAppNotificationsExist(MessageType messageType,
+  void shouldFindHistoryForTraineeWhenScheduledNotificationsExist(MessageType messageType,
                                                              NotificationType notificationType) {
     RecipientInfo recipientInfo = new RecipientInfo(TRAINEE_ID, messageType, TRAINEE_CONTACT);
     TemplateInfo templateInfo = new TemplateInfo(TEMPLATE_NAME, TEMPLATE_VERSION,
@@ -641,24 +643,20 @@ class HistoryServiceTest {
 
     when(templateService.process(any(), any(), anyMap())).thenReturn("");
 
-    List<History> history = service.findAllScheduledInAppForTrainee(
+    List<History> history = service.findAllScheduledForTrainee(
         TRAINEE_ID, TIS_REFERENCE_TYPE, TIS_REFERENCE_ID);
 
-    if (messageType.equals(IN_APP)) {
-      assertThat("Unexpected history count.", history.size(), is(1));
+    assertThat("Unexpected history count.", history.size(), is(1));
 
-      History returnedHistory1 = history.get(0);
-      assertThat("Unexpected history id.", returnedHistory1.id(), is(id3));
-      TisReferenceInfo referenceInfo2 = history.get(0).tisReference();
-      assertThat("Unexpected history TIS reference type.", referenceInfo2.type(),
-          is(TIS_REFERENCE_TYPE));
-      assertThat("Unexpected history TIS reference id.", referenceInfo2.id(),
-          is(TIS_REFERENCE_ID));
-      assertThat("Unexpected history sent at.", returnedHistory1.sentAt(), is(Instant.MAX));
-      assertThat("Unexpected history read at.", returnedHistory1.readAt(), is(Instant.MIN));
-    } else {
-      assertThat("Unexpected history count.", history.size(), is(0));
-    }
+    History returnedHistory1 = history.get(0);
+    assertThat("Unexpected history id.", returnedHistory1.id(), is(id3));
+    TisReferenceInfo referenceInfo2 = history.get(0).tisReference();
+    assertThat("Unexpected history TIS reference type.", referenceInfo2.type(),
+        is(TIS_REFERENCE_TYPE));
+    assertThat("Unexpected history TIS reference id.", referenceInfo2.id(),
+        is(TIS_REFERENCE_ID));
+    assertThat("Unexpected history sent at.", returnedHistory1.sentAt(), is(Instant.MAX));
+    assertThat("Unexpected history read at.", returnedHistory1.readAt(), is(Instant.MIN));
   }
 
   @Test
@@ -803,6 +801,66 @@ class HistoryServiceTest {
 
     HistoryDto historyDto = historyDtos.get(0);
     assertThat("Unexpected history subject text.", historyDto.subjectText(), nullValue());
+  }
+
+  @ParameterizedTest
+  @EnumSource(NotificationType.class)
+  void shouldSetScheduledStatusInFoundHistoryWhenInAppNotificationWithFutureSentAt(
+      NotificationType notificationType) {
+    RecipientInfo recipientInfo = new RecipientInfo(TRAINEE_ID, IN_APP, TRAINEE_CONTACT);
+    TemplateInfo templateInfo = new TemplateInfo(TEMPLATE_NAME, TEMPLATE_VERSION,
+        TEMPLATE_VARIABLES);
+    TisReferenceInfo tisReferenceInfo = new TisReferenceInfo(TIS_REFERENCE_TYPE, TIS_REFERENCE_ID);
+
+    ObjectId id1 = ObjectId.get();
+    History history1 = new History(id1, tisReferenceInfo, notificationType, recipientInfo,
+        templateInfo, Instant.MAX, null, UNREAD, null, null);
+
+    when(repository.findAllByRecipient_IdOrderBySentAtDesc(TRAINEE_ID)).thenReturn(
+        List.of(history1));
+
+    String templatePath = "type/test/template/v1.2.3";
+    when(templateService.getTemplatePath(IN_APP, TEMPLATE_NAME, TEMPLATE_VERSION)).thenReturn(
+        templatePath);
+    when(templateService.process(templatePath, Set.of("subject"), TEMPLATE_VARIABLES)).thenReturn(
+        "rebuiltSubject");
+
+    List<HistoryDto> historyDtos = service.findAllForTrainee(TRAINEE_ID);
+
+    assertThat("Unexpected history count.", historyDtos.size(), is(1));
+
+    HistoryDto historyDto = historyDtos.get(0);
+    assertThat("Unexpected history status.", historyDto.status(), is(SCHEDULED));
+  }
+
+  @ParameterizedTest
+  @EnumSource(NotificationType.class)
+  void shouldNotChangeStatusInFoundHistoryWhenInAppNotificationWithPastSentAt(
+      NotificationType notificationType) {
+    RecipientInfo recipientInfo = new RecipientInfo(TRAINEE_ID, IN_APP, TRAINEE_CONTACT);
+    TemplateInfo templateInfo = new TemplateInfo(TEMPLATE_NAME, TEMPLATE_VERSION,
+        TEMPLATE_VARIABLES);
+    TisReferenceInfo tisReferenceInfo = new TisReferenceInfo(TIS_REFERENCE_TYPE, TIS_REFERENCE_ID);
+
+    ObjectId id1 = ObjectId.get();
+    History history1 = new History(id1, tisReferenceInfo, notificationType, recipientInfo,
+        templateInfo, Instant.MIN, null, UNREAD, null, null);
+
+    when(repository.findAllByRecipient_IdOrderBySentAtDesc(TRAINEE_ID)).thenReturn(
+        List.of(history1));
+
+    String templatePath = "type/test/template/v1.2.3";
+    when(templateService.getTemplatePath(IN_APP, TEMPLATE_NAME, TEMPLATE_VERSION)).thenReturn(
+        templatePath);
+    when(templateService.process(templatePath, Set.of("subject"), TEMPLATE_VARIABLES)).thenReturn(
+        "rebuiltSubject");
+
+    List<HistoryDto> historyDtos = service.findAllForTrainee(TRAINEE_ID);
+
+    assertThat("Unexpected history count.", historyDtos.size(), is(1));
+
+    HistoryDto historyDto = historyDtos.get(0);
+    assertThat("Unexpected history status.", historyDto.status(), is(UNREAD));
   }
 
   @Test

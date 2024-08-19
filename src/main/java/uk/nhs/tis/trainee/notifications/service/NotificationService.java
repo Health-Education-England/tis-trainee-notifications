@@ -26,6 +26,7 @@ import static org.quartz.TriggerBuilder.newTrigger;
 import static uk.nhs.tis.trainee.notifications.model.HrefType.ABSOLUTE_URL;
 import static uk.nhs.tis.trainee.notifications.model.HrefType.NON_HREF;
 import static uk.nhs.tis.trainee.notifications.model.HrefType.PROTOCOL_EMAIL;
+import static uk.nhs.tis.trainee.notifications.model.MessageType.EMAIL;
 import static uk.nhs.tis.trainee.notifications.model.TisReferenceType.PLACEMENT;
 import static uk.nhs.tis.trainee.notifications.model.TisReferenceType.PROGRAMME_MEMBERSHIP;
 import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.TIS_ID_FIELD;
@@ -45,6 +46,7 @@ import java.util.Map;
 import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
+import org.bson.types.ObjectId;
 import org.quartz.Job;
 import org.quartz.JobDataMap;
 import org.quartz.JobDetail;
@@ -59,9 +61,11 @@ import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 import software.amazon.awssdk.services.cognitoidentityprovider.model.UserNotFoundException;
 import uk.nhs.tis.trainee.notifications.dto.UserDetails;
+import uk.nhs.tis.trainee.notifications.model.History;
 import uk.nhs.tis.trainee.notifications.model.History.TisReferenceInfo;
 import uk.nhs.tis.trainee.notifications.model.LocalOfficeContactType;
 import uk.nhs.tis.trainee.notifications.model.MessageType;
+import uk.nhs.tis.trainee.notifications.model.NotificationStatus;
 import uk.nhs.tis.trainee.notifications.model.NotificationType;
 import uk.nhs.tis.trainee.notifications.model.Placement;
 import uk.nhs.tis.trainee.notifications.model.ProgrammeMembership;
@@ -92,6 +96,7 @@ public class NotificationService implements Job {
   public static final String CONTACT_FIELD = "contact";
 
   private final EmailService emailService;
+  private final HistoryService historyService;
   private final RestTemplate restTemplate;
   private final String templateVersion;
   private final String serviceUrl;
@@ -117,8 +122,9 @@ public class NotificationService implements Job {
    *                                   local office information.
    * @param notificationsWhitelist     The whitelist of (tester) trainee TIS IDs.
    */
-  public NotificationService(EmailService emailService, RestTemplate restTemplate,
-      Scheduler scheduler, MessagingControllerService messagingControllerService,
+  public NotificationService(EmailService emailService, HistoryService historyService,
+      RestTemplate restTemplate, Scheduler scheduler,
+      MessagingControllerService messagingControllerService,
       @Value("${application.template-versions.form-updated.email}") String templateVersion,
       @Value("${service.trainee.url}") String serviceUrl,
       @Value("${service.reference.url}") String referenceUrl,
@@ -126,6 +132,7 @@ public class NotificationService implements Job {
       @Value("${application.notifications-whitelist}") List<String> notificationsWhitelist,
       @Value("${application.timezone}") String timezone) {
     this.emailService = emailService;
+    this.historyService = historyService;
     this.restTemplate = restTemplate;
     this.scheduler = scheduler;
     this.templateVersion = templateVersion;
@@ -145,47 +152,21 @@ public class NotificationService implements Job {
    * @return the result map with status details if successful.
    */
   public Map<String, String> executeNow(String jobKey, JobDataMap jobDetails) {
-    boolean isActionableJob = false; //default to ignore jobs
-    boolean actuallySendEmail = false; //default to logging email only
     String jobName = "";
     Map<String, String> result = new HashMap<>();
 
     // get job details according to notification type
     String personId = jobDetails.getString(PERSON_ID_FIELD);
-    boolean inWhitelist = notificationsWhitelist.contains(personId);
 
     TisReferenceInfo tisReferenceInfo = null;
     LocalDate startDate = null;
 
+    // Enrich User Account and Local Office details to
+    jobDetails = enrichJobDetails(jobDetails);
+
     UserDetails userTraineeDetails = getTraineeDetails(personId);
-
-    if (userTraineeDetails == null) {
-      String message = String.format(
-          "The requested notification is for unknown or unavailable trainee '%s'.", personId);
-      throw new IllegalArgumentException(message);
-    }
-
     UserDetails userCognitoAccountDetails = getCognitoAccountDetails(userTraineeDetails.email());
     UserDetails userAccountDetails = mapUserDetails(userCognitoAccountDetails, userTraineeDetails);
-
-    if (userAccountDetails != null) {
-      jobDetails.putIfAbsent("isRegistered", userAccountDetails.isRegistered());
-      jobDetails.putIfAbsent("title", userAccountDetails.title());
-      jobDetails.putIfAbsent("familyName", userAccountDetails.familyName());
-      jobDetails.putIfAbsent("givenName", userAccountDetails.givenName());
-      jobDetails.putIfAbsent("email", userAccountDetails.email());
-      jobDetails.putIfAbsent("gmcNumber", userAccountDetails.gmcNumber());
-    }
-
-    String owner = jobDetails.getString(TEMPLATE_OWNER_FIELD);
-    List<Map<String, String>> ownerContactList = getOwnerContactList(owner);
-    String contact = getOwnerContact(ownerContactList, LocalOfficeContactType.ONBOARDING_SUPPORT,
-        LocalOfficeContactType.TSS_SUPPORT);
-    jobDetails.putIfAbsent(TEMPLATE_OWNER_CONTACT_FIELD, contact);
-    jobDetails.putIfAbsent(TEMPLATE_CONTACT_HREF_FIELD, getHrefTypeForContact(contact));
-    String website = getOwnerContact(ownerContactList, LocalOfficeContactType.LOCAL_OFFICE_WEBSITE,
-        null);
-    jobDetails.putIfAbsent(TEMPLATE_OWNER_WEBSITE_FIELD, website);
 
     NotificationType notificationType =
         NotificationType.valueOf(jobDetails.get(TEMPLATE_NOTIFICATION_TYPE_FIELD).toString());
@@ -194,46 +175,25 @@ public class NotificationService implements Job {
     if (notificationType == NotificationType.PROGRAMME_CREATED
         || notificationType == NotificationType.PROGRAMME_DAY_ONE) {
 
-      isActionableJob = true;
       jobName = jobDetails.getString(ProgrammeMembershipService.PROGRAMME_NAME_FIELD);
       startDate = (LocalDate) jobDetails.get(ProgrammeMembershipService.START_DATE_FIELD);
       tisReferenceInfo = new TisReferenceInfo(PROGRAMME_MEMBERSHIP,
           jobDetails.get(ProgrammeMembershipService.TIS_ID_FIELD).toString());
 
-      ProgrammeMembership minimalPm = new ProgrammeMembership();
-      minimalPm.setPersonId(personId);
-      minimalPm.setTisId(tisReferenceInfo.id());
-      actuallySendEmail
-          = inWhitelist
-          || (messagingControllerService.isValidRecipient(personId, MessageType.EMAIL)
-          && meetsCriteria(minimalPm, true, true));
-
     } else if (notificationType == NotificationType.PLACEMENT_UPDATED_WEEK_12) {
 
-      isActionableJob = true;
       jobName = jobDetails.getString(PlacementService.PLACEMENT_TYPE_FIELD);
       startDate = (LocalDate) jobDetails.get(PlacementService.START_DATE_FIELD);
       tisReferenceInfo = new TisReferenceInfo(PLACEMENT,
           jobDetails.get(PlacementService.TIS_ID_FIELD).toString());
-
-      actuallySendEmail = inWhitelist
-          || (messagingControllerService.isValidRecipient(personId, MessageType.EMAIL)
-          && messagingControllerService.isPlacementInPilot2024(personId, tisReferenceInfo.id()));
     }
 
-    if (isActionableJob) {
+    if (tisReferenceInfo != null) {
       if (userAccountDetails != null) {
-        jobDetails.putIfAbsent("isRegistered", userAccountDetails.isRegistered());
-        jobDetails.putIfAbsent("title", userAccountDetails.title());
-        jobDetails.putIfAbsent("familyName", userAccountDetails.familyName());
-        jobDetails.putIfAbsent("givenName", userAccountDetails.givenName());
-        jobDetails.putIfAbsent("email", userAccountDetails.email());
-        jobDetails.putIfAbsent("gmcNumber", userAccountDetails.gmcNumber());
-        jobDetails.putIfAbsent("isValidGmc", isValidGmc(userAccountDetails.gmcNumber()));
-
         try {
           emailService.sendMessage(personId, userAccountDetails.email(), notificationType,
-              templateVersion, jobDetails.getWrappedMap(), tisReferenceInfo, !actuallySendEmail);
+              templateVersion, jobDetails.getWrappedMap(), tisReferenceInfo,
+              !shouldActuallySendEmail(notificationType, personId, tisReferenceInfo.id()));
         } catch (MessagingException e) {
           throw new RuntimeException(e);
         }
@@ -276,6 +236,7 @@ public class NotificationService implements Job {
    */
   public void scheduleNotification(String jobId, JobDataMap jobDataMap, Date when)
       throws SchedulerException {
+    // schedule notification in Scheduler
     JobDetail job = newJob(NotificationService.class)
         .withIdentity(jobId)
         .usingJobData(jobDataMap)
@@ -289,6 +250,9 @@ public class NotificationService implements Job {
 
     Date scheduledDate = scheduler.scheduleJob(job, trigger);
     log.info("Notification for {} scheduled for {}", jobId, scheduledDate);
+
+    // save SCHEDULED history in DB
+    saveScheduleHistory(jobDataMap, when);
   }
 
   /**
@@ -382,6 +346,130 @@ public class NotificationService implements Job {
           (userTraineeDetails.gmcNumber() != null ? userTraineeDetails.gmcNumber().trim() : null));
     } else {
       return null;
+    }
+  }
+
+  /**
+   * Build notification details for sending message and DB history.
+   *
+   * @param jobDetails The job details.
+   */
+  protected JobDataMap enrichJobDetails(JobDataMap jobDetails) {
+    String personId = jobDetails.getString(PERSON_ID_FIELD);
+    UserDetails userTraineeDetails = getTraineeDetails(personId);
+
+    if (userTraineeDetails == null) {
+      String message = String.format(
+          "The requested notification is for unknown or unavailable trainee '%s'.", personId);
+      throw new IllegalArgumentException(message);
+    }
+    UserDetails userCognitoAccountDetails = getCognitoAccountDetails(userTraineeDetails.email());
+
+    String owner = jobDetails.getString(TEMPLATE_OWNER_FIELD);
+    List<Map<String, String>> ownerContactList = getOwnerContactList(owner);
+    String contact = getOwnerContact(ownerContactList, LocalOfficeContactType.ONBOARDING_SUPPORT,
+        LocalOfficeContactType.TSS_SUPPORT);
+    jobDetails.putIfAbsent(TEMPLATE_OWNER_CONTACT_FIELD, contact);
+    jobDetails.putIfAbsent(TEMPLATE_CONTACT_HREF_FIELD, getHrefTypeForContact(contact));
+    String website = getOwnerContact(ownerContactList, LocalOfficeContactType.LOCAL_OFFICE_WEBSITE,
+        null);
+    jobDetails.putIfAbsent(TEMPLATE_OWNER_WEBSITE_FIELD, website);
+
+    UserDetails userAccountDetails = mapUserDetails(userCognitoAccountDetails, userTraineeDetails);
+    if (userAccountDetails != null) {
+      jobDetails.putIfAbsent("isRegistered", userAccountDetails.isRegistered());
+      jobDetails.putIfAbsent("title", userAccountDetails.title());
+      jobDetails.putIfAbsent("familyName", userAccountDetails.familyName());
+      jobDetails.putIfAbsent("givenName", userAccountDetails.givenName());
+      jobDetails.putIfAbsent("email", userAccountDetails.email());
+      jobDetails.putIfAbsent("gmcNumber", userAccountDetails.gmcNumber());
+    }
+
+    return jobDetails;
+  }
+
+  /**
+   * Determine if the email should actually be sent out.
+   *
+   * @param notificationType The notification type.
+   * @param personId The person Id.
+   * @param tisReferenceId The TIS reference Id.
+   * @return the boolean if the email should be sent out.
+   */
+  protected boolean shouldActuallySendEmail(NotificationType notificationType, String personId,
+                                            String tisReferenceId) {
+    boolean actuallySendEmail = false; // default to log email only
+    boolean inWhitelist = notificationsWhitelist.contains(personId);
+
+    //only consider sending programme-created mails; ignore the programme-updated-* notifications
+    if (notificationType == NotificationType.PROGRAMME_CREATED
+        || notificationType == NotificationType.PROGRAMME_DAY_ONE) {
+
+      ProgrammeMembership minimalPm = new ProgrammeMembership();
+      minimalPm.setPersonId(personId);
+      minimalPm.setTisId(tisReferenceId);
+      actuallySendEmail
+          = inWhitelist
+          || (messagingControllerService.isValidRecipient(personId, MessageType.EMAIL)
+          && meetsCriteria(minimalPm, true, true));
+
+    } else if (notificationType == NotificationType.PLACEMENT_UPDATED_WEEK_12) {
+
+      actuallySendEmail = inWhitelist
+          || (messagingControllerService.isValidRecipient(personId, MessageType.EMAIL)
+          && messagingControllerService.isPlacementInPilot2024(personId, tisReferenceId));
+    }
+
+    return actuallySendEmail;
+  }
+
+  /**
+   * Store history in DB for scheduled notification.
+   *
+   * @param jobDetails The job details.
+   */
+  protected void saveScheduleHistory(JobDataMap jobDetails, Date when) {
+    jobDetails = enrichJobDetails(jobDetails);
+
+    String personId = jobDetails.getString(PERSON_ID_FIELD);
+    NotificationType notificationType =
+        NotificationType.valueOf(jobDetails.get(TEMPLATE_NOTIFICATION_TYPE_FIELD).toString());
+
+    // get TIS Reference Info
+    TisReferenceInfo tisReferenceInfo = null;
+    if (notificationType == NotificationType.PROGRAMME_CREATED
+        || notificationType == NotificationType.PROGRAMME_DAY_ONE) {
+      tisReferenceInfo = new TisReferenceInfo(PROGRAMME_MEMBERSHIP,
+          jobDetails.get(ProgrammeMembershipService.TIS_ID_FIELD).toString());
+
+    } else if (notificationType == NotificationType.PLACEMENT_UPDATED_WEEK_12) {
+      tisReferenceInfo = new TisReferenceInfo(PLACEMENT,
+          jobDetails.get(PlacementService.TIS_ID_FIELD).toString());
+    }
+
+    // get Recipient Info
+    History.RecipientInfo recipientInfo = new History.RecipientInfo(
+        personId, EMAIL, jobDetails.getString("email"));
+    History.TemplateInfo templateInfo = new History.TemplateInfo(notificationType.getTemplateName(),
+        templateVersion, jobDetails.getWrappedMap());
+
+    // Only save then notificationType is correct and in Pilot
+    if (tisReferenceInfo != null
+        && shouldActuallySendEmail(notificationType, personId, tisReferenceInfo.id())) {
+
+      // Save SCHEDULED History in DB
+      History history = new History(
+          ObjectId.get(),
+          tisReferenceInfo,
+          notificationType,
+          recipientInfo,
+          templateInfo,
+          when.toInstant(),
+          null,
+          NotificationStatus.SCHEDULED,
+          null,
+          null);
+      historyService.save(history);
     }
   }
 

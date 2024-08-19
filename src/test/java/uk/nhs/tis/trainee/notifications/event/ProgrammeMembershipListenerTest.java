@@ -94,7 +94,10 @@ class ProgrammeMembershipListenerTest {
 
     listener.handleProgrammeMembershipDelete(event);
 
-    verify(programmeMembershipService).deleteNotifications(expectedProgrammeMembership);
+    verify(programmeMembershipService).deleteNotificationsFromScheduler(
+        expectedProgrammeMembership);
+    verify(programmeMembershipService).deleteScheduledNotificationsFromDb(
+        expectedProgrammeMembership);
   }
 
   /**

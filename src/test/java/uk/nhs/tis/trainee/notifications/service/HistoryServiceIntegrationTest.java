@@ -26,12 +26,15 @@ import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
+import static org.hamcrest.Matchers.nullValue;
 import static uk.nhs.tis.trainee.notifications.TestContainerConfiguration.MONGODB;
 import static uk.nhs.tis.trainee.notifications.model.MessageType.EMAIL;
 import static uk.nhs.tis.trainee.notifications.model.MessageType.IN_APP;
+import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.SCHEDULED;
 import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.SENT;
 import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.UNREAD;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.FORM_UPDATED;
+import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_DAY_ONE;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -320,7 +323,7 @@ class HistoryServiceIntegrationTest {
   }
 
   @Test
-  void shouldSortFoundScheduledInAppNotificationsBySentAt() {
+  void shouldSortFoundScheduledNotificationsBySentAt() {
     RecipientInfo recipientInfo = new RecipientInfo(TRAINEE_ID, IN_APP, TRAINEE_CONTACT);
     TemplateInfo templateInfo = new TemplateInfo(TEMPLATE_NAME, TEMPLATE_VERSION,
         TEMPLATE_VARIABLES);
@@ -338,7 +341,7 @@ class HistoryServiceIntegrationTest {
     service.save(new History(null, tisReferenceInfo, FORM_UPDATED, recipientInfo, templateInfo,
         after, before, SENT, null, null));
 
-    List<History> foundHistory = service.findAllScheduledInAppForTrainee(
+    List<History> foundHistory = service.findAllScheduledForTrainee(
         TRAINEE_ID, TisReferenceType.PLACEMENT, TIS_REFERENCE_ID);
 
     assertThat("Unexpected history count.", foundHistory.size(), is(1));
@@ -348,28 +351,66 @@ class HistoryServiceIntegrationTest {
   }
 
   @Test
-  void shouldNotSortEmailNotificationsBySentAt() {
+  void shouldSortScheduledEmailNotificationsByRefAndType() {
     RecipientInfo recipientInfo = new RecipientInfo(TRAINEE_ID, EMAIL, TRAINEE_CONTACT);
     TemplateInfo templateInfo = new TemplateInfo(TEMPLATE_NAME, TEMPLATE_VERSION,
         TEMPLATE_VARIABLES);
-    TisReferenceInfo tisReferenceInfo = new TisReferenceInfo(TIS_REFERENCE_TYPE, TIS_REFERENCE_ID);
+    TisReferenceInfo tisReferenceInfo1 =
+        new TisReferenceInfo(TisReferenceType.PLACEMENT, TIS_REFERENCE_ID);
+    TisReferenceInfo tisReferenceInfo2 =
+        new TisReferenceInfo(TisReferenceType.PROGRAMME_MEMBERSHIP, TIS_REFERENCE_ID);
+    TisReferenceInfo tisReferenceInfo3 =
+        new TisReferenceInfo(TisReferenceType.PROGRAMME_MEMBERSHIP, TIS_REFERENCE_ID_2);
+    TisReferenceInfo tisReferenceInfo4 =
+        new TisReferenceInfo(TisReferenceType.PLACEMENT, TIS_REFERENCE_ID);
+    TisReferenceInfo tisReferenceInfo5 =
+        new TisReferenceInfo(TisReferenceType.PLACEMENT, TIS_REFERENCE_ID_2);
 
     Instant now = Instant.now().truncatedTo(ChronoUnit.MILLIS);
-    service.save(new History(null, tisReferenceInfo, FORM_UPDATED, recipientInfo, templateInfo,
+    service.save(new History(null, tisReferenceInfo1, FORM_UPDATED, recipientInfo, templateInfo,
         now, now, SENT, null, null));
+    service.save(new History(null, tisReferenceInfo2, PROGRAMME_DAY_ONE, recipientInfo,
+        templateInfo, now, now, SCHEDULED, null, null));
+    service.save(new History(null, tisReferenceInfo3, PROGRAMME_DAY_ONE, recipientInfo,
+        templateInfo, now, now, SCHEDULED, null, null));
+    service.save(new History(null, tisReferenceInfo4, PROGRAMME_DAY_ONE, recipientInfo,
+        templateInfo, now, now, SCHEDULED, null, null));
+    service.save(new History(null, tisReferenceInfo5, PROGRAMME_DAY_ONE, recipientInfo,
+        templateInfo, now, now, SCHEDULED, null, null));
 
-    Instant before = SENT_AT.minus(Duration.ofDays(1));
-    Instant after = SENT_AT.plus(Duration.ofDays(1));
-    service.save(new History(null, tisReferenceInfo, FORM_UPDATED, recipientInfo, templateInfo,
-        before, after, SENT, null, null));
+    History foundHistory = service.findScheduledEmailForTraineeByRefAndType(
+        TRAINEE_ID, TisReferenceType.PROGRAMME_MEMBERSHIP, TIS_REFERENCE_ID, PROGRAMME_DAY_ONE);
 
-    service.save(new History(null, tisReferenceInfo, FORM_UPDATED, recipientInfo, templateInfo,
-        after, before, SENT, null, null));
+    assertThat("Unexpected history message type.", foundHistory.recipient().type(), is(EMAIL));
+    assertThat("Unexpected history reference type.", foundHistory.tisReference().type(),
+        is(TisReferenceType.PROGRAMME_MEMBERSHIP));
+    assertThat("Unexpected history reference id.", foundHistory.tisReference().id(),
+        is(TIS_REFERENCE_ID));
+    assertThat("Unexpected history notification type.", foundHistory.type(),
+        is(PROGRAMME_DAY_ONE));
+    assertThat("Unexpected history status.", foundHistory.status(), is(SCHEDULED));
+  }
 
-    List<History> foundHistory = service.findAllScheduledInAppForTrainee(
-        TRAINEE_ID, TisReferenceType.PLACEMENT, TIS_REFERENCE_ID);
+  @Test
+  void shouldNotReturnInAppNotificationsBySentAt() {
+    RecipientInfo recipientInfo = new RecipientInfo(TRAINEE_ID, IN_APP, TRAINEE_CONTACT);
+    TemplateInfo templateInfo = new TemplateInfo(TEMPLATE_NAME, TEMPLATE_VERSION,
+        TEMPLATE_VARIABLES);
+    TisReferenceInfo tisReferenceInfo1 =
+        new TisReferenceInfo(TisReferenceType.PLACEMENT, TIS_REFERENCE_ID);
+    TisReferenceInfo tisReferenceInfo2 =
+        new TisReferenceInfo(TisReferenceType.PROGRAMME_MEMBERSHIP, TIS_REFERENCE_ID);
 
-    assertThat("Unexpected history count.", foundHistory.size(), is(0));
+    Instant now = Instant.now().truncatedTo(ChronoUnit.MILLIS);
+    service.save(new History(null, tisReferenceInfo1, FORM_UPDATED, recipientInfo, templateInfo,
+        now, now, SENT, null, null));
+    service.save(new History(null, tisReferenceInfo2, PROGRAMME_DAY_ONE, recipientInfo,
+        templateInfo, now, now, SCHEDULED, null, null));
+
+    History foundHistory = service.findScheduledEmailForTraineeByRefAndType(
+        TRAINEE_ID, TisReferenceType.PROGRAMME_MEMBERSHIP, TIS_REFERENCE_ID, PROGRAMME_DAY_ONE);
+
+    assertThat("Unexpected history count.", foundHistory, is(nullValue()));
   }
 
   @Test
@@ -394,7 +435,7 @@ class HistoryServiceIntegrationTest {
     service.save(new History(null, tisRefInfoPlacement2, FORM_UPDATED, recipientInfo, templateInfo,
         after, after, SENT, null, null));
 
-    List<History> foundHistory = service.findAllScheduledInAppForTrainee(
+    List<History> foundHistory = service.findAllScheduledForTrainee(
         TRAINEE_ID, TisReferenceType.PLACEMENT, TIS_REFERENCE_ID);
 
     assertThat("Unexpected history count.", foundHistory.size(), is(1));

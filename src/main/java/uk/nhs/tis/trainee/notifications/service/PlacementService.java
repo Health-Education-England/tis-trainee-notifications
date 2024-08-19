@@ -177,8 +177,8 @@ public class PlacementService {
       throws SchedulerException {
 
     //first delete any stale notifications
-    deleteNotifications(placement);
-    deleteScheduledInAppNotifications(placement);
+    deleteNotificationsFromScheduler(placement);
+    deleteScheduledNotificationsFromDb(placement);
 
     boolean isExcluded = isExcluded(placement);
     log.info("Placement {}: excluded {}.", placement.getTisId(), isExcluded);
@@ -193,12 +193,12 @@ public class PlacementService {
   }
 
   /**
-   * Remove notifications for a placement.
+   * Remove notifications for a placement from scheduler.
    *
    * @param placement The placement.
    * @throws SchedulerException if any one of the notification jobs could not be removed.
    */
-  public void deleteNotifications(Placement placement)
+  public void deleteNotificationsFromScheduler(Placement placement)
       throws SchedulerException {
     String jobId = PLACEMENT_UPDATED_WEEK_12 + "-" + placement.getTisId();
     notificationService.removeNotification(jobId); //remove existing notification if it exists
@@ -360,14 +360,14 @@ public class PlacementService {
   }
 
   /**
-   * Remove scheduled in-app notifications for a placement.
+   * Remove scheduled notifications for a placement from DB.
    *
    * @param placement The placement.
    */
-  public void deleteScheduledInAppNotifications(Placement placement) {
+  public void deleteScheduledNotificationsFromDb(Placement placement) {
 
     List<History> scheduledHistories = historyService
-        .findAllScheduledInAppForTrainee(placement.getPersonId(), PLACEMENT, placement.getTisId());
+        .findAllScheduledForTrainee(placement.getPersonId(), PLACEMENT, placement.getTisId());
 
     for (History history : scheduledHistories) {
       historyService.deleteHistoryForTrainee(history.id(), placement.getPersonId());

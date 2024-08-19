@@ -80,7 +80,8 @@ public class ProgrammeMembershipListener {
     if (event.recrd() != null && event.recrd().getData() != null) {
       ProgrammeMembership programmeMembership = new ProgrammeMembership();
       programmeMembership.setTisId(event.tisId()); //delete messages have empty recrd data
-      programmeMembershipService.deleteNotifications(programmeMembership);
+      programmeMembershipService.deleteNotificationsFromScheduler(programmeMembership);
+      programmeMembershipService.deleteScheduledNotificationsFromDb(programmeMembership);
     } else {
       log.info("Ignoring non programme membership delete event: {}", event);
     }
