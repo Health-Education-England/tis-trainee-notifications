@@ -80,14 +80,5 @@ public enum NotificationType {
       SPONSORSHIP,
       DAY_ONE);
 
-  /**
-   * The set of actionable notification types.
-   */
-  @Getter
-  private static final Set<NotificationType> actionableNotificationTypes = EnumSet.of(
-      PROGRAMME_CREATED,
-      PROGRAMME_DAY_ONE,
-      PLACEMENT_UPDATED_WEEK_12);
-
   private final String templateName;
 }
