@@ -161,7 +161,7 @@ public class NotificationService implements Job {
     TisReferenceInfo tisReferenceInfo = null;
     LocalDate startDate = null;
 
-    // Enrich User Account and Local Office details to
+    // Enrich User Account and Local Office details to jobDetails
     jobDetails = enrichJobDetails(jobDetails);
 
     UserDetails userTraineeDetails = getTraineeDetails(personId);
@@ -428,7 +428,7 @@ public class NotificationService implements Job {
    *
    * @param jobDetails The job details.
    */
-  protected void saveScheduleHistory(JobDataMap jobDetails, Date when) {
+  public void saveScheduleHistory(JobDataMap jobDetails, Date when) {
     jobDetails = enrichJobDetails(jobDetails);
 
     String personId = jobDetails.getString(PERSON_ID_FIELD);
