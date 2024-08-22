@@ -23,6 +23,7 @@ package uk.nhs.tis.trainee.notifications.migration;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -38,6 +39,7 @@ import static uk.nhs.tis.trainee.notifications.service.NotificationService.TEMPL
 import java.util.Date;
 import java.util.List;
 import java.util.Set;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.quartz.JobDataMap;
@@ -171,6 +173,14 @@ class InsertScheduledEmailHistoryTest {
     verify(notificationService).saveScheduleHistory(eq(jobDetail1b.getJobDataMap()), any());
     verify(notificationService).saveScheduleHistory(eq(jobDetail2a.getJobDataMap()), any());
     verify(notificationService).saveScheduleHistory(eq(jobDetail2b.getJobDataMap()), any());
+  }
+
+  @Test
+  void shouldNotFailMigration() {
+    doThrow(new IllegalArgumentException("error")).when(notificationService)
+        .saveScheduleHistory(any(), any());
+
+    Assertions.assertDoesNotThrow(() -> migration.migrate());
   }
 
   @Test

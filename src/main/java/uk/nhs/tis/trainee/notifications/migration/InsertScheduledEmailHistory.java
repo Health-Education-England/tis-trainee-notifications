@@ -66,9 +66,13 @@ public class InsertScheduledEmailHistory {
         String jobName = jobKey.getName();
         Date when = triggers.get(0).getNextFireTime();
         JobDataMap jobDetails = scheduler.getJobDetail(jobKey).getJobDataMap();
-        log.info("Processing scheduled email from Quartz: [jobName] : " + jobName + " - " + when);
-
-        notificationService.saveScheduleHistory(jobDetails, when);
+        try {
+          log.info("Processing scheduled email from Quartz: [jobName] : " + jobName + " - " + when);
+          notificationService.saveScheduleHistory(jobDetails, when);
+        } catch (Exception e) {
+          log.error("Unable to save scheduled history {} in DB due to an error: {} ",
+              jobName, e.toString());
+        }
       }
     }
   }
