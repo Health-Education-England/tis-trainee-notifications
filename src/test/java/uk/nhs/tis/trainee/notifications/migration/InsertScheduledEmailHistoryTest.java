@@ -25,6 +25,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -33,12 +34,14 @@ import static org.quartz.TriggerBuilder.newTrigger;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PLACEMENT_UPDATED_WEEK_12;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_CREATED;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_DAY_ONE;
+import static uk.nhs.tis.trainee.notifications.model.NotificationType.WELCOME;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.PERSON_ID_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.TEMPLATE_NOTIFICATION_TYPE_FIELD;
 
 import java.util.Date;
 import java.util.List;
 import java.util.Set;
+import org.bson.types.ObjectId;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -49,7 +52,12 @@ import org.quartz.Scheduler;
 import org.quartz.SchedulerException;
 import org.quartz.Trigger;
 import org.quartz.impl.matchers.GroupMatcher;
+import uk.nhs.tis.trainee.notifications.model.History;
+import uk.nhs.tis.trainee.notifications.model.NotificationStatus;
+import uk.nhs.tis.trainee.notifications.service.HistoryService;
 import uk.nhs.tis.trainee.notifications.service.NotificationService;
+import uk.nhs.tis.trainee.notifications.service.PlacementService;
+import uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService;
 
 
 class InsertScheduledEmailHistoryTest {
@@ -60,49 +68,61 @@ class InsertScheduledEmailHistoryTest {
   private static final String JOB_KEY_1B = "job-key-1b";
   private static final String JOB_KEY_2A = "job-key-2a";
   private static final String JOB_KEY_2B = "job-key-2b";
+  private static final String JOB_KEY_WRONG_TYPE = "job-key-wrongtype";
   private static final String TRIGGER_1A = "trigger-1a";
   private static final String TRIGGER_1B = "trigger-1b";
   private static final String TRIGGER_2A = "trigger-2a";
   private static final String TRIGGER_2B = "trigger-2b";
+  private static final String TRIGGER_WRONG_TYPE = "trigger-wrongtype";
 
   private InsertScheduledEmailHistory migration;
   private Scheduler scheduler;
   private NotificationService notificationService;
+  private HistoryService historyService;
 
   private List<String> groupNames;
   private Set<JobKey> jobKeys1;
   private Set<JobKey> jobKeys2;
+  private Set<JobKey> jobKeysWrongType;
   private JobKey jobKey1a;
   private JobKey jobKey1b;
   private JobKey jobKey2a;
   private JobKey jobKey2b;
+  private JobKey jobKeyWrongType;
   private Trigger trigger1a;
   private Trigger trigger1b;
   private Trigger trigger2a;
   private Trigger trigger2b;
+  private Trigger triggerWrongType;
   private JobDetail jobDetail1a;
   private JobDetail jobDetail1b;
   private JobDetail jobDetail2a;
   private JobDetail jobDetail2b;
+  private JobDetail jobDetailWrongType;
   private JobDataMap jobDataMap1a;
   private JobDataMap jobDataMap1b;
   private JobDataMap jobDataMap2a;
   private JobDataMap jobDataMap2b;
+  private JobDataMap jobDataMapWrongType;
+  private History history;
 
 
   @BeforeEach
   void setUp() {
     scheduler = mock(Scheduler.class);
     notificationService = mock(NotificationService.class);
-    migration = new InsertScheduledEmailHistory(scheduler, notificationService);
+    historyService = mock(HistoryService.class);
+    migration = new InsertScheduledEmailHistory(scheduler, notificationService, historyService);
 
     groupNames = List.of(GROUP_NAME_1, GROUP_NAME_2);
     jobKey1a = new JobKey(JOB_KEY_1A);
     jobKey1b = new JobKey(JOB_KEY_1B);
     jobKey2a = new JobKey(JOB_KEY_2A);
     jobKey2b = new JobKey(JOB_KEY_2B);
+    jobKeyWrongType = new JobKey(JOB_KEY_WRONG_TYPE);
     jobKeys1 = Set.of(jobKey1a, jobKey1b);
     jobKeys2 = Set.of(jobKey2a, jobKey2b);
+    jobKeysWrongType = Set.of(jobKeyWrongType);
     trigger1a = newTrigger()
         .withIdentity(TRIGGER_1A)
         .startAt(new Date())
@@ -119,19 +139,35 @@ class InsertScheduledEmailHistoryTest {
         .withIdentity(TRIGGER_2B)
         .startAt(new Date())
         .build();
+    triggerWrongType = newTrigger()
+        .withIdentity(TRIGGER_WRONG_TYPE)
+        .startAt(new Date())
+        .build();
 
     jobDataMap1a = new JobDataMap();
     jobDataMap1a.put(PERSON_ID_FIELD, "1A");
     jobDataMap1a.put(TEMPLATE_NOTIFICATION_TYPE_FIELD, PLACEMENT_UPDATED_WEEK_12);
+    jobDataMap1a.put(PlacementService.TIS_ID_FIELD, "1A_tisId");
+
     jobDataMap1b = new JobDataMap();
     jobDataMap1b.put(PERSON_ID_FIELD, "1B");
     jobDataMap1b.put(TEMPLATE_NOTIFICATION_TYPE_FIELD, PLACEMENT_UPDATED_WEEK_12);
+    jobDataMap1b.put(PlacementService.TIS_ID_FIELD, "1B_tisId");
+
     jobDataMap2a = new JobDataMap();
     jobDataMap2a.put(PERSON_ID_FIELD, "2A");
     jobDataMap2a.put(TEMPLATE_NOTIFICATION_TYPE_FIELD, PROGRAMME_CREATED);
+    jobDataMap2a.put(ProgrammeMembershipService.TIS_ID_FIELD, "2A_tisId");
+
     jobDataMap2b = new JobDataMap();
     jobDataMap2b.put(PERSON_ID_FIELD, "2B");
     jobDataMap2b.put(TEMPLATE_NOTIFICATION_TYPE_FIELD, PROGRAMME_DAY_ONE);
+    jobDataMap2b.put(ProgrammeMembershipService.TIS_ID_FIELD, "2B_tisId");
+
+    jobDataMapWrongType = new JobDataMap();
+    jobDataMapWrongType.put(PERSON_ID_FIELD, "wrong type");
+    jobDataMapWrongType.put(TEMPLATE_NOTIFICATION_TYPE_FIELD, WELCOME);
+    jobDataMapWrongType.put(ProgrammeMembershipService.TIS_ID_FIELD, "wrongId");
 
     jobDetail1a = newJob(NotificationService.class)
         .usingJobData(jobDataMap1a)
@@ -149,6 +185,22 @@ class InsertScheduledEmailHistoryTest {
         .usingJobData(jobDataMap2b)
         .storeDurably(false)
         .build();
+    jobDetailWrongType = newJob(NotificationService.class)
+        .usingJobData(jobDataMapWrongType)
+        .storeDurably(false)
+        .build();
+
+    history = new History(
+        ObjectId.get(),
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        NotificationStatus.SCHEDULED,
+        null,
+        null);
   }
 
   @Test
@@ -173,6 +225,25 @@ class InsertScheduledEmailHistoryTest {
     verify(notificationService).saveScheduleHistory(eq(jobDetail1b.getJobDataMap()), any());
     verify(notificationService).saveScheduleHistory(eq(jobDetail2a.getJobDataMap()), any());
     verify(notificationService).saveScheduleHistory(eq(jobDetail2b.getJobDataMap()), any());
+  }
+
+  @Test
+  void shouldNotMigrateIfNotificationTypeNotMatch() throws SchedulerException {
+    when(scheduler.getJobGroupNames()).thenReturn(groupNames);
+    when(scheduler.getJobKeys(GroupMatcher.jobGroupEquals(GROUP_NAME_2)))
+        .thenReturn(jobKeysWrongType);
+
+    when((List<Trigger>) scheduler.getTriggersOfJob(jobKeyWrongType))
+        .thenReturn(List.of(triggerWrongType));
+
+    when(scheduler.getJobDetail(jobKeyWrongType)).thenReturn(jobDetailWrongType);
+
+    when((historyService.findScheduledEmailForTraineeByRefAndType(any(), any(), any(), any())))
+        .thenReturn(history);
+
+    migration.migrate();
+
+    verify(notificationService, never()).saveScheduleHistory(any(), any());
   }
 
   @Test
