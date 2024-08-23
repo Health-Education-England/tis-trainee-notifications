@@ -238,6 +238,22 @@ class InsertScheduledEmailHistoryTest {
 
     when(scheduler.getJobDetail(jobKeyWrongType)).thenReturn(jobDetailWrongType);
 
+    migration.migrate();
+
+    verify(notificationService, never()).saveScheduleHistory(any(), any());
+  }
+
+  @Test
+  void shouldNotMigrateIfScheduledHistoryExists() throws SchedulerException {
+    when(scheduler.getJobGroupNames()).thenReturn(groupNames);
+    when(scheduler.getJobKeys(GroupMatcher.jobGroupEquals(GROUP_NAME_1))).thenReturn(jobKeys1);
+
+    when((List<Trigger>) scheduler.getTriggersOfJob(jobKey1a)).thenReturn(List.of(trigger1a));
+    when((List<Trigger>) scheduler.getTriggersOfJob(jobKey1b)).thenReturn(List.of(trigger1b));
+
+    when(scheduler.getJobDetail(jobKey1a)).thenReturn(jobDetail1a);
+    when(scheduler.getJobDetail(jobKey1b)).thenReturn(jobDetail1b);
+
     when((historyService.findScheduledEmailForTraineeByRefAndType(any(), any(), any(), any())))
         .thenReturn(history);
 
