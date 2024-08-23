@@ -106,6 +106,7 @@ public class InsertScheduledEmailHistory {
         }
       }
     }
+    log.info("End of InsertScheduledEmailHistory migration.");
   }
 
   /**
