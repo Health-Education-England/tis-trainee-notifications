@@ -141,7 +141,7 @@ class NotificationServiceTest {
   private static final String USER_TITLE = "title";
   private static final String USER_FAMILY_NAME = "family-name";
   private static final String USER_GIVEN_NAME = "given-name";
-  private static final String USER_GMC = "111111";
+  private static final String USER_GMC = "1234567";
 
   private JobDetail programmeJobDetails;
   private JobDetail placementJobDetails;
@@ -878,12 +878,55 @@ class NotificationServiceTest {
         is(LOCAL_OFFICE_CONTACT));
     assertThat("Unexpected contact href.", jobDetailMap.get(TEMPLATE_CONTACT_HREF_FIELD),
         is(NON_HREF.toString()));
+    assertThat("Unexpected GMC validity.", jobDetailMap.get("isValidGmc"), is(true));
 
     TisReferenceInfo tisReferenceInfo = tisReferenceInfoCaptor.getValue();
     assertThat("Unexpected TIS reference info type", tisReferenceInfo.type(),
         is(PROGRAMME_MEMBERSHIP));
     assertThat("Unexpected TIS reference info id", tisReferenceInfo.id(),
         is(TIS_ID));
+  }
+
+  @ParameterizedTest
+  @NullAndEmptySource
+  @ValueSource(strings = {"123456", "12345678", "abcdefg"})
+  void shouldFlagInvalidGmcInStandardJobDetailsWhenGmcInvalid(String gmcNumber)
+      throws MessagingException {
+    UserDetails userAccountDetails = new UserDetails(false, USER_EMAIL, USER_TITLE,
+        USER_FAMILY_NAME, USER_GIVEN_NAME, gmcNumber);
+
+    when(jobExecutionContext.getJobDetail()).thenReturn(programmeJobDetails);
+    when(emailService.getRecipientAccountByEmail(USER_EMAIL)).thenReturn(userAccountDetails);
+    when(restTemplate.getForObject(ACCOUNT_DETAILS_URL, UserDetails.class,
+        Map.of(TIS_ID_FIELD, PERSON_ID))).thenReturn(userAccountDetails);
+    when(messagingControllerService.isValidRecipient(any(), any())).thenReturn(true);
+    when(messagingControllerService.isProgrammeMembershipNewStarter(any(), any()))
+        .thenReturn(true);
+    when(messagingControllerService.isProgrammeMembershipInPilot2024(any(), any()))
+        .thenReturn(true);
+
+    List<Map<String, String>> contacts = new ArrayList<>();
+    Map<String, String> contact1 = new HashMap<>();
+    contact1.put(CONTACT_TYPE_FIELD, ONBOARDING_SUPPORT.getContactTypeName());
+    contact1.put(CONTACT_FIELD, LOCAL_OFFICE_CONTACT);
+    contacts.add(contact1);
+
+    when(restTemplate
+        .getForObject("reference-url/api/local-office-contact-by-lo-name/{localOfficeName}",
+            List.class, Map.of("localOfficeName", LOCAL_OFFICE))).thenReturn(contacts);
+
+    service.execute(jobExecutionContext);
+
+    ArgumentCaptor<Map<String, Object>> jobDetailsCaptor = ArgumentCaptor.captor();
+    ArgumentCaptor<TisReferenceInfo> tisReferenceInfoCaptor = ArgumentCaptor.captor();
+
+    verify(emailService).sendMessage(eq(PERSON_ID), eq(USER_EMAIL), eq(PROGRAMME_CREATED),
+        eq(TEMPLATE_VERSION), jobDetailsCaptor.capture(), tisReferenceInfoCaptor.capture(),
+        anyBoolean());
+
+    Map<String, Object> jobDetailMap = jobDetailsCaptor.getValue();
+    assertThat("Unexpected GMC.", jobDetailMap.get("gmcNumber"), is(gmcNumber));
+    assertThat("Unexpected GMC validity.", jobDetailMap.get("isValidGmc"), is(false));
   }
 
   @Test
