@@ -385,6 +385,7 @@ public class NotificationService implements Job {
       jobDetails.putIfAbsent("gmcNumber", userAccountDetails.gmcNumber());
     }
 
+    jobDetails.putIfAbsent("isValidGmc", isValidGmc(jobDetails.getString("gmcNumber")));
     return jobDetails;
   }
 
