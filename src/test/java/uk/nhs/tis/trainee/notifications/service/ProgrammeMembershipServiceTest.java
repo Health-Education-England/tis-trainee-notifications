@@ -289,8 +289,7 @@ class ProgrammeMembershipServiceTest {
         new UserDetails(
             null, USER_EMAIL, USER_TITLE, USER_FAMILY_NAME, USER_GIVEN_NAME, USER_GMC);
 
-    when(notificationService.meetsCriteria(programmeMembership, true,
-        true)).thenReturn(true);
+    when(notificationService.meetsCriteria(programmeMembership, true)).thenReturn(true);
     when(notificationService.programmeMembershipIsNotifiable(programmeMembership,
         MessageType.IN_APP)).thenReturn(notifiablePm);
     when(notificationService.getOwnerContact(any(), any(), any(), any())).thenReturn("");
@@ -343,7 +342,7 @@ class ProgrammeMembershipServiceTest {
     programmeMembership.setCurricula(List.of(theCurriculum));
     programmeMembership.setConditionsOfJoining(new ConditionsOfJoining(Instant.MIN));
 
-    when(notificationService.meetsCriteria(programmeMembership, true, true)).thenReturn(true);
+    when(notificationService.meetsCriteria(programmeMembership, true)).thenReturn(true);
     when(notificationService.getOwnerContact(any(), any(), any(), any())).thenReturn("");
     when(notificationService.getHrefTypeForContact(any())).thenReturn("");
 
@@ -373,7 +372,7 @@ class ProgrammeMembershipServiceTest {
         new Curriculum(MEDICAL_CURRICULUM_1, "specialty 3", false)
     ));
 
-    when(notificationService.meetsCriteria(programmeMembership, true, true)).thenReturn(true);
+    when(notificationService.meetsCriteria(programmeMembership, true)).thenReturn(true);
     when(notificationService.getOwnerContact(any(), any(), any(), any())).thenReturn("");
     when(notificationService.getHrefTypeForContact(any())).thenReturn("");
     when(notificationService.getTraineeDetails(PERSON_ID)).thenReturn(null);
@@ -400,7 +399,7 @@ class ProgrammeMembershipServiceTest {
         new Curriculum(MEDICAL_CURRICULUM_1, "specialty 3", false)
     ));
 
-    when(notificationService.meetsCriteria(programmeMembership, true, true)).thenReturn(true);
+    when(notificationService.meetsCriteria(programmeMembership, true)).thenReturn(true);
     when(notificationService.getOwnerContact(any(), any(), any(), any())).thenReturn("");
     when(notificationService.getHrefTypeForContact(any())).thenReturn("");
 
@@ -423,7 +422,7 @@ class ProgrammeMembershipServiceTest {
       throws SchedulerException {
     ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
 
-    when(notificationService.meetsCriteria(programmeMembership, true, true)).thenReturn(true);
+    when(notificationService.meetsCriteria(programmeMembership, true)).thenReturn(true);
 
     List<Map<String, String>> contactList = List.of(
         Map.of(CONTACT_TYPE_FIELD, LocalOfficeContactType.LTFT.getContactTypeName()));
@@ -475,7 +474,7 @@ class ProgrammeMembershipServiceTest {
     programmeMembership.setConditionsOfJoining(new ConditionsOfJoining(Instant.MIN));
     programmeMembership.setManagingDeanery(MANAGING_DEANERY);
 
-    when(notificationService.meetsCriteria(programmeMembership, true, true)).thenReturn(true);
+    when(notificationService.meetsCriteria(programmeMembership, true)).thenReturn(true);
 
     when(notificationService.getOwnerContact(any(), any(), any(), any())).thenReturn("");
     when(notificationService.getHrefTypeForContact(any())).thenReturn("");
@@ -512,7 +511,7 @@ class ProgrammeMembershipServiceTest {
         new UserDetails(
             null, USER_EMAIL, USER_TITLE, USER_FAMILY_NAME, USER_GIVEN_NAME, null);
 
-    when(notificationService.meetsCriteria(programmeMembership, true, true)).thenReturn(true);
+    when(notificationService.meetsCriteria(programmeMembership, true)).thenReturn(true);
 
     when(notificationService.getOwnerContact(any(), any(), any(), any())).thenReturn("");
     when(notificationService.getHrefTypeForContact(any())).thenReturn("");
@@ -537,8 +536,7 @@ class ProgrammeMembershipServiceTest {
   void shouldNotAddInAppNotificationsWhenNotMeetsCriteria() throws SchedulerException {
     ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
 
-    when(notificationService.meetsCriteria(programmeMembership, true,
-        true)).thenReturn(false);
+    when(notificationService.meetsCriteria(programmeMembership, true)).thenReturn(false);
 
     service.addNotifications(programmeMembership);
 
@@ -558,8 +556,7 @@ class ProgrammeMembershipServiceTest {
             notificationType, recipientInfo, null, Instant.MIN, Instant.MAX, UNREAD, null, null));
 
     when(historyService.findAllHistoryForTrainee(PERSON_ID)).thenReturn(sentNotifications);
-    when(notificationService.meetsCriteria(programmeMembership, true,
-        true)).thenReturn(true);
+    when(notificationService.meetsCriteria(programmeMembership, true)).thenReturn(true);
     when(notificationService.programmeMembershipIsNotifiable(programmeMembership,
         MessageType.IN_APP)).thenReturn(true);
     when(notificationService.getOwnerContact(any(), any(), any(), any())).thenReturn("");
@@ -576,8 +573,7 @@ class ProgrammeMembershipServiceTest {
     ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
     programmeMembership.setResponsibleOfficer(null);
 
-    when(notificationService.meetsCriteria(programmeMembership, true,
-        true)).thenReturn(true);
+    when(notificationService.meetsCriteria(programmeMembership, true)).thenReturn(true);
     when(notificationService.getOwnerContact(any(), any(), any(), any())).thenReturn("");
     when(notificationService.getHrefTypeForContact(any())).thenReturn("");
 
@@ -599,8 +595,7 @@ class ProgrammeMembershipServiceTest {
         "roGmc", "roPhone");
     programmeMembership.setResponsibleOfficer(theRo);
 
-    when(notificationService.meetsCriteria(programmeMembership, true,
-        true)).thenReturn(true);
+    when(notificationService.meetsCriteria(programmeMembership, true)).thenReturn(true);
     when(notificationService.getOwnerContact(any(), any(), any(), any())).thenReturn("");
     when(notificationService.getHrefTypeForContact(any())).thenReturn("");
 
@@ -622,8 +617,7 @@ class ProgrammeMembershipServiceTest {
         "roGmc", "roPhone");
     programmeMembership.setResponsibleOfficer(theRo);
 
-    when(notificationService.meetsCriteria(programmeMembership, true,
-        true)).thenReturn(true);
+    when(notificationService.meetsCriteria(programmeMembership, true)).thenReturn(true);
     when(notificationService.getOwnerContact(any(), any(), any(), any())).thenReturn("");
     when(notificationService.getHrefTypeForContact(any())).thenReturn("");
 
@@ -645,8 +639,7 @@ class ProgrammeMembershipServiceTest {
         "roGmc", "roPhone");
     programmeMembership.setResponsibleOfficer(theRo);
 
-    when(notificationService.meetsCriteria(programmeMembership, true,
-        true)).thenReturn(true);
+    when(notificationService.meetsCriteria(programmeMembership, true)).thenReturn(true);
     when(notificationService.getOwnerContact(any(), any(), any(), any())).thenReturn("");
     when(notificationService.getHrefTypeForContact(any())).thenReturn("");
 
@@ -773,7 +766,9 @@ class ProgrammeMembershipServiceTest {
     when(notificationService.getOwnerContactList(any())).thenReturn(contactList);
     when(notificationService.getOwnerContact(any(), any(), any(), any())).thenReturn("contact");
     when(notificationService.getHrefTypeForContact(any())).thenReturn("href");
-    when(notificationService.meetsCriteria(any(), anyBoolean(), anyBoolean())).thenReturn(true);
+    when(
+        notificationService.meetsCriteria(any(ProgrammeMembership.class), anyBoolean())).thenReturn(
+        true);
     when(notificationService.programmeMembershipIsNotifiable(any(), any())).thenReturn(true);
 
     ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
@@ -845,7 +840,9 @@ class ProgrammeMembershipServiceTest {
     when(notificationService.getOwnerContactList(any())).thenReturn(contactList);
     when(notificationService.getOwnerContact(any(), any(), any(), any())).thenReturn("contact");
     when(notificationService.getHrefTypeForContact(any())).thenReturn("href");
-    when(notificationService.meetsCriteria(any(), anyBoolean(), anyBoolean())).thenReturn(true);
+    when(
+        notificationService.meetsCriteria(any(ProgrammeMembership.class), anyBoolean())).thenReturn(
+        true);
     when(notificationService.programmeMembershipIsNotifiable(any(), any())).thenReturn(true);
 
     ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
@@ -920,7 +917,9 @@ class ProgrammeMembershipServiceTest {
     when(notificationService.getOwnerContactList(any())).thenReturn(contactList);
     when(notificationService.getOwnerContact(any(), any(), any(), any())).thenReturn("contact");
     when(notificationService.getHrefTypeForContact(any())).thenReturn("href");
-    when(notificationService.meetsCriteria(any(), anyBoolean(), anyBoolean())).thenReturn(true);
+    when(
+        notificationService.meetsCriteria(any(ProgrammeMembership.class), anyBoolean())).thenReturn(
+        true);
     when(notificationService.programmeMembershipIsNotifiable(any(), any())).thenReturn(true);
 
     ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
@@ -988,7 +987,9 @@ class ProgrammeMembershipServiceTest {
     when(notificationService.getOwnerContactList(any())).thenReturn(contactList);
     when(notificationService.getOwnerContact(any(), any(), any(), any())).thenReturn("contact");
     when(notificationService.getHrefTypeForContact(any())).thenReturn("href");
-    when(notificationService.meetsCriteria(any(), anyBoolean(), anyBoolean())).thenReturn(true);
+    when(
+        notificationService.meetsCriteria(any(ProgrammeMembership.class), anyBoolean())).thenReturn(
+        true);
     when(notificationService.programmeMembershipIsNotifiable(any(), any())).thenReturn(true);
 
     ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
@@ -1082,7 +1083,9 @@ class ProgrammeMembershipServiceTest {
     when(notificationService.getOwnerContactList(any())).thenReturn(contactList);
     when(notificationService.getOwnerContact(any(), any(), any(), any())).thenReturn("contact");
     when(notificationService.getHrefTypeForContact(any())).thenReturn("href");
-    when(notificationService.meetsCriteria(any(), anyBoolean(), anyBoolean())).thenReturn(true);
+    when(
+        notificationService.meetsCriteria(any(ProgrammeMembership.class), anyBoolean())).thenReturn(
+        true);
     when(notificationService.programmeMembershipIsNotifiable(any(), any())).thenReturn(true);
 
     ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
@@ -1185,7 +1188,9 @@ class ProgrammeMembershipServiceTest {
     when(notificationService.getOwnerContactList(any())).thenReturn(contactList);
     when(notificationService.getOwnerContact(any(), any(), any(), any())).thenReturn("contact");
     when(notificationService.getHrefTypeForContact(any())).thenReturn("href");
-    when(notificationService.meetsCriteria(any(), anyBoolean(), anyBoolean())).thenReturn(true);
+    when(
+        notificationService.meetsCriteria(any(ProgrammeMembership.class), anyBoolean())).thenReturn(
+        true);
     when(notificationService.programmeMembershipIsNotifiable(any(), any())).thenReturn(true);
 
     ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();

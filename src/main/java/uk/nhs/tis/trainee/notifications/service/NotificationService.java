@@ -412,7 +412,7 @@ public class NotificationService implements Job {
       actuallySendEmail
           = inWhitelist
           || (messagingControllerService.isValidRecipient(personId, MessageType.EMAIL)
-          && meetsCriteria(minimalPm, true, true));
+          && meetsCriteria(minimalPm, true));
 
     } else if (notificationType == NotificationType.PLACEMENT_UPDATED_WEEK_12) {
 
@@ -512,11 +512,9 @@ public class NotificationService implements Job {
    *
    * @param programmeMembership The programme membership to check.
    * @param checkNewStarter     Whether the trainee must be a new starter.
-   * @param checkPilot          Whether the trainee must be in a pilot.
    * @return true if all criteria met, or false if one or more criteria fail.
    */
-  public boolean meetsCriteria(ProgrammeMembership programmeMembership,
-      boolean checkNewStarter, boolean checkPilot) {
+  public boolean meetsCriteria(ProgrammeMembership programmeMembership, boolean checkNewStarter) {
     String traineeId = programmeMembership.getPersonId();
     String pmId = programmeMembership.getTisId();
 
@@ -526,16 +524,6 @@ public class NotificationService implements Job {
 
       if (!isNewStarter) {
         log.info("Skipping notification creation as trainee {} is not a new starter.", traineeId);
-        return false;
-      }
-    }
-
-    if (checkPilot) {
-      boolean isInPilot
-          = messagingControllerService.isProgrammeMembershipInPilot2024(traineeId, pmId);
-
-      if (!isInPilot) {
-        log.info("Skipping notification creation as trainee {} is not in the pilot.", traineeId);
         return false;
       }
     }

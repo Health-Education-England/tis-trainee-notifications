@@ -317,7 +317,7 @@ public class ProgrammeMembershipService {
   private void createInAppNotifications(ProgrammeMembership programmeMembership,
       Map<NotificationType, History> notificationsAlreadySent) {
     // Create ePortfolio notification if the PM qualifies.
-    boolean meetsCriteria = notificationService.meetsCriteria(programmeMembership, true, true);
+    boolean meetsCriteria = notificationService.meetsCriteria(programmeMembership, true);
 
     if (meetsCriteria) {
       // E_PORTFOLIO

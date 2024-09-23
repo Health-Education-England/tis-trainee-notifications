@@ -129,32 +129,4 @@ class MessagingControllerServiceTest {
         service.isProgrammeMembershipNewStarter("123", "abc"),
         is(true));
   }
-
-  @ParameterizedTest
-  @NullSource
-  @ValueSource(booleans = false)
-  void isProgrammeMembershipInPilotShouldReturnFalseIfApiNotTrue(Boolean apiResult) {
-    when(restTemplate
-        .getForObject(
-            "the-url/api/programme-membership/ispilot2024/{traineeTisId}/{programmeMembershipId}",
-            Boolean.class, Map.of("traineeTisId", "123",
-                "programmeMembershipId", "abc"))).thenReturn(apiResult);
-
-    assertThat("Unexpected isProgrammeMembershipInPilot2024() result.",
-        service.isProgrammeMembershipInPilot2024("123", "abc"),
-        is(false));
-  }
-
-  @Test
-  void isProgrammeMembershipInPilotShouldReturnTrueIfApiTrue() {
-    when(restTemplate
-        .getForObject(
-            "the-url/api/programme-membership/ispilot2024/{traineeTisId}/{programmeMembershipId}",
-            Boolean.class, Map.of("traineeTisId", "123",
-                "programmeMembershipId", "abc"))).thenReturn(true);
-
-    assertThat("Unexpected isProgrammeMembershipInPilot2024() result.",
-        service.isProgrammeMembershipInPilot2024("123", "abc"),
-        is(true));
-  }
 }

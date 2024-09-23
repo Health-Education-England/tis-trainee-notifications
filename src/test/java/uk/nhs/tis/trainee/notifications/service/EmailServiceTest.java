@@ -378,8 +378,8 @@ class EmailServiceTest {
   @EnumSource(NotificationType.class)
   void shouldStoreHistoryWhenMessageSent(NotificationType notificationType)
       throws MessagingException {
-    when(historyService.findScheduledEmailForTraineeByRefAndType(any(), any(), any(), any())).
-        thenReturn(null);
+    when(historyService.findScheduledEmailForTraineeByRefAndType(any(), any(), any(), any()))
+        .thenReturn(null);
     when(userAccountService.getUserDetailsById(USER_ID)).thenReturn(
         new UserDetails(true, RECIPIENT, "Mr", "Gilliam",
             "Anthony", GMC));
@@ -428,8 +428,8 @@ class EmailServiceTest {
     ObjectId notificationId = ObjectId.get();
     History scheduledHistory = new History(notificationId, null, notificationType,
         null, null, null, null, SCHEDULED, null, null);
-    when(historyService.findScheduledEmailForTraineeByRefAndType(any(), any(), any(), any())).
-        thenReturn(scheduledHistory);
+    when(historyService.findScheduledEmailForTraineeByRefAndType(any(), any(), any(), any()))
+        .thenReturn(scheduledHistory);
     when(userAccountService.getUserDetailsById(USER_ID)).thenReturn(
         new UserDetails(true, RECIPIENT, "Mr", "Gilliam",
             "Anthony", GMC));

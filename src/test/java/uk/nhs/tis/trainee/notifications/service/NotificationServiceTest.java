@@ -338,8 +338,6 @@ class NotificationServiceTest {
     when(messagingControllerService.isValidRecipient(any(), any())).thenReturn(apiResult);
     when(messagingControllerService.isProgrammeMembershipNewStarter(any(), any()))
         .thenReturn(!apiResult);
-    when(messagingControllerService.isProgrammeMembershipInPilot2024(any(), any()))
-        .thenReturn(apiResult);
 
     service.execute(jobExecutionContext);
 
@@ -382,8 +380,6 @@ class NotificationServiceTest {
     when(messagingControllerService.isValidRecipient(any(), any())).thenReturn(apiResult);
     when(messagingControllerService.isProgrammeMembershipNewStarter(any(), any()))
         .thenReturn(!apiResult);
-    when(messagingControllerService.isProgrammeMembershipInPilot2024(any(), any()))
-        .thenReturn(apiResult);
 
     serviceWhitelisted.execute(jobExecutionContext);
 
@@ -422,8 +418,6 @@ class NotificationServiceTest {
         Map.of(TIS_ID_FIELD, PERSON_ID))).thenReturn(userAccountDetails);
     when(messagingControllerService.isValidRecipient(any(), any())).thenReturn(true);
     when(messagingControllerService.isProgrammeMembershipNewStarter(any(), any())).thenReturn(true);
-    when(messagingControllerService.isProgrammeMembershipInPilot2024(any(), any()))
-        .thenReturn(true);
 
     service.execute(jobExecutionContext);
 
@@ -466,8 +460,6 @@ class NotificationServiceTest {
 
     when(messagingControllerService.isValidRecipient(any(), any())).thenReturn(true);
     when(messagingControllerService.isProgrammeMembershipNewStarter(any(), any())).thenReturn(true);
-    when(messagingControllerService.isProgrammeMembershipInPilot2024(any(), any())).thenReturn(
-        true);
 
     JobDataMap jobData = new JobDataMap(Map.of(
         PERSON_ID_FIELD, PERSON_ID,
@@ -495,8 +487,6 @@ class NotificationServiceTest {
 
     when(messagingControllerService.isValidRecipient(any(), any())).thenReturn(true);
     when(messagingControllerService.isProgrammeMembershipNewStarter(any(), any())).thenReturn(true);
-    when(messagingControllerService.isProgrammeMembershipInPilot2024(any(), any())).thenReturn(
-        true);
 
     JobDataMap jobData = new JobDataMap(Map.of(
         PERSON_ID_FIELD, PERSON_ID,
@@ -519,8 +509,6 @@ class NotificationServiceTest {
 
     when(messagingControllerService.isValidRecipient(any(), any())).thenReturn(true);
     when(messagingControllerService.isProgrammeMembershipNewStarter(any(), any())).thenReturn(true);
-    when(messagingControllerService.isProgrammeMembershipInPilot2024(any(), any())).thenReturn(
-        true);
 
     boolean result = service.shouldActuallySendEmail(notificationType, PERSON_ID, TIS_ID);
 
@@ -545,8 +533,6 @@ class NotificationServiceTest {
         Map.of(TIS_ID_FIELD, PERSON_ID))).thenReturn(userAccountDetails);
     when(messagingControllerService.isValidRecipient(any(), any())).thenReturn(true);
     when(messagingControllerService.isProgrammeMembershipNewStarter(any(), any()))
-        .thenReturn(true);
-    when(messagingControllerService.isProgrammeMembershipInPilot2024(any(), any()))
         .thenReturn(true);
 
     String jobId = notificationType + "-" + TIS_ID;
@@ -682,8 +668,6 @@ class NotificationServiceTest {
     when(messagingControllerService.isValidRecipient(any(), any())).thenReturn(false);
     when(messagingControllerService.isProgrammeMembershipNewStarter(any(), any()))
         .thenReturn(true);
-    when(messagingControllerService.isProgrammeMembershipInPilot2024(any(), any()))
-        .thenReturn(true);
 
     String jobId = notificationType + "-" + TIS_ID;
     service.scheduleNotification(jobId, programmeJobDataMap, when);
@@ -709,36 +693,6 @@ class NotificationServiceTest {
         Map.of(TIS_ID_FIELD, PERSON_ID))).thenReturn(userAccountDetails);
     when(messagingControllerService.isValidRecipient(any(), any())).thenReturn(true);
     when(messagingControllerService.isProgrammeMembershipNewStarter(any(), any()))
-        .thenReturn(false);
-    when(messagingControllerService.isProgrammeMembershipInPilot2024(any(), any()))
-        .thenReturn(true);
-
-    String jobId = notificationType + "-" + TIS_ID;
-    service.scheduleNotification(jobId, programmeJobDataMap, when);
-
-    verify(historyService, never()).save(any());
-  }
-
-  @Test
-  void shouldNotSaveSchedulePmNotificationHistoryWhenNotInPilot() throws SchedulerException {
-    NotificationType notificationType = NotificationType.PROGRAMME_DAY_ONE;
-
-    LocalDate expectedDate = START_DATE.minusDays(0);
-    Date when = Date.from(expectedDate
-        .atStartOfDay()
-        .atZone(ZoneId.of(TIMEZONE))
-        .toInstant());
-
-    UserDetails userAccountDetails =
-        new UserDetails(
-            false, USER_EMAIL, USER_TITLE, USER_FAMILY_NAME, USER_GIVEN_NAME, USER_GMC);
-    when(emailService.getRecipientAccountByEmail(USER_EMAIL)).thenReturn(userAccountDetails);
-    when(restTemplate.getForObject(ACCOUNT_DETAILS_URL, UserDetails.class,
-        Map.of(TIS_ID_FIELD, PERSON_ID))).thenReturn(userAccountDetails);
-    when(messagingControllerService.isValidRecipient(any(), any())).thenReturn(true);
-    when(messagingControllerService.isProgrammeMembershipNewStarter(any(), any()))
-        .thenReturn(true);
-    when(messagingControllerService.isProgrammeMembershipInPilot2024(any(), any()))
         .thenReturn(false);
 
     String jobId = notificationType + "-" + TIS_ID;
@@ -848,8 +802,6 @@ class NotificationServiceTest {
     when(messagingControllerService.isValidRecipient(any(), any())).thenReturn(true);
     when(messagingControllerService.isProgrammeMembershipNewStarter(any(), any()))
         .thenReturn(true);
-    when(messagingControllerService.isProgrammeMembershipInPilot2024(any(), any()))
-        .thenReturn(true);
 
     List<Map<String, String>> contacts = new ArrayList<>();
     Map<String, String> contact1 = new HashMap<>();
@@ -901,8 +853,6 @@ class NotificationServiceTest {
         Map.of(TIS_ID_FIELD, PERSON_ID))).thenReturn(userAccountDetails);
     when(messagingControllerService.isValidRecipient(any(), any())).thenReturn(true);
     when(messagingControllerService.isProgrammeMembershipNewStarter(any(), any()))
-        .thenReturn(true);
-    when(messagingControllerService.isProgrammeMembershipInPilot2024(any(), any()))
         .thenReturn(true);
 
     List<Map<String, String>> contacts = new ArrayList<>();
@@ -1073,41 +1023,33 @@ class NotificationServiceTest {
   }
 
   @Test
-  void shouldMeetPmCriteriaWhenIsNewStarterAndIsInPilot() {
+  void shouldMeetPmCriteriaWhenIsNewStarter() {
     ProgrammeMembership programmeMembership = new ProgrammeMembership();
     programmeMembership.setTisId(TIS_ID);
     programmeMembership.setPersonId(PERSON_ID);
 
-    when(messagingControllerService.isProgrammeMembershipInPilot2024(PERSON_ID, TIS_ID))
-        .thenReturn(true);
     when(messagingControllerService.isProgrammeMembershipNewStarter(PERSON_ID, TIS_ID))
         .thenReturn(true);
 
-    boolean meetsCriteria = service.meetsCriteria(programmeMembership, true, true);
+    boolean meetsCriteria = service.meetsCriteria(programmeMembership, true);
 
     assertThat("Unexpected unmet programme membership criteria.", meetsCriteria, is(true));
 
     verify(messagingControllerService).isProgrammeMembershipNewStarter(PERSON_ID, TIS_ID);
-    verify(messagingControllerService).isProgrammeMembershipInPilot2024(PERSON_ID, TIS_ID);
   }
 
   @Test
-  void shouldNotMeetPmCriteriaWhenNotNewStarterAndNotInPilot() {
+  void shouldNotMeetPmCriteriaWhenNotNewStarter() {
     ProgrammeMembership programmeMembership = new ProgrammeMembership();
     programmeMembership.setTisId(TIS_ID);
     programmeMembership.setPersonId(PERSON_ID);
 
-    when(messagingControllerService.isProgrammeMembershipInPilot2024(PERSON_ID, TIS_ID))
-        .thenReturn(false);
     when(messagingControllerService.isProgrammeMembershipNewStarter(PERSON_ID, TIS_ID))
         .thenReturn(false);
 
-    boolean meetsCriteria = service.meetsCriteria(programmeMembership, true, true);
+    boolean meetsCriteria = service.meetsCriteria(programmeMembership, true);
 
     assertThat("Unexpected unmet programme membership criteria.", meetsCriteria, is(false));
-
-    // Verify that we short-circuit on the first false result.
-    verify(messagingControllerService, never()).isProgrammeMembershipInPilot2024(any(), any());
   }
 
   @Test
@@ -1119,8 +1061,7 @@ class NotificationServiceTest {
     when(messagingControllerService.isProgrammeMembershipNewStarter(PERSON_ID, TIS_ID)).thenReturn(
         true);
 
-    boolean meetsCriteria = service.meetsCriteria(programmeMembership, true,
-        false);
+    boolean meetsCriteria = service.meetsCriteria(programmeMembership, true);
 
     assertThat("Unexpected unmet programme membership criteria.", meetsCriteria, is(true));
   }
@@ -1134,8 +1075,7 @@ class NotificationServiceTest {
     when(messagingControllerService.isProgrammeMembershipNewStarter(PERSON_ID, TIS_ID)).thenReturn(
         false);
 
-    boolean meetsCriteria = service.meetsCriteria(programmeMembership, true,
-        false);
+    boolean meetsCriteria = service.meetsCriteria(programmeMembership, true);
 
     assertThat("Unexpected unmet programme membership criteria.", meetsCriteria, is(false));
 
@@ -1144,39 +1084,16 @@ class NotificationServiceTest {
   }
 
   @Test
-  void shouldMeetPmCriteriaWhenNewStartCheckSkippedAndIsInPilot() {
+  void shouldMeetPmCriteriaWhenNewStartCheckSkipped() {
     ProgrammeMembership programmeMembership = new ProgrammeMembership();
     programmeMembership.setTisId(TIS_ID);
     programmeMembership.setPersonId(PERSON_ID);
 
-    when(messagingControllerService.isProgrammeMembershipInPilot2024(PERSON_ID, TIS_ID)).thenReturn(
-        true);
-
-    boolean meetsCriteria = service.meetsCriteria(programmeMembership, false,
-        true);
+    boolean meetsCriteria = service.meetsCriteria(programmeMembership, false);
 
     assertThat("Unexpected unmet programme membership criteria.", meetsCriteria, is(true));
 
-    verify(messagingControllerService).isProgrammeMembershipInPilot2024(PERSON_ID, TIS_ID);
-    verifyNoMoreInteractions(messagingControllerService);
-  }
-
-  @Test
-  void shouldNotMeetPmCriteriaWhenNewStartCheckSkippedAndNotInPilot() {
-    ProgrammeMembership programmeMembership = new ProgrammeMembership();
-    programmeMembership.setTisId(TIS_ID);
-    programmeMembership.setPersonId(PERSON_ID);
-
-    when(messagingControllerService.isProgrammeMembershipInPilot2024(PERSON_ID, TIS_ID)).thenReturn(
-        false);
-
-    boolean meetsCriteria = service.meetsCriteria(programmeMembership, false,
-        true);
-
-    assertThat("Unexpected unmet programme membership criteria.", meetsCriteria, is(false));
-
-    verify(messagingControllerService).isProgrammeMembershipInPilot2024(PERSON_ID, TIS_ID);
-    verifyNoMoreInteractions(messagingControllerService);
+    verifyNoInteractions(messagingControllerService);
   }
 
   @Test
@@ -1185,8 +1102,7 @@ class NotificationServiceTest {
     programmeMembership.setTisId(TIS_ID);
     programmeMembership.setPersonId(PERSON_ID);
 
-    boolean meetsCriteria = service.meetsCriteria(programmeMembership, false,
-        false);
+    boolean meetsCriteria = service.meetsCriteria(programmeMembership, false);
 
     assertThat("Unexpected unmet programme membership criteria.", meetsCriteria, is(true));
 
