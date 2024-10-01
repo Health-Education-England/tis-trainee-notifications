@@ -78,7 +78,7 @@ mongock:
 
 sentry:
   dsn: ${SENTRY_DSN:}
-  environment: application.environment
+  environment: ${application.environment}
 
 spring:
   cloud:
