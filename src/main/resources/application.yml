@@ -39,7 +39,7 @@ application:
     credential-revoked:
       email: v1.0.0
     day-one:
-      in-app: v1.0.0
+      in-app: v1.1.0
     deferral:
       in-app: v1.0.0
     e-portfolio:
