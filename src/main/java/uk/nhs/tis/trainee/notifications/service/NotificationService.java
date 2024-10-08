@@ -82,8 +82,6 @@ public class NotificationService implements Job {
   protected static final String DEFAULT_NO_CONTACT_MESSAGE
       = "your local office";
 
-  public static final LocalDate PILOT_ROLLOUT_EPOCH = LocalDate.of(2024, 11, 1);
-
   public static final String API_TRAINEE_DETAILS = "/api/trainee-profile/account-details/{tisId}";
   private static final String TRIGGER_ID_PREFIX = "trigger-";
 
@@ -195,8 +193,7 @@ public class NotificationService implements Job {
         try {
           emailService.sendMessage(personId, userAccountDetails.email(), notificationType,
               templateVersion, jobDetails.getWrappedMap(), tisReferenceInfo,
-              !shouldActuallySendEmail(notificationType, personId, tisReferenceInfo.id(),
-                  startDate));
+              !shouldActuallySendEmail(notificationType, personId, tisReferenceInfo.id()));
         } catch (MessagingException e) {
           throw new RuntimeException(e);
         }
@@ -401,7 +398,7 @@ public class NotificationService implements Job {
    * @return the boolean if the email should be sent out.
    */
   protected boolean shouldActuallySendEmail(NotificationType notificationType, String personId,
-      String tisReferenceId, LocalDate startDate) {
+      String tisReferenceId) {
     boolean actuallySendEmail = false; // default to log email only
     boolean inWhitelist = notificationsWhitelist.contains(personId);
 
@@ -412,7 +409,6 @@ public class NotificationService implements Job {
       ProgrammeMembership minimalPm = new ProgrammeMembership();
       minimalPm.setPersonId(personId);
       minimalPm.setTisId(tisReferenceId);
-      minimalPm.setStartDate(startDate);
       actuallySendEmail
           = inWhitelist
           || (messagingControllerService.isValidRecipient(personId, MessageType.EMAIL)
@@ -422,8 +418,7 @@ public class NotificationService implements Job {
 
       boolean inPilotOrRollout
           = messagingControllerService.isPlacementInPilot2024(personId, tisReferenceId)
-          || (messagingControllerService.isPlacementInRollout2024(personId, tisReferenceId)
-          && !startDate.isBefore(PILOT_ROLLOUT_EPOCH));
+          || (messagingControllerService.isPlacementInRollout2024(personId, tisReferenceId));
       actuallySendEmail = inWhitelist
           || (messagingControllerService.isValidRecipient(personId, MessageType.EMAIL)
           && inPilotOrRollout);
@@ -445,18 +440,14 @@ public class NotificationService implements Job {
         NotificationType.valueOf(jobDetails.get(TEMPLATE_NOTIFICATION_TYPE_FIELD).toString());
 
     // get TIS Reference Info
-    LocalDate startDate = null;
     TisReferenceInfo tisReferenceInfo = null;
     if (notificationType == NotificationType.PROGRAMME_CREATED
         || notificationType == NotificationType.PROGRAMME_DAY_ONE) {
       tisReferenceInfo = new TisReferenceInfo(PROGRAMME_MEMBERSHIP,
           jobDetails.get(ProgrammeMembershipService.TIS_ID_FIELD).toString());
-      startDate = (LocalDate) jobDetails.get(ProgrammeMembershipService.START_DATE_FIELD);
-
     } else if (notificationType == NotificationType.PLACEMENT_UPDATED_WEEK_12) {
       tisReferenceInfo = new TisReferenceInfo(PLACEMENT,
           jobDetails.get(PlacementService.TIS_ID_FIELD).toString());
-      startDate = (LocalDate) jobDetails.get(PlacementService.START_DATE_FIELD);
     }
 
     // get Recipient Info
@@ -467,7 +458,7 @@ public class NotificationService implements Job {
 
     // Only save then notificationType is correct and in Pilot/Rollout
     if (tisReferenceInfo != null
-        && shouldActuallySendEmail(notificationType, personId, tisReferenceInfo.id(), startDate)) {
+        && shouldActuallySendEmail(notificationType, personId, tisReferenceInfo.id())) {
 
       // Save SCHEDULED History in DB
       History history = new History(
@@ -530,9 +521,6 @@ public class NotificationService implements Job {
       boolean checkNewStarter, boolean checkPilot) {
     String traineeId = programmeMembership.getPersonId();
     String pmId = programmeMembership.getTisId();
-    LocalDate startDate = programmeMembership.getStartDate() == null
-        ? LocalDate.MIN
-        : programmeMembership.getStartDate();
 
     if (checkNewStarter) {
       boolean isNewStarter = messagingControllerService.isProgrammeMembershipNewStarter(traineeId,
@@ -551,8 +539,7 @@ public class NotificationService implements Job {
       boolean isInRollout
           = messagingControllerService.isProgrammeMembershipInRollout2024(traineeId, pmId);
 
-      if (!isInPilot
-          && (!isInRollout || startDate.isBefore(PILOT_ROLLOUT_EPOCH))) {
+      if (!isInPilot && !isInRollout) {
         log.info("Skipping notification creation as trainee {} is not in the pilot or the rollout.",
             traineeId);
         return false;
@@ -572,9 +559,6 @@ public class NotificationService implements Job {
   public boolean meetsCriteria(Placement placement, boolean checkPilot) {
     String traineeId = placement.getPersonId();
     String pmId = placement.getTisId();
-    LocalDate startDate = placement.getStartDate() == null
-        ? LocalDate.MIN
-        : placement.getStartDate();
 
     if (checkPilot) {
       boolean isInPilot
@@ -583,8 +567,7 @@ public class NotificationService implements Job {
       boolean isInRollout
           = messagingControllerService.isPlacementInRollout2024(traineeId, pmId);
 
-      if (!isInPilot
-          && (!isInRollout || startDate.isBefore(PILOT_ROLLOUT_EPOCH))) {
+      if (!isInPilot && !isInRollout) {
         log.info("Skipping notification creation as trainee {} is not in the pilot.", traineeId);
         return false;
       }
