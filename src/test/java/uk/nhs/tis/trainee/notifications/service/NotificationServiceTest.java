@@ -1404,8 +1404,10 @@ class NotificationServiceTest {
     placement.setPersonId(PERSON_ID);
     placement.setStartDate(DATE_IN_ROLLOUT);
 
-    when(messagingControllerService.isPlacementInPilot2024(PERSON_ID, TIS_ID)).thenReturn(stateValue);
-    when(messagingControllerService.isPlacementInRollout2024(PERSON_ID, TIS_ID)).thenReturn(!stateValue);
+    when(messagingControllerService.isPlacementInPilot2024(PERSON_ID, TIS_ID))
+        .thenReturn(stateValue);
+    when(messagingControllerService.isPlacementInRollout2024(PERSON_ID, TIS_ID))
+        .thenReturn(!stateValue);
 
     boolean meetsCriteria = service.meetsCriteria(placement, true);
 
