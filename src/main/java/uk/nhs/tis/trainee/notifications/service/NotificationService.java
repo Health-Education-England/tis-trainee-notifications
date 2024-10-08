@@ -82,7 +82,7 @@ public class NotificationService implements Job {
   protected static final String DEFAULT_NO_CONTACT_MESSAGE
       = "your local office";
 
-  public static LocalDate PILOT_ROLLOUT_EPOCH = LocalDate.of(2024, 11, 1);
+  public static final LocalDate PILOT_ROLLOUT_EPOCH = LocalDate.of(2024, 11, 1);
 
   public static final String API_TRAINEE_DETAILS = "/api/trainee-profile/account-details/{tisId}";
   private static final String TRIGGER_ID_PREFIX = "trigger-";
@@ -530,6 +530,9 @@ public class NotificationService implements Job {
       boolean checkNewStarter, boolean checkPilot) {
     String traineeId = programmeMembership.getPersonId();
     String pmId = programmeMembership.getTisId();
+    LocalDate startDate = programmeMembership.getStartDate() == null
+        ? LocalDate.MIN
+        : programmeMembership.getStartDate();
 
     if (checkNewStarter) {
       boolean isNewStarter = messagingControllerService.isProgrammeMembershipNewStarter(traineeId,
@@ -549,8 +552,7 @@ public class NotificationService implements Job {
           = messagingControllerService.isProgrammeMembershipInRollout2024(traineeId, pmId);
 
       if (!isInPilot
-          && (!isInRollout
-          || programmeMembership.getStartDate().isBefore(PILOT_ROLLOUT_EPOCH))) {
+          && (!isInRollout || startDate.isBefore(PILOT_ROLLOUT_EPOCH))) {
         log.info("Skipping notification creation as trainee {} is not in the pilot or the rollout.",
             traineeId);
         return false;
@@ -570,12 +572,19 @@ public class NotificationService implements Job {
   public boolean meetsCriteria(Placement placement, boolean checkPilot) {
     String traineeId = placement.getPersonId();
     String pmId = placement.getTisId();
+    LocalDate startDate = placement.getStartDate() == null
+        ? LocalDate.MIN
+        : placement.getStartDate();
 
     if (checkPilot) {
       boolean isInPilot
           = messagingControllerService.isPlacementInPilot2024(traineeId, pmId);
 
-      if (!isInPilot) {
+      boolean isInRollout
+          = messagingControllerService.isPlacementInRollout2024(traineeId, pmId);
+
+      if (!isInPilot
+          && (!isInRollout || startDate.isBefore(PILOT_ROLLOUT_EPOCH))) {
         log.info("Skipping notification creation as trainee {} is not in the pilot.", traineeId);
         return false;
       }
