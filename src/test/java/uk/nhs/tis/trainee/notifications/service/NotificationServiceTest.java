@@ -143,6 +143,9 @@ class NotificationServiceTest {
   private static final String USER_GIVEN_NAME = "given-name";
   private static final String USER_GMC = "1234567";
 
+  private static final LocalDate DATE_IN_ROLLOUT = LocalDate.of(2024, 11, 1);
+  private static final LocalDate DATE_OUT_ROLLOUT = LocalDate.of(2024, 10, 31);
+
   private JobDetail programmeJobDetails;
   private JobDetail placementJobDetails;
   private JobDataMap programmeJobDataMap;
@@ -172,14 +175,14 @@ class NotificationServiceTest {
     programmeJobDataMap.put(PROGRAMME_NAME_FIELD, PROGRAMME_NAME);
     programmeJobDataMap.put(TEMPLATE_OWNER_FIELD, LOCAL_OFFICE);
     programmeJobDataMap.put(TEMPLATE_NOTIFICATION_TYPE_FIELD, PM_NOTIFICATION_TYPE.toString());
-    programmeJobDataMap.put(START_DATE_FIELD, START_DATE);
+    programmeJobDataMap.put(START_DATE_FIELD, DATE_IN_ROLLOUT);
 
     placementJobDataMap = new JobDataMap();
     placementJobDataMap.put(TIS_ID_FIELD, TIS_ID);
     placementJobDataMap.put(PERSON_ID_FIELD, PERSON_ID);
     placementJobDataMap.put(TEMPLATE_NOTIFICATION_TYPE_FIELD,
         PLACEMENT_NOTIFICATION_TYPE.toString());
-    placementJobDataMap.put(START_DATE_FIELD, START_DATE);
+    placementJobDataMap.put(START_DATE_FIELD, DATE_IN_ROLLOUT);
     placementJobDataMap.put(PLACEMENT_TYPE_FIELD, PLACEMENT_TYPE);
     placementJobDataMap.put(TEMPLATE_OWNER_FIELD, LOCAL_OFFICE);
     placementJobDataMap.put(PLACEMENT_SPECIALTY_FIELD, PLACEMENT_SPECIALTY);
@@ -522,7 +525,7 @@ class NotificationServiceTest {
     when(messagingControllerService.isProgrammeMembershipInPilot2024(any(), any())).thenReturn(
         true);
 
-    boolean result = service.shouldActuallySendEmail(notificationType, PERSON_ID, TIS_ID);
+    boolean result = service.shouldActuallySendEmail(notificationType, PERSON_ID, TIS_ID, null);
 
     assertThat("Unexpected actuallySendEmail boolean.", result, is(false));
   }
@@ -590,7 +593,7 @@ class NotificationServiceTest {
     Map<String, Object> storedVariables = templateInfo.variables();
     assertThat("Unexpected template variable.", storedVariables.get(TIS_ID_FIELD), is(TIS_ID));
     assertThat("Unexpected template variable.", storedVariables.get(START_DATE_FIELD),
-        is(START_DATE));
+        is(DATE_IN_ROLLOUT));
     assertThat("Unexpected template variable.", storedVariables.get(PERSON_ID_FIELD),
         is(PERSON_ID));
   }
@@ -658,7 +661,7 @@ class NotificationServiceTest {
     Map<String, Object> storedVariables = templateInfo.variables();
     assertThat("Unexpected template variable.", storedVariables.get(TIS_ID_FIELD), is(TIS_ID));
     assertThat("Unexpected template variable.", storedVariables.get(START_DATE_FIELD),
-        is(START_DATE));
+        is(DATE_IN_ROLLOUT));
     assertThat("Unexpected template variable.", storedVariables.get(PERSON_ID_FIELD),
         is(PERSON_ID));
   }
@@ -740,6 +743,41 @@ class NotificationServiceTest {
         .thenReturn(true);
     when(messagingControllerService.isProgrammeMembershipInPilot2024(any(), any()))
         .thenReturn(false);
+    when(messagingControllerService.isProgrammeMembershipInRollout2024(any(), any()))
+        .thenReturn(false);
+
+    String jobId = notificationType + "-" + TIS_ID;
+    service.scheduleNotification(jobId, programmeJobDataMap, when);
+
+    verify(historyService, never()).save(any());
+  }
+
+  @Test
+  void shouldNotSaveSchedulePmNotificationHistoryWhenStartDateTooEarlyForRollout()
+      throws SchedulerException {
+    NotificationType notificationType = NotificationType.PROGRAMME_DAY_ONE;
+
+    LocalDate expectedDate = START_DATE.minusDays(0);
+    Date when = Date.from(expectedDate
+        .atStartOfDay()
+        .atZone(ZoneId.of(TIMEZONE))
+        .toInstant());
+
+    UserDetails userAccountDetails =
+        new UserDetails(
+            false, USER_EMAIL, USER_TITLE, USER_FAMILY_NAME, USER_GIVEN_NAME, USER_GMC);
+    when(emailService.getRecipientAccountByEmail(USER_EMAIL)).thenReturn(userAccountDetails);
+    when(restTemplate.getForObject(ACCOUNT_DETAILS_URL, UserDetails.class,
+        Map.of(TIS_ID_FIELD, PERSON_ID))).thenReturn(userAccountDetails);
+    when(messagingControllerService.isValidRecipient(any(), any())).thenReturn(true);
+    when(messagingControllerService.isProgrammeMembershipNewStarter(any(), any()))
+        .thenReturn(true);
+    when(messagingControllerService.isProgrammeMembershipInPilot2024(any(), any()))
+        .thenReturn(false);
+    when(messagingControllerService.isProgrammeMembershipInRollout2024(any(), any()))
+        .thenReturn(true);
+
+    programmeJobDataMap.put(START_DATE_FIELD, DATE_OUT_ROLLOUT);
 
     String jobId = notificationType + "-" + TIS_ID;
     service.scheduleNotification(jobId, programmeJobDataMap, when);
@@ -1151,6 +1189,8 @@ class NotificationServiceTest {
 
     when(messagingControllerService.isProgrammeMembershipInPilot2024(PERSON_ID, TIS_ID)).thenReturn(
         true);
+    when(messagingControllerService.isProgrammeMembershipInRollout2024(PERSON_ID, TIS_ID)).thenReturn(
+        false);
 
     boolean meetsCriteria = service.meetsCriteria(programmeMembership, false,
         true);
@@ -1158,17 +1198,43 @@ class NotificationServiceTest {
     assertThat("Unexpected unmet programme membership criteria.", meetsCriteria, is(true));
 
     verify(messagingControllerService).isProgrammeMembershipInPilot2024(PERSON_ID, TIS_ID);
+    verify(messagingControllerService).isProgrammeMembershipInRollout2024(PERSON_ID, TIS_ID);
     verifyNoMoreInteractions(messagingControllerService);
   }
 
   @Test
-  void shouldNotMeetPmCriteriaWhenNewStartCheckSkippedAndNotInPilot() {
+  void shouldMeetPmCriteriaWhenNewStartCheckSkippedAndIsInRollout() {
     ProgrammeMembership programmeMembership = new ProgrammeMembership();
     programmeMembership.setTisId(TIS_ID);
     programmeMembership.setPersonId(PERSON_ID);
+    programmeMembership.setStartDate(DATE_IN_ROLLOUT);
 
     when(messagingControllerService.isProgrammeMembershipInPilot2024(PERSON_ID, TIS_ID)).thenReturn(
         false);
+    when(messagingControllerService.isProgrammeMembershipInRollout2024(PERSON_ID, TIS_ID)).thenReturn(
+        true);
+
+    boolean meetsCriteria = service.meetsCriteria(programmeMembership, false,
+        true);
+
+    assertThat("Unexpected unmet programme membership criteria.", meetsCriteria, is(true));
+
+    verify(messagingControllerService).isProgrammeMembershipInPilot2024(PERSON_ID, TIS_ID);
+    verify(messagingControllerService).isProgrammeMembershipInRollout2024(PERSON_ID, TIS_ID);
+    verifyNoMoreInteractions(messagingControllerService);
+  }
+
+  @Test
+  void shouldNotMeetPmCriteriaWhenNewStartCheckSkippedAndNotInPilotOrRollout() {
+    ProgrammeMembership programmeMembership = new ProgrammeMembership();
+    programmeMembership.setTisId(TIS_ID);
+    programmeMembership.setPersonId(PERSON_ID);
+    programmeMembership.setStartDate(DATE_IN_ROLLOUT);
+
+    when(messagingControllerService.isProgrammeMembershipInPilot2024(PERSON_ID, TIS_ID))
+        .thenReturn(false);
+    when(messagingControllerService.isProgrammeMembershipInRollout2024(PERSON_ID, TIS_ID))
+        .thenReturn(false);
 
     boolean meetsCriteria = service.meetsCriteria(programmeMembership, false,
         true);
@@ -1176,6 +1242,29 @@ class NotificationServiceTest {
     assertThat("Unexpected unmet programme membership criteria.", meetsCriteria, is(false));
 
     verify(messagingControllerService).isProgrammeMembershipInPilot2024(PERSON_ID, TIS_ID);
+    verify(messagingControllerService).isProgrammeMembershipInRollout2024(PERSON_ID, TIS_ID);
+    verifyNoMoreInteractions(messagingControllerService);
+  }
+
+  @Test
+  void shouldNotMeetPmCriteriaWhenNewStartCheckSkippedAndStartDateTooEarlyForRollout() {
+    ProgrammeMembership programmeMembership = new ProgrammeMembership();
+    programmeMembership.setTisId(TIS_ID);
+    programmeMembership.setPersonId(PERSON_ID);
+    programmeMembership.setStartDate(DATE_OUT_ROLLOUT);
+
+    when(messagingControllerService.isProgrammeMembershipInPilot2024(PERSON_ID, TIS_ID))
+        .thenReturn(false);
+    when(messagingControllerService.isProgrammeMembershipInRollout2024(PERSON_ID, TIS_ID))
+        .thenReturn(true);
+
+    boolean meetsCriteria = service.meetsCriteria(programmeMembership, false,
+        true);
+
+    assertThat("Unexpected unmet programme membership criteria.", meetsCriteria, is(false));
+
+    verify(messagingControllerService).isProgrammeMembershipInPilot2024(PERSON_ID, TIS_ID);
+    verify(messagingControllerService).isProgrammeMembershipInRollout2024(PERSON_ID, TIS_ID);
     verifyNoMoreInteractions(messagingControllerService);
   }
 

@@ -105,6 +105,30 @@ class MessagingControllerServiceTest {
   @ParameterizedTest
   @NullSource
   @ValueSource(booleans = false)
+  void isPlacementInPilotRollout2024ShouldReturnFalseIfApiNotTrue(Boolean apiResult) {
+    when(restTemplate
+        .getForObject("the-url/api/placement/isrollout2024/{traineeTisId}/{placementId}",
+            Boolean.class, Map.of("traineeTisId", "123",
+                "placementId", "abc"))).thenReturn(apiResult);
+
+    assertThat("Unexpected isPlacementInRollout2024() result.",
+        service.isPlacementInRollout2024("123", "abc"), is(false));
+  }
+
+  @Test
+  void isPlacementInPilotRollout2024ShouldReturnTrueIfApiTrue() {
+    when(restTemplate
+        .getForObject("the-url/api/placement/isrollout2024/{traineeTisId}/{placementId}",
+            Boolean.class, Map.of("traineeTisId", "123",
+                "placementId", "abc"))).thenReturn(true);
+
+    assertThat("Unexpected isPlacementInRollout2024() result.",
+        service.isPlacementInRollout2024("123", "abc"), is(true));
+  }
+
+  @ParameterizedTest
+  @NullSource
+  @ValueSource(booleans = false)
   void isProgrammeMembershipNewStarterShouldReturnFalseIfApiNotTrue(Boolean apiResult) {
     when(restTemplate
         .getForObject(
@@ -155,6 +179,34 @@ class MessagingControllerServiceTest {
 
     assertThat("Unexpected isProgrammeMembershipInPilot2024() result.",
         service.isProgrammeMembershipInPilot2024("123", "abc"),
+        is(true));
+  }
+
+  @ParameterizedTest
+  @NullSource
+  @ValueSource(booleans = false)
+  void isProgrammeMembershipInRolloutShouldReturnFalseIfApiNotTrue(Boolean apiResult) {
+    when(restTemplate
+        .getForObject(
+            "the-url/api/programme-membership/isrollout2024/{traineeTisId}/{programmeMembershipId}",
+            Boolean.class, Map.of("traineeTisId", "123",
+                "programmeMembershipId", "abc"))).thenReturn(apiResult);
+
+    assertThat("Unexpected isProgrammeMembershipInRollout2024() result.",
+        service.isProgrammeMembershipInRollout2024("123", "abc"),
+        is(false));
+  }
+
+  @Test
+  void isProgrammeMembershipInRolloutShouldReturnTrueIfApiTrue() {
+    when(restTemplate
+        .getForObject(
+            "the-url/api/programme-membership/isrollout2024/{traineeTisId}/{programmeMembershipId}",
+            Boolean.class, Map.of("traineeTisId", "123",
+                "programmeMembershipId", "abc"))).thenReturn(true);
+
+    assertThat("Unexpected isProgrammeMembershipInRollout2024() result.",
+        service.isProgrammeMembershipInRollout2024("123", "abc"),
         is(true));
   }
 }

@@ -193,7 +193,8 @@ public class NotificationService implements Job {
         try {
           emailService.sendMessage(personId, userAccountDetails.email(), notificationType,
               templateVersion, jobDetails.getWrappedMap(), tisReferenceInfo,
-              !shouldActuallySendEmail(notificationType, personId, tisReferenceInfo.id()));
+              !shouldActuallySendEmail(notificationType, personId, tisReferenceInfo.id(),
+                  startDate));
         } catch (MessagingException e) {
           throw new RuntimeException(e);
         }
@@ -398,7 +399,7 @@ public class NotificationService implements Job {
    * @return the boolean if the email should be sent out.
    */
   protected boolean shouldActuallySendEmail(NotificationType notificationType, String personId,
-                                            String tisReferenceId) {
+                                            String tisReferenceId, LocalDate startDate) {
     boolean actuallySendEmail = false; // default to log email only
     boolean inWhitelist = notificationsWhitelist.contains(personId);
 
@@ -409,6 +410,7 @@ public class NotificationService implements Job {
       ProgrammeMembership minimalPm = new ProgrammeMembership();
       minimalPm.setPersonId(personId);
       minimalPm.setTisId(tisReferenceId);
+      minimalPm.setStartDate(startDate);
       actuallySendEmail
           = inWhitelist
           || (messagingControllerService.isValidRecipient(personId, MessageType.EMAIL)
@@ -437,15 +439,18 @@ public class NotificationService implements Job {
         NotificationType.valueOf(jobDetails.get(TEMPLATE_NOTIFICATION_TYPE_FIELD).toString());
 
     // get TIS Reference Info
+    LocalDate startDate = null;
     TisReferenceInfo tisReferenceInfo = null;
     if (notificationType == NotificationType.PROGRAMME_CREATED
         || notificationType == NotificationType.PROGRAMME_DAY_ONE) {
       tisReferenceInfo = new TisReferenceInfo(PROGRAMME_MEMBERSHIP,
           jobDetails.get(ProgrammeMembershipService.TIS_ID_FIELD).toString());
+      startDate = (LocalDate) jobDetails.get(ProgrammeMembershipService.START_DATE_FIELD);
 
     } else if (notificationType == NotificationType.PLACEMENT_UPDATED_WEEK_12) {
       tisReferenceInfo = new TisReferenceInfo(PLACEMENT,
           jobDetails.get(PlacementService.TIS_ID_FIELD).toString());
+    startDate = (LocalDate) jobDetails.get(PlacementService.START_DATE_FIELD);
     }
 
     // get Recipient Info
@@ -456,7 +461,7 @@ public class NotificationService implements Job {
 
     // Only save then notificationType is correct and in Pilot
     if (tisReferenceInfo != null
-        && shouldActuallySendEmail(notificationType, personId, tisReferenceInfo.id())) {
+        && shouldActuallySendEmail(notificationType, personId, tisReferenceInfo.id(), startDate)) {
 
       // Save SCHEDULED History in DB
       History history = new History(
@@ -534,8 +539,14 @@ public class NotificationService implements Job {
       boolean isInPilot
           = messagingControllerService.isProgrammeMembershipInPilot2024(traineeId, pmId);
 
-      if (!isInPilot) {
-        log.info("Skipping notification creation as trainee {} is not in the pilot.", traineeId);
+      boolean isInRollout
+          = messagingControllerService.isProgrammeMembershipInRollout2024(traineeId, pmId);
+
+      if (!isInPilot
+          && (!isInRollout
+          || programmeMembership.getStartDate().isBefore(LocalDate.of(2024, 11, 1)))) {
+        log.info("Skipping notification creation as trainee {} is not in the pilot or the rollout.",
+            traineeId);
         return false;
       }
     }
