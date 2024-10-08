@@ -514,7 +514,7 @@ public class NotificationService implements Job {
    *
    * @param programmeMembership The programme membership to check.
    * @param checkNewStarter     Whether the trainee must be a new starter.
-   * @param checkPilot          Whether the trainee must be in a pilot.
+   * @param checkPilot          Whether the trainee must be in a pilot or rollout.
    * @return true if all criteria met, or false if one or more criteria fail.
    */
   public boolean meetsCriteria(ProgrammeMembership programmeMembership,
@@ -553,7 +553,7 @@ public class NotificationService implements Job {
    * Check whether a placement meets the selected notification criteria.
    *
    * @param placement  The placement to check.
-   * @param checkPilot Whether the trainee must be in a pilot.
+   * @param checkPilot Whether the trainee must be in a pilot or rollout.
    * @return true if all criteria met, or false if one or more criteria fail.
    */
   public boolean meetsCriteria(Placement placement, boolean checkPilot) {
@@ -568,7 +568,8 @@ public class NotificationService implements Job {
           = messagingControllerService.isPlacementInRollout2024(traineeId, pmId);
 
       if (!isInPilot && !isInRollout) {
-        log.info("Skipping notification creation as trainee {} is not in the pilot.", traineeId);
+        log.info("Skipping notification creation as trainee {} is not in the pilot or the rollout.",
+            traineeId);
         return false;
       }
     }

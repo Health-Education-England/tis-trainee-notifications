@@ -126,9 +126,9 @@ public class MessagingControllerService {
    * @return true if the placement is in the pilot rollout group, otherwise false.
    */
   public boolean isPlacementInRollout2024(String traineeId, String placementId) {
-    Boolean isPilot = restTemplate.getForObject(serviceUrl + API_PLACEMENT_IS_PILOT_ROLLOUT_2024,
+    Boolean isRollout = restTemplate.getForObject(serviceUrl + API_PLACEMENT_IS_PILOT_ROLLOUT_2024,
         Boolean.class, Map.of(TRAINEE_TIS_ID_FIELD, traineeId, PLACEMENT_ID_FIELD, placementId));
-    if (isPilot == null || !isPilot) {
+    if (isRollout == null || !isRollout) {
       log.info("Trainee {} placement {} is not in the pilot rollout 2024.", traineeId, placementId);
       return false;
     }
@@ -164,11 +164,11 @@ public class MessagingControllerService {
    */
   public boolean isProgrammeMembershipInRollout2024(String traineeId,
       String programmeMembershipId) {
-    Boolean isPilotRollout = restTemplate.getForObject(serviceUrl
+    Boolean isRollout = restTemplate.getForObject(serviceUrl
             + API_PROGRAMME_MEMBERSHIP_IS_PILOT_ROLLOUT_2024, Boolean.class,
         Map.of(TRAINEE_TIS_ID_FIELD, traineeId,
             PROGRAMME_MEMBERSHIP_ID_FIELD, programmeMembershipId));
-    if (isPilotRollout == null || !isPilotRollout) {
+    if (isRollout == null || !isRollout) {
       log.info("Trainee {} programme membership {} is not in the pilot rollout 2024.",
           traineeId, programmeMembershipId);
       return false;
