@@ -5,7 +5,7 @@ application:
   email:
     sender: dummy-value
   queues:
-    coj-received: dummy-value
+    coj-published: dummy-value
 
 mongock:
   enabled: false

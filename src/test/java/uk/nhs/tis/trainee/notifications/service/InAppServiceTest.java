@@ -163,6 +163,18 @@ class InAppServiceTest {
 
   @ParameterizedTest
   @EnumSource(NotificationType.class)
+  void shouldNotAttachmentsWhenCreatingNotification(NotificationType notificationType) {
+    service.createNotifications(TRAINEE_ID, null, notificationType, VERSION, Map.of());
+
+    ArgumentCaptor<History> historyCaptor = ArgumentCaptor.captor();
+    verify(historyService).save(historyCaptor.capture());
+
+    History history = historyCaptor.getValue();
+    assertThat("Unexpected attachments.", history.attachments(), nullValue());
+  }
+
+  @ParameterizedTest
+  @EnumSource(NotificationType.class)
   void shouldSetSentAtWhenCreatingNotification(NotificationType notificationType) {
     service.createNotifications(TRAINEE_ID, null, notificationType, VERSION, Map.of());
 

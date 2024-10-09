@@ -148,6 +148,6 @@ class ContactDetailsServiceTest {
 
     ObjectId id1 = ObjectId.get();
     return new History(id1, tisReferenceInfo, PROGRAMME_CREATED, recipient,
-        templateInfo, Instant.MIN, Instant.MAX, FAILED, null, null);
+        templateInfo, null, Instant.MIN, Instant.MAX, FAILED, null, null);
   }
 }

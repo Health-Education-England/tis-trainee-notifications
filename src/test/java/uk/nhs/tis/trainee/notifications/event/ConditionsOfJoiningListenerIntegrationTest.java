@@ -21,19 +21,31 @@
 
 package uk.nhs.tis.trainee.notifications.event;
 
+import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.notNullValue;
+import static org.hamcrest.CoreMatchers.startsWith;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.springframework.http.MediaType.APPLICATION_PDF_VALUE;
+import static org.springframework.http.MediaType.MULTIPART_MIXED_VALUE;
+import static org.springframework.http.MediaType.MULTIPART_RELATED_VALUE;
+import static org.springframework.http.MediaType.TEXT_HTML_VALUE;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.COJ_CONFIRMATION;
 
+import io.awspring.cloud.s3.S3Resource;
+import io.awspring.cloud.s3.S3Template;
+import jakarta.activation.DataHandler;
 import jakarta.mail.MessagingException;
 import jakarta.mail.Session;
 import jakarta.mail.internet.MimeMessage;
+import jakarta.mail.internet.MimeMultipart;
+import java.io.ByteArrayInputStream;
 import java.net.URI;
 import java.time.Instant;
 import java.util.Map;
@@ -56,8 +68,9 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.test.context.ActiveProfiles;
-import uk.nhs.tis.trainee.notifications.dto.CojSignedEvent;
-import uk.nhs.tis.trainee.notifications.dto.CojSignedEvent.ConditionsOfJoining;
+import uk.nhs.tis.trainee.notifications.dto.CojPublishedEvent;
+import uk.nhs.tis.trainee.notifications.dto.CojPublishedEvent.ConditionsOfJoining;
+import uk.nhs.tis.trainee.notifications.dto.StoredFile;
 import uk.nhs.tis.trainee.notifications.dto.UserDetails;
 import uk.nhs.tis.trainee.notifications.model.History;
 import uk.nhs.tis.trainee.notifications.model.History.RecipientInfo;
@@ -106,6 +119,9 @@ class ConditionsOfJoiningListenerIntegrationTest {
   @MockBean
   private HistoryService historyService;
 
+  @MockBean
+  private S3Template s3Template;
+
   @Autowired
   private EmailService emailService;
 
@@ -125,8 +141,8 @@ class ConditionsOfJoiningListenerIntegrationTest {
   @NullAndEmptySource
   void shouldSendDefaultCojConfirmationWhenTemplateVariablesNotAvailable(String missingValue)
       throws Exception {
-    CojSignedEvent event = new CojSignedEvent(PERSON_ID,
-        new ConditionsOfJoining(null));
+    CojPublishedEvent event = new CojPublishedEvent(PERSON_ID,
+        new ConditionsOfJoining(null), null);
     when(userAccountService.getUserDetailsById(USER_ID)).thenReturn(
         new UserDetails(true, EMAIL, TITLE, missingValue, missingValue, GMC));
 
@@ -135,12 +151,12 @@ class ConditionsOfJoiningListenerIntegrationTest {
     doAnswer(inv -> {
       inv.getArgument(3, Map.class).put("domain", URI.create(""));
       return inv.callRealMethod();
-    }).when(emailService).sendMessageToExistingUser(any(), any(), any(), any(), any());
+    }).when(emailService).sendMessageToExistingUser(any(), any(), any(), any(), any(), any());
 
     // Create a new listener instance to inject the spy.
     ConditionsOfJoiningListener listener = new ConditionsOfJoiningListener(emailService,
         templateVersion);
-    listener.handleConditionsOfJoiningReceived(event);
+    listener.handleConditionsOfJoiningPublished(event);
 
     ArgumentCaptor<MimeMessage> messageCaptor = ArgumentCaptor.captor();
     verify(mailSender).send(messageCaptor.capture());
@@ -176,12 +192,12 @@ class ConditionsOfJoiningListenerIntegrationTest {
 
   @Test
   void shouldSendFullyTailoredCojConfirmationWhenAllTemplateVariablesAvailable() throws Exception {
-    CojSignedEvent event = new CojSignedEvent(PERSON_ID,
-        new ConditionsOfJoining(SYNCED_AT));
+    CojPublishedEvent event = new CojPublishedEvent(PERSON_ID,
+        new ConditionsOfJoining(SYNCED_AT), null);
     when(userAccountService.getUserDetailsById(USER_ID)).thenReturn(
         new UserDetails(true, EMAIL, TITLE, FAMILY_NAME, GIVEN_NAME, GMC));
 
-    listener.handleConditionsOfJoiningReceived(event);
+    listener.handleConditionsOfJoiningPublished(event);
 
     ArgumentCaptor<MimeMessage> messageCaptor = ArgumentCaptor.captor();
     verify(mailSender).send(messageCaptor.capture());
@@ -221,12 +237,12 @@ class ConditionsOfJoiningListenerIntegrationTest {
 
   @Test
   void shouldSendCojConfirmationWithTailoredNameWhenAvailable() throws Exception {
-    CojSignedEvent event = new CojSignedEvent(PERSON_ID,
-        new ConditionsOfJoining(null));
+    CojPublishedEvent event = new CojPublishedEvent(PERSON_ID,
+        new ConditionsOfJoining(null), null);
     when(userAccountService.getUserDetailsById(USER_ID)).thenReturn(
         new UserDetails(true, EMAIL, TITLE, FAMILY_NAME, GIVEN_NAME, GMC));
 
-    listener.handleConditionsOfJoiningReceived(event);
+    listener.handleConditionsOfJoiningPublished(event);
 
     ArgumentCaptor<MimeMessage> messageCaptor = ArgumentCaptor.captor();
     verify(mailSender).send(messageCaptor.capture());
@@ -262,12 +278,12 @@ class ConditionsOfJoiningListenerIntegrationTest {
 
   @Test
   void shouldSendCojConfirmationWithTailoredLocalOfficeWhenAvailable() throws Exception {
-    CojSignedEvent event = new CojSignedEvent(PERSON_ID,
-        new ConditionsOfJoining(null));
+    CojPublishedEvent event = new CojPublishedEvent(PERSON_ID,
+        new ConditionsOfJoining(null), null);
     when(userAccountService.getUserDetailsById(USER_ID)).thenReturn(
         new UserDetails(true, EMAIL, TITLE, null, null, GMC));
 
-    listener.handleConditionsOfJoiningReceived(event);
+    listener.handleConditionsOfJoiningPublished(event);
 
     ArgumentCaptor<MimeMessage> messageCaptor = ArgumentCaptor.captor();
     verify(mailSender).send(messageCaptor.capture());
@@ -302,12 +318,12 @@ class ConditionsOfJoiningListenerIntegrationTest {
 
   @Test
   void shouldSendCojConfirmationWithTailoredSyncedAtWhenAvailable() throws Exception {
-    CojSignedEvent event = new CojSignedEvent(PERSON_ID,
-        new ConditionsOfJoining(SYNCED_AT));
+    CojPublishedEvent event = new CojPublishedEvent(PERSON_ID,
+        new ConditionsOfJoining(SYNCED_AT), null);
     when(userAccountService.getUserDetailsById(USER_ID)).thenReturn(
         new UserDetails(true, EMAIL, TITLE, null, null, GMC));
 
-    listener.handleConditionsOfJoiningReceived(event);
+    listener.handleConditionsOfJoiningPublished(event);
 
     ArgumentCaptor<MimeMessage> messageCaptor = ArgumentCaptor.captor();
     verify(mailSender).send(messageCaptor.capture());
@@ -345,12 +361,12 @@ class ConditionsOfJoiningListenerIntegrationTest {
 
   @Test
   void shouldSendCojConfirmationWithTailoredDomainWhenAvailable() throws Exception {
-    CojSignedEvent event = new CojSignedEvent(PERSON_ID,
-        new ConditionsOfJoining(null));
+    CojPublishedEvent event = new CojPublishedEvent(PERSON_ID,
+        new ConditionsOfJoining(null), null);
     when(userAccountService.getUserDetailsById(USER_ID)).thenReturn(
         new UserDetails(true, EMAIL, TITLE, null, null, GMC));
 
-    listener.handleConditionsOfJoiningReceived(event);
+    listener.handleConditionsOfJoiningPublished(event);
 
     ArgumentCaptor<MimeMessage> messageCaptor = ArgumentCaptor.captor();
     verify(mailSender).send(messageCaptor.capture());
@@ -385,13 +401,64 @@ class ConditionsOfJoiningListenerIntegrationTest {
   }
 
   @Test
-  void shouldStoreCojReceivedNotificationHistoryWhenMessageSent() throws MessagingException {
-    CojSignedEvent event = new CojSignedEvent(PERSON_ID,
-        new ConditionsOfJoining(SYNCED_AT));
+  void shouldSendMultipartCojConfirmationWhenPdfAvailable() throws Exception {
+    when(userAccountService.getUserDetailsById(USER_ID)).thenReturn(
+        new UserDetails(true, EMAIL, TITLE, null, null, GMC));
+
+    S3Resource s3Resource = mock(S3Resource.class);
+    when(s3Resource.getFilename()).thenReturn("file.pdf");
+    when(s3Resource.contentType()).thenReturn(APPLICATION_PDF_VALUE);
+    when(s3Resource.getContentAsByteArray()).thenReturn("test".getBytes());
+    when(s3Template.download("my-bucket", "my-key.pdf")).thenReturn(s3Resource);
+
+    StoredFile pdf = new StoredFile("my-bucket", "my-key.pdf");
+    CojPublishedEvent event = new CojPublishedEvent(PERSON_ID,
+        new ConditionsOfJoining(null), pdf);
+
+    listener.handleConditionsOfJoiningPublished(event);
+
+    ArgumentCaptor<MimeMessage> messageCaptor = ArgumentCaptor.captor();
+    verify(mailSender).send(messageCaptor.capture());
+
+    MimeMessage message = messageCaptor.getValue();
+    assertThat("Unexpected content java type.", message.getContent(),
+        instanceOf(MimeMultipart.class));
+
+    MimeMultipart mixedContent = (MimeMultipart) message.getContent();
+    assertThat("Unexpected content type.", mixedContent.getContentType(),
+        startsWith(MULTIPART_MIXED_VALUE));
+    assertThat("Unexpected content part count.", mixedContent.getCount(), is(2));
+
+    MimeMultipart relatedContent = (MimeMultipart) mixedContent.getBodyPart(0).getContent();
+    assertThat("Unexpected content type.", relatedContent.getContentType(),
+        startsWith(MULTIPART_RELATED_VALUE));
+    assertThat("Unexpected content part count.", relatedContent.getCount(), is(1));
+
+    DataHandler content = relatedContent.getBodyPart(0).getDataHandler();
+    assertThat("Unexpected content type.", content.getContentType(), startsWith(TEXT_HTML_VALUE));
+    Document document = Jsoup.parse((String) content.getContent());
+    Elements bodyChildren = document.body().children();
+    assertThat("Unexpected body children count.", bodyChildren.size(), is(6));
+
+    DataHandler attachment = mixedContent.getBodyPart(1).getDataHandler();
+    assertThat("Unexpected attachment type.", attachment.getContentType(),
+        is(APPLICATION_PDF_VALUE));
+    assertThat("Unexpected attachment name.", attachment.getName(), is("file.pdf"));
+
+    Object attachmentContent = attachment.getContent();
+    assertThat("Unexpected attachment.", attachmentContent, instanceOf(ByteArrayInputStream.class));
+    assertThat("Unexpected attachment content.",
+        ((ByteArrayInputStream) attachmentContent).readAllBytes(), is("test".getBytes()));
+  }
+
+  @Test
+  void shouldStoreCojPublishedNotificationHistoryWhenMessageSent() throws MessagingException {
+    CojPublishedEvent event = new CojPublishedEvent(PERSON_ID,
+        new ConditionsOfJoining(SYNCED_AT), null);
     when(userAccountService.getUserDetailsById(USER_ID)).thenReturn(
         new UserDetails(true, EMAIL, TITLE, FAMILY_NAME, GIVEN_NAME, GMC));
 
-    listener.handleConditionsOfJoiningReceived(event);
+    listener.handleConditionsOfJoiningPublished(event);
 
     ArgumentCaptor<History> historyCaptor = ArgumentCaptor.captor();
     verify(historyService).save(historyCaptor.capture());

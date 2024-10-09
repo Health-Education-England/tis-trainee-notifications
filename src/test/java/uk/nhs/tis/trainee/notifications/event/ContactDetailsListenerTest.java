@@ -53,7 +53,7 @@ class ContactDetailsListenerTest {
 
   @Test
   void shouldNotThrowAnExceptionOnNonRecordEvents() {
-    //ensure events with COJ_RECEIVED structure (and any other) are ignored, and not requeued
+    //ensure events with COJ_PUBLISHED structure (and any other) are ignored, and not requeued
     ContactDetailsEvent event = new ContactDetailsEvent(TIS_ID, null);
 
     assertDoesNotThrow(() -> listener.handleUpdate(event));

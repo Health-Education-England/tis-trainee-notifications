@@ -569,6 +569,7 @@ class NotificationServiceTest {
     History history = historyCaptor.getValue();
     assertThat("Unexpected notification id.", history.id(), notNullValue());
     assertThat("Unexpected notification type.", history.type(), is(notificationType));
+    assertThat("Unexpected attachments.", history.attachments(), nullValue());
     assertThat("Unexpected sent at.", history.sentAt(), notNullValue());
     assertThat("Unexpected status.", history.status(), is(SCHEDULED));
     assertThat("Unexpected status detail.", history.statusDetail(), nullValue());
@@ -637,6 +638,7 @@ class NotificationServiceTest {
     History history = historyCaptor.getValue();
     assertThat("Unexpected notification id.", history.id(), notNullValue());
     assertThat("Unexpected notification type.", history.type(), is(notificationType));
+    assertThat("Unexpected attachments.", history.attachments(), nullValue());
     assertThat("Unexpected sent at.", history.sentAt(), notNullValue());
     assertThat("Unexpected status.", history.status(), is(SCHEDULED));
     assertThat("Unexpected status detail.", history.statusDetail(), nullValue());
@@ -665,8 +667,6 @@ class NotificationServiceTest {
 
   @Test
   void shouldNotSaveSchedulePmNotificationHistoryWhenRecipientNotValid() throws SchedulerException {
-    NotificationType notificationType = NotificationType.PROGRAMME_CREATED;
-
     LocalDate expectedDate = START_DATE.minusDays(0);
     Date when = Date.from(expectedDate
         .atStartOfDay()
@@ -685,7 +685,7 @@ class NotificationServiceTest {
     when(messagingControllerService.isProgrammeMembershipInPilot2024(any(), any()))
         .thenReturn(true);
 
-    String jobId = notificationType + "-" + TIS_ID;
+    String jobId = NotificationType.PROGRAMME_CREATED + "-" + TIS_ID;
     service.scheduleNotification(jobId, programmeJobDataMap, when);
 
     verify(historyService, never()).save(any());
@@ -693,8 +693,6 @@ class NotificationServiceTest {
 
   @Test
   void shouldNotSaveSchedulePmNotificationHistoryWhenNotNewStarter() throws SchedulerException {
-    NotificationType notificationType = NotificationType.PROGRAMME_CREATED;
-
     LocalDate expectedDate = START_DATE.minusDays(0);
     Date when = Date.from(expectedDate
         .atStartOfDay()
@@ -713,7 +711,7 @@ class NotificationServiceTest {
     when(messagingControllerService.isProgrammeMembershipInPilot2024(any(), any()))
         .thenReturn(true);
 
-    String jobId = notificationType + "-" + TIS_ID;
+    String jobId = NotificationType.PROGRAMME_CREATED + "-" + TIS_ID;
     service.scheduleNotification(jobId, programmeJobDataMap, when);
 
     verify(historyService, never()).save(any());
@@ -721,8 +719,6 @@ class NotificationServiceTest {
 
   @Test
   void shouldNotSaveSchedulePmNotificationHistoryWhenNotInPilot() throws SchedulerException {
-    NotificationType notificationType = NotificationType.PROGRAMME_DAY_ONE;
-
     LocalDate expectedDate = START_DATE.minusDays(0);
     Date when = Date.from(expectedDate
         .atStartOfDay()
@@ -741,7 +737,7 @@ class NotificationServiceTest {
     when(messagingControllerService.isProgrammeMembershipInPilot2024(any(), any()))
         .thenReturn(false);
 
-    String jobId = notificationType + "-" + TIS_ID;
+    String jobId = NotificationType.PROGRAMME_DAY_ONE + "-" + TIS_ID;
     service.scheduleNotification(jobId, programmeJobDataMap, when);
 
     verify(historyService, never()).save(any());
@@ -749,8 +745,6 @@ class NotificationServiceTest {
 
   @Test
   void shouldNotSaveSchedulePlacementNotificationWhenRecipientNotValid() throws SchedulerException {
-    NotificationType notificationType = NotificationType.PLACEMENT_UPDATED_WEEK_12;
-
     LocalDate expectedDate = START_DATE.minusDays(84);
     Date when = Date.from(expectedDate
         .atStartOfDay()
@@ -769,7 +763,7 @@ class NotificationServiceTest {
     when(messagingControllerService.isPlacementInPilot2024(any(), any()))
         .thenReturn(true);
 
-    String jobId = notificationType + "-" + TIS_ID;
+    String jobId = NotificationType.PLACEMENT_UPDATED_WEEK_12 + "-" + TIS_ID;
     service.scheduleNotification(jobId, placementJobDataMap, when);
 
     verify(historyService, never()).save(any());
@@ -777,8 +771,6 @@ class NotificationServiceTest {
 
   @Test
   void shouldNotSaveSchedulePlacementNotificationWhenNotInPilot() throws SchedulerException {
-    NotificationType notificationType = NotificationType.PLACEMENT_UPDATED_WEEK_12;
-
     LocalDate expectedDate = START_DATE.minusDays(84);
     Date when = Date.from(expectedDate
         .atStartOfDay()
@@ -797,7 +789,7 @@ class NotificationServiceTest {
     when(messagingControllerService.isPlacementInPilot2024(any(), any()))
         .thenReturn(false);
 
-    String jobId = notificationType + "-" + TIS_ID;
+    String jobId = NotificationType.PLACEMENT_UPDATED_WEEK_12 + "-" + TIS_ID;
     service.scheduleNotification(jobId, placementJobDataMap, when);
 
     verify(historyService, never()).save(any());

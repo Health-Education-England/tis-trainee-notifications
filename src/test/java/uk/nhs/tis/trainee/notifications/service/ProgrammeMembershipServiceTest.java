@@ -81,7 +81,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.quartz.JobDataMap;
 import org.quartz.SchedulerException;
-import uk.nhs.tis.trainee.notifications.dto.CojSignedEvent.ConditionsOfJoining;
+import uk.nhs.tis.trainee.notifications.dto.CojPublishedEvent.ConditionsOfJoining;
 import uk.nhs.tis.trainee.notifications.dto.UserDetails;
 import uk.nhs.tis.trainee.notifications.model.Curriculum;
 import uk.nhs.tis.trainee.notifications.model.History;
@@ -555,7 +555,8 @@ class ProgrammeMembershipServiceTest {
     RecipientInfo recipientInfo = new RecipientInfo("id", MessageType.IN_APP, null);
     List<History> sentNotifications = List.of(
         new History(ObjectId.get(), new TisReferenceInfo(PROGRAMME_MEMBERSHIP, TIS_ID),
-            notificationType, recipientInfo, null, Instant.MIN, Instant.MAX, UNREAD, null, null));
+            notificationType, recipientInfo, null, null, Instant.MIN, Instant.MAX, UNREAD, null,
+            null));
 
     when(historyService.findAllHistoryForTrainee(PERSON_ID)).thenReturn(sentNotifications);
     when(notificationService.meetsCriteria(programmeMembership, true,
@@ -736,12 +737,12 @@ class ProgrammeMembershipServiceTest {
     sentNotifications.add(new History(ObjectId.get(),
         new TisReferenceInfo(PROGRAMME_MEMBERSHIP, TIS_ID),
         PROGRAMME_CREATED, recipientInfo,
-        templateInfo,
+        templateInfo, null,
         Instant.MIN, Instant.MAX, SENT, null, null));
     sentNotifications.add(new History(ObjectId.get(),
         new TisReferenceInfo(PROGRAMME_MEMBERSHIP, TIS_ID),
         PROGRAMME_DAY_ONE, recipientInfo,
-        templateInfo,
+        templateInfo, null,
         Instant.MIN, Instant.MAX, SENT, null, null));
 
     when(historyService.findAllHistoryForTrainee(PERSON_ID)).thenReturn(sentNotifications);
@@ -763,7 +764,7 @@ class ProgrammeMembershipServiceTest {
       sentNotifications.add(new History(ObjectId.get(),
           new TisReferenceInfo(PROGRAMME_MEMBERSHIP, TIS_ID),
           inAppType, recipientInfo,
-          templateInfo,
+          templateInfo, null,
           Instant.MIN, Instant.MAX, SENT, null, null));
     }
     when(historyService.findAllHistoryForTrainee(PERSON_ID)).thenReturn(sentNotifications);
@@ -798,13 +799,13 @@ class ProgrammeMembershipServiceTest {
     sentNotifications.add(new History(ObjectId.get(),
         new TisReferenceInfo(PROGRAMME_MEMBERSHIP, TIS_ID),
         PROGRAMME_CREATED, recipientInfo,
-        templateInfo,
+        templateInfo, null,
         Instant.from(originalSentAt.atStartOfDay(timezone)), Instant.MAX,
         SENT, null, null));
     sentNotifications.add(new History(ObjectId.get(),
         new TisReferenceInfo(PROGRAMME_MEMBERSHIP, TIS_ID),
         PROGRAMME_DAY_ONE, recipientInfo,
-        templateInfo,
+        templateInfo, null,
         Instant.from(originalSentAt.atStartOfDay(timezone)), Instant.MAX,
         SENT, null, null));
 
@@ -834,7 +835,7 @@ class ProgrammeMembershipServiceTest {
       sentNotifications.add(new History(ObjectId.get(),
           new TisReferenceInfo(PROGRAMME_MEMBERSHIP, TIS_ID),
           inAppType, recipientInfo,
-          templateInfo,
+          templateInfo, null,
           Instant.from(originalSentAt.atStartOfDay(timezone)), Instant.MAX,
           SENT, null, null));
     }
@@ -873,13 +874,13 @@ class ProgrammeMembershipServiceTest {
         new TisReferenceInfo(PROGRAMME_MEMBERSHIP, TIS_ID),
         PROGRAMME_CREATED, recipientInfo,
         templateInfo,
-        null, null,
+        null, null, null,
         SENT, null, null));
     sentNotifications.add(new History(ObjectId.get(),
         new TisReferenceInfo(PROGRAMME_MEMBERSHIP, TIS_ID),
         PROGRAMME_DAY_ONE, recipientInfo,
         templateInfo,
-        null, null,
+        null, null, null,
         SENT, null, null));
 
     when(historyService.findAllHistoryForTrainee(PERSON_ID)).thenReturn(sentNotifications);
@@ -910,7 +911,7 @@ class ProgrammeMembershipServiceTest {
           new TisReferenceInfo(PROGRAMME_MEMBERSHIP, TIS_ID),
           inAppType, recipientInfo,
           templateInfo,
-          null, null,
+          null, null, null,
           SENT, null, null));
     }
     when(historyService.findAllHistoryForTrainee(PERSON_ID)).thenReturn(sentNotifications);
@@ -947,7 +948,7 @@ class ProgrammeMembershipServiceTest {
     sentNotifications.add(new History(ObjectId.get(),
         new TisReferenceInfo(PROGRAMME_MEMBERSHIP, TIS_ID),
         PROGRAMME_CREATED, recipientInfo,
-        templateInfo,
+        templateInfo, null,
         Instant.from(originalSentAt.atStartOfDay(timezone)), Instant.MAX,
         SENT, null, null));
 
@@ -977,7 +978,7 @@ class ProgrammeMembershipServiceTest {
       sentNotifications.add(new History(ObjectId.get(),
           new TisReferenceInfo(PROGRAMME_MEMBERSHIP, TIS_ID),
           inAppType, recipientInfo,
-          templateInfo,
+          templateInfo, null,
           Instant.from(originalSentAt.atStartOfDay(timezone)), Instant.MAX,
           SENT, null, null));
     }
@@ -1024,13 +1025,13 @@ class ProgrammeMembershipServiceTest {
     sentNotifications.add(new History(ObjectId.get(),
         new TisReferenceInfo(PROGRAMME_MEMBERSHIP, TIS_ID),
         PROGRAMME_CREATED, recipientInfo,
-        mostRecentTemplateInfo,
+        mostRecentTemplateInfo, null,
         Instant.from(mostRecentSentAt.atStartOfDay(timezone)), Instant.MAX,
         SENT, null, null));
     sentNotifications.add(new History(ObjectId.get(),
         new TisReferenceInfo(PROGRAMME_MEMBERSHIP, TIS_ID),
         PROGRAMME_CREATED, recipientInfo,
-        previousTemplateInfo,
+        previousTemplateInfo, null,
         Instant.from(previousSentAt.atStartOfDay(timezone)), Instant.MAX,
         SENT, null, null));
 
@@ -1065,13 +1066,13 @@ class ProgrammeMembershipServiceTest {
       sentNotifications.add(new History(ObjectId.get(),
           new TisReferenceInfo(PROGRAMME_MEMBERSHIP, TIS_ID),
           inAppType, recipientInfo,
-          mostRecentTemplateInfo,
+          mostRecentTemplateInfo, null,
           Instant.from(mostRecentSentAt.atStartOfDay(timezone)), Instant.MAX,
           SENT, null, null));
       sentNotifications.add(new History(ObjectId.get(),
           new TisReferenceInfo(PROGRAMME_MEMBERSHIP, TIS_ID),
           inAppType, recipientInfo,
-          previousTemplateInfo,
+          previousTemplateInfo, null,
           Instant.from(previousSentAt.atStartOfDay(timezone)), Instant.MAX,
           SENT, null, null));
     }
@@ -1118,25 +1119,25 @@ class ProgrammeMembershipServiceTest {
     sentNotifications.add(new History(ObjectId.get(),
         new TisReferenceInfo(PROGRAMME_MEMBERSHIP, TIS_ID),
         PROGRAMME_CREATED, recipientInfo,
-        mostRecentTemplateInfo,
+        mostRecentTemplateInfo, null,
         Instant.from(mostRecentSentAt.atStartOfDay(timezone)), Instant.MAX,
         SENT, null, null));
     sentNotifications.add(new History(ObjectId.get(),
         new TisReferenceInfo(PROGRAMME_MEMBERSHIP, TIS_ID),
         PROGRAMME_CREATED, recipientInfo,
-        previousTemplateInfo,
+        previousTemplateInfo, null,
         Instant.from(previousSentAt.atStartOfDay(timezone)), Instant.MAX,
         SENT, null, null));
     sentNotifications.add(new History(ObjectId.get(),
         new TisReferenceInfo(PROGRAMME_MEMBERSHIP, TIS_ID),
         PROGRAMME_DAY_ONE, recipientInfo,
-        mostRecentTemplateInfo,
+        mostRecentTemplateInfo, null,
         Instant.from(mostRecentSentAt.atStartOfDay(timezone)), Instant.MAX,
         SENT, null, null));
     sentNotifications.add(new History(ObjectId.get(),
         new TisReferenceInfo(PROGRAMME_MEMBERSHIP, TIS_ID),
         PROGRAMME_DAY_ONE, recipientInfo,
-        previousTemplateInfo,
+        previousTemplateInfo, null,
         Instant.from(previousSentAt.atStartOfDay(timezone)), Instant.MAX,
         SENT, null, null));
 
@@ -1168,13 +1169,13 @@ class ProgrammeMembershipServiceTest {
       sentNotifications.add(new History(ObjectId.get(),
           new TisReferenceInfo(PROGRAMME_MEMBERSHIP, TIS_ID),
           inAppType, recipientInfo,
-          mostRecentTemplateInfo,
+          mostRecentTemplateInfo, null,
           Instant.from(mostRecentSentAt.atStartOfDay(timezone)), Instant.MAX,
           SENT, null, null));
       sentNotifications.add(new History(ObjectId.get(),
           new TisReferenceInfo(PROGRAMME_MEMBERSHIP, TIS_ID),
           inAppType, recipientInfo,
-          previousTemplateInfo,
+          previousTemplateInfo, null,
           Instant.from(previousSentAt.atStartOfDay(timezone)), Instant.MAX,
           SENT, null, null));
     }
@@ -1210,7 +1211,7 @@ class ProgrammeMembershipServiceTest {
     History sentNotification = new History(ObjectId.get(),
         new TisReferenceInfo(PROGRAMME_MEMBERSHIP, TIS_ID),
         PROGRAMME_CREATED, recipientInfo,
-        templateInfo,
+        templateInfo, null,
         Instant.from(originalSentAt.atStartOfDay(timezone)), Instant.MAX,
         SENT, null, null);
     Map<NotificationType, History> alreadySent = Map.of(PROGRAMME_CREATED, sentNotification);
@@ -1235,7 +1236,7 @@ class ProgrammeMembershipServiceTest {
     History sentNotification = new History(ObjectId.get(),
         new TisReferenceInfo(PROGRAMME_MEMBERSHIP, TIS_ID),
         PROGRAMME_CREATED, recipientInfo,
-        templateInfo,
+        templateInfo, null,
         Instant.from(originalSentAt.atStartOfDay(timezone)), Instant.MAX,
         SENT, null, null);
     Map<NotificationType, History> alreadySent = Map.of(PROGRAMME_CREATED, sentNotification);
@@ -1257,7 +1258,7 @@ class ProgrammeMembershipServiceTest {
     History sentNotification = new History(ObjectId.get(),
         new TisReferenceInfo(PROGRAMME_MEMBERSHIP, TIS_ID),
         PROGRAMME_CREATED, recipientInfo,
-        templateInfo,
+        templateInfo, null,
         Instant.from(originalSentAt.atStartOfDay(timezone)), Instant.MAX,
         SENT, null, null);
     Map<NotificationType, History> alreadySent = Map.of(PROGRAMME_CREATED, sentNotification);
@@ -1276,7 +1277,7 @@ class ProgrammeMembershipServiceTest {
     History sentNotification = new History(ObjectId.get(),
         new TisReferenceInfo(PROGRAMME_MEMBERSHIP, TIS_ID),
         PROGRAMME_CREATED, recipientInfo,
-        null,
+        null, null,
         Instant.MIN, Instant.MAX,
         SENT, null, null);
     Map<NotificationType, History> alreadySent = Map.of(PROGRAMME_CREATED, sentNotification);
@@ -1296,7 +1297,7 @@ class ProgrammeMembershipServiceTest {
     History sentNotification = new History(ObjectId.get(),
         new TisReferenceInfo(PROGRAMME_MEMBERSHIP, TIS_ID),
         PROGRAMME_CREATED, recipientInfo,
-        templateInfo,
+        templateInfo, null,
         Instant.MIN, Instant.MAX,
         SENT, null, null);
     Map<NotificationType, History> alreadySent = Map.of(PROGRAMME_CREATED, sentNotification);
@@ -1317,7 +1318,7 @@ class ProgrammeMembershipServiceTest {
     History sentNotification = new History(ObjectId.get(),
         new TisReferenceInfo(PROGRAMME_MEMBERSHIP, TIS_ID),
         PROGRAMME_CREATED, recipientInfo,
-        templateInfo,
+        templateInfo, null,
         Instant.MIN, Instant.MAX,
         SENT, null, null);
     Map<NotificationType, History> alreadySent = Map.of(PROGRAMME_CREATED, sentNotification);
@@ -1339,7 +1340,7 @@ class ProgrammeMembershipServiceTest {
     sentNotifications.add(new History(ObjectId.get(),
         new TisReferenceInfo(PROGRAMME_MEMBERSHIP, TIS_ID),
         notificationType, recipientInfo,
-        null,
+        null, null,
         Instant.MIN, Instant.MAX, SENT, null, null));
 
     when(historyService.findAllHistoryForTrainee(PERSON_ID)).thenReturn(sentNotifications);
@@ -1358,7 +1359,7 @@ class ProgrammeMembershipServiceTest {
     sentNotifications.add(new History(ObjectId.get(),
         new TisReferenceInfo(TisReferenceType.PLACEMENT, TIS_ID), //note: placement type
         PROGRAMME_CREATED, recipientInfo, //to avoid masking the test condition
-        null,
+        null, null,
         Instant.MIN, Instant.MAX, SENT, null, null));
 
     when(historyService.findAllHistoryForTrainee(PERSON_ID)).thenReturn(sentNotifications);
@@ -1377,7 +1378,7 @@ class ProgrammeMembershipServiceTest {
     sentNotifications.add(new History(ObjectId.get(),
         new TisReferenceInfo(PROGRAMME_MEMBERSHIP, "another id"),
         PROGRAMME_CREATED, recipientInfo,
-        null,
+        null, null,
         Instant.MIN, Instant.MAX, SENT, null, null));
 
     when(historyService.findAllHistoryForTrainee(PERSON_ID)).thenReturn(sentNotifications);
@@ -1396,7 +1397,7 @@ class ProgrammeMembershipServiceTest {
     sentNotifications.add(new History(ObjectId.get(),
         null,
         PROGRAMME_CREATED, recipientInfo,
-        null,
+        null, null,
         Instant.MIN, Instant.MAX, SENT, null, null));
 
     when(historyService.findAllHistoryForTrainee(PERSON_ID)).thenReturn(sentNotifications);
@@ -1414,7 +1415,7 @@ class ProgrammeMembershipServiceTest {
     sentNotifications.add(new History(ObjectId.get(),
         null,
         PROGRAMME_CREATED,
-        recipientInfo, null,
+        recipientInfo, null, null,
         Instant.MIN, Instant.MAX, SENT, null, null));
 
     when(historyService.findAllHistoryForTrainee(PERSON_ID)).thenReturn(sentNotifications);
@@ -1433,7 +1434,7 @@ class ProgrammeMembershipServiceTest {
     sentNotifications.add(new History(ObjectId.get(),
         new TisReferenceInfo(PROGRAMME_MEMBERSHIP, TIS_ID),
         PROGRAMME_DAY_ONE, any(),
-        new TemplateInfo(null, null, null),
+        new TemplateInfo(null, null, null), null,
         Instant.from(mostRecentSentAt.atStartOfDay(timezone)), Instant.MAX,
         SENT, null, null));
     when(historyService.findAllHistoryForTrainee(PERSON_ID)).thenReturn(sentNotifications);

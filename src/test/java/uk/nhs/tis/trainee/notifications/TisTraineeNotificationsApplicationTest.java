@@ -24,6 +24,7 @@ package uk.nhs.tis.trainee.notifications;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 
+import io.awspring.cloud.s3.S3Template;
 import org.junit.jupiter.api.Test;
 import org.quartz.Scheduler;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -46,6 +47,9 @@ class TisTraineeNotificationsApplicationTest {
 
   @MockBean
   private Scheduler scheduler;
+
+  @MockBean
+  private S3Template s3Template;
 
   @Autowired
   ApplicationContext context;

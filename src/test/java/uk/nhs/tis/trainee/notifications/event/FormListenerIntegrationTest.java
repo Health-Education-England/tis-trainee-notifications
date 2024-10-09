@@ -31,6 +31,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.FORM_UPDATED;
 
+import io.awspring.cloud.s3.S3Template;
 import jakarta.mail.MessagingException;
 import jakarta.mail.Session;
 import jakarta.mail.internet.MimeMessage;
@@ -112,6 +113,9 @@ class FormListenerIntegrationTest {
 
   @MockBean
   private HistoryService historyService;
+
+  @MockBean
+  private S3Template s3Template;
 
   @Autowired
   private EmailService emailService;
