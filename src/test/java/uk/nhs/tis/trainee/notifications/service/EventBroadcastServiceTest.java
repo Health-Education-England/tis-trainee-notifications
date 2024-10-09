@@ -183,7 +183,7 @@ class EventBroadcastServiceTest {
         = new TemplateInfo(TEMPLATE_NAME, TEMPLATE_VERSION, TEMPLATE_VARIABLES);
     TisReferenceInfo tisReferenceInfo = new TisReferenceInfo(TIS_REFERENCE_TYPE, TIS_REFERENCE_ID);
     History history = new History(HISTORY_ID, tisReferenceInfo, NOTIFICATION_TYPE,
-        recipientInfo, templateInfo, SENT_AT, READ_AT, NOTIFICATION_STATUS,
+        recipientInfo, templateInfo, null, SENT_AT, READ_AT, NOTIFICATION_STATUS,
         NOTIFICATION_STATUS_DETAIL, LAST_RETRY);
 
     service.publishNotificationsEvent(history);
@@ -239,7 +239,7 @@ class EventBroadcastServiceTest {
         is(NOTIFICATION_STATUS.toString()));
 
     assertThat("Unexpected message notification status detail.", message.get("statusDetail"),
-        is(NOTIFICATION_STATUS_DETAIL.toString()));
+        is(NOTIFICATION_STATUS_DETAIL));
 
     assertThat("Unexpected message last retry.", message.get("lastRetry"),
         is(LAST_RETRY.toString()));
@@ -299,6 +299,6 @@ class EventBroadcastServiceTest {
     TemplateInfo templateInfo = new TemplateInfo(null, null, Map.of());
     TisReferenceInfo tisReferenceInfo = new TisReferenceInfo(null, null);
     return new History(HISTORY_ID, tisReferenceInfo, NOTIFICATION_TYPE,
-        recipientInfo, templateInfo, SENT_AT, READ_AT, NOTIFICATION_STATUS, null, null);
+        recipientInfo, templateInfo, null, SENT_AT, READ_AT, NOTIFICATION_STATUS, null, null);
   }
 }

@@ -67,7 +67,7 @@ public class InAppService {
         templateVariables);
 
     History history = new History(null, tisReference, notificationType, recipient, template,
-        sendAt, null, UNREAD, null, null);
+        null, sendAt, null, UNREAD, null, null);
     if (!doNotStoreJustLog) {
       historyService.save(history);
     } else {

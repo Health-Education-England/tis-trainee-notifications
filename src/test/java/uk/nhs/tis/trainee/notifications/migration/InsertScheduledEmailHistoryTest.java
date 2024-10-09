@@ -198,6 +198,7 @@ class InsertScheduledEmailHistoryTest {
         null,
         null,
         null,
+        null,
         NotificationStatus.SCHEDULED,
         null,
         null);

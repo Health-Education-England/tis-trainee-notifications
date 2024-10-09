@@ -23,9 +23,12 @@ package uk.nhs.tis.trainee.notifications.service;
 
 import static uk.nhs.tis.trainee.notifications.model.MessageType.EMAIL;
 
+import io.awspring.cloud.s3.S3Resource;
+import io.awspring.cloud.s3.S3Template;
 import jakarta.annotation.Nullable;
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
+import java.io.IOException;
 import java.math.BigInteger;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
@@ -33,17 +36,21 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.logging.log4j.util.Strings;
 import org.bson.types.ObjectId;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.ByteArrayResource;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
 import org.thymeleaf.context.Context;
 import software.amazon.awssdk.services.cognitoidentityprovider.model.UserNotFoundException;
+import uk.nhs.tis.trainee.notifications.dto.StoredFile;
 import uk.nhs.tis.trainee.notifications.dto.UserDetails;
 import uk.nhs.tis.trainee.notifications.model.History;
 import uk.nhs.tis.trainee.notifications.model.History.RecipientInfo;
@@ -63,17 +70,19 @@ public class EmailService {
   private final HistoryService historyService;
   private final JavaMailSender mailSender;
   private final TemplateService templateService;
+  private final S3Template s3Template;
   private final String sender;
   private final URI appDomain;
 
   EmailService(UserAccountService userAccountService, HistoryService historyService,
-      JavaMailSender mailSender, TemplateService templateService,
+      JavaMailSender mailSender, TemplateService templateService, S3Template s3Template,
       @Value("${application.email.sender}") String sender,
       @Value("${application.domain}") URI appDomain) {
     this.userAccountService = userAccountService;
     this.historyService = historyService;
     this.mailSender = mailSender;
     this.templateService = templateService;
+    this.s3Template = s3Template;
     this.sender = sender;
     this.appDomain = appDomain;
   }
@@ -92,6 +101,25 @@ public class EmailService {
   public void sendMessageToExistingUser(String traineeId, NotificationType notificationType,
       String templateVersion, Map<String, Object> templateVariables,
       TisReferenceInfo tisReferenceInfo) throws MessagingException {
+    sendMessageToExistingUser(traineeId, notificationType, templateVersion, templateVariables,
+        tisReferenceInfo, null);
+  }
+
+  /**
+   * Email a user with an existing account, the name and domain variables will be set if not
+   * provided.
+   *
+   * @param traineeId         The trainee ID of the user.
+   * @param notificationType  The type of notification, which will determine the template used.
+   * @param templateVersion   The version of the template to be sent.
+   * @param templateVariables The variables to pass to the template.
+   * @param tisReferenceInfo  The TIS reference information (table and key).
+   * @param attachment        A published PDF to include as an attachment.
+   * @throws MessagingException When the message could not be sent.
+   */
+  public void sendMessageToExistingUser(String traineeId, NotificationType notificationType,
+      String templateVersion, Map<String, Object> templateVariables,
+      TisReferenceInfo tisReferenceInfo, StoredFile attachment) throws MessagingException {
     if (traineeId == null) {
       throw new IllegalArgumentException("Unable to send notification as no trainee ID available");
     }
@@ -107,7 +135,7 @@ public class EmailService {
     templateVariables.putIfAbsent("familyName", userDetails.familyName());
     templateVariables.putIfAbsent("givenName", userDetails.givenName());
     sendMessage(traineeId, userDetails.email(), notificationType, templateVersion,
-        templateVariables, tisReferenceInfo, false);
+        templateVariables, tisReferenceInfo, attachment, false);
   }
 
   /**
@@ -128,6 +156,30 @@ public class EmailService {
       NotificationType notificationType,
       String templateVersion, Map<String, Object> templateVariables,
       TisReferenceInfo tisReferenceInfo, boolean doNotSendJustLog) throws MessagingException {
+    sendMessage(traineeId, recipient, notificationType, templateVersion, templateVariables,
+        tisReferenceInfo, null, doNotSendJustLog);
+  }
+
+  /**
+   * Send an email message using a given template, the domain variable will be set if not provided.
+   * If no email address is given a history record will still be saved with a failed state for
+   * reporting purposes.
+   *
+   * @param traineeId         The trainee ID of the recipient.
+   * @param recipient         Where the email should be sent, should be null when not available.
+   * @param notificationType  The type of notification, which will determine the template used.
+   * @param templateVersion   The version of the template to be sent.
+   * @param templateVariables The variables to pass to the template.
+   * @param tisReferenceInfo  The TIS reference information (table and key).
+   * @param attachment        A published PDF to include as an attachment.
+   * @param doNotSendJustLog  Do not actually send the mail, simply log the action.
+   * @throws MessagingException When the message could not be sent.
+   */
+  public void sendMessage(String traineeId, @Nullable String recipient,
+      NotificationType notificationType,
+      String templateVersion, Map<String, Object> templateVariables,
+      TisReferenceInfo tisReferenceInfo, StoredFile attachment, boolean doNotSendJustLog)
+      throws MessagingException {
     String templateName = templateService.getTemplatePath(EMAIL, notificationType, templateVersion);
     log.info("Sending template {} to {}.", templateName, recipient);
 
@@ -146,9 +198,11 @@ public class EmailService {
         }
       }
 
+      List<StoredFile> attachments = attachment == null ? null : List.of(attachment);
+
       if (recipient != null) {
         MimeMessageHelper helper = buildMessageHelper(recipient, templateName, templateVariables,
-            notificationId);
+            notificationId, attachments);
         mailSender.send(helper.getMimeMessage());
         status = NotificationStatus.SENT;
       } else {
@@ -163,7 +217,8 @@ public class EmailService {
       TemplateInfo templateInfo = new TemplateInfo(notificationType.getTemplateName(),
           templateVersion, templateVariables);
       History history = new History(notificationId, tisReferenceInfo, notificationType,
-          recipientInfo, templateInfo, Instant.now(), null, status, statusDetail, null);
+          recipientInfo, templateInfo, attachments, Instant.now(), null, status, statusDetail,
+          null);
       historyService.save(history);
 
       log.info("Sent template {} to {}.", templateName, recipient);
@@ -193,7 +248,7 @@ public class EmailService {
       resendVariables.putIfAbsent("originallySentOn", toResend.sentAt());
 
       MimeMessageHelper helper = buildMessageHelper(updatedEmailAddress, templateName,
-          resendVariables, notificationId);
+          resendVariables, notificationId, toResend.attachments());
 
       mailSender.send(helper.getMimeMessage());
 
@@ -203,8 +258,8 @@ public class EmailService {
       RecipientInfo updatedRecipientInfo = new RecipientInfo(toResend.recipient().id(),
           toResend.recipient().type(), updatedEmailAddress);
       History updatedHistory = new History(notificationId, toResend.tisReference(), toResend.type(),
-          updatedRecipientInfo, updatedTemplateInfo, toResend.sentAt(), toResend.readAt(),
-          NotificationStatus.SENT, null, Instant.now());
+          updatedRecipientInfo, updatedTemplateInfo, toResend.attachments(), toResend.sentAt(),
+          toResend.readAt(), NotificationStatus.SENT, null, Instant.now());
       historyService.save(updatedHistory);
 
       log.info("Sent template {} to {}.", templateName, updatedEmailAddress);
@@ -216,13 +271,14 @@ public class EmailService {
    *
    * @param recipient         Where the email should be sent.
    * @param templateName      The versioned template name.
-   * @param templateVariables The variables to pass to the template
-   * @param notificationId    The notification ID to set in the email header
-   * @return The build Mime message helper
+   * @param templateVariables The variables to pass to the template.
+   * @param notificationId    The notification ID to set in the email header.
+   * @param attachments       Optional stored files to include as attachments.
+   * @return The build Mime message helper.
    * @throws MessagingException if there is an error populating the helper.
    */
   private MimeMessageHelper buildMessageHelper(String recipient, String templateName,
-      Map<String, Object> templateVariables, ObjectId notificationId)
+      Map<String, Object> templateVariables, ObjectId notificationId, List<StoredFile> attachments)
       throws MessagingException {
 
     // Add the application domain for any templates with hyperlinks.
@@ -238,11 +294,27 @@ public class EmailService {
     MimeMessage mimeMessage = mailSender.createMimeMessage();
     mimeMessage.addHeader("NotificationId", notificationId.toString());
 
-    MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, StandardCharsets.UTF_8.name());
+    MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, attachments != null,
+        StandardCharsets.UTF_8.name());
     helper.setTo(recipient);
     helper.setFrom(sender);
     helper.setSubject(subject);
     helper.setText(content, true);
+
+    if (attachments != null) {
+      for (StoredFile attachment : attachments) {
+        S3Resource resource = s3Template.download(attachment.bucket(), attachment.key());
+
+        try {
+          helper.addAttachment(Objects.requireNonNull(resource.getFilename()),
+              new ByteArrayResource(resource.getContentAsByteArray()), resource.contentType());
+        } catch (IOException e) {
+          String message = String.format("Unable to read file '%s:%s'.", attachment.bucket(),
+              attachment.key());
+          throw new MessagingException(message, e);
+        }
+      }
+    }
 
     return helper;
   }

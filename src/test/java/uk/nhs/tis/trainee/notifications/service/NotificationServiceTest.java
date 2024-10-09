@@ -618,6 +618,7 @@ class NotificationServiceTest {
     History history = historyCaptor.getValue();
     assertThat("Unexpected notification id.", history.id(), notNullValue());
     assertThat("Unexpected notification type.", history.type(), is(notificationType));
+    assertThat("Unexpected attachments.", history.attachments(), nullValue());
     assertThat("Unexpected sent at.", history.sentAt(), notNullValue());
     assertThat("Unexpected status.", history.status(), is(SCHEDULED));
     assertThat("Unexpected status detail.", history.statusDetail(), nullValue());
@@ -686,6 +687,7 @@ class NotificationServiceTest {
     History history = historyCaptor.getValue();
     assertThat("Unexpected notification id.", history.id(), notNullValue());
     assertThat("Unexpected notification type.", history.type(), is(notificationType));
+    assertThat("Unexpected attachments.", history.attachments(), nullValue());
     assertThat("Unexpected sent at.", history.sentAt(), notNullValue());
     assertThat("Unexpected status.", history.status(), is(SCHEDULED));
     assertThat("Unexpected status detail.", history.statusDetail(), nullValue());

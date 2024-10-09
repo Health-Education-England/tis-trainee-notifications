@@ -30,7 +30,7 @@ import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
-import uk.nhs.tis.trainee.notifications.dto.CojSignedEvent;
+import uk.nhs.tis.trainee.notifications.dto.CojPublishedEvent;
 import uk.nhs.tis.trainee.notifications.service.EmailService;
 
 /**
@@ -55,15 +55,15 @@ public class ConditionsOfJoiningListener {
   }
 
   /**
-   * Handle Conditions of Joining received events.
+   * Handle Conditions of Joining published events.
    *
    * @param event The program membership event.
    * @throws MessagingException If the message could not be sent.
    */
-  @SqsListener("${application.queues.coj-received}")
-  public void handleConditionsOfJoiningReceived(CojSignedEvent event)
+  @SqsListener("${application.queues.coj-published}")
+  public void handleConditionsOfJoiningPublished(CojPublishedEvent event)
       throws MessagingException {
-    log.info("Handling COJ received event {}.", event);
+    log.info("Handling COJ published event {}.", event);
 
     Map<String, Object> templateVariables = new HashMap<>();
 
@@ -73,7 +73,7 @@ public class ConditionsOfJoiningListener {
 
     String traineeId = event.personId();
     emailService.sendMessageToExistingUser(traineeId, COJ_CONFIRMATION, templateVersion,
-        templateVariables, null);
-    log.info("COJ received notification sent for trainee {}.", traineeId);
+        templateVariables, null, event.pdf());
+    log.info("COJ published notification sent for trainee {}.", traineeId);
   }
 }

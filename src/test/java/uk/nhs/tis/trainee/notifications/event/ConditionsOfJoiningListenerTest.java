@@ -38,8 +38,9 @@ import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
-import uk.nhs.tis.trainee.notifications.dto.CojSignedEvent;
-import uk.nhs.tis.trainee.notifications.dto.CojSignedEvent.ConditionsOfJoining;
+import uk.nhs.tis.trainee.notifications.dto.CojPublishedEvent;
+import uk.nhs.tis.trainee.notifications.dto.CojPublishedEvent.ConditionsOfJoining;
+import uk.nhs.tis.trainee.notifications.dto.StoredFile;
 import uk.nhs.tis.trainee.notifications.service.EmailService;
 
 class ConditionsOfJoiningListenerTest {
@@ -58,87 +59,98 @@ class ConditionsOfJoiningListenerTest {
   }
 
   @Test
-  void shouldThrowExceptionWhenCojReceivedAndSendingFails() throws MessagingException {
+  void shouldThrowExceptionWhenCojPublishedAndSendingFails() throws MessagingException {
     doThrow(MessagingException.class).when(emailService)
-        .sendMessageToExistingUser(any(), any(), any(), any(), any());
+        .sendMessageToExistingUser(any(), any(), any(), any(), any(), any());
 
-    CojSignedEvent event = new CojSignedEvent(PERSON_ID,
-        new ConditionsOfJoining(SYNCED_AT));
+    CojPublishedEvent event = new CojPublishedEvent(PERSON_ID, new ConditionsOfJoining(SYNCED_AT),
+        null);
 
-    assertThrows(MessagingException.class, () -> listener.handleConditionsOfJoiningReceived(event));
+    assertThrows(MessagingException.class,
+        () -> listener.handleConditionsOfJoiningPublished(event));
   }
 
   @Test
-  void shouldSetTraineeIdWhenCojReceived() throws MessagingException {
-    CojSignedEvent event = new CojSignedEvent(PERSON_ID,
-        new ConditionsOfJoining(SYNCED_AT));
+  void shouldSetTraineeIdWhenCojPublished() throws MessagingException {
+    CojPublishedEvent event = new CojPublishedEvent(PERSON_ID, new ConditionsOfJoining(SYNCED_AT),
+        null);
 
-    listener.handleConditionsOfJoiningReceived(event);
+    listener.handleConditionsOfJoiningPublished(event);
 
-    verify(emailService).sendMessageToExistingUser(eq(PERSON_ID), any(), any(), any(), any());
-  }
-
-  @Test
-  void shouldSetNotificationTypeWhenCojReceived() throws MessagingException {
-    CojSignedEvent event = new CojSignedEvent(PERSON_ID,
-        new ConditionsOfJoining(SYNCED_AT));
-
-    listener.handleConditionsOfJoiningReceived(event);
-
-    verify(emailService).sendMessageToExistingUser(any(), eq(COJ_CONFIRMATION), any(), any(),
+    verify(emailService).sendMessageToExistingUser(eq(PERSON_ID), any(), any(), any(), any(),
         any());
   }
 
   @Test
-  void shouldSetNotificationVersionWhenCojReceived() throws MessagingException {
-    CojSignedEvent event = new CojSignedEvent(PERSON_ID,
-        new ConditionsOfJoining(SYNCED_AT));
-
-    listener.handleConditionsOfJoiningReceived(event);
-
-    verify(emailService).sendMessageToExistingUser(any(), any(), eq(VERSION), any(), any());
-  }
-
-  @Test
-  void shouldNotIncludeSyncedAtWhenNullCojReceived() throws MessagingException {
-    CojSignedEvent event = new CojSignedEvent(PERSON_ID,
+  void shouldSetNotificationTypeWhenCojPublished() throws MessagingException {
+    CojPublishedEvent event = new CojPublishedEvent(PERSON_ID, new ConditionsOfJoining(SYNCED_AT),
         null);
 
-    listener.handleConditionsOfJoiningReceived(event);
+    listener.handleConditionsOfJoiningPublished(event);
+
+    verify(emailService).sendMessageToExistingUser(any(), eq(COJ_CONFIRMATION), any(), any(),
+        any(), any());
+  }
+
+  @Test
+  void shouldSetNotificationVersionWhenCojPublished() throws MessagingException {
+    CojPublishedEvent event = new CojPublishedEvent(PERSON_ID, new ConditionsOfJoining(SYNCED_AT),
+        null);
+
+    listener.handleConditionsOfJoiningPublished(event);
+
+    verify(emailService).sendMessageToExistingUser(any(), any(), eq(VERSION), any(), any(), any());
+  }
+
+  @Test
+  void shouldSetPdfWhenCojPublished() throws MessagingException {
+    StoredFile pdf = new StoredFile("my-bucket", "my-key.pdf");
+    CojPublishedEvent event = new CojPublishedEvent(PERSON_ID, new ConditionsOfJoining(SYNCED_AT),
+        pdf);
+
+    listener.handleConditionsOfJoiningPublished(event);
+
+    verify(emailService).sendMessageToExistingUser(any(), any(), any(), any(), any(), eq(pdf));
+  }
+
+  @Test
+  void shouldNotIncludeSyncedAtWhenNullCojPublished() throws MessagingException {
+    CojPublishedEvent event = new CojPublishedEvent(PERSON_ID, null, null);
+
+    listener.handleConditionsOfJoiningPublished(event);
 
     ArgumentCaptor<Map<String, Object>> templateVarsCaptor = ArgumentCaptor.captor();
     verify(emailService).sendMessageToExistingUser(any(), any(), any(),
-        templateVarsCaptor.capture(), any());
+        templateVarsCaptor.capture(), any(), any());
 
     Map<String, Object> templateVariables = templateVarsCaptor.getValue();
     assertThat("Unexpected synced at.", templateVariables.get("syncedAt"), nullValue());
   }
 
   @Test
-  void shouldNotIncludeSyncedAtWhenCojReceivedWithNullSyncedAt() throws MessagingException {
-    CojSignedEvent event = new CojSignedEvent(PERSON_ID,
-        new ConditionsOfJoining(null));
+  void shouldNotIncludeSyncedAtWhenCojPublishedWithNullSyncedAt() throws MessagingException {
+    CojPublishedEvent event = new CojPublishedEvent(PERSON_ID, new ConditionsOfJoining(null), null);
 
-    listener.handleConditionsOfJoiningReceived(event);
+    listener.handleConditionsOfJoiningPublished(event);
 
     ArgumentCaptor<Map<String, Object>> templateVarsCaptor = ArgumentCaptor.captor();
     verify(emailService).sendMessageToExistingUser(any(), any(), any(),
-        templateVarsCaptor.capture(), any());
+        templateVarsCaptor.capture(), any(), any());
 
     Map<String, Object> templateVariables = templateVarsCaptor.getValue();
     assertThat("Unexpected synced at.", templateVariables.get("syncedAt"), nullValue());
   }
 
   @Test
-  void shouldIncludeSyncedAtWhenCojReceivedWithValidSyncedAt() throws MessagingException {
-    CojSignedEvent event = new CojSignedEvent(PERSON_ID,
-        new ConditionsOfJoining(SYNCED_AT));
+  void shouldIncludeSyncedAtWhenCojPublishedWithValidSyncedAt() throws MessagingException {
+    CojPublishedEvent event = new CojPublishedEvent(PERSON_ID, new ConditionsOfJoining(SYNCED_AT),
+        null);
 
-    listener.handleConditionsOfJoiningReceived(event);
+    listener.handleConditionsOfJoiningPublished(event);
 
     ArgumentCaptor<Map<String, Object>> templateVarsCaptor = ArgumentCaptor.captor();
     verify(emailService).sendMessageToExistingUser(any(), any(), any(),
-        templateVarsCaptor.capture(), any());
+        templateVarsCaptor.capture(), any(), any());
 
     Map<String, Object> templateVariables = templateVarsCaptor.getValue();
     assertThat("Unexpected synced at.", templateVariables.get("syncedAt"), is(SYNCED_AT));

@@ -468,6 +468,7 @@ public class NotificationService implements Job {
           notificationType,
           recipientInfo,
           templateInfo,
+          null,
           when.toInstant(),
           null,
           NotificationStatus.SCHEDULED,

@@ -22,12 +22,14 @@
 package uk.nhs.tis.trainee.notifications.model;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.Map;
 import lombok.Builder;
 import org.bson.types.ObjectId;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
+import uk.nhs.tis.trainee.notifications.dto.StoredFile;
 
 /**
  * A representation of a historical notification.
@@ -50,6 +52,7 @@ public record History(
     NotificationType type,
     RecipientInfo recipient,
     TemplateInfo template,
+    List<StoredFile> attachments,
     Instant sentAt,
     Instant readAt,
     NotificationStatus status,

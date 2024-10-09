@@ -30,12 +30,14 @@ import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.FAILED;
 import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.SENT;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.COJ_CONFIRMATION;
 
+import io.awspring.cloud.s3.S3Template;
 import java.time.Duration;
 import java.time.Instant;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.boot.test.mock.mockito.SpyBean;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.data.mongodb.core.MongoTemplate;
@@ -56,6 +58,9 @@ class PopulateNotificationHistoryStatusIntegrationTest {
 
   @SpyBean
   private MongoTemplate mongoTemplate;
+
+  @MockBean
+  private S3Template s3Template;
 
   private PopulateNotificationHistoryStatus migrator;
 

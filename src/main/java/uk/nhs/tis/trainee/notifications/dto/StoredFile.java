@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright 2023 Crown Copyright (Health Education England)
+ * Copyright 2024 Crown Copyright (Health Education England)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
  * associated documentation files (the "Software"), to deal in the Software without restriction,
@@ -19,28 +19,14 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package uk.nhs.tis.trainee.notifications.model;
-
-import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.List;
-import lombok.Data;
-import uk.nhs.tis.trainee.notifications.dto.CojPublishedEvent.ConditionsOfJoining;
+package uk.nhs.tis.trainee.notifications.dto;
 
 /**
- * A programme membership.
+ * A reference to a file stored in S3.
+ *
+ * @param bucket The S3 bucket the file was stored in.
+ * @param key    The S3 key for the stored file.
  */
-@Data
-public class ProgrammeMembership {
+public record StoredFile(String bucket, String key) {
 
-  private String tisId;
-  private String personId;
-  private String programmeName;
-  private String programmeNumber;
-  private String managingDeanery;
-  private LocalDate startDate;
-  private List<Curriculum> curricula = new ArrayList<>();
-  private ConditionsOfJoining conditionsOfJoining;
-  private ResponsibleOfficer responsibleOfficer;
-  private String designatedBody;
 }
