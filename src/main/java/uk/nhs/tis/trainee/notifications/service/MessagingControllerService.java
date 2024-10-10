@@ -43,8 +43,12 @@ public class MessagingControllerService {
   private static final String PROGRAMME_MEMBERSHIP_ID_FIELD = "programmeMembershipId";
   protected static final String API_PLACEMENT_IS_PILOT_2024
       = "/api/placement/ispilot2024/{traineeTisId}/{placementId}";
+  protected static final String API_PLACEMENT_IS_PILOT_ROLLOUT_2024
+      = "/api/placement/isrollout2024/{traineeTisId}/{placementId}";
   protected static final String API_PROGRAMME_MEMBERSHIP_IS_PILOT_2024
       = "/api/programme-membership/ispilot2024/{traineeTisId}/{programmeMembershipId}";
+  protected static final String API_PROGRAMME_MEMBERSHIP_IS_PILOT_ROLLOUT_2024
+      = "/api/programme-membership/isrollout2024/{traineeTisId}/{programmeMembershipId}";
   protected static final String API_PROGRAMME_MEMBERSHIP_NEW_STARTER
       = "/api/programme-membership/isnewstarter/{traineeTisId}/{programmeMembershipId}";
 
@@ -115,6 +119,23 @@ public class MessagingControllerService {
   }
 
   /**
+   * Identifies if a placement falls within the pilot rollout group 2024.
+   *
+   * @param traineeId   The trainee TIS ID whose placement it is.
+   * @param placementId The placement ID.
+   * @return true if the placement is in the pilot rollout group, otherwise false.
+   */
+  public boolean isPlacementInRollout2024(String traineeId, String placementId) {
+    Boolean isRollout = restTemplate.getForObject(serviceUrl + API_PLACEMENT_IS_PILOT_ROLLOUT_2024,
+        Boolean.class, Map.of(TRAINEE_TIS_ID_FIELD, traineeId, PLACEMENT_ID_FIELD, placementId));
+    if (isRollout == null || !isRollout) {
+      log.info("Trainee {} placement {} is not in the pilot rollout 2024.", traineeId, placementId);
+      return false;
+    }
+    return true;
+  }
+
+  /**
    * Identifies if a programme membership falls within the pilot group 2024.
    *
    * @param traineeId             The trainee TIS ID whose placement it is.
@@ -128,6 +149,27 @@ public class MessagingControllerService {
             PROGRAMME_MEMBERSHIP_ID_FIELD, programmeMembershipId));
     if (isPilot == null || !isPilot) {
       log.info("Trainee {} programme membership {} is not in the pilot 2024.",
+          traineeId, programmeMembershipId);
+      return false;
+    }
+    return true;
+  }
+
+  /**
+   * Identifies if a programme membership falls within the pilot rollout group 2024.
+   *
+   * @param traineeId             The trainee TIS ID whose placement it is.
+   * @param programmeMembershipId The programme membership ID.
+   * @return true if the programme membership is in the pilot rollout group, otherwise false.
+   */
+  public boolean isProgrammeMembershipInRollout2024(String traineeId,
+      String programmeMembershipId) {
+    Boolean isRollout = restTemplate.getForObject(serviceUrl
+            + API_PROGRAMME_MEMBERSHIP_IS_PILOT_ROLLOUT_2024, Boolean.class,
+        Map.of(TRAINEE_TIS_ID_FIELD, traineeId,
+            PROGRAMME_MEMBERSHIP_ID_FIELD, programmeMembershipId));
+    if (isRollout == null || !isRollout) {
+      log.info("Trainee {} programme membership {} is not in the pilot rollout 2024.",
           traineeId, programmeMembershipId);
       return false;
     }

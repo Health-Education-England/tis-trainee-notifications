@@ -393,12 +393,12 @@ public class NotificationService implements Job {
    * Determine if the email should actually be sent out.
    *
    * @param notificationType The notification type.
-   * @param personId The person Id.
-   * @param tisReferenceId The TIS reference Id.
+   * @param personId         The person Id.
+   * @param tisReferenceId   The TIS reference Id.
    * @return the boolean if the email should be sent out.
    */
   protected boolean shouldActuallySendEmail(NotificationType notificationType, String personId,
-                                            String tisReferenceId) {
+      String tisReferenceId) {
     boolean actuallySendEmail = false; // default to log email only
     boolean inWhitelist = notificationsWhitelist.contains(personId);
 
@@ -416,9 +416,12 @@ public class NotificationService implements Job {
 
     } else if (notificationType == NotificationType.PLACEMENT_UPDATED_WEEK_12) {
 
+      boolean inPilotOrRollout
+          = messagingControllerService.isPlacementInPilot2024(personId, tisReferenceId)
+          || (messagingControllerService.isPlacementInRollout2024(personId, tisReferenceId));
       actuallySendEmail = inWhitelist
           || (messagingControllerService.isValidRecipient(personId, MessageType.EMAIL)
-          && messagingControllerService.isPlacementInPilot2024(personId, tisReferenceId));
+          && inPilotOrRollout);
     }
 
     return actuallySendEmail;
@@ -442,7 +445,6 @@ public class NotificationService implements Job {
         || notificationType == NotificationType.PROGRAMME_DAY_ONE) {
       tisReferenceInfo = new TisReferenceInfo(PROGRAMME_MEMBERSHIP,
           jobDetails.get(ProgrammeMembershipService.TIS_ID_FIELD).toString());
-
     } else if (notificationType == NotificationType.PLACEMENT_UPDATED_WEEK_12) {
       tisReferenceInfo = new TisReferenceInfo(PLACEMENT,
           jobDetails.get(PlacementService.TIS_ID_FIELD).toString());
@@ -454,7 +456,7 @@ public class NotificationService implements Job {
     History.TemplateInfo templateInfo = new History.TemplateInfo(notificationType.getTemplateName(),
         templateVersion, jobDetails.getWrappedMap());
 
-    // Only save then notificationType is correct and in Pilot
+    // Only save then notificationType is correct and in Pilot/Rollout
     if (tisReferenceInfo != null
         && shouldActuallySendEmail(notificationType, personId, tisReferenceInfo.id())) {
 
@@ -512,7 +514,7 @@ public class NotificationService implements Job {
    *
    * @param programmeMembership The programme membership to check.
    * @param checkNewStarter     Whether the trainee must be a new starter.
-   * @param checkPilot          Whether the trainee must be in a pilot.
+   * @param checkPilot          Whether the trainee must be in a pilot or rollout.
    * @return true if all criteria met, or false if one or more criteria fail.
    */
   public boolean meetsCriteria(ProgrammeMembership programmeMembership,
@@ -534,8 +536,12 @@ public class NotificationService implements Job {
       boolean isInPilot
           = messagingControllerService.isProgrammeMembershipInPilot2024(traineeId, pmId);
 
-      if (!isInPilot) {
-        log.info("Skipping notification creation as trainee {} is not in the pilot.", traineeId);
+      boolean isInRollout
+          = messagingControllerService.isProgrammeMembershipInRollout2024(traineeId, pmId);
+
+      if (!isInPilot && !isInRollout) {
+        log.info("Skipping notification creation as trainee {} is not in the pilot or the rollout.",
+            traineeId);
         return false;
       }
     }
@@ -546,8 +552,8 @@ public class NotificationService implements Job {
   /**
    * Check whether a placement meets the selected notification criteria.
    *
-   * @param placement         The placement to check.
-   * @param checkPilot        Whether the trainee must be in a pilot.
+   * @param placement  The placement to check.
+   * @param checkPilot Whether the trainee must be in a pilot or rollout.
    * @return true if all criteria met, or false if one or more criteria fail.
    */
   public boolean meetsCriteria(Placement placement, boolean checkPilot) {
@@ -558,8 +564,12 @@ public class NotificationService implements Job {
       boolean isInPilot
           = messagingControllerService.isPlacementInPilot2024(traineeId, pmId);
 
-      if (!isInPilot) {
-        log.info("Skipping notification creation as trainee {} is not in the pilot.", traineeId);
+      boolean isInRollout
+          = messagingControllerService.isPlacementInRollout2024(traineeId, pmId);
+
+      if (!isInPilot && !isInRollout) {
+        log.info("Skipping notification creation as trainee {} is not in the pilot or the rollout.",
+            traineeId);
         return false;
       }
     }
@@ -582,11 +592,10 @@ public class NotificationService implements Job {
   }
 
   /**
-   * Check whether a placement's trainee should receive the given message-type
-   * notification.
+   * Check whether a placement's trainee should receive the given message-type notification.
    *
-   * @param placement     The placement to check.
-   * @param messageType   The potential notification message type.
+   * @param placement   The placement to check.
+   * @param messageType The potential notification message type.
    * @return true if the trainee should receive the notification, otherwise false.
    */
   public boolean placementIsNotifiable(Placement placement, MessageType messageType) {
