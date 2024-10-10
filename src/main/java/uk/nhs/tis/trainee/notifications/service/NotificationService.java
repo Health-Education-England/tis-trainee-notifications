@@ -423,7 +423,8 @@ public class NotificationService implements Job {
           || (messagingControllerService.isValidRecipient(personId, MessageType.EMAIL)
           && inPilotOrRollout);
     }
-
+    log.debug("Actually send email [{}]: for person {} and entity {} and notification {}",
+        actuallySendEmail, personId, tisReferenceId, notificationType);
     return actuallySendEmail;
   }
 
