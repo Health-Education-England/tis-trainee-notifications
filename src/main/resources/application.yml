@@ -35,7 +35,7 @@ application:
       arn: ${NOTIFICATIONS_EVENT_TOPIC_ARN:}
   template-versions:
     coj-confirmation:
-      email: v1.0.0
+      email: v1.1.0
     credential-revoked:
       email: v1.0.0
     day-one:

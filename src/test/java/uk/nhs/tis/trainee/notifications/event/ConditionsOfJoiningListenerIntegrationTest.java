@@ -101,8 +101,8 @@ class ConditionsOfJoiningListenerIntegrationTest {
   private static final String DEFAULT_GREETING = "Dear Doctor,";
   private static final String DEFAULT_DETAIL = "We want to inform you that your local NHS England"
       + " office has received your signed Conditions of Joining.";
-  private static final String DEFAULT_NEXT_STEPS = "You can access a PDF of your signed Conditions"
-      + " of Joining by visiting TIS Self-Service.";
+  private static final String DEFAULT_NEXT_STEPS = "Please find attached a PDF of your signed"
+      + " Conditions of Joining, you can access this at any time by visiting TIS Self-Service.";
   private static final String DEFAULT_DISCLAIMER = "This email is intended only for use by the "
       + "named addressee. It may contain confidential and/or privileged information. If you are "
       + "not the intended recipient, you should contact us immediately and should not disclose, "
@@ -222,9 +222,7 @@ class ConditionsOfJoiningListenerIntegrationTest {
 
     Element nextSteps = bodyChildren.get(3);
     assertThat("Unexpected element tag.", nextSteps.tagName(), is("p"));
-    assertThat("Unexpected next steps.", nextSteps.text(),
-        is("You can access a PDF of your signed Conditions of Joining by visiting TIS"
-            + " Self-Service."));
+    assertThat("Unexpected next steps.", nextSteps.text(), is(DEFAULT_NEXT_STEPS));
 
     Element disclaimer = bodyChildren.get(5);
     assertThat("Unexpected disclaimer.", disclaimer.text(), is(DEFAULT_DISCLAIMER));
