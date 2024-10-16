@@ -30,18 +30,28 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.COJ_CONFIRMATION;
 
 import jakarta.mail.MessagingException;
 import java.time.Instant;
+import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.params.provider.EnumSource.Mode;
 import org.mockito.ArgumentCaptor;
 import uk.nhs.tis.trainee.notifications.dto.CojPublishedEvent;
 import uk.nhs.tis.trainee.notifications.dto.CojPublishedEvent.ConditionsOfJoining;
+import uk.nhs.tis.trainee.notifications.dto.HistoryDto;
 import uk.nhs.tis.trainee.notifications.dto.StoredFile;
+import uk.nhs.tis.trainee.notifications.model.MessageType;
+import uk.nhs.tis.trainee.notifications.model.NotificationType;
 import uk.nhs.tis.trainee.notifications.service.EmailService;
+import uk.nhs.tis.trainee.notifications.service.HistoryService;
 
 class ConditionsOfJoiningListenerTest {
 
@@ -50,12 +60,48 @@ class ConditionsOfJoiningListenerTest {
   private static final Instant SYNCED_AT = Instant.now();
 
   private ConditionsOfJoiningListener listener;
+  private HistoryService historyService;
   private EmailService emailService;
 
   @BeforeEach
   void setUp() {
+    historyService = mock(HistoryService.class);
     emailService = mock(EmailService.class);
-    listener = new ConditionsOfJoiningListener(emailService, VERSION);
+    listener = new ConditionsOfJoiningListener(historyService, emailService, VERSION);
+  }
+
+  @ParameterizedTest
+  @EnumSource(MessageType.class)
+  void shouldSkipCojPublishedWhenCojConfirmationSent(MessageType messageType)
+      throws MessagingException {
+    StoredFile pdf = new StoredFile("my-bucket", "my-key.pdf");
+    CojPublishedEvent event = new CojPublishedEvent(PERSON_ID, new ConditionsOfJoining(SYNCED_AT),
+        pdf);
+
+    HistoryDto history = new HistoryDto(null, null, messageType, COJ_CONFIRMATION, null, null, null,
+        null, null, null);
+    when(historyService.findAllSentForTrainee(PERSON_ID)).thenReturn(List.of(history));
+
+    listener.handleConditionsOfJoiningPublished(event);
+
+    verifyNoInteractions(emailService);
+  }
+
+  @ParameterizedTest
+  @EnumSource(value = NotificationType.class, mode = Mode.EXCLUDE, names = "COJ_CONFIRMATION")
+  void shouldNotSkipCojPublishedWhenCojConfirmationNotSent(NotificationType notificationType)
+      throws MessagingException {
+    StoredFile pdf = new StoredFile("my-bucket", "my-key.pdf");
+    CojPublishedEvent event = new CojPublishedEvent(PERSON_ID, new ConditionsOfJoining(SYNCED_AT),
+        pdf);
+
+    HistoryDto history = new HistoryDto(null, null, null, notificationType, null, null, null, null,
+        null, null);
+    when(historyService.findAllSentForTrainee(PERSON_ID)).thenReturn(List.of(history));
+
+    listener.handleConditionsOfJoiningPublished(event);
+
+    verify(emailService).sendMessageToExistingUser(any(), any(), any(), any(), any(), any());
   }
 
   @Test
