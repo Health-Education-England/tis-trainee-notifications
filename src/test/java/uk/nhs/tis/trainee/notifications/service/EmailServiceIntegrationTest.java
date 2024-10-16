@@ -35,6 +35,7 @@ import static uk.nhs.tis.trainee.notifications.service.PlacementService.START_DA
 import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.GMC_NUMBER_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.PROGRAMME_NUMBER_FIELD;
 
+import io.awspring.cloud.s3.S3Template;
 import jakarta.mail.Session;
 import jakarta.mail.internet.MimeMessage;
 import java.time.LocalDate;
@@ -85,6 +86,9 @@ class EmailServiceIntegrationTest {
 
   @MockBean
   private RestTemplate restTemplate;
+
+  @MockBean
+  private S3Template s3Template;
 
   @Autowired
   private EmailService service;

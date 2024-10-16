@@ -27,6 +27,7 @@ import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static uk.nhs.tis.trainee.notifications.TestContainerConfiguration.MONGODB;
 
+import io.awspring.cloud.s3.S3Template;
 import java.sql.Date;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -36,6 +37,7 @@ import org.bson.types.ObjectId;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.convert.MappingMongoConverter;
@@ -50,6 +52,9 @@ import uk.nhs.tis.trainee.notifications.model.History.TemplateInfo;
 @ActiveProfiles("test")
 @Testcontainers(disabledWithoutDocker = true)
 class MongoConfigurationIntegrationTest {
+
+  @MockBean
+  private S3Template s3Template;
 
   @Container
   @ServiceConnection

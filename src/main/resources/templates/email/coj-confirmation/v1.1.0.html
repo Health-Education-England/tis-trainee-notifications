@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <title>Conditions of Joining Confirmation</title>
+  </head>
+  <body>
+    <h1>Email Message</h1>
+    <h2>Subject</h2>
+    <th:block th:fragment="subject">We've received your Conditions of Joining</th:block>
+    <h2>Content</h2>
+    <th:block th:fragment="content">
+      <div th:replace="fragments/retry/v1.0.0 :: body"></div>
+      <div style="text-align:right"><img style="margin-right:25px" src='https://trainee.tis.nhs.uk/nhse-logo.png' alt="NHS England logo"/></div>
+      <p th:replace="~{fragments/greeting/v1.0.0 :: p}"></p>
+      <p>
+        We want to inform you that your local NHS England office has received your signed Conditions of Joining<span
+          th:text="${syncedAt} ? | on ${#temporals.format(syncedAt, 'dd MMMM yyyy')}| : _"
+        ></span
+        >.
+      </p>
+      <p>
+        Please find attached a PDF of your signed Conditions of Joining, you can access this at any time by visiting
+        <a th:href="${not #strings.isEmpty(domain)} ? @{{domain}/programmes(domain=${domain})} : _"
+          >TIS Self-Service</a
+        >.
+      </p>
+      <div th:replace="fragments/disclaimer/v1.0.0 :: body"></div>
+    </th:block>
+  </body>
+</html>

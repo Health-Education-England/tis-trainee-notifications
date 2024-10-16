@@ -31,7 +31,7 @@ import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import uk.nhs.tis.trainee.notifications.dto.CojSignedEvent.ConditionsOfJoining;
+import uk.nhs.tis.trainee.notifications.dto.CojPublishedEvent.ConditionsOfJoining;
 import uk.nhs.tis.trainee.notifications.dto.ProgrammeMembershipEvent;
 import uk.nhs.tis.trainee.notifications.dto.RecordDto;
 import uk.nhs.tis.trainee.notifications.model.Curriculum;

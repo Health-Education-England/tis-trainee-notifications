@@ -16,8 +16,8 @@ gradlew bootRun
 
  - A Redis instance for caching Person ID to User ID mappings.
  - A running instance of localstack or access to Amazon SQS, to retrieve
-   messages from the queue given as `COJ_RECEIVED_QUEUE`.
- - `COJ_RECEIVED_QUEUE` should have a visibility timeout longer than the user
+   messages from the queue given as `COJ_PUBLISHED_QUEUE`.
+ - `COJ_PUBLISHED_QUEUE` should have a visibility timeout longer than the user
    cache takes to build, failure to do so may lead to duplicate emails being
    sent. See log message `Total time taken to cache all user accounts was:
    <num>s` for time taken.
@@ -41,7 +41,7 @@ associated document for details of how to provide the region.
 | APP_DOMAIN                    | The domain to be used for links in email notifications. (Optional) |           |
 | AWS_XRAY_DAEMON_ADDRESS       | The AWS XRay daemon host. (Optional)                               |           |
 | COGNITO_USER_POOL_ID          | The user pool to get user details from.                            |           |
-| COJ_RECEIVED_QUEUE            | The queue URL for Conditions of Joining received events.           |           |
+| COJ_PUBLISHED_QUEUE           | The queue URL for Conditions of Joining publish events.            |           |
 | ENVIRONMENT                   | The environment to log events against.                             | local     |
 | EMAIL_SENDER                  | Where email notifications are to be sent from.                     |           |
 | NOTIFICATIONS_EVENT_TOPIC_ARN | Broadcast endpoint for notification events                         |           |
@@ -54,9 +54,9 @@ associated document for details of how to provide the region.
 
 #### Usage Examples
 
-##### Conditions of Joining Received
+##### Conditions of Joining Published
 
-The Conditions of Joining event should be sent to the `COJ_RECEIVED_QUEUE`, with
+The Conditions of Joining event should be sent to the `COJ_PUBLISHED_QUEUE`, with
 the following structure.
 
 ```json

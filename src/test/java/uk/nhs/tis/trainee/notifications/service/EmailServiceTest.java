@@ -21,9 +21,11 @@
 
 package uk.nhs.tis.trainee.notifications.service;
 
+import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.CoreMatchers.nullValue;
+import static org.hamcrest.CoreMatchers.startsWith;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -36,6 +38,10 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
+import static org.springframework.http.MediaType.APPLICATION_PDF_VALUE;
+import static org.springframework.http.MediaType.MULTIPART_MIXED_VALUE;
+import static org.springframework.http.MediaType.MULTIPART_RELATED_VALUE;
+import static org.springframework.http.MediaType.TEXT_HTML_VALUE;
 import static uk.nhs.tis.trainee.notifications.model.MessageType.EMAIL;
 import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.FAILED;
 import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.SCHEDULED;
@@ -43,12 +49,16 @@ import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.SENT;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_CREATED;
 import static uk.nhs.tis.trainee.notifications.model.TisReferenceType.PLACEMENT;
 
+import io.awspring.cloud.s3.S3Resource;
+import io.awspring.cloud.s3.S3Template;
 import jakarta.activation.DataHandler;
 import jakarta.mail.Address;
 import jakarta.mail.MessagingException;
 import jakarta.mail.Session;
 import jakarta.mail.internet.MimeMessage;
 import jakarta.mail.internet.MimeMessage.RecipientType;
+import jakarta.mail.internet.MimeMultipart;
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.net.URI;
 import java.security.MessageDigest;
@@ -72,6 +82,7 @@ import org.mockito.Mockito;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.thymeleaf.context.Context;
 import software.amazon.awssdk.services.cognitoidentityprovider.model.UserNotFoundException;
+import uk.nhs.tis.trainee.notifications.dto.StoredFile;
 import uk.nhs.tis.trainee.notifications.dto.UserDetails;
 import uk.nhs.tis.trainee.notifications.model.History;
 import uk.nhs.tis.trainee.notifications.model.History.RecipientInfo;
@@ -99,6 +110,7 @@ class EmailServiceTest {
   private HistoryService historyService;
   private JavaMailSender mailSender;
   private TemplateService templateService;
+  private S3Template s3Template;
 
   @BeforeEach
   void setUp() {
@@ -116,8 +128,10 @@ class EmailServiceTest {
         inv -> new Context(null, (Map<String, Object>) inv.getArguments()[0]));
     when(templateService.process(any(), any(), (Context) any())).thenReturn("");
 
+    s3Template = mock(S3Template.class);
+
     service = new EmailService(userAccountService, historyService, mailSender, templateService,
-        SENDER, APP_DOMAIN);
+        s3Template, SENDER, APP_DOMAIN);
   }
 
   @Test
@@ -324,6 +338,93 @@ class EmailServiceTest {
   }
 
   @Test
+  void shouldSendMessageWithNoAttachment() throws MessagingException, IOException {
+    String template = "<div>Test message body</div>";
+    when(templateService.process(any(), eq(Set.of("content")), (Context) any())).thenReturn(
+        template);
+
+    service.sendMessageToExistingUser(TRAINEE_ID, NOTIFICATION_TYPE, "",
+        Map.of(), null, null);
+
+    ArgumentCaptor<MimeMessage> messageCaptor = ArgumentCaptor.captor();
+    verify(mailSender).send(messageCaptor.capture());
+
+    MimeMessage message = messageCaptor.getValue();
+    assertThat("Unexpected text content.", message.getContent(), is(template));
+
+    DataHandler dataHandler = message.getDataHandler();
+    assertThat("Unexpected content type.", dataHandler.getContentType(),
+        is("text/html;charset=UTF-8"));
+  }
+
+  @Test
+  void shouldThrowMessageExceptionWhenAttachmentInvalid() throws IOException {
+    String template = "<div>Test message body</div>";
+    when(templateService.process(any(), eq(Set.of("content")), (Context) any())).thenReturn(
+        template);
+
+    S3Resource s3Resource = mock(S3Resource.class);
+    when(s3Resource.getFilename()).thenReturn("file.pdf");
+    when(s3Resource.contentType()).thenReturn(APPLICATION_PDF_VALUE);
+    when(s3Resource.getContentAsByteArray()).thenThrow(IOException.class);
+    when(s3Template.download("my-bucket", "key/file.pdf")).thenReturn(s3Resource);
+
+    MessagingException exception = assertThrows(MessagingException.class,
+        () -> service.sendMessageToExistingUser(TRAINEE_ID, NOTIFICATION_TYPE, "", Map.of(), null,
+            new StoredFile("my-bucket", "key/file.pdf")));
+
+    assertThat("Unexpected exception message.", exception.getMessage(),
+        is("Unable to read file 'my-bucket:key/file.pdf'."));
+  }
+
+  @Test
+  void shouldSendMessageWithAttachment() throws MessagingException, IOException {
+    String template = "<div>Test message body</div>";
+    when(templateService.process(any(), eq(Set.of("content")), (Context) any())).thenReturn(
+        template);
+
+    S3Resource s3Resource = mock(S3Resource.class);
+    when(s3Resource.getFilename()).thenReturn("file.pdf");
+    when(s3Resource.contentType()).thenReturn(APPLICATION_PDF_VALUE);
+    when(s3Resource.getContentAsByteArray()).thenReturn("test".getBytes());
+    when(s3Template.download("my-bucket", "key/file.pdf")).thenReturn(s3Resource);
+
+    service.sendMessageToExistingUser(TRAINEE_ID, NOTIFICATION_TYPE, "",
+        Map.of(), null, new StoredFile("my-bucket", "key/file.pdf"));
+
+    ArgumentCaptor<MimeMessage> messageCaptor = ArgumentCaptor.captor();
+    verify(mailSender).send(messageCaptor.capture());
+
+    MimeMessage message = messageCaptor.getValue();
+    assertThat("Unexpected content java type.", message.getContent(),
+        instanceOf(MimeMultipart.class));
+
+    MimeMultipart mixedContent = (MimeMultipart) message.getContent();
+    assertThat("Unexpected content type.", mixedContent.getContentType(),
+        startsWith(MULTIPART_MIXED_VALUE));
+    assertThat("Unexpected content part count.", mixedContent.getCount(), is(2));
+
+    MimeMultipart relatedContent = (MimeMultipart) mixedContent.getBodyPart(0).getContent();
+    assertThat("Unexpected content type.", relatedContent.getContentType(),
+        startsWith(MULTIPART_RELATED_VALUE));
+    assertThat("Unexpected content part count.", relatedContent.getCount(), is(1));
+
+    DataHandler content = relatedContent.getBodyPart(0).getDataHandler();
+    assertThat("Unexpected content type.", content.getContentType(), startsWith(TEXT_HTML_VALUE));
+    assertThat("Unexpected content.", content.getContent(), is(template));
+
+    DataHandler attachment = mixedContent.getBodyPart(1).getDataHandler();
+    assertThat("Unexpected attachment type.", attachment.getContentType(),
+        is(APPLICATION_PDF_VALUE));
+    assertThat("Unexpected attachment name.", attachment.getName(), is("file.pdf"));
+
+    Object attachmentContent = attachment.getContent();
+    assertThat("Unexpected attachment.", attachmentContent, instanceOf(ByteArrayInputStream.class));
+    assertThat("Unexpected attachment content.",
+        ((ByteArrayInputStream) attachmentContent).readAllBytes(), is("test".getBytes()));
+  }
+
+  @Test
   void shouldSendMessageWithNotificationIdHeader() throws MessagingException {
     String template = "<div>Test message body</div>";
     when(templateService.process(any(), eq(Set.of("content")), (Context) any())).thenReturn(
@@ -378,8 +479,8 @@ class EmailServiceTest {
   @EnumSource(NotificationType.class)
   void shouldStoreHistoryWhenMessageSent(NotificationType notificationType)
       throws MessagingException {
-    when(historyService.findScheduledEmailForTraineeByRefAndType(any(), any(), any(), any())).
-        thenReturn(null);
+    when(historyService.findScheduledEmailForTraineeByRefAndType(any(), any(), any(), any()))
+        .thenReturn(null);
     when(userAccountService.getUserDetailsById(USER_ID)).thenReturn(
         new UserDetails(true, RECIPIENT, "Mr", "Gilliam",
             "Anthony", GMC));
@@ -427,9 +528,9 @@ class EmailServiceTest {
       throws MessagingException {
     ObjectId notificationId = ObjectId.get();
     History scheduledHistory = new History(notificationId, null, notificationType,
-        null, null, null, null, SCHEDULED, null, null);
-    when(historyService.findScheduledEmailForTraineeByRefAndType(any(), any(), any(), any())).
-        thenReturn(scheduledHistory);
+        null, null, null, null, null, SCHEDULED, null, null);
+    when(historyService.findScheduledEmailForTraineeByRefAndType(any(), any(), any(), any()))
+        .thenReturn(scheduledHistory);
     when(userAccountService.getUserDetailsById(USER_ID)).thenReturn(
         new UserDetails(true, RECIPIENT, "Mr", "Gilliam",
             "Anthony", GMC));
@@ -491,7 +592,7 @@ class EmailServiceTest {
     ObjectId notificationId = ObjectId.get();
     History toResend = new History(notificationId, tisReferenceInfo, notificationType,
         recipientInfo,
-        templateInfo, sentAt, null, FAILED, "bounced", null);
+        templateInfo, null, sentAt, null, FAILED, "bounced", null);
     service.resendMessage(toResend, "newemailaddress");
 
     ArgumentCaptor<History> historyCaptor = ArgumentCaptor.captor();
@@ -543,7 +644,7 @@ class EmailServiceTest {
 
     ObjectId notificationId = ObjectId.get();
     History toResend = new History(notificationId, tisReferenceInfo, PROGRAMME_CREATED,
-        recipientInfo, templateInfo, sentAt, null, FAILED, "bounced", null);
+        recipientInfo, templateInfo, null, sentAt, null, FAILED, "bounced", null);
     service.resendMessage(toResend, "newemailaddress");
 
     verify(mailSender, never()).send(any(MimeMessage.class));
