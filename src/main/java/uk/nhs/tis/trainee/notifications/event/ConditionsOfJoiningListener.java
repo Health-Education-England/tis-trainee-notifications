@@ -27,11 +27,14 @@ import io.awspring.cloud.sqs.annotation.SqsListener;
 import jakarta.mail.MessagingException;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import uk.nhs.tis.trainee.notifications.dto.CojPublishedEvent;
+import uk.nhs.tis.trainee.notifications.dto.HistoryDto;
 import uk.nhs.tis.trainee.notifications.service.EmailService;
+import uk.nhs.tis.trainee.notifications.service.HistoryService;
 
 /**
  * A listener for Conditions of Joining events.
@@ -40,6 +43,7 @@ import uk.nhs.tis.trainee.notifications.service.EmailService;
 @Component
 public class ConditionsOfJoiningListener {
 
+  private final HistoryService historyService;
   private final EmailService emailService;
   private final String templateVersion;
 
@@ -48,8 +52,9 @@ public class ConditionsOfJoiningListener {
    *
    * @param emailService The service to use for sending emails.
    */
-  public ConditionsOfJoiningListener(EmailService emailService,
+  public ConditionsOfJoiningListener(HistoryService historyService, EmailService emailService,
       @Value("${application.template-versions.coj-confirmation.email}") String templateVersion) {
+    this.historyService = historyService;
     this.emailService = emailService;
     this.templateVersion = templateVersion;
   }
@@ -64,6 +69,15 @@ public class ConditionsOfJoiningListener {
   public void handleConditionsOfJoiningPublished(CojPublishedEvent event)
       throws MessagingException {
     log.info("Handling COJ published event {}.", event);
+
+    Optional<HistoryDto> sent = historyService.findAllSentForTrainee(event.personId()).stream()
+        .filter(h -> h.subject().equals(COJ_CONFIRMATION))
+        .findAny();
+
+    if (sent.isPresent()) {
+      log.info("Skipping event as a Conditions of Joining confirmation was previously sent.");
+      return;
+    }
 
     Map<String, Object> templateVariables = new HashMap<>();
 
