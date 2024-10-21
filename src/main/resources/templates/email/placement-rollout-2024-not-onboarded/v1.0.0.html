@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+</head>
+<body>
+<h1>Email Message</h1>
+<h2>Subject</h2>
+<th:block th:fragment="subject">NHS England - <th:block th:text="${not #strings.isEmpty(localOfficeName)} ? ${localOfficeName} : 'your local office'"></th:block> - Notification sent in error</th:block>
+<h2>Content</h2>
+<th:block th:fragment="content">
+  <div th:replace="fragments/retry/v1.0.0 :: body"></div>
+  <div style="text-align:right"><img style="margin-right:25px" src='https://trainee.tis.nhs.uk/nhse-logo.png' alt="NHS England logo"/></div>
+  <p th:if="${#strings.isEmpty(givenName) AND #strings.isEmpty(familyName)}">Dear Doctor,</p>
+  <p th:if="${not (#strings.isEmpty(givenName) OR #strings.isEmpty(familyName))}">Dear <span th:text="${not #strings.isEmpty(title)} ? ${title} : 'Dr'"></span> <span th:text="${not #strings.isEmpty(givenName)} ? ${givenName} : _"></span> <span th:text="${not #strings.isEmpty(familyName)} ? ${familyName} : _"></span>,</p>
+  <p>
+    GMC <th:block th:text="${not #strings.isEmpty(gmcNumber)} ? ${gmcNumber} : _">UNKNOWN</th:block
+    >
+  </p>
+  <p>
+    You may have recently received an email from us providing details about your placement starting <th:block th:text="${startDate} ? |${#temporals.format(startDate, 'dd MMMM yyyy')}| : _">(start date missing)</th:block
+    > at <th:block th:text="${not #strings.isEmpty(site)} ? ${site} : _">(site name missing)</th:block
+    > in <th:block th:text="${not #strings.isEmpty(specialty)} ? ${specialty} : _">(speciality name missing)</th:block
+    >.
+  </p>
+  <p>
+    Unfortunately this email was sent in error, and should be disregarded. The onboarding process for your placement is unchanged. <b>In particular, please do not attempt to create an account on TIS Self-Service.</b> If you have created an account on TIS Self-Service as a result of the email, you will not need to use it, and it may be removed in due course.
+  </p>
+  <p>
+    <b>We apologise for any confusion the previous email may have caused.</b>
+  </p>
+  <p>
+    Kind Regards,
+  </p>
+  <p>
+    <span th:text="${not #strings.isEmpty(localOfficeName)} ? ${localOfficeName} : _"></span>
+  </p>
+  <p>
+    Workforce, Training and Education
+  </p>
+  <p>
+    NHS England
+  </p>
+  <div th:replace="fragments/disclaimer/v1.0.0 :: body"></div>
+</th:block>
+</body>
+</html>
