@@ -204,6 +204,8 @@ public class PlacementService {
       throws SchedulerException {
     String jobId = PLACEMENT_UPDATED_WEEK_12 + "-" + placement.getTisId();
     notificationService.removeNotification(jobId); //remove existing notification if it exists
+    String jobId2 = PLACEMENT_ROLLOUT_2024_NOT_ONBOARDED + "-" + placement.getTisId();
+    notificationService.removeNotification(jobId2); //remove existing notification if it exists
   }
 
   /**
@@ -231,7 +233,7 @@ public class PlacementService {
    * @param notificationsAlreadySent Previously sent notifications.
    */
   private void createDirectNotifications(Placement placement,
-      Map<NotificationType, Instant> notificationsAlreadySent)
+                                         Map<NotificationType, Instant> notificationsAlreadySent)
       throws SchedulerException {
 
     LocalDate startDate = placement.getStartDate();
@@ -245,9 +247,9 @@ public class PlacementService {
     jobDataMap.put(PLACEMENT_SITE_FIELD, placement.getSite());
     jobDataMap.put(TEMPLATE_OWNER_FIELD, placement.getOwner());
 
-    boolean shouldSchedule = shouldScheduleNotification(notificationsAlreadySent, startDate);
+    boolean shouldScheduleWeek12 = shouldScheduleNotification(notificationsAlreadySent, startDate);
 
-    if (shouldSchedule) {
+    if (shouldScheduleWeek12) {
       log.info("Scheduling notification {} for {}.",
           PLACEMENT_UPDATED_WEEK_12, placement.getTisId());
       Integer daysBeforeStart = getNotificationDaysBeforeStart(PLACEMENT_UPDATED_WEEK_12);
@@ -269,6 +271,7 @@ public class PlacementService {
 
     boolean shouldScheduleRolloutCorrection
         = shouldScheduleRolloutCorrectionNotification(placement, notificationsAlreadySent);
+
     if (shouldScheduleRolloutCorrection) {
       log.info("Scheduling notification {} for {}.",
           PLACEMENT_ROLLOUT_2024_NOT_ONBOARDED, placement.getTisId());
