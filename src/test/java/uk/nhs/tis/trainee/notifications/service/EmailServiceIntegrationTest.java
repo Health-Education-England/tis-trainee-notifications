@@ -27,6 +27,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.emptyOrNullString;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static uk.nhs.tis.trainee.notifications.model.NotificationType.PLACEMENT_ROLLOUT_2024_CORRECTION;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PLACEMENT_UPDATED_WEEK_12;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_CREATED;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_DAY_ONE;
@@ -173,6 +174,7 @@ class EmailServiceIntegrationTest {
     Element body = content.body();
 
     if (notificationType.equals(PLACEMENT_UPDATED_WEEK_12)
+        || notificationType.equals(PLACEMENT_ROLLOUT_2024_CORRECTION)
         || notificationType.equals(PROGRAMME_DAY_ONE)) {
       Element greeting = body.children().get(getGreetingElementIndex(notificationType));
       assertThat("Unexpected element tag.", greeting.tagName(), is("p"));
@@ -203,6 +205,7 @@ class EmailServiceIntegrationTest {
     Element body = content.body();
 
     if (notificationType.equals(PLACEMENT_UPDATED_WEEK_12)
+        || notificationType.equals(PLACEMENT_ROLLOUT_2024_CORRECTION)
         || notificationType.equals(PROGRAMME_DAY_ONE)) {
       Element greeting = body.children().get(getGreetingElementIndex(notificationType));
       assertThat("Unexpected element tag.", greeting.tagName(), is("p"));
