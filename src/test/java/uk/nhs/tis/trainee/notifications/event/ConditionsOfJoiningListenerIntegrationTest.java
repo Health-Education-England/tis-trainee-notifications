@@ -154,8 +154,8 @@ class ConditionsOfJoiningListenerIntegrationTest {
     }).when(emailService).sendMessageToExistingUser(any(), any(), any(), any(), any(), any());
 
     // Create a new listener instance to inject the spy.
-    ConditionsOfJoiningListener listener = new ConditionsOfJoiningListener(emailService,
-        templateVersion);
+    ConditionsOfJoiningListener listener = new ConditionsOfJoiningListener(historyService,
+        emailService, templateVersion);
     listener.handleConditionsOfJoiningPublished(event);
 
     ArgumentCaptor<MimeMessage> messageCaptor = ArgumentCaptor.captor();
