@@ -40,7 +40,7 @@ import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.SENT;
 import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.UNREAD;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.NON_EMPLOYMENT;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PLACEMENT_INFORMATION;
-import static uk.nhs.tis.trainee.notifications.model.NotificationType.PLACEMENT_ROLLOUT_2024_NOT_ONBOARDED;
+import static uk.nhs.tis.trainee.notifications.model.NotificationType.PLACEMENT_ROLLOUT_2024_CORRECTION;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PLACEMENT_UPDATED_WEEK_12;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.USEFUL_INFORMATION;
 import static uk.nhs.tis.trainee.notifications.model.TisReferenceType.PLACEMENT;
@@ -75,7 +75,6 @@ import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.quartz.JobDataMap;
 import org.quartz.SchedulerException;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.client.RestTemplate;
 import uk.nhs.tis.trainee.notifications.dto.HistoryDto;
 import uk.nhs.tis.trainee.notifications.dto.UserDetails;
@@ -222,6 +221,8 @@ class PlacementServiceTest {
 
   @Test
   void shouldNotAddNotificationsIfNoStartDate() throws SchedulerException {
+    //this test does not contribute to test coverage, because without a startDate the placement is
+    //excluded, so it never tests the null condition in shouldScheduleNotification()
     Placement placement = new Placement();
     placement.setTisId(TIS_ID);
     placement.setOwner(OWNER);
@@ -333,7 +334,7 @@ class PlacementServiceTest {
 
     //verify the details of the last notification added
     String jobId = stringCaptor.getValue();
-    String expectedRolloutCorrectionJobId = PLACEMENT_ROLLOUT_2024_NOT_ONBOARDED + "-" + TIS_ID;
+    String expectedRolloutCorrectionJobId = PLACEMENT_ROLLOUT_2024_CORRECTION + "-" + TIS_ID;
     assertThat("Unexpected job id.", jobId, is(expectedRolloutCorrectionJobId));
 
     JobDataMap jobDataMap = jobDataMapCaptor.getValue();
@@ -428,7 +429,7 @@ class PlacementServiceTest {
 
   @ParameterizedTest
   @EnumSource(value = NotificationType.class,
-      names = {"PLACEMENT_UPDATED_WEEK_12", "PLACEMENT_ROLLOUT_2024_NOT_ONBOARDED"})
+      names = {"PLACEMENT_UPDATED_WEEK_12", "PLACEMENT_ROLLOUT_2024_CORRECTION"})
   void shouldNotResendPlacementNotification(NotificationType notificationTypeAlreadySent)
       throws SchedulerException {
     Placement placement = new Placement();
@@ -527,7 +528,7 @@ class PlacementServiceTest {
     sentNotifications.add(new HistoryDto("id",
         null,
         MessageType.EMAIL,
-        PLACEMENT_ROLLOUT_2024_NOT_ONBOARDED, null,
+        PLACEMENT_ROLLOUT_2024_CORRECTION, null,
         "email address",
         Instant.MIN, Instant.MAX, SENT, null));
 
@@ -555,6 +556,32 @@ class PlacementServiceTest {
   }
 
   @Test
+  void shouldRethrowSchedulerExceptionsForRolloutCorrectionNotification()
+      throws SchedulerException {
+    Placement placement = new Placement();
+    placement.setTisId(TIS_ID);
+    placement.setPersonId(PERSON_ID);
+    placement.setStartDate(START_DATE);
+    placement.setOwner(OWNER);
+    placement.setPlacementType(IN_POST);
+
+    List<HistoryDto> sentNotifications = new ArrayList<>();
+    sentNotifications.add(new HistoryDto("id",
+        new TisReferenceInfo(TisReferenceType.PLACEMENT, TIS_ID),
+        MessageType.EMAIL,
+        PLACEMENT_UPDATED_WEEK_12, null,
+        "email address",
+        Instant.MIN, Instant.MAX, SENT, null));
+    when(historyService.findAllForTrainee(PERSON_ID)).thenReturn(sentNotifications);
+    //should skip week-12 notification and attempt to schedule the rollout correction notification
+    doThrow(new SchedulerException())
+        .when(notificationService).scheduleNotification(any(), any(), any());
+
+    assertThrows(SchedulerException.class,
+        () -> service.addNotifications(placement));
+  }
+
+  @Test
   void shouldDeleteNotifications() throws SchedulerException {
     Placement placement = new Placement();
     placement.setTisId(TIS_ID);
@@ -563,7 +590,7 @@ class PlacementServiceTest {
 
     String jobId = PLACEMENT_UPDATED_WEEK_12 + "-" + TIS_ID;
     verify(notificationService).removeNotification(jobId);
-    String jobId2 = PLACEMENT_ROLLOUT_2024_NOT_ONBOARDED + "-" + TIS_ID;
+    String jobId2 = PLACEMENT_ROLLOUT_2024_CORRECTION + "-" + TIS_ID;
     verify(notificationService).removeNotification(jobId2);
   }
 

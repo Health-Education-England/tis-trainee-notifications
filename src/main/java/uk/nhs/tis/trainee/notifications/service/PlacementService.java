@@ -24,7 +24,7 @@ package uk.nhs.tis.trainee.notifications.service;
 import static uk.nhs.tis.trainee.notifications.model.MessageType.IN_APP;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.NON_EMPLOYMENT;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PLACEMENT_INFORMATION;
-import static uk.nhs.tis.trainee.notifications.model.NotificationType.PLACEMENT_ROLLOUT_2024_NOT_ONBOARDED;
+import static uk.nhs.tis.trainee.notifications.model.NotificationType.PLACEMENT_ROLLOUT_2024_CORRECTION;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PLACEMENT_UPDATED_WEEK_12;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.USEFUL_INFORMATION;
 import static uk.nhs.tis.trainee.notifications.model.TisReferenceType.PLACEMENT;
@@ -153,7 +153,7 @@ public class PlacementService {
     notificationTypes.add(PLACEMENT_INFORMATION);
     notificationTypes.add(USEFUL_INFORMATION);
     notificationTypes.add(NON_EMPLOYMENT);
-    notificationTypes.add(PLACEMENT_ROLLOUT_2024_NOT_ONBOARDED);
+    notificationTypes.add(PLACEMENT_ROLLOUT_2024_CORRECTION);
 
     for (NotificationType milestone : notificationTypes) {
       Optional<HistoryDto> sentItem = correspondence.stream()
@@ -204,7 +204,7 @@ public class PlacementService {
       throws SchedulerException {
     String jobId = PLACEMENT_UPDATED_WEEK_12 + "-" + placement.getTisId();
     notificationService.removeNotification(jobId); //remove existing notification if it exists
-    String jobId2 = PLACEMENT_ROLLOUT_2024_NOT_ONBOARDED + "-" + placement.getTisId();
+    String jobId2 = PLACEMENT_ROLLOUT_2024_CORRECTION + "-" + placement.getTisId();
     notificationService.removeNotification(jobId2); //remove existing notification if it exists
   }
 
@@ -274,10 +274,10 @@ public class PlacementService {
 
     if (shouldScheduleRolloutCorrection) {
       log.info("Scheduling notification {} for {}.",
-          PLACEMENT_ROLLOUT_2024_NOT_ONBOARDED, placement.getTisId());
-      jobDataMap.put(TEMPLATE_NOTIFICATION_TYPE_FIELD, PLACEMENT_ROLLOUT_2024_NOT_ONBOARDED);
+          PLACEMENT_ROLLOUT_2024_CORRECTION, placement.getTisId());
+      jobDataMap.put(TEMPLATE_NOTIFICATION_TYPE_FIELD, PLACEMENT_ROLLOUT_2024_CORRECTION);
 
-      String jobId = PLACEMENT_ROLLOUT_2024_NOT_ONBOARDED + "-" + placement.getTisId();
+      String jobId = PLACEMENT_ROLLOUT_2024_CORRECTION + "-" + placement.getTisId();
       try {
         Date sendNow = Date.from(Instant.now());
         notificationService.scheduleNotification(jobId, jobDataMap, sendNow);
@@ -312,7 +312,7 @@ public class PlacementService {
    */
   private boolean shouldScheduleRolloutCorrectionNotification(Placement placement,
       Map<NotificationType, Instant> notificationsAlreadySent) {
-    if (notificationsAlreadySent.containsKey(PLACEMENT_ROLLOUT_2024_NOT_ONBOARDED)) {
+    if (notificationsAlreadySent.containsKey(PLACEMENT_ROLLOUT_2024_CORRECTION)) {
       return false; //do not resend
     } else {
       boolean shouldHaveNotification = notificationService.meetsCriteria(placement, true);

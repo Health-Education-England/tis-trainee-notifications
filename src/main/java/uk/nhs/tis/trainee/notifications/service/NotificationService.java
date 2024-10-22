@@ -181,7 +181,7 @@ public class NotificationService implements Job {
           jobDetails.get(ProgrammeMembershipService.TIS_ID_FIELD).toString());
 
     } else if (notificationType == NotificationType.PLACEMENT_UPDATED_WEEK_12
-    || notificationType == NotificationType.PLACEMENT_ROLLOUT_2024_NOT_ONBOARDED) {
+    || notificationType == NotificationType.PLACEMENT_ROLLOUT_2024_CORRECTION) {
 
       jobName = jobDetails.getString(PlacementService.PLACEMENT_TYPE_FIELD);
       startDate = (LocalDate) jobDetails.get(PlacementService.START_DATE_FIELD);
@@ -423,7 +423,7 @@ public class NotificationService implements Job {
       actuallySendEmail = inWhitelist
           || (messagingControllerService.isValidRecipient(personId, MessageType.EMAIL)
           && inPilotOrRollout);
-    } else if (notificationType == NotificationType.PLACEMENT_ROLLOUT_2024_NOT_ONBOARDED) {
+    } else if (notificationType == NotificationType.PLACEMENT_ROLLOUT_2024_CORRECTION) {
       actuallySendEmail = true; //always send these
     }
     log.debug("Actually send email [{}]: for person {} and entity {} and notification {}",
