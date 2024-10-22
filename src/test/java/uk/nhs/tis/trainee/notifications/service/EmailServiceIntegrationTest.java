@@ -410,8 +410,9 @@ class EmailServiceIntegrationTest {
 
   int getGreetingElementIndex(NotificationType notificationType) {
     return switch (notificationType) {
-      case PLACEMENT_UPDATED_WEEK_12, PROGRAMME_CREATED, PROGRAMME_DAY_ONE, EMAIL_UPDATED_NEW,
-          EMAIL_UPDATED_OLD, COJ_CONFIRMATION, CREDENTIAL_REVOKED, FORM_UPDATED -> 1;
+      case PLACEMENT_UPDATED_WEEK_12, PLACEMENT_ROLLOUT_2024_CORRECTION, PROGRAMME_CREATED,
+           PROGRAMME_DAY_ONE, EMAIL_UPDATED_NEW, EMAIL_UPDATED_OLD, COJ_CONFIRMATION,
+           CREDENTIAL_REVOKED, FORM_UPDATED -> 1;
       default -> 0;
     };
   }
