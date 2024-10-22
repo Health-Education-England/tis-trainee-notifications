@@ -181,7 +181,7 @@ public class NotificationService implements Job {
           jobDetails.get(ProgrammeMembershipService.TIS_ID_FIELD).toString());
 
     } else if (notificationType == NotificationType.PLACEMENT_UPDATED_WEEK_12
-    || notificationType == NotificationType.PLACEMENT_ROLLOUT_2024_CORRECTION) {
+        || notificationType == NotificationType.PLACEMENT_ROLLOUT_2024_CORRECTION) {
 
       jobName = jobDetails.getString(PlacementService.PLACEMENT_TYPE_FIELD);
       startDate = (LocalDate) jobDetails.get(PlacementService.START_DATE_FIELD);

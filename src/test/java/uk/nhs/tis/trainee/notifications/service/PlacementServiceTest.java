@@ -24,6 +24,7 @@ package uk.nhs.tis.trainee.notifications.service;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.not;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
@@ -319,7 +320,7 @@ class PlacementServiceTest {
         Instant.MIN, Instant.MAX, SENT, null));
 
     when(historyService.findAllForTrainee(PERSON_ID)).thenReturn(sentNotifications);
-    when(notificationService.meetsCriteria(any(),eq(true))).thenReturn(false);
+    when(notificationService.meetsCriteria(any(), eq(true))).thenReturn(false);
 
     service.addNotifications(placement);
 
@@ -349,9 +350,62 @@ class PlacementServiceTest {
         is(SITE));
 
     Date when = dateCaptor.getValue();
-    Date aTimeInTheFuture = Date.from(Instant.now().plus(1, ChronoUnit.MINUTES));
+    Date aMinuteHence = Date.from(Instant.now().plus(1, ChronoUnit.MINUTES));
     assertThat("Unexpected rollout correction notification start time",
-        when.before(aTimeInTheFuture), is(true));
+        when.before(aMinuteHence), is(true));
+  }
+
+  @Test
+  void shouldIgnoreRolloutCorrectionNotificationIfNoSentNotifications() throws SchedulerException {
+    Placement placement = new Placement();
+    placement.setTisId(TIS_ID);
+    placement.setPersonId(PERSON_ID);
+    placement.setStartDate(START_DATE);
+    placement.setOwner(OWNER);
+    placement.setPlacementType(IN_POST);
+
+    List<HistoryDto> sentNotifications = new ArrayList<>();
+
+    when(historyService.findAllForTrainee(PERSON_ID)).thenReturn(sentNotifications);
+    when(notificationService.meetsCriteria(any(), eq(true))).thenReturn(false);
+
+    service.addNotifications(placement);
+
+    String expectedNotificationJobId = PLACEMENT_UPDATED_WEEK_12 + "-" + TIS_ID;
+    verify(notificationService).scheduleNotification(eq(expectedNotificationJobId), any(), any());
+  }
+
+  @Test
+  void shouldIgnoreRolloutCorrectionNotificationIfValidSentNotification()
+      throws SchedulerException {
+    Placement placement = new Placement();
+    placement.setTisId(TIS_ID);
+    placement.setPersonId(PERSON_ID);
+    placement.setStartDate(START_DATE);
+    placement.setOwner(OWNER);
+    placement.setPlacementType(IN_POST);
+
+    List<HistoryDto> sentNotifications = new ArrayList<>();
+    sentNotifications.add(new HistoryDto("id",
+        new TisReferenceInfo(TisReferenceType.PLACEMENT, TIS_ID),
+        MessageType.EMAIL,
+        PLACEMENT_UPDATED_WEEK_12, null,
+        "email address",
+        Instant.MIN, Instant.MAX, SENT, null));
+    when(historyService.findAllForTrainee(PERSON_ID)).thenReturn(sentNotifications);
+    when(notificationService.meetsCriteria(any(), eq(true))).thenReturn(true);
+
+    List<Map<String, String>> contactList = List.of(
+        Map.of(CONTACT_TYPE_FIELD, LocalOfficeContactType.TSS_SUPPORT.getContactTypeName()));
+    when(notificationService.getOwnerContactList(OWNER)).thenReturn(contactList);
+    when(notificationService.getOwnerContact(contactList, LocalOfficeContactType.TSS_SUPPORT,
+        null)).thenReturn("x@y.com");
+    when(notificationService.getHrefTypeForContact("x@y.com")).thenReturn(
+        HrefType.PROTOCOL_EMAIL.toString());
+
+    service.addNotifications(placement);
+
+    verify(notificationService, never()).scheduleNotification(any(), any(), any());
   }
 
   @Test
@@ -375,8 +429,9 @@ class PlacementServiceTest {
 
     service.addNotifications(placement);
 
+    String expectedNotificationJobId = PLACEMENT_UPDATED_WEEK_12 + "-" + TIS_ID;
     verify(notificationService)
-        .scheduleNotification(any(), any(), any());
+        .scheduleNotification(eq(expectedNotificationJobId), any(), any());
   }
 
   @Test
@@ -400,7 +455,8 @@ class PlacementServiceTest {
 
     service.addNotifications(placement);
 
-    verify(notificationService).scheduleNotification(any(), any(), any());
+    String expectedNotificationJobId = PLACEMENT_UPDATED_WEEK_12 + "-" + TIS_ID;
+    verify(notificationService).scheduleNotification(eq(expectedNotificationJobId), any(), any());
   }
 
   @Test
@@ -424,7 +480,8 @@ class PlacementServiceTest {
 
     service.addNotifications(placement);
 
-    verify(notificationService).scheduleNotification(any(), any(), any());
+    String expectedNotificationJobId = PLACEMENT_UPDATED_WEEK_12 + "-" + TIS_ID;
+    verify(notificationService).scheduleNotification(eq(expectedNotificationJobId), any(), any());
   }
 
   @ParameterizedTest
@@ -451,7 +508,10 @@ class PlacementServiceTest {
 
     service.addNotifications(placement);
 
-    verify(notificationService).scheduleNotification(any(), any(), any()); //only one scheduled
+    ArgumentCaptor<String> stringCaptor = ArgumentCaptor.captor();
+    verify(notificationService).scheduleNotification(stringCaptor.capture(), any(), any());
+    String notExpectedNotificationJobId = notificationTypeAlreadySent + "-" + TIS_ID;
+    assertThat(stringCaptor.getValue(), not(notExpectedNotificationJobId));
   }
 
   @Test
