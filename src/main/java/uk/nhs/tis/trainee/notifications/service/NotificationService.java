@@ -424,7 +424,8 @@ public class NotificationService implements Job {
           || (messagingControllerService.isValidRecipient(personId, MessageType.EMAIL)
           && inPilotOrRollout);
     } else if (notificationType == NotificationType.PLACEMENT_ROLLOUT_2024_CORRECTION) {
-      actuallySendEmail = true; //always send these
+      actuallySendEmail = inWhitelist
+          || messagingControllerService.isValidRecipient(personId, MessageType.EMAIL);
     }
     log.debug("Actually send email [{}]: for person {} and entity {} and notification {}",
         actuallySendEmail, personId, tisReferenceId, notificationType);
