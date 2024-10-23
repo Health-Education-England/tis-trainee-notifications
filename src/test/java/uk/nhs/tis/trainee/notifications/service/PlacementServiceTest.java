@@ -351,9 +351,12 @@ class PlacementServiceTest {
         is(SITE));
 
     Date when = dateCaptor.getValue();
-    Date minuteHence = Date.from(Instant.now().plus(1, ChronoUnit.MINUTES));
+    Date twoMinutesHence = Date.from(Instant.now().plus(2, ChronoUnit.MINUTES));
     assertThat("Unexpected rollout correction notification start time",
-        when.before(minuteHence), is(true));
+        when.before(twoMinutesHence), is(true));
+    Date now = Date.from(Instant.now());
+    assertThat("Unexpected rollout correction notification start time",
+        when.after(now), is(true));
   }
 
   @ParameterizedTest
