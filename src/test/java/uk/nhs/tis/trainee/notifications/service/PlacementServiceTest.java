@@ -72,6 +72,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.params.provider.EnumSource.Mode;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.quartz.JobDataMap;
@@ -84,6 +85,7 @@ import uk.nhs.tis.trainee.notifications.model.History.TisReferenceInfo;
 import uk.nhs.tis.trainee.notifications.model.HrefType;
 import uk.nhs.tis.trainee.notifications.model.LocalOfficeContactType;
 import uk.nhs.tis.trainee.notifications.model.MessageType;
+import uk.nhs.tis.trainee.notifications.model.NotificationStatus;
 import uk.nhs.tis.trainee.notifications.model.NotificationType;
 import uk.nhs.tis.trainee.notifications.model.Placement;
 import uk.nhs.tis.trainee.notifications.model.TisReferenceType;
@@ -103,7 +105,6 @@ class PlacementServiceTest {
   private static final String PERSON_ID = "abc";
   private static final String SITE = "site known as";
   private static final String SPECIALTY = "General Practice";
-  private static final String MANAGING_DEANERY = "the local office";
   private static final LocalDate START_DATE = LocalDate.now().plusYears(1);
   //set a year in the future to allow all notifications to be scheduled
   private static final String PLACEMENT_INFO_VERSION = "v1.2.3";
@@ -353,6 +354,34 @@ class PlacementServiceTest {
     Date minuteHence = Date.from(Instant.now().plus(1, ChronoUnit.MINUTES));
     assertThat("Unexpected rollout correction notification start time",
         when.before(minuteHence), is(true));
+  }
+
+  @ParameterizedTest
+  @EnumSource(value = NotificationStatus.class, mode = Mode.EXCLUDE, names = "SENT")
+  void shouldNotAddEmailRolloutCorrectionNotificationIfOriginalNotSent(
+      NotificationStatus notSentStatus) throws SchedulerException {
+    Placement placement = new Placement();
+    placement.setTisId(TIS_ID);
+    placement.setPersonId(PERSON_ID);
+    placement.setStartDate(START_DATE);
+    placement.setOwner(OWNER);
+    placement.setPlacementType(IN_POST);
+    placement.setSite(SITE);
+
+    List<HistoryDto> sentNotifications = new ArrayList<>();
+    sentNotifications.add(new HistoryDto("id",
+        new TisReferenceInfo(TisReferenceType.PLACEMENT, TIS_ID),
+        MessageType.EMAIL,
+        PLACEMENT_UPDATED_WEEK_12, null,
+        "email address",
+        Instant.MIN, Instant.MAX, notSentStatus, null));
+
+    when(historyService.findAllForTrainee(PERSON_ID)).thenReturn(sentNotifications);
+    when(notificationService.meetsCriteria(any(), eq(true))).thenReturn(false);
+
+    service.addNotifications(placement);
+
+    verify(notificationService, never()).scheduleNotification(any(), any(), any());
   }
 
   @Test
