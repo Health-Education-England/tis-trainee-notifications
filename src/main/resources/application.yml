@@ -58,6 +58,8 @@ application:
       in-app: v1.0.0
     placement-information:
       in-app: v1.0.0
+    placement-rollout-2024-correction:
+      in-app: v1.0.0
     placement-useful-information:
       in-app: v1.0.0
     sponsorship:

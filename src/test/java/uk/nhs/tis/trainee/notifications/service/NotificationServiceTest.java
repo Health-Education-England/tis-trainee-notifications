@@ -46,6 +46,7 @@ import static uk.nhs.tis.trainee.notifications.model.HrefType.PROTOCOL_EMAIL;
 import static uk.nhs.tis.trainee.notifications.model.LocalOfficeContactType.ONBOARDING_SUPPORT;
 import static uk.nhs.tis.trainee.notifications.model.MessageType.EMAIL;
 import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.SCHEDULED;
+import static uk.nhs.tis.trainee.notifications.model.NotificationType.PLACEMENT_ROLLOUT_2024_CORRECTION;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PLACEMENT_UPDATED_WEEK_12;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_CREATED;
 import static uk.nhs.tis.trainee.notifications.model.TisReferenceType.PLACEMENT;
@@ -326,6 +327,27 @@ class NotificationServiceTest {
 
   @ParameterizedTest
   @ValueSource(booleans = {true, false})
+  void shouldSendPlacementRolloutCorrectionEmailRegardlessOfRolloutOrPilotStatus(boolean isValid)
+      throws MessagingException {
+    UserDetails userAccountDetails =
+        new UserDetails(
+            false, USER_EMAIL, USER_TITLE, USER_FAMILY_NAME, USER_GIVEN_NAME, USER_GMC);
+    placementJobDetails.getJobDataMap().put(TEMPLATE_NOTIFICATION_TYPE_FIELD,
+        PLACEMENT_ROLLOUT_2024_CORRECTION.toString());
+    when(jobExecutionContext.getJobDetail()).thenReturn(placementJobDetails);
+    when(emailService.getRecipientAccountByEmail(USER_EMAIL)).thenReturn(userAccountDetails);
+    when(restTemplate.getForObject(ACCOUNT_DETAILS_URL, UserDetails.class,
+        Map.of(TIS_ID_FIELD, PERSON_ID))).thenReturn(userAccountDetails);
+    when(messagingControllerService.isValidRecipient(any(), any())).thenReturn(isValid);
+
+    service.execute(jobExecutionContext);
+
+    verify(emailService).sendMessage(any(), any(), any(), any(), any(), any(), eq(!isValid));
+    verify(jobExecutionContext).setResult(any());
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {true, false})
   void shouldLogProgrammeCreatedEmailWhenNotMatchAllCriteria(boolean apiResult)
       throws MessagingException {
     UserDetails userAccountDetails =
@@ -482,7 +504,8 @@ class NotificationServiceTest {
 
   @ParameterizedTest
   @EnumSource(value = NotificationType.class, mode = Mode.EXCLUDE,
-      names = {"PLACEMENT_UPDATED_WEEK_12", "PROGRAMME_CREATED", "PROGRAMME_DAY_ONE"})
+      names = {"PLACEMENT_UPDATED_WEEK_12", "PLACEMENT_ROLLOUT_2024_CORRECTION",
+          "PROGRAMME_CREATED", "PROGRAMME_DAY_ONE"})
   void shouldIgnoreNonProgrammeOrPlacementJobs(NotificationType notificationType)
       throws MessagingException {
     UserDetails userAccountDetails =
@@ -563,7 +586,8 @@ class NotificationServiceTest {
 
   @ParameterizedTest
   @EnumSource(value = NotificationType.class, mode = Mode.EXCLUDE,
-      names = {"PLACEMENT_UPDATED_WEEK_12", "PROGRAMME_CREATED", "PROGRAMME_DAY_ONE"})
+      names = {"PLACEMENT_UPDATED_WEEK_12", "PLACEMENT_ROLLOUT_2024_CORRECTION",
+          "PROGRAMME_CREATED", "PROGRAMME_DAY_ONE"})
   void shouldNotSendEmailWhenNotificationTypeNotCorrect(NotificationType notificationType) {
 
     when(messagingControllerService.isValidRecipient(any(), any())).thenReturn(true);

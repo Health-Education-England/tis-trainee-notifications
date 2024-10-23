@@ -45,6 +45,7 @@ public enum NotificationType {
   LTFT("less-than-full-time"),
   NON_EMPLOYMENT("non-employment"),
   PLACEMENT_INFORMATION("placement-information"),
+  PLACEMENT_ROLLOUT_2024_CORRECTION("placement-rollout-2024-correction"),
   USEFUL_INFORMATION("placement-useful-information"),
   PLACEMENT_UPDATED_WEEK_12("placement-updated-week-12"),
   PROGRAMME_DAY_ONE("programme-day-one"),

@@ -24,6 +24,7 @@ package uk.nhs.tis.trainee.notifications.service;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.not;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
@@ -40,6 +41,7 @@ import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.SENT;
 import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.UNREAD;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.NON_EMPLOYMENT;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PLACEMENT_INFORMATION;
+import static uk.nhs.tis.trainee.notifications.model.NotificationType.PLACEMENT_ROLLOUT_2024_CORRECTION;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PLACEMENT_UPDATED_WEEK_12;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.USEFUL_INFORMATION;
 import static uk.nhs.tis.trainee.notifications.model.TisReferenceType.PLACEMENT;
@@ -59,6 +61,7 @@ import static uk.nhs.tis.trainee.notifications.service.PlacementService.TIS_ID_F
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -219,6 +222,8 @@ class PlacementServiceTest {
 
   @Test
   void shouldNotAddNotificationsIfNoStartDate() throws SchedulerException {
+    //this test does not contribute to test coverage, because without a startDate the placement is
+    //excluded, so it never tests the null condition in shouldScheduleNotification()
     Placement placement = new Placement();
     placement.setTisId(TIS_ID);
     placement.setOwner(OWNER);
@@ -245,7 +250,7 @@ class PlacementServiceTest {
   }
 
   @Test
-  void shouldAddEmailNotificationsIfNotExcluded() throws SchedulerException {
+  void shouldAddEmail12WeekNotificationIfNotExcluded() throws SchedulerException {
     Placement placement = new Placement();
     placement.setTisId(TIS_ID);
     placement.setPersonId(PERSON_ID);
@@ -297,6 +302,113 @@ class PlacementServiceTest {
   }
 
   @Test
+  void shouldAddEmailRolloutCorrectionNotificationIfNotExcluded() throws SchedulerException {
+    Placement placement = new Placement();
+    placement.setTisId(TIS_ID);
+    placement.setPersonId(PERSON_ID);
+    placement.setStartDate(START_DATE);
+    placement.setOwner(OWNER);
+    placement.setPlacementType(IN_POST);
+    placement.setSite(SITE);
+
+    List<HistoryDto> sentNotifications = new ArrayList<>();
+    sentNotifications.add(new HistoryDto("id",
+        new TisReferenceInfo(TisReferenceType.PLACEMENT, TIS_ID),
+        MessageType.EMAIL,
+        PLACEMENT_UPDATED_WEEK_12, null,
+        "email address",
+        Instant.MIN, Instant.MAX, SENT, null));
+
+    when(historyService.findAllForTrainee(PERSON_ID)).thenReturn(sentNotifications);
+    when(notificationService.meetsCriteria(any(), eq(true))).thenReturn(false);
+
+    service.addNotifications(placement);
+
+    ArgumentCaptor<String> stringCaptor = ArgumentCaptor.captor();
+    ArgumentCaptor<JobDataMap> jobDataMapCaptor = ArgumentCaptor.captor();
+    ArgumentCaptor<Date> dateCaptor = ArgumentCaptor.captor();
+    verify(notificationService).scheduleNotification(
+        stringCaptor.capture(),
+        jobDataMapCaptor.capture(),
+        dateCaptor.capture()
+    );
+
+    //verify the details of the last notification added
+    String jobId = stringCaptor.getValue();
+    String expectedRolloutCorrectionJobId = PLACEMENT_ROLLOUT_2024_CORRECTION + "-" + TIS_ID;
+    assertThat("Unexpected job id.", jobId, is(expectedRolloutCorrectionJobId));
+
+    JobDataMap jobDataMap = jobDataMapCaptor.getValue();
+    assertThat("Unexpected tisId.", jobDataMap.get(TIS_ID_FIELD), is(TIS_ID));
+    assertThat("Unexpected personId.", jobDataMap.get(PERSON_ID_FIELD), is(PERSON_ID));
+    assertThat("Unexpected start date.", jobDataMap.get(START_DATE_FIELD), is(START_DATE));
+    assertThat("Unexpected placement type.", jobDataMap.get(PLACEMENT_TYPE_FIELD),
+        is(IN_POST));
+    assertThat("Unexpected placement owner.", jobDataMap.get(TEMPLATE_OWNER_FIELD),
+        is(OWNER));
+    assertThat("Unexpected placement site.", jobDataMap.get(PLACEMENT_SITE_FIELD),
+        is(SITE));
+
+    Date when = dateCaptor.getValue();
+    Date minuteHence = Date.from(Instant.now().plus(1, ChronoUnit.MINUTES));
+    assertThat("Unexpected rollout correction notification start time",
+        when.before(minuteHence), is(true));
+  }
+
+  @Test
+  void shouldIgnoreRolloutCorrectionNotificationIfNoSentNotifications() throws SchedulerException {
+    Placement placement = new Placement();
+    placement.setTisId(TIS_ID);
+    placement.setPersonId(PERSON_ID);
+    placement.setStartDate(START_DATE);
+    placement.setOwner(OWNER);
+    placement.setPlacementType(IN_POST);
+
+    List<HistoryDto> sentNotifications = new ArrayList<>();
+
+    when(historyService.findAllForTrainee(PERSON_ID)).thenReturn(sentNotifications);
+    when(notificationService.meetsCriteria(any(), eq(true))).thenReturn(false);
+
+    service.addNotifications(placement);
+
+    String expectedNotificationJobId = PLACEMENT_UPDATED_WEEK_12 + "-" + TIS_ID;
+    verify(notificationService).scheduleNotification(eq(expectedNotificationJobId), any(), any());
+  }
+
+  @Test
+  void shouldIgnoreRolloutCorrectionNotificationIfValidSentNotification()
+      throws SchedulerException {
+    Placement placement = new Placement();
+    placement.setTisId(TIS_ID);
+    placement.setPersonId(PERSON_ID);
+    placement.setStartDate(START_DATE);
+    placement.setOwner(OWNER);
+    placement.setPlacementType(IN_POST);
+
+    List<HistoryDto> sentNotifications = new ArrayList<>();
+    sentNotifications.add(new HistoryDto("id",
+        new TisReferenceInfo(TisReferenceType.PLACEMENT, TIS_ID),
+        MessageType.EMAIL,
+        PLACEMENT_UPDATED_WEEK_12, null,
+        "email address",
+        Instant.MIN, Instant.MAX, SENT, null));
+    when(historyService.findAllForTrainee(PERSON_ID)).thenReturn(sentNotifications);
+    when(notificationService.meetsCriteria(any(), eq(true))).thenReturn(true);
+
+    List<Map<String, String>> contactList = List.of(
+        Map.of(CONTACT_TYPE_FIELD, LocalOfficeContactType.TSS_SUPPORT.getContactTypeName()));
+    when(notificationService.getOwnerContactList(OWNER)).thenReturn(contactList);
+    when(notificationService.getOwnerContact(contactList, LocalOfficeContactType.TSS_SUPPORT,
+        null)).thenReturn("x@y.com");
+    when(notificationService.getHrefTypeForContact("x@y.com")).thenReturn(
+        HrefType.PROTOCOL_EMAIL.toString());
+
+    service.addNotifications(placement);
+
+    verify(notificationService, never()).scheduleNotification(any(), any(), any());
+  }
+
+  @Test
   void shouldIgnoreNonPlacementSentNotifications() throws SchedulerException {
     Placement placement = new Placement();
     placement.setTisId(TIS_ID);
@@ -317,8 +429,9 @@ class PlacementServiceTest {
 
     service.addNotifications(placement);
 
+    String expectedNotificationJobId = PLACEMENT_UPDATED_WEEK_12 + "-" + TIS_ID;
     verify(notificationService)
-        .scheduleNotification(any(), any(), any());
+        .scheduleNotification(eq(expectedNotificationJobId), any(), any());
   }
 
   @Test
@@ -342,7 +455,8 @@ class PlacementServiceTest {
 
     service.addNotifications(placement);
 
-    verify(notificationService).scheduleNotification(any(), any(), any());
+    String expectedNotificationJobId = PLACEMENT_UPDATED_WEEK_12 + "-" + TIS_ID;
+    verify(notificationService).scheduleNotification(eq(expectedNotificationJobId), any(), any());
   }
 
   @Test
@@ -366,11 +480,15 @@ class PlacementServiceTest {
 
     service.addNotifications(placement);
 
-    verify(notificationService).scheduleNotification(any(), any(), any());
+    String expectedNotificationJobId = PLACEMENT_UPDATED_WEEK_12 + "-" + TIS_ID;
+    verify(notificationService).scheduleNotification(eq(expectedNotificationJobId), any(), any());
   }
 
-  @Test
-  void shouldNotResendPlacementNotification() throws SchedulerException {
+  @ParameterizedTest
+  @EnumSource(value = NotificationType.class,
+      names = {"PLACEMENT_UPDATED_WEEK_12", "PLACEMENT_ROLLOUT_2024_CORRECTION"})
+  void shouldNotResendPlacementNotification(NotificationType notificationTypeAlreadySent)
+      throws SchedulerException {
     Placement placement = new Placement();
     placement.setTisId(TIS_ID);
     placement.setPersonId(PERSON_ID);
@@ -382,7 +500,7 @@ class PlacementServiceTest {
     sentNotifications.add(new HistoryDto("id",
         new TisReferenceInfo(TisReferenceType.PLACEMENT, TIS_ID),
         MessageType.EMAIL,
-        PLACEMENT_UPDATED_WEEK_12, null,
+        notificationTypeAlreadySent, null,
         "email address",
         Instant.MIN, Instant.MAX, SENT, null));
 
@@ -390,7 +508,10 @@ class PlacementServiceTest {
 
     service.addNotifications(placement);
 
-    verify(notificationService, never()).scheduleNotification(any(), any(), any());
+    ArgumentCaptor<String> stringCaptor = ArgumentCaptor.captor();
+    verify(notificationService).scheduleNotification(stringCaptor.capture(), any(), any());
+    String notExpectedNotificationJobId = notificationTypeAlreadySent + "-" + TIS_ID;
+    assertThat(stringCaptor.getValue(), not(notExpectedNotificationJobId));
   }
 
   @Test
@@ -464,6 +585,12 @@ class PlacementServiceTest {
         PLACEMENT_UPDATED_WEEK_12, null,
         "email address",
         Instant.MIN, Instant.MAX, SENT, null));
+    sentNotifications.add(new HistoryDto("id",
+        null,
+        MessageType.EMAIL,
+        PLACEMENT_ROLLOUT_2024_CORRECTION, null,
+        "email address",
+        Instant.MIN, Instant.MAX, SENT, null));
 
     when(historyService.findAllForTrainee(PERSON_ID)).thenReturn(sentNotifications);
 
@@ -489,6 +616,32 @@ class PlacementServiceTest {
   }
 
   @Test
+  void shouldRethrowSchedulerExceptionsForRolloutCorrectionNotification()
+      throws SchedulerException {
+    Placement placement = new Placement();
+    placement.setTisId(TIS_ID);
+    placement.setPersonId(PERSON_ID);
+    placement.setStartDate(START_DATE);
+    placement.setOwner(OWNER);
+    placement.setPlacementType(IN_POST);
+
+    List<HistoryDto> sentNotifications = new ArrayList<>();
+    sentNotifications.add(new HistoryDto("id",
+        new TisReferenceInfo(TisReferenceType.PLACEMENT, TIS_ID),
+        MessageType.EMAIL,
+        PLACEMENT_UPDATED_WEEK_12, null,
+        "email address",
+        Instant.MIN, Instant.MAX, SENT, null));
+    when(historyService.findAllForTrainee(PERSON_ID)).thenReturn(sentNotifications);
+    //should skip week-12 notification and attempt to schedule the rollout correction notification
+    doThrow(new SchedulerException())
+        .when(notificationService).scheduleNotification(any(), any(), any());
+
+    assertThrows(SchedulerException.class,
+        () -> service.addNotifications(placement));
+  }
+
+  @Test
   void shouldDeleteNotifications() throws SchedulerException {
     Placement placement = new Placement();
     placement.setTisId(TIS_ID);
@@ -497,6 +650,8 @@ class PlacementServiceTest {
 
     String jobId = PLACEMENT_UPDATED_WEEK_12 + "-" + TIS_ID;
     verify(notificationService).removeNotification(jobId);
+    String jobId2 = PLACEMENT_ROLLOUT_2024_CORRECTION + "-" + TIS_ID;
+    verify(notificationService).removeNotification(jobId2);
   }
 
   @Test
