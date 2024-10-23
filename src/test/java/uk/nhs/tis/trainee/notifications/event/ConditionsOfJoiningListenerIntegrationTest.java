@@ -37,6 +37,7 @@ import static org.springframework.http.MediaType.MULTIPART_MIXED_VALUE;
 import static org.springframework.http.MediaType.MULTIPART_RELATED_VALUE;
 import static org.springframework.http.MediaType.TEXT_HTML_VALUE;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.COJ_CONFIRMATION;
+import static uk.nhs.tis.trainee.notifications.model.TisReferenceType.PROGRAMME_MEMBERSHIP;
 
 import io.awspring.cloud.s3.S3Resource;
 import io.awspring.cloud.s3.S3Template;
@@ -75,6 +76,7 @@ import uk.nhs.tis.trainee.notifications.dto.UserDetails;
 import uk.nhs.tis.trainee.notifications.model.History;
 import uk.nhs.tis.trainee.notifications.model.History.RecipientInfo;
 import uk.nhs.tis.trainee.notifications.model.History.TemplateInfo;
+import uk.nhs.tis.trainee.notifications.model.History.TisReferenceInfo;
 import uk.nhs.tis.trainee.notifications.model.MessageType;
 import uk.nhs.tis.trainee.notifications.service.EmailService;
 import uk.nhs.tis.trainee.notifications.service.HistoryService;
@@ -88,6 +90,7 @@ import uk.nhs.tis.trainee.notifications.service.UserAccountService;
 class ConditionsOfJoiningListenerIntegrationTest {
 
   private static final String PERSON_ID = "40";
+  private static final UUID PROGRAMME_MEMBERSHIP_ID = UUID.randomUUID();
   private static final String USER_ID = UUID.randomUUID().toString();
   private static final String EMAIL = "anthony.gilliam@tis.nhs.uk";
   private static final String TITLE = "Mr";
@@ -141,7 +144,7 @@ class ConditionsOfJoiningListenerIntegrationTest {
   @NullAndEmptySource
   void shouldSendDefaultCojConfirmationWhenTemplateVariablesNotAvailable(String missingValue)
       throws Exception {
-    CojPublishedEvent event = new CojPublishedEvent(PERSON_ID,
+    CojPublishedEvent event = new CojPublishedEvent(PERSON_ID, PROGRAMME_MEMBERSHIP_ID,
         new ConditionsOfJoining(null), null);
     when(userAccountService.getUserDetailsById(USER_ID)).thenReturn(
         new UserDetails(true, EMAIL, TITLE, missingValue, missingValue, GMC));
@@ -192,7 +195,7 @@ class ConditionsOfJoiningListenerIntegrationTest {
 
   @Test
   void shouldSendFullyTailoredCojConfirmationWhenAllTemplateVariablesAvailable() throws Exception {
-    CojPublishedEvent event = new CojPublishedEvent(PERSON_ID,
+    CojPublishedEvent event = new CojPublishedEvent(PERSON_ID, PROGRAMME_MEMBERSHIP_ID,
         new ConditionsOfJoining(SYNCED_AT), null);
     when(userAccountService.getUserDetailsById(USER_ID)).thenReturn(
         new UserDetails(true, EMAIL, TITLE, FAMILY_NAME, GIVEN_NAME, GMC));
@@ -235,7 +238,7 @@ class ConditionsOfJoiningListenerIntegrationTest {
 
   @Test
   void shouldSendCojConfirmationWithTailoredNameWhenAvailable() throws Exception {
-    CojPublishedEvent event = new CojPublishedEvent(PERSON_ID,
+    CojPublishedEvent event = new CojPublishedEvent(PERSON_ID, PROGRAMME_MEMBERSHIP_ID,
         new ConditionsOfJoining(null), null);
     when(userAccountService.getUserDetailsById(USER_ID)).thenReturn(
         new UserDetails(true, EMAIL, TITLE, FAMILY_NAME, GIVEN_NAME, GMC));
@@ -276,7 +279,7 @@ class ConditionsOfJoiningListenerIntegrationTest {
 
   @Test
   void shouldSendCojConfirmationWithTailoredLocalOfficeWhenAvailable() throws Exception {
-    CojPublishedEvent event = new CojPublishedEvent(PERSON_ID,
+    CojPublishedEvent event = new CojPublishedEvent(PERSON_ID, PROGRAMME_MEMBERSHIP_ID,
         new ConditionsOfJoining(null), null);
     when(userAccountService.getUserDetailsById(USER_ID)).thenReturn(
         new UserDetails(true, EMAIL, TITLE, null, null, GMC));
@@ -316,7 +319,7 @@ class ConditionsOfJoiningListenerIntegrationTest {
 
   @Test
   void shouldSendCojConfirmationWithTailoredSyncedAtWhenAvailable() throws Exception {
-    CojPublishedEvent event = new CojPublishedEvent(PERSON_ID,
+    CojPublishedEvent event = new CojPublishedEvent(PERSON_ID, PROGRAMME_MEMBERSHIP_ID,
         new ConditionsOfJoining(SYNCED_AT), null);
     when(userAccountService.getUserDetailsById(USER_ID)).thenReturn(
         new UserDetails(true, EMAIL, TITLE, null, null, GMC));
@@ -359,7 +362,7 @@ class ConditionsOfJoiningListenerIntegrationTest {
 
   @Test
   void shouldSendCojConfirmationWithTailoredDomainWhenAvailable() throws Exception {
-    CojPublishedEvent event = new CojPublishedEvent(PERSON_ID,
+    CojPublishedEvent event = new CojPublishedEvent(PERSON_ID, PROGRAMME_MEMBERSHIP_ID,
         new ConditionsOfJoining(null), null);
     when(userAccountService.getUserDetailsById(USER_ID)).thenReturn(
         new UserDetails(true, EMAIL, TITLE, null, null, GMC));
@@ -410,7 +413,7 @@ class ConditionsOfJoiningListenerIntegrationTest {
     when(s3Template.download("my-bucket", "my-key.pdf")).thenReturn(s3Resource);
 
     StoredFile pdf = new StoredFile("my-bucket", "my-key.pdf");
-    CojPublishedEvent event = new CojPublishedEvent(PERSON_ID,
+    CojPublishedEvent event = new CojPublishedEvent(PERSON_ID, PROGRAMME_MEMBERSHIP_ID,
         new ConditionsOfJoining(null), pdf);
 
     listener.handleConditionsOfJoiningPublished(event);
@@ -451,7 +454,7 @@ class ConditionsOfJoiningListenerIntegrationTest {
 
   @Test
   void shouldStoreCojPublishedNotificationHistoryWhenMessageSent() throws MessagingException {
-    CojPublishedEvent event = new CojPublishedEvent(PERSON_ID,
+    CojPublishedEvent event = new CojPublishedEvent(PERSON_ID, PROGRAMME_MEMBERSHIP_ID,
         new ConditionsOfJoining(SYNCED_AT), null);
     when(userAccountService.getUserDetailsById(USER_ID)).thenReturn(
         new UserDetails(true, EMAIL, TITLE, FAMILY_NAME, GIVEN_NAME, GMC));
@@ -465,6 +468,11 @@ class ConditionsOfJoiningListenerIntegrationTest {
     assertThat("Unexpected notification id.", history.id(), notNullValue());
     assertThat("Unexpected notification type.", history.type(), is(COJ_CONFIRMATION));
     assertThat("Unexpected sent at.", history.sentAt(), notNullValue());
+
+    TisReferenceInfo tisReference = history.tisReference();
+    assertThat("Unexpected reference id.", tisReference.id(),
+        is(PROGRAMME_MEMBERSHIP_ID.toString()));
+    assertThat("Unexpected reference type.", tisReference.type(), is(PROGRAMME_MEMBERSHIP));
 
     RecipientInfo recipient = history.recipient();
     assertThat("Unexpected recipient id.", recipient.id(), is(PERSON_ID));
