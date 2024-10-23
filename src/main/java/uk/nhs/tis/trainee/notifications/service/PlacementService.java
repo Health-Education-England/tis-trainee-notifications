@@ -35,6 +35,7 @@ import static uk.nhs.tis.trainee.notifications.service.NotificationService.TEMPL
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
+import java.time.temporal.ChronoUnit;
 import java.util.Date;
 import java.util.EnumMap;
 import java.util.HashMap;
@@ -52,6 +53,8 @@ import uk.nhs.tis.trainee.notifications.dto.HistoryDto;
 import uk.nhs.tis.trainee.notifications.dto.UserDetails;
 import uk.nhs.tis.trainee.notifications.model.History;
 import uk.nhs.tis.trainee.notifications.model.LocalOfficeContactType;
+import uk.nhs.tis.trainee.notifications.model.NotificationEvent;
+import uk.nhs.tis.trainee.notifications.model.NotificationStatus;
 import uk.nhs.tis.trainee.notifications.model.NotificationType;
 import uk.nhs.tis.trainee.notifications.model.Placement;
 
@@ -86,13 +89,13 @@ public class PlacementService {
   /**
    * Initialise the Placement Service.
    *
-   * @param historyService        The history Service to use.
-   * @param notificationService   The notification Service to use.
-   * @param inAppService          The in-app service to use.
-   * @param placementInfoVersion  The placement information in-app notification version.
-   * @param placementUsefulInfoVersion  The placement useful information
-   *                                    in-app notification version.
-   * @param nonEmploymentVersion  The non employment in-app notification version.
+   * @param historyService             The history Service to use.
+   * @param notificationService        The notification Service to use.
+   * @param inAppService               The in-app service to use.
+   * @param placementInfoVersion       The placement information in-app notification version.
+   * @param placementUsefulInfoVersion The placement useful information in-app notification
+   *                                   version.
+   * @param nonEmploymentVersion       The non employment in-app notification version.
    */
   public PlacementService(HistoryService historyService, NotificationService notificationService,
       InAppService inAppService, @Value("${application.timezone}") ZoneId timezone,
@@ -136,16 +139,17 @@ public class PlacementService {
   }
 
   /**
-   * Get a map of 12 week notifications and the instant they were sent for a given trainee and
-   * placement from the notification history.
+   * Get a map of notifications and their event status for a given trainee and placement from the
+   * notification history.
    *
    * @param traineeId   The trainee TIS ID.
    * @param placementId The placement TIS ID.
-   * @return The map of notification types and when they were sent.
+   * @return The map of notification types and event status.
    */
-  private Map<NotificationType, Instant> getNotificationsSent(String traineeId,
+  private Map<NotificationType, NotificationEvent> getNotificationsEvents(String traineeId,
       String placementId) {
-    EnumMap<NotificationType, Instant> notifications = new EnumMap<>(NotificationType.class);
+    EnumMap<NotificationType, NotificationEvent> notificationTypeEvents
+        = new EnumMap<>(NotificationType.class);
     List<HistoryDto> correspondence = historyService.findAllForTrainee(traineeId);
 
     Set<NotificationType> notificationTypes = new HashSet<>();
@@ -156,17 +160,18 @@ public class PlacementService {
     notificationTypes.add(PLACEMENT_ROLLOUT_2024_CORRECTION);
 
     for (NotificationType milestone : notificationTypes) {
-      Optional<HistoryDto> sentItem = correspondence.stream()
+      Optional<HistoryDto> historyItem = correspondence.stream()
           .filter(c -> c.tisReference() != null)
           .filter(c ->
               c.tisReference().type().equals(PLACEMENT)
                   && c.subject().equals(milestone)
                   && c.tisReference().id().equals(placementId))
           .findFirst();
-      sentItem.ifPresent(
-          historyDto -> notifications.put(milestone, historyDto.sentAt()));
+      historyItem.ifPresent(
+          historyDto -> notificationTypeEvents.put(milestone,
+              new NotificationEvent(historyDto.status(), historyDto.sentAt())));
     }
-    return notifications;
+    return notificationTypeEvents;
   }
 
   /**
@@ -186,11 +191,11 @@ public class PlacementService {
     log.info("Placement {}: excluded {}.", placement.getTisId(), isExcluded);
 
     if (!isExcluded) {
-      Map<NotificationType, Instant> notificationsAlreadySent
-          = getNotificationsSent(placement.getPersonId(), placement.getTisId());
+      Map<NotificationType, NotificationEvent> notificationsRecorded
+          = getNotificationsEvents(placement.getPersonId(), placement.getTisId());
 
-      createDirectNotifications(placement, notificationsAlreadySent);
-      createInAppNotifications(placement, notificationsAlreadySent);
+      createDirectNotifications(placement, notificationsRecorded);
+      createInAppNotifications(placement, notificationsRecorded);
     }
   }
 
@@ -229,11 +234,11 @@ public class PlacementService {
   /**
    * Create "direct" notifications, such as email, which may be scheduled for a future date/time.
    *
-   * @param placement                The updated placement.
-   * @param notificationsAlreadySent Previously sent notifications.
+   * @param placement             The updated placement.
+   * @param notificationsRecorded Notification types and their recorded event.
    */
   private void createDirectNotifications(Placement placement,
-                                         Map<NotificationType, Instant> notificationsAlreadySent)
+      Map<NotificationType, NotificationEvent> notificationsRecorded)
       throws SchedulerException {
 
     LocalDate startDate = placement.getStartDate();
@@ -247,7 +252,7 @@ public class PlacementService {
     jobDataMap.put(PLACEMENT_SITE_FIELD, placement.getSite());
     jobDataMap.put(TEMPLATE_OWNER_FIELD, placement.getOwner());
 
-    boolean shouldScheduleWeek12 = shouldScheduleNotification(notificationsAlreadySent, startDate);
+    boolean shouldScheduleWeek12 = shouldScheduleNotification(notificationsRecorded, startDate);
 
     if (shouldScheduleWeek12) {
       log.info("Scheduling notification {} for {}.",
@@ -270,7 +275,7 @@ public class PlacementService {
     }
 
     boolean shouldScheduleRolloutCorrection
-        = shouldScheduleRolloutCorrectionNotification(placement, notificationsAlreadySent);
+        = shouldScheduleRolloutCorrectionNotification(placement, notificationsRecorded);
 
     if (shouldScheduleRolloutCorrection) {
       log.info("Scheduling notification {} for {}.",
@@ -279,8 +284,8 @@ public class PlacementService {
 
       String jobId = PLACEMENT_ROLLOUT_2024_CORRECTION + "-" + placement.getTisId();
       try {
-        Date sendNow = Date.from(Instant.now());
-        notificationService.scheduleNotification(jobId, jobDataMap, sendNow);
+        Date sendInMinute = Date.from(Instant.now().plus(1, ChronoUnit.MINUTES));
+        notificationService.scheduleNotification(jobId, jobDataMap, sendInMinute);
       } catch (SchedulerException e) {
         log.error("Failed to schedule notification {}: {}", jobId, e.toString());
         throw (e); //to allow message to be requeue-ed
@@ -291,44 +296,51 @@ public class PlacementService {
   /**
    * Helper function to determine whether a notification should be scheduled.
    *
+   * @param notificationsRecorded The current recorded notification types and their events.
+   * @param startDate             The placement start date.
    * @return true if it should be scheduled, false otherwise.
    */
   private boolean shouldScheduleNotification(
-      Map<NotificationType, Instant> notificationsAlreadySent, LocalDate startDate) {
+      Map<NotificationType, NotificationEvent> notificationsRecorded, LocalDate startDate) {
 
     if (startDate == null || startDate.isBefore(LocalDate.now())) {
       return false;
     }
     //do not resend any notification
-    return (!notificationsAlreadySent.containsKey(PLACEMENT_UPDATED_WEEK_12));
+    return (!notificationsRecorded.containsKey(PLACEMENT_UPDATED_WEEK_12));
   }
 
   /**
    * Helper function to determine whether a rollout correction notification should be scheduled.
    *
-   * @param placement                The placement that triggered the notification.
-   * @param notificationsAlreadySent The notifications already sent.
+   * @param placement             The placement that triggered the notification.
+   * @param notificationsRecorded The current recorded notification types and their events.
    * @return true if it should be scheduled, false otherwise.
    */
   private boolean shouldScheduleRolloutCorrectionNotification(Placement placement,
-      Map<NotificationType, Instant> notificationsAlreadySent) {
-    if (notificationsAlreadySent.containsKey(PLACEMENT_ROLLOUT_2024_CORRECTION)) {
+      Map<NotificationType, NotificationEvent> notificationsRecorded) {
+    if (notificationsRecorded.containsKey(PLACEMENT_ROLLOUT_2024_CORRECTION)) {
       return false; //do not resend
     } else {
       boolean shouldHaveNotification = notificationService.meetsCriteria(placement, true);
-      boolean hasNotification = notificationsAlreadySent.containsKey(PLACEMENT_UPDATED_WEEK_12);
-      return (!shouldHaveNotification && hasNotification);
+      boolean hasSentNotification = false;
+      boolean hasNotificationType = notificationsRecorded.containsKey(PLACEMENT_UPDATED_WEEK_12);
+      if (hasNotificationType) {
+        NotificationEvent notificationEvent = notificationsRecorded.get(PLACEMENT_UPDATED_WEEK_12);
+        hasSentNotification = notificationEvent.notificationStatus() == NotificationStatus.SENT;
+      }
+      return (!shouldHaveNotification && hasSentNotification);
     }
   }
 
   /**
    * Create any relevant in-app notifications.
    *
-   * @param placement                The updated placement.
-   * @param notificationsAlreadySent Previously sent notifications.
+   * @param placement             The updated placement.
+   * @param notificationsRecorded The current recorded notification types and their events.
    */
   private void createInAppNotifications(Placement placement,
-      Map<NotificationType, Instant> notificationsAlreadySent) {
+      Map<NotificationType, NotificationEvent> notificationsRecorded) {
     boolean meetsCriteria = notificationService.meetsCriteria(placement, true);
 
     if (meetsCriteria) {
@@ -345,21 +357,21 @@ public class PlacementService {
           ? userTraineeDetails.gmcNumber().trim() : "unknown";
 
       // PLACEMENT_INFORMATION
-      createUniqueInAppNotification(placement, notificationsAlreadySent, PLACEMENT_INFORMATION,
+      createUniqueInAppNotification(placement, notificationsRecorded, PLACEMENT_INFORMATION,
           placementInfoVersion, Map.of(
               LOCAL_OFFICE_CONTACT_FIELD, localOfficeContact,
               LOCAL_OFFICE_CONTACT_TYPE_FIELD, localOfficeContactType,
               GMC_NUMBER_FIELD, gmcNumber));
 
       // PLACEMENT_USEFUL_INFORMATION
-      createUniqueInAppNotification(placement, notificationsAlreadySent,
+      createUniqueInAppNotification(placement, notificationsRecorded,
           USEFUL_INFORMATION, placementUsefulInfoVersion, Map.of(
               LOCAL_OFFICE_CONTACT_FIELD, localOfficeContact,
               LOCAL_OFFICE_CONTACT_TYPE_FIELD, localOfficeContactType,
               GMC_NUMBER_FIELD, gmcNumber));
 
       // NON_EMPLOYMENT
-      createUniqueInAppNotification(placement, notificationsAlreadySent, NON_EMPLOYMENT,
+      createUniqueInAppNotification(placement, notificationsRecorded, NON_EMPLOYMENT,
           nonEmploymentVersion, Map.of(
               LOCAL_OFFICE_CONTACT_FIELD, localOfficeContact,
               LOCAL_OFFICE_CONTACT_TYPE_FIELD, localOfficeContactType,
@@ -370,18 +382,19 @@ public class PlacementService {
   /**
    * Create a unique in-app notification of the given type and version.
    *
-   * @param placement                The updated placement.
-   * @param notificationsAlreadySent Previously sent notifications.
-   * @param notificationType         The type of notification being sent.
-   * @param notificationVersion      The version of the notification.
-   * @param extraVariables           Extra variables to include with the template, Specialty,
-   *                                 Site Known As and Start Date are populated automatically.
+   * @param placement             The updated placement.
+   * @param notificationsRecorded Previously sent notifications.
+   * @param notificationType      The type of notification being sent.
+   * @param notificationVersion   The version of the notification.
+   * @param extraVariables        Extra variables to include with the template, Specialty, Site
+   *                              Known As and Start Date are populated automatically.
    */
   private void createUniqueInAppNotification(Placement placement,
-      Map<NotificationType, Instant> notificationsAlreadySent, NotificationType notificationType,
-      String notificationVersion, Map<String, Object> extraVariables) {
+      Map<NotificationType, NotificationEvent> notificationsRecorded,
+      NotificationType notificationType, String notificationVersion,
+      Map<String, Object> extraVariables) {
 
-    boolean isUnique = !notificationsAlreadySent.containsKey(notificationType);
+    boolean isUnique = !notificationsRecorded.containsKey(notificationType);
     if (isUnique) {
       Map<String, Object> variables = new HashMap<>(extraVariables);
       variables.put(START_DATE_FIELD, placement.getStartDate());
