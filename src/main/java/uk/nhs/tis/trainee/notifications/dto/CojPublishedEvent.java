@@ -24,6 +24,7 @@ package uk.nhs.tis.trainee.notifications.dto;
 import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import java.time.Instant;
+import java.util.UUID;
 
 /**
  * A Conditions of Joining published event.
@@ -35,6 +36,7 @@ public record CojPublishedEvent(
 
     @JsonAlias("traineeId")
     String personId,
+    UUID programmeMembershipId,
     ConditionsOfJoining conditionsOfJoining,
     StoredFile pdf) {
 

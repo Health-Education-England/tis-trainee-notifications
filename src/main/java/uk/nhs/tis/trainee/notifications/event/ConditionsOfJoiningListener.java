@@ -22,6 +22,7 @@
 package uk.nhs.tis.trainee.notifications.event;
 
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.COJ_CONFIRMATION;
+import static uk.nhs.tis.trainee.notifications.model.TisReferenceType.PROGRAMME_MEMBERSHIP;
 
 import io.awspring.cloud.sqs.annotation.SqsListener;
 import jakarta.mail.MessagingException;
@@ -33,6 +34,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import uk.nhs.tis.trainee.notifications.dto.CojPublishedEvent;
 import uk.nhs.tis.trainee.notifications.dto.HistoryDto;
+import uk.nhs.tis.trainee.notifications.model.History.TisReferenceInfo;
 import uk.nhs.tis.trainee.notifications.service.EmailService;
 import uk.nhs.tis.trainee.notifications.service.HistoryService;
 
@@ -72,6 +74,8 @@ public class ConditionsOfJoiningListener {
 
     Optional<HistoryDto> sent = historyService.findAllSentForTrainee(event.personId()).stream()
         .filter(h -> h.subject().equals(COJ_CONFIRMATION))
+        .filter(h -> h.tisReference() != null)
+        .filter(h -> h.tisReference().id().equals(event.programmeMembershipId().toString()))
         .findAny();
 
     if (sent.isPresent()) {
@@ -86,8 +90,10 @@ public class ConditionsOfJoiningListener {
     }
 
     String traineeId = event.personId();
+    TisReferenceInfo tisReference = new TisReferenceInfo(
+        PROGRAMME_MEMBERSHIP, event.programmeMembershipId().toString());
     emailService.sendMessageToExistingUser(traineeId, COJ_CONFIRMATION, templateVersion,
-        templateVariables, null, event.pdf());
+        templateVariables, tisReference, event.pdf());
     log.info("COJ published notification sent for trainee {}.", traineeId);
   }
 }

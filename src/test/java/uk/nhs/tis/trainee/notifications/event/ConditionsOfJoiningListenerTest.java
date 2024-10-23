@@ -33,11 +33,13 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.COJ_CONFIRMATION;
+import static uk.nhs.tis.trainee.notifications.model.TisReferenceType.PROGRAMME_MEMBERSHIP;
 
 import jakarta.mail.MessagingException;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -48,8 +50,10 @@ import uk.nhs.tis.trainee.notifications.dto.CojPublishedEvent;
 import uk.nhs.tis.trainee.notifications.dto.CojPublishedEvent.ConditionsOfJoining;
 import uk.nhs.tis.trainee.notifications.dto.HistoryDto;
 import uk.nhs.tis.trainee.notifications.dto.StoredFile;
+import uk.nhs.tis.trainee.notifications.model.History.TisReferenceInfo;
 import uk.nhs.tis.trainee.notifications.model.MessageType;
 import uk.nhs.tis.trainee.notifications.model.NotificationType;
+import uk.nhs.tis.trainee.notifications.model.TisReferenceType;
 import uk.nhs.tis.trainee.notifications.service.EmailService;
 import uk.nhs.tis.trainee.notifications.service.HistoryService;
 
@@ -57,6 +61,7 @@ class ConditionsOfJoiningListenerTest {
 
   private static final String VERSION = "v1.2.3";
   private static final String PERSON_ID = "40";
+  private static final UUID PROGRAMME_MEMBERSHIP_ID = UUID.randomUUID();
   private static final Instant SYNCED_AT = Instant.now();
 
   private ConditionsOfJoiningListener listener;
@@ -75,11 +80,13 @@ class ConditionsOfJoiningListenerTest {
   void shouldSkipCojPublishedWhenCojConfirmationSent(MessageType messageType)
       throws MessagingException {
     StoredFile pdf = new StoredFile("my-bucket", "my-key.pdf");
-    CojPublishedEvent event = new CojPublishedEvent(PERSON_ID, new ConditionsOfJoining(SYNCED_AT),
-        pdf);
+    CojPublishedEvent event = new CojPublishedEvent(PERSON_ID, PROGRAMME_MEMBERSHIP_ID,
+        new ConditionsOfJoining(SYNCED_AT), pdf);
 
-    HistoryDto history = new HistoryDto(null, null, messageType, COJ_CONFIRMATION, null, null, null,
-        null, null, null);
+    TisReferenceInfo tisReference = new TisReferenceInfo(TisReferenceType.PROGRAMME_MEMBERSHIP,
+        PROGRAMME_MEMBERSHIP_ID.toString());
+    HistoryDto history = new HistoryDto(null, tisReference, messageType, COJ_CONFIRMATION, null,
+        null, null, null, null, null);
     when(historyService.findAllSentForTrainee(PERSON_ID)).thenReturn(List.of(history));
 
     listener.handleConditionsOfJoiningPublished(event);
@@ -89,15 +96,63 @@ class ConditionsOfJoiningListenerTest {
 
   @ParameterizedTest
   @EnumSource(value = NotificationType.class, mode = Mode.EXCLUDE, names = "COJ_CONFIRMATION")
-  void shouldNotSkipCojPublishedWhenCojConfirmationNotSent(NotificationType notificationType)
+  void shouldNotSkipCojPublishedWhenNoPreviousCojConfirmation(NotificationType notificationType)
       throws MessagingException {
     StoredFile pdf = new StoredFile("my-bucket", "my-key.pdf");
-    CojPublishedEvent event = new CojPublishedEvent(PERSON_ID, new ConditionsOfJoining(SYNCED_AT),
-        pdf);
+    CojPublishedEvent event = new CojPublishedEvent(PERSON_ID, PROGRAMME_MEMBERSHIP_ID,
+        new ConditionsOfJoining(SYNCED_AT), pdf);
 
-    HistoryDto history = new HistoryDto(null, null, null, notificationType, null, null, null, null,
-        null, null);
+    TisReferenceInfo tisReference = new TisReferenceInfo(TisReferenceType.PROGRAMME_MEMBERSHIP,
+        PROGRAMME_MEMBERSHIP_ID.toString());
+    HistoryDto history = new HistoryDto(null, tisReference, null, notificationType, null, null,
+        null, null, null, null);
     when(historyService.findAllSentForTrainee(PERSON_ID)).thenReturn(List.of(history));
+
+    listener.handleConditionsOfJoiningPublished(event);
+
+    verify(emailService).sendMessageToExistingUser(any(), any(), any(), any(), any(), any());
+  }
+
+  @ParameterizedTest
+  @EnumSource(value = NotificationType.class, mode = Mode.EXCLUDE, names = "COJ_CONFIRMATION")
+  void shouldNotSkipCojPublishedWhenPreviousCojConfirmationHasNoTisReference(
+      NotificationType notificationType) throws MessagingException {
+    StoredFile pdf = new StoredFile("my-bucket", "my-key.pdf");
+    CojPublishedEvent event = new CojPublishedEvent(PERSON_ID, PROGRAMME_MEMBERSHIP_ID,
+        new ConditionsOfJoining(SYNCED_AT), pdf);
+
+    TisReferenceInfo tisReference1 = new TisReferenceInfo(TisReferenceType.PROGRAMME_MEMBERSHIP,
+        PROGRAMME_MEMBERSHIP_ID.toString());
+    HistoryDto history1 = new HistoryDto(null, tisReference1, null, notificationType, null, null,
+        null, null, null, null);
+
+    HistoryDto history2 = new HistoryDto(null, null, null, COJ_CONFIRMATION, null, null, null, null,
+        null, null);
+    when(historyService.findAllSentForTrainee(PERSON_ID)).thenReturn(List.of(history1, history2));
+
+    listener.handleConditionsOfJoiningPublished(event);
+
+    verify(emailService).sendMessageToExistingUser(any(), any(), any(), any(), any(), any());
+  }
+
+  @ParameterizedTest
+  @EnumSource(value = NotificationType.class, mode = Mode.EXCLUDE, names = "COJ_CONFIRMATION")
+  void shouldNotSkipCojPublishedWhenPreviousCojConfirmationIsDifferentPm(
+      NotificationType notificationType) throws MessagingException {
+    StoredFile pdf = new StoredFile("my-bucket", "my-key.pdf");
+    CojPublishedEvent event = new CojPublishedEvent(PERSON_ID, PROGRAMME_MEMBERSHIP_ID,
+        new ConditionsOfJoining(SYNCED_AT), pdf);
+
+    TisReferenceInfo tisReference1 = new TisReferenceInfo(TisReferenceType.PROGRAMME_MEMBERSHIP,
+        PROGRAMME_MEMBERSHIP_ID.toString());
+    HistoryDto history1 = new HistoryDto(null, tisReference1, null, notificationType, null, null,
+        null, null, null, null);
+
+    TisReferenceInfo tisReference2 = new TisReferenceInfo(TisReferenceType.PROGRAMME_MEMBERSHIP,
+        UUID.randomUUID().toString());
+    HistoryDto history2 = new HistoryDto(null, tisReference2, null, COJ_CONFIRMATION, null, null,
+        null, null, null, null);
+    when(historyService.findAllSentForTrainee(PERSON_ID)).thenReturn(List.of(history1, history2));
 
     listener.handleConditionsOfJoiningPublished(event);
 
@@ -109,8 +164,8 @@ class ConditionsOfJoiningListenerTest {
     doThrow(MessagingException.class).when(emailService)
         .sendMessageToExistingUser(any(), any(), any(), any(), any(), any());
 
-    CojPublishedEvent event = new CojPublishedEvent(PERSON_ID, new ConditionsOfJoining(SYNCED_AT),
-        null);
+    CojPublishedEvent event = new CojPublishedEvent(PERSON_ID, PROGRAMME_MEMBERSHIP_ID,
+        new ConditionsOfJoining(SYNCED_AT), null);
 
     assertThrows(MessagingException.class,
         () -> listener.handleConditionsOfJoiningPublished(event));
@@ -118,8 +173,8 @@ class ConditionsOfJoiningListenerTest {
 
   @Test
   void shouldSetTraineeIdWhenCojPublished() throws MessagingException {
-    CojPublishedEvent event = new CojPublishedEvent(PERSON_ID, new ConditionsOfJoining(SYNCED_AT),
-        null);
+    CojPublishedEvent event = new CojPublishedEvent(PERSON_ID, PROGRAMME_MEMBERSHIP_ID,
+        new ConditionsOfJoining(SYNCED_AT), null);
 
     listener.handleConditionsOfJoiningPublished(event);
 
@@ -129,8 +184,8 @@ class ConditionsOfJoiningListenerTest {
 
   @Test
   void shouldSetNotificationTypeWhenCojPublished() throws MessagingException {
-    CojPublishedEvent event = new CojPublishedEvent(PERSON_ID, new ConditionsOfJoining(SYNCED_AT),
-        null);
+    CojPublishedEvent event = new CojPublishedEvent(PERSON_ID, PROGRAMME_MEMBERSHIP_ID,
+        new ConditionsOfJoining(SYNCED_AT), null);
 
     listener.handleConditionsOfJoiningPublished(event);
 
@@ -140,8 +195,8 @@ class ConditionsOfJoiningListenerTest {
 
   @Test
   void shouldSetNotificationVersionWhenCojPublished() throws MessagingException {
-    CojPublishedEvent event = new CojPublishedEvent(PERSON_ID, new ConditionsOfJoining(SYNCED_AT),
-        null);
+    CojPublishedEvent event = new CojPublishedEvent(PERSON_ID, PROGRAMME_MEMBERSHIP_ID,
+        new ConditionsOfJoining(SYNCED_AT), null);
 
     listener.handleConditionsOfJoiningPublished(event);
 
@@ -149,10 +204,28 @@ class ConditionsOfJoiningListenerTest {
   }
 
   @Test
+  void shouldSetTisReferenceWhenCojPublished() throws MessagingException {
+    StoredFile pdf = new StoredFile("my-bucket", "my-key.pdf");
+    CojPublishedEvent event = new CojPublishedEvent(PERSON_ID, PROGRAMME_MEMBERSHIP_ID,
+        new ConditionsOfJoining(SYNCED_AT), pdf);
+
+    listener.handleConditionsOfJoiningPublished(event);
+
+    ArgumentCaptor<TisReferenceInfo> referenceCaptor = ArgumentCaptor.captor();
+    verify(emailService).sendMessageToExistingUser(any(), any(), any(), any(),
+        referenceCaptor.capture(), any());
+
+    TisReferenceInfo tisReference = referenceCaptor.getValue();
+    assertThat("Unexpected reference id.", tisReference.id(),
+        is(PROGRAMME_MEMBERSHIP_ID.toString()));
+    assertThat("Unexpected reference type.", tisReference.type(), is(PROGRAMME_MEMBERSHIP));
+  }
+
+  @Test
   void shouldSetPdfWhenCojPublished() throws MessagingException {
     StoredFile pdf = new StoredFile("my-bucket", "my-key.pdf");
-    CojPublishedEvent event = new CojPublishedEvent(PERSON_ID, new ConditionsOfJoining(SYNCED_AT),
-        pdf);
+    CojPublishedEvent event = new CojPublishedEvent(PERSON_ID, PROGRAMME_MEMBERSHIP_ID,
+        new ConditionsOfJoining(SYNCED_AT), pdf);
 
     listener.handleConditionsOfJoiningPublished(event);
 
@@ -161,7 +234,7 @@ class ConditionsOfJoiningListenerTest {
 
   @Test
   void shouldNotIncludeSyncedAtWhenNullCojPublished() throws MessagingException {
-    CojPublishedEvent event = new CojPublishedEvent(PERSON_ID, null, null);
+    CojPublishedEvent event = new CojPublishedEvent(PERSON_ID, PROGRAMME_MEMBERSHIP_ID, null, null);
 
     listener.handleConditionsOfJoiningPublished(event);
 
@@ -175,7 +248,8 @@ class ConditionsOfJoiningListenerTest {
 
   @Test
   void shouldNotIncludeSyncedAtWhenCojPublishedWithNullSyncedAt() throws MessagingException {
-    CojPublishedEvent event = new CojPublishedEvent(PERSON_ID, new ConditionsOfJoining(null), null);
+    CojPublishedEvent event = new CojPublishedEvent(PERSON_ID, PROGRAMME_MEMBERSHIP_ID,
+        new ConditionsOfJoining(null), null);
 
     listener.handleConditionsOfJoiningPublished(event);
 
@@ -189,8 +263,8 @@ class ConditionsOfJoiningListenerTest {
 
   @Test
   void shouldIncludeSyncedAtWhenCojPublishedWithValidSyncedAt() throws MessagingException {
-    CojPublishedEvent event = new CojPublishedEvent(PERSON_ID, new ConditionsOfJoining(SYNCED_AT),
-        null);
+    CojPublishedEvent event = new CojPublishedEvent(PERSON_ID, PROGRAMME_MEMBERSHIP_ID,
+        new ConditionsOfJoining(SYNCED_AT), null);
 
     listener.handleConditionsOfJoiningPublished(event);
 
