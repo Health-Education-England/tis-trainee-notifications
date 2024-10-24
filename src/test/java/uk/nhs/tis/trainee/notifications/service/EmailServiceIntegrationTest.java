@@ -411,6 +411,28 @@ class EmailServiceIntegrationTest {
         is(false));
   }
 
+  @Test
+  void shouldIncludeHorusWordingInRolloutCorrectionMail() throws Exception {
+    when(userAccountService.getUserDetailsById(USER_ID)).thenReturn(
+        new UserDetails(true, RECIPIENT, null, null, null, GMC));
+
+    service.sendMessageToExistingUser(PERSON_ID, PLACEMENT_ROLLOUT_2024_CORRECTION,
+        TEMPLATE_VERSION,
+        Map.of(TEMPLATE_CONTACT_HREF_FIELD, "email", START_DATE_FIELD, PLACEMENT_START_DATE), null);
+
+    ArgumentCaptor<MimeMessage> messageCaptor = ArgumentCaptor.captor();
+    verify(mailSender).send(messageCaptor.capture());
+
+    MimeMessage message = messageCaptor.getValue();
+    Document content = Jsoup.parse((String) message.getContent());
+    Element body = content.body();
+
+    String bodyText = body.wholeText();
+    assertThat("Unexpected Horus text.",
+        bodyText.contains("If you are a Foundation doctor, please continue using Horus as previously instructed."),
+        is(true));
+  }
+
   int getGreetingElementIndex(NotificationType notificationType) {
     return switch (notificationType) {
       case PLACEMENT_UPDATED_WEEK_12, PLACEMENT_ROLLOUT_2024_CORRECTION, PROGRAMME_CREATED,
