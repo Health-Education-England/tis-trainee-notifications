@@ -74,8 +74,11 @@ import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import net.bytebuddy.asm.Advice.Local;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -100,6 +103,7 @@ import software.amazon.awssdk.services.cognitoidentityprovider.model.UserNotFoun
 import uk.nhs.tis.trainee.notifications.dto.UserDetails;
 import uk.nhs.tis.trainee.notifications.model.History;
 import uk.nhs.tis.trainee.notifications.model.History.TisReferenceInfo;
+import uk.nhs.tis.trainee.notifications.model.LocalOffice;
 import uk.nhs.tis.trainee.notifications.model.LocalOfficeContactType;
 import uk.nhs.tis.trainee.notifications.model.MessageType;
 import uk.nhs.tis.trainee.notifications.model.NotificationType;
@@ -113,6 +117,8 @@ class NotificationServiceTest {
   private static final String REFERENCE_URL = "reference-url";
   private static final String ACCOUNT_DETAILS_URL =
       SERVICE_URL + "/api/trainee-profile/account-details/{tisId}";
+  private static final String LOCAL_OFFICES_URL =
+      SERVICE_URL + "/api/trainee-profile/local-offices/{tisId}";
   private static final String JOB_KEY_STRING = "job-key";
   private static final JobKey JOB_KEY = new JobKey(JOB_KEY_STRING);
   private static final String TIS_ID = "tis-id";
@@ -1558,5 +1564,42 @@ class NotificationServiceTest {
     UserDetails result = service.getTraineeDetails(PERSON_ID);
 
     assertThat("Unexpected result.", result, is(nullValue()));
+  }
+
+  @Test
+  void shouldReturnEmptySetWhenRestClientExceptionsInGetTraineeLocalOffices() {
+    when(restTemplate.getForObject(any(), any(), anyMap()))
+        .thenThrow(new RestClientException("error"));
+
+    Set<LocalOffice> result = service.getTraineeLocalOffices(PERSON_ID);
+
+    assertThat("Unexpected result.", result.size(), is(0));
+  }
+
+  @Test
+  void shouldReturnEmptySetWhenTraineeLocalOfficesNull() {
+    when(restTemplate.getForObject(any(), any(), anyMap()))
+        .thenReturn(null);
+
+    Set<LocalOffice> result = service.getTraineeLocalOffices(PERSON_ID);
+
+    assertThat("Unexpected result.", result.size(), is(0));
+  }
+
+  @Test
+  void shouldGetTraineeLocalOffices() {
+    Set<LocalOffice> localOffices = new HashSet<>();
+     localOffices.add(new LocalOffice("email", "name"));
+
+    when(restTemplate.getForObject(LOCAL_OFFICES_URL, Set.class,
+        Map.of(TIS_ID_FIELD, PERSON_ID))).thenReturn(localOffices);
+
+    Set<LocalOffice> result = service.getTraineeLocalOffices(PERSON_ID);
+
+    assertThat("Unexpected local offices.", result.size(), is(1));
+    LocalOffice localOffice = localOffices.iterator().next();
+    LocalOffice resultLo = result.iterator().next();
+    assertThat("Unexpected local office email.", resultLo.email(), is(localOffice.email()));
+    assertThat("Unexpected local office name.", resultLo.name(), is(localOffice.name()));
   }
 }

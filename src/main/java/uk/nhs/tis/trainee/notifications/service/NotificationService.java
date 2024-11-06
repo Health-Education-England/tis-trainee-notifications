@@ -39,11 +39,14 @@ import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.bson.types.ObjectId;
@@ -63,6 +66,7 @@ import software.amazon.awssdk.services.cognitoidentityprovider.model.UserNotFoun
 import uk.nhs.tis.trainee.notifications.dto.UserDetails;
 import uk.nhs.tis.trainee.notifications.model.History;
 import uk.nhs.tis.trainee.notifications.model.History.TisReferenceInfo;
+import uk.nhs.tis.trainee.notifications.model.LocalOffice;
 import uk.nhs.tis.trainee.notifications.model.LocalOfficeContactType;
 import uk.nhs.tis.trainee.notifications.model.MessageType;
 import uk.nhs.tis.trainee.notifications.model.NotificationStatus;
@@ -83,6 +87,8 @@ public class NotificationService implements Job {
       = "your local office";
 
   public static final String API_TRAINEE_DETAILS = "/api/trainee-profile/account-details/{tisId}";
+  public static final String API_TRAINEE_LOCAL_OFFICES
+      = "/api/trainee-profile/local-offices/{tisId}";
   private static final String TRIGGER_ID_PREFIX = "trigger-";
 
   public static final String TEMPLATE_NOTIFICATION_TYPE_FIELD = "notificationType";
@@ -512,6 +518,27 @@ public class NotificationService implements Job {
           + personId + ": " + rce);
       //no trainee details profile
       return null;
+    }
+  }
+
+  /**
+   * Get a trainee's local office(s) from the Trainee Details service.
+   *
+   * @param personId The person ID to search for.
+   * @return The trainee's local offices, or null if trainee not found.
+   */
+  public Set<LocalOffice> getTraineeLocalOffices(String personId) {
+    try {
+      @SuppressWarnings("unchecked")
+      Set<LocalOffice> localOffices
+          = restTemplate.getForObject(serviceUrl + API_TRAINEE_LOCAL_OFFICES,
+          Set.class, Map.of(TIS_ID_FIELD, personId));
+      return localOffices == null ? Collections.emptySet() : localOffices;
+    } catch (RestClientException rce) {
+      log.warn("Exception occur when requesting trainee local-offices endpoint for trainee "
+          + personId + ": " + rce);
+      //no trainee details profile
+      return Collections.emptySet();
     }
   }
 

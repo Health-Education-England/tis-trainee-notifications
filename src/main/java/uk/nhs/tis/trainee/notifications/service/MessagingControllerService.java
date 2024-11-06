@@ -61,7 +61,7 @@ public class MessagingControllerService {
   /**
    * Initialise the service with the environmental variables that control message dispatch.
    *
-   * @param notificationsWhitelist The whitelist of (tester) trainee TIS IDs.
+   * @param notificationsWhitelist    The whitelist of (tester) trainee TIS IDs.
    * @param restTemplate              The REST template.
    * @param inAppNotificationsEnabled Whether in-app notification messages should be sent.
    * @param emailNotificationsEnabled Whether email notification messages should be sent.
@@ -76,6 +76,19 @@ public class MessagingControllerService {
     this.inAppNotificationsEnabled = inAppNotificationsEnabled;
     this.emailNotificationsEnabled = emailNotificationsEnabled;
     this.serviceUrl = serviceUrl;
+  }
+
+  /**
+   * Determine whether messaging is enabled for a message of a particular type.
+   *
+   * @param messageType The type of message.
+   * @return true if messaging is enabled, otherwise false.
+   */
+  public boolean isMessagingEnabled(MessageType messageType) {
+    return switch (messageType) {
+      case EMAIL -> emailNotificationsEnabled;
+      case IN_APP -> inAppNotificationsEnabled;
+    };
   }
 
   /**
