@@ -47,6 +47,12 @@ import uk.nhs.tis.trainee.notifications.service.NotificationService;
 @Component
 public class GmcListener {
 
+  public static final String TRAINEE_ID_FIELD = "traineeId";
+  public static final String GIVEN_NAME_FIELD = "givenName";
+  public static final String FAMILY_NAME_FIELD = "familyName";
+  public static final String GMC_NUMBER_FIELD = "gmcNumber";
+  public static final String GMC_STATUS_FIELD = "gmcStatus";
+
   private final EmailService emailService;
   private final String templateVersion;
   private final NotificationService notificationService;
@@ -78,11 +84,11 @@ public class GmcListener {
 
     UserDetails userDetails = notificationService.getTraineeDetails(event.traineeId());
     Map<String, Object> templateVariables = new HashMap<>();
-    templateVariables.put("traineeId", event.traineeId());
-    templateVariables.put("forenames", userDetails != null ? userDetails.givenName() : null);
-    templateVariables.put("surname", userDetails != null ? userDetails.familyName() : null);
-    templateVariables.put("gmcNumber", event.gmcDetails().gmcNumber());
-    templateVariables.put("gmcStatus", event.gmcDetails().gmcStatus());
+    templateVariables.put(TRAINEE_ID_FIELD, event.traineeId());
+    templateVariables.put(GIVEN_NAME_FIELD, userDetails != null ? userDetails.givenName() : null);
+    templateVariables.put(FAMILY_NAME_FIELD, userDetails != null ? userDetails.familyName() : null);
+    templateVariables.put(GMC_NUMBER_FIELD, event.gmcDetails().gmcNumber());
+    templateVariables.put(GMC_STATUS_FIELD, event.gmcDetails().gmcStatus());
 
     String traineeId = event.traineeId();
     Set<LocalOffice> localOffices = notificationService.getTraineeLocalOffices(traineeId);

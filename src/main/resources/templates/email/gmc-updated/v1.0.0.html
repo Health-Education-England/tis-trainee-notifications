@@ -7,52 +7,21 @@
 <body>
 <h1>Email Message</h1>
 <h2>Subject</h2>
-<th:block th:fragment="subject">Your FormR has been updated</th:block>
+<th:block th:fragment="subject">A trainee doctor has updated their GMC Number</th:block>
 <h2>Content</h2>
 <th:block th:fragment="content">
   <div th:replace="fragments/retry/v1.0.0 :: body"></div>
   <div style="text-align:right"><img style="margin-right:25px" src='https://trainee.tis.nhs.uk/nhse-logo.png' alt="NHS England logo"/></div>
-  <p th:replace="~{fragments/greeting/v1.0.0 :: p}"></p>
-<span th:switch="${lifecycleState}">
-
-  <span th:case="'SUBMITTED'" id="SUBMITTED">
-    <p>We want to inform you that your local NHS England office has received your FormR<span
-  th:text="${eventDate}? | on ${#temporals.format(eventDate, 'dd MMMM yyyy')}| : _"></span>.
-    </p>
-    <p>
-      You can access your PDF signed FormR by visiting
-      <a th:href="${not #strings.isEmpty(domain)}? @{{domain}/{formType}(domain=${domain},formType=${formType})} : _">TIS
-      Self-Service</a>.
-    </p>
-  </span>
-
-  <span th:case="'UNSUBMITTED'" id="UNSUBMITTED">
-    <p>We want to inform you that your local NHS England office has returned your FormR for modification<span
-      th:text="${eventDate}? | on ${#temporals.format(eventDate, 'dd MMMM yyyy')}| : _"></span>.
-    </p>
-    <p>You can update and re-submit your FormR by visiting
-      <a th:href="${not #strings.isEmpty(domain)}? @{{domain}/{formType}(domain=${domain},formType=${formType})} : _">TIS
-      Self-Service</a>.
-    </p>
-  </span>
-
-  <span th:case="'DELETED'" id="DELETED">
-    <p>We want to inform you that your local NHS England office has deleted your FormR<span
-      th:text="${eventDate}? | on ${#temporals.format(eventDate, 'dd MMMM yyyy')}| : _"></span>.
-    </p>
-    <p>If you did not request this then please contact your local NHS England office for further details.
-    </p>
-  </span>
-
-  <span th:case="*" id="OTHER">
-    <p>We want to inform you that your FormR has been updated<span
-  th:text="${eventDate}? | on ${#temporals.format(eventDate, 'dd MMMM yyyy')}| : _"></span>.
-    </p>
-    <p>
-      If this is unexpected then please contact your local NHS England office for further details.
-    </p>
-  </span>
-</span>
+  <p>Dear Local Office</p>
+  <p id="doctorName">Doctor <span th:text="${not #strings.isEmpty(givenName)} ? |${givenName}| : _"></span
+  > <span th:text="${not #strings.isEmpty(familyName)} ? |${familyName}| : _">(family name missing)</span
+  > has provided GMC number <span th:text="${not #strings.isEmpty(gmcNumber)} ? |${gmcNumber}| : _">(GMC number missing)</span
+  ></p>
+  <p>If this new GMC number is valid, their personal details in TIS will be updated accordingly. <a id="tisTraineeLink"
+      th:href="${'https://apps.tis.nhs.uk/admin/people/person/' + {traineeId} + '/edit-personal-details'}">Review</a> their details to confirm.</p>
+  <p>If the new GMC number is not valid then it will not be updated in TIS. For example, duplicate GMC numbers are not allowed, as can occur when the doctor has duplicate profiles in TIS and this GMC number is already set in the other profile.</p>
+  <p>Fond regards</p>
+  <p>TIS Self-Service</p>
   <div th:replace="fragments/disclaimer/v1.0.0 :: body"></div>
 </th:block>
 </body>
