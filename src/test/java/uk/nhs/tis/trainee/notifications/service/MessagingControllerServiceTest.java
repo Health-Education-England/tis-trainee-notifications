@@ -54,6 +54,7 @@ class MessagingControllerServiceTest {
   }
 
   @ParameterizedTest
+  @NullSource
   @EnumSource(MessageType.class)
   void messagingEnabledShouldMatchConfigForAllTypes(MessageType messageType) {
     assertThat("Unexpected isMessagingEnabled().",
@@ -62,12 +63,14 @@ class MessagingControllerServiceTest {
 
   @ParameterizedTest
   @ValueSource(booleans = { true, false })
-  void messagingEnabledShouldMatchConfigForSpecificType(boolean enabled) {
-    service = new MessagingControllerService(restTemplate, WHITELISTED, enabled, !enabled, SERVICE_URL);
+  void messagingEnabledShouldMatchConfigForSpecificType(boolean enabledSwitch) {
+    service
+        = new MessagingControllerService(restTemplate, WHITELISTED, enabledSwitch, !enabledSwitch,
+        SERVICE_URL);
     assertThat("Unexpected isMessagingEnabled().",
-        service.isMessagingEnabled(MessageType.IN_APP), is(enabled));
+        service.isMessagingEnabled(MessageType.IN_APP), is(enabledSwitch));
     assertThat("Unexpected isMessagingEnabled().",
-        service.isMessagingEnabled(MessageType.EMAIL), is(!enabled));
+        service.isMessagingEnabled(MessageType.EMAIL), is(!enabledSwitch));
   }
 
   @ParameterizedTest

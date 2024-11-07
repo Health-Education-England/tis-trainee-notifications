@@ -27,6 +27,7 @@ import io.awspring.cloud.sqs.annotation.SqsListener;
 import jakarta.mail.MessagingException;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
@@ -97,12 +98,16 @@ public class GmcListener {
       boolean canSendMail = messagingControllerService.isMessagingEnabled(MessageType.EMAIL);
       //since some LO's share an email address we need to eliminate possible duplicates:
       Set<String> distinctEmails = localOffices.stream()
-          .map(LocalOffice::email).collect(Collectors.toSet());
+          .map(LocalOffice::email).filter(Objects::nonNull).collect(Collectors.toSet());
 
       for (String loEmail : distinctEmails) {
-        emailService.sendMessage(traineeId, loEmail, GMC_UPDATED, templateVersion,
-            templateVariables, null, !canSendMail);
-        log.info("GMC updated notification sent for trainee {} to {}.", traineeId, loEmail);
+        if (canSendMail) {
+          emailService.sendMessage(traineeId, loEmail, GMC_UPDATED, templateVersion,
+              templateVariables, null, !canSendMail);
+          log.info("GMC updated notification sent for trainee {} to {}.", traineeId, loEmail);
+        } else {
+          log.info("GMC updated notification not sent for trainee {} to {}.", traineeId, loEmail);
+        }
       }
 
     } else {

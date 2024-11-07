@@ -78,7 +78,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import net.bytebuddy.asm.Advice.Local;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -1589,7 +1588,7 @@ class NotificationServiceTest {
   @Test
   void shouldGetTraineeLocalOffices() {
     Set<LocalOffice> localOffices = new HashSet<>();
-     localOffices.add(new LocalOffice("email", "name"));
+    localOffices.add(new LocalOffice("email", "name"));
 
     when(restTemplate.getForObject(LOCAL_OFFICES_URL, Set.class,
         Map.of(TIS_ID_FIELD, PERSON_ID))).thenReturn(localOffices);

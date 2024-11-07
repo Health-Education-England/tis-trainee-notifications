@@ -21,6 +21,12 @@
 
 package uk.nhs.tis.trainee.notifications.model;
 
+/**
+ * A record for holding GMC details.
+ *
+ * @param gmcNumber The GMC number.
+ * @param gmcStatus The GMC status.
+ */
 public record GmcDetails(String gmcNumber,
                          String gmcStatus) {
 

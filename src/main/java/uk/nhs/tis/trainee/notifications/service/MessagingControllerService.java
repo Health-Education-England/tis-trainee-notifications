@@ -85,6 +85,9 @@ public class MessagingControllerService {
    * @return true if messaging is enabled, otherwise false.
    */
   public boolean isMessagingEnabled(MessageType messageType) {
+    if (messageType == null) {
+      return false;
+    }
     return switch (messageType) {
       case EMAIL -> emailNotificationsEnabled;
       case IN_APP -> inAppNotificationsEnabled;

@@ -24,15 +24,18 @@ package uk.nhs.tis.trainee.notifications.event;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
-import com.mchange.v1.identicator.IdHashSet;
 import jakarta.mail.MessagingException;
 import java.util.HashSet;
 import java.util.Set;
-import net.bytebuddy.asm.Advice.Local;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import uk.nhs.tis.trainee.notifications.model.GmcDetails;
@@ -43,6 +46,7 @@ import uk.nhs.tis.trainee.notifications.service.MessagingControllerService;
 import uk.nhs.tis.trainee.notifications.service.NotificationService;
 
 class GmcListenerTest {
+
   private static final String VERSION = "v1.2.3";
 
   private GmcListener listener;
@@ -67,11 +71,106 @@ class GmcListenerTest {
     Set<LocalOffice> localOffices = new HashSet<>();
     localOffices.add(new LocalOffice("email", "name"));
     when(notificationService.getTraineeLocalOffices(any())).thenReturn(localOffices);
+    when(messagingControllerService.isMessagingEnabled(any())).thenReturn(true);
 
     GmcUpdateEvent event
         = new GmcUpdateEvent("traineeId", new GmcDetails("1234567", "CONFIRMED"));
 
     assertThrows(MessagingException.class, () -> listener.handleGmcUpdate(event));
+  }
+
+  @Test
+  void shouldNotSendEmailIfNullLocalOffice() throws MessagingException {
+    when(notificationService.getTraineeLocalOffices(any())).thenReturn(null);
+    when(messagingControllerService.isMessagingEnabled(any())).thenReturn(true);
+
+    GmcUpdateEvent event
+        = new GmcUpdateEvent("traineeId", new GmcDetails("1234567", "CONFIRMED"));
+
+    listener.handleGmcUpdate(event);
+
+    verify(messagingControllerService, never()).isMessagingEnabled(any());
+  }
+
+  @Test
+  void shouldNotSendEmailIfNoLocalOffice() throws MessagingException {
+    when(notificationService.getTraineeLocalOffices(any())).thenReturn(new HashSet<>());
+    when(messagingControllerService.isMessagingEnabled(any())).thenReturn(true);
+
+    GmcUpdateEvent event
+        = new GmcUpdateEvent("traineeId", new GmcDetails("1234567", "CONFIRMED"));
+
+    listener.handleGmcUpdate(event);
+
+    verify(messagingControllerService, never()).isMessagingEnabled(any());
+  }
+
+  @Test
+  void shouldNotSendEmailIfLocalOfficeHasNoEmail() throws MessagingException {
+    Set<LocalOffice> localOffices = new HashSet<>();
+    localOffices.add(new LocalOffice(null, "name"));
+    when(notificationService.getTraineeLocalOffices(any())).thenReturn(localOffices);
+    when(messagingControllerService.isMessagingEnabled(any())).thenReturn(true);
+
+    GmcUpdateEvent event
+        = new GmcUpdateEvent("traineeId", new GmcDetails("1234567", "CONFIRMED"));
+
+    listener.handleGmcUpdate(event);
+
+    verify(emailService, never())
+        .sendMessage(any(), any(), any(), any(), any(), any(), anyBoolean());
+  }
+
+  @Test
+  void shouldSendOneEmailIfLocalOfficesHaveSameEmail() throws MessagingException {
+    Set<LocalOffice> localOffices = new HashSet<>();
+    localOffices.add(new LocalOffice("email", "name"));
+    localOffices.add(new LocalOffice("email", "name2"));
+    when(notificationService.getTraineeLocalOffices(any())).thenReturn(localOffices);
+    when(messagingControllerService.isMessagingEnabled(any())).thenReturn(true);
+
+    GmcUpdateEvent event
+        = new GmcUpdateEvent("traineeId", new GmcDetails("1234567", "CONFIRMED"));
+
+    listener.handleGmcUpdate(event);
+
+    verify(emailService)
+        .sendMessage(any(), eq("email"), any(), any(), any(), any(), anyBoolean());
+  }
+
+  @Test
+  void shouldSendMultipleEmailIfLocalOfficesHaveDifferentEmail() throws MessagingException {
+    Set<LocalOffice> localOffices = new HashSet<>();
+    localOffices.add(new LocalOffice("email", "name"));
+    localOffices.add(new LocalOffice("email2", "name2"));
+    when(notificationService.getTraineeLocalOffices(any())).thenReturn(localOffices);
+    when(messagingControllerService.isMessagingEnabled(any())).thenReturn(true);
+
+    GmcUpdateEvent event
+        = new GmcUpdateEvent("traineeId", new GmcDetails("1234567", "CONFIRMED"));
+
+    listener.handleGmcUpdate(event);
+
+    verify(emailService)
+        .sendMessage(any(), eq("email"), any(), any(), any(), any(), anyBoolean());
+    verify(emailService)
+        .sendMessage(any(), eq("email2"), any(), any(), any(), any(), anyBoolean());
+    verifyNoMoreInteractions(emailService);
+  }
+
+  @Test
+  void shouldNotSendEmailIfMessagingNotEnabled() throws MessagingException {
+    Set<LocalOffice> localOffices = new HashSet<>();
+    localOffices.add(new LocalOffice("email", "name"));
+    when(notificationService.getTraineeLocalOffices(any())).thenReturn(localOffices);
+    when(messagingControllerService.isMessagingEnabled(any())).thenReturn(false);
+
+    GmcUpdateEvent event
+        = new GmcUpdateEvent("traineeId", new GmcDetails("1234567", "CONFIRMED"));
+
+    listener.handleGmcUpdate(event);
+
+    verifyNoInteractions(emailService);
   }
 
 }
