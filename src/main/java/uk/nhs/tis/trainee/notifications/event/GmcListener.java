@@ -101,17 +101,14 @@ public class GmcListener {
           .map(LocalOffice::email).filter(Objects::nonNull).collect(Collectors.toSet());
 
       for (String loEmail : distinctEmails) {
-        if (canSendMail) {
-          emailService.sendMessage(traineeId, loEmail, GMC_UPDATED, templateVersion,
-              templateVariables, null, !canSendMail);
-          log.info("GMC updated notification sent for trainee {} to {}.", traineeId, loEmail);
-        } else {
-          log.info("GMC updated notification not sent for trainee {} to {}.", traineeId, loEmail);
-        }
+        emailService.sendMessage(traineeId, loEmail, GMC_UPDATED, templateVersion,
+            templateVariables, null, !canSendMail);
+        log.info("GMC updated notification {} for trainee {} to {}.",
+            (canSendMail ? "sent" : "logged"), traineeId, loEmail);
       }
 
     } else {
-      log.warn("GMC updated notification not sent for trainee {}; no matching local offices.",
+      log.warn("GMC updated notification not processed for trainee {}: no matching local offices.",
           traineeId);
     }
   }
