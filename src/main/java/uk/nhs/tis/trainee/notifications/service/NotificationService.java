@@ -106,6 +106,7 @@ public class NotificationService implements Job {
   private final List<String> notificationsWhitelist;
   private final String timezone;
   protected final Integer immediateNotificationDelayMinutes;
+  private final ApplicationPropertiesService appPropService;
 
   /**
    * Initialise the Notification Service.
@@ -125,6 +126,7 @@ public class NotificationService implements Job {
   public NotificationService(EmailService emailService, HistoryService historyService,
       RestTemplate restTemplate, Scheduler scheduler,
       MessagingControllerService messagingControllerService,
+      ApplicationPropertiesService appPropService,
       @Value("${application.template-versions.form-updated.email}") String templateVersion,
       @Value("${service.trainee.url}") String serviceUrl,
       @Value("${service.reference.url}") String referenceUrl,
@@ -142,6 +144,28 @@ public class NotificationService implements Job {
     this.immediateNotificationDelayMinutes = notificationDelay;
     this.notificationsWhitelist = notificationsWhitelist;
     this.timezone = timezone;
+    this.appPropService = appPropService;
+    String props1 = null;
+    props1 = appPropService.getProperty("application.template-versions.coj-confirmation.email");
+    log.info("Returned prop", props1);
+  }
+
+  /**
+   * Get the template version for a specific notification type.
+   *
+   * @param notificationType The notification type.
+   * @return The template version.
+   */
+  private String getTemplateVersion(NotificationType notificationType) {
+    String propertyKey = switch (notificationType) {
+      case PROGRAMME_CREATED -> "application.template-versions.programme-created.email";
+      case PROGRAMME_DAY_ONE -> "application.template-versions.programme-day-one.email";
+      default -> throw new IllegalArgumentException("Unsupported notification type: " + notificationType);
+    };
+
+    String templateVersion = appPropService.getProperty(propertyKey);
+    log.info("Using template version {} for notification type {}", templateVersion, notificationType);
+    return templateVersion;
   }
 
   /**
@@ -170,6 +194,9 @@ public class NotificationService implements Job {
 
     NotificationType notificationType =
         NotificationType.valueOf(jobDetails.get(TEMPLATE_NOTIFICATION_TYPE_FIELD).toString());
+
+    String templatesVersion = getTemplateVersion(notificationType);
+
 
     //only consider sending programme-created mails; ignore the programme-updated-* notifications
     if (notificationType == NotificationType.PROGRAMME_CREATED
@@ -299,7 +326,6 @@ public class NotificationService implements Job {
 
   /**
    * Get a display date for an in-app notification from the start date and day offset.
-   *
    * @param startDate       The starting date.
    * @param daysBeforeStart The number of days prior to the start date.
    * @return The in-app notification display date and time.
