@@ -229,7 +229,7 @@ class EmailServiceIntegrationTest {
     } else if (notificationType.equals(GMC_UPDATED)) {
       Element greeting = body.children().get(getGreetingElementIndex(notificationType));
       assertThat("Unexpected element tag.", greeting.tagName(), is("p"));
-      assertThat("Unexpected greeting.", greeting.text(), is("Dear Local Office"));
+      assertThat("Unexpected greeting.", greeting.text(), is("Dear Local Office,"));
     } else {
       Element greeting = body.children().get(getGreetingElementIndex(notificationType));
       assertThat("Unexpected element tag.", greeting.tagName(), is("p"));
