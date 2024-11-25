@@ -21,6 +21,7 @@
 
 package uk.nhs.tis.trainee.notifications.event;
 
+import static uk.nhs.tis.trainee.notifications.model.LocalOfficeContactType.GMC_UPDATE;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.GMC_UPDATED;
 
 import io.awspring.cloud.sqs.annotation.SqsListener;
@@ -35,7 +36,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import uk.nhs.tis.trainee.notifications.dto.UserDetails;
 import uk.nhs.tis.trainee.notifications.model.GmcUpdateEvent;
-import uk.nhs.tis.trainee.notifications.model.LocalOffice;
+import uk.nhs.tis.trainee.notifications.model.LocalOfficeContact;
 import uk.nhs.tis.trainee.notifications.model.MessageType;
 import uk.nhs.tis.trainee.notifications.service.EmailService;
 import uk.nhs.tis.trainee.notifications.service.MessagingControllerService;
@@ -92,23 +93,29 @@ public class GmcListener {
     templateVariables.put(GMC_STATUS_FIELD, event.gmcDetails().gmcStatus());
 
     String traineeId = event.traineeId();
-    Set<LocalOffice> localOffices = notificationService.getTraineeLocalOffices(traineeId);
+    Set<LocalOfficeContact> localOfficeContacts = notificationService
+        .getTraineeLocalOfficeContacts(traineeId, GMC_UPDATE);
 
-    if (localOffices != null && !localOffices.isEmpty()) {
+    if (localOfficeContacts != null && !localOfficeContacts.isEmpty()) {
       boolean canSendMail = messagingControllerService.isMessagingEnabled(MessageType.EMAIL);
-      //since some LO's share an email address we need to eliminate possible duplicates:
-      Set<String> distinctEmails = localOffices.stream()
-          .map(LocalOffice::email).filter(Objects::nonNull).collect(Collectors.toSet());
+      //since some LO's share a contact we need to eliminate possible duplicates:
+      Set<String> distinctContacts = localOfficeContacts.stream()
+          .map(LocalOfficeContact::contact).filter(Objects::nonNull).collect(Collectors.toSet());
 
-      for (String loEmail : distinctEmails) {
-        emailService.sendMessage(traineeId, loEmail, GMC_UPDATED, templateVersion,
-            templateVariables, null, !canSendMail);
-        log.info("GMC updated notification {} for trainee {} to {}.",
-            (canSendMail ? "sent" : "logged"), traineeId, loEmail);
+      for (String loContact : distinctContacts) {
+        if (notificationService.isLocalOfficeContactEmail(loContact)) {
+          emailService.sendMessage(traineeId, loContact, GMC_UPDATED, templateVersion,
+              templateVariables, null, !canSendMail);
+          log.info("GMC updated notification {} for trainee {} to {}.",
+              (canSendMail ? "sent" : "logged"), traineeId, loContact);
+        } else {
+          log.info("GMC updated notification skipped for trainee {} to non-email {}.",
+              traineeId, loContact);
+        }
       }
 
     } else {
-      log.warn("GMC updated notification not processed for trainee {}: no matching local offices.",
+      log.warn("GMC updated notification not processed for trainee {}: no local office contacts.",
           traineeId);
     }
   }

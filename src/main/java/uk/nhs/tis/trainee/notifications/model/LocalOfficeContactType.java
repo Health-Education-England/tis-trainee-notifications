@@ -31,6 +31,7 @@ import lombok.Getter;
 @AllArgsConstructor
 public enum LocalOfficeContactType {
 
+  GMC_UPDATE("GMC Update"),
   LTFT("Less Than Full Time"),
   ONBOARDING_SUPPORT("Onboarding Support"),
   SPONSORSHIP("Sponsorship"),

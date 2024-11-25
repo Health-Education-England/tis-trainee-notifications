@@ -51,6 +51,7 @@ import static uk.nhs.tis.trainee.notifications.model.NotificationType.PLACEMENT_
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_CREATED;
 import static uk.nhs.tis.trainee.notifications.model.TisReferenceType.PLACEMENT;
 import static uk.nhs.tis.trainee.notifications.model.TisReferenceType.PROGRAMME_MEMBERSHIP;
+import static uk.nhs.tis.trainee.notifications.service.NotificationService.API_TRAINEE_LOCAL_OFFICE_CONTACTS;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.CONTACT_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.CONTACT_TYPE_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.DEFAULT_NO_CONTACT_MESSAGE;
@@ -74,7 +75,6 @@ import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -102,7 +102,7 @@ import software.amazon.awssdk.services.cognitoidentityprovider.model.UserNotFoun
 import uk.nhs.tis.trainee.notifications.dto.UserDetails;
 import uk.nhs.tis.trainee.notifications.model.History;
 import uk.nhs.tis.trainee.notifications.model.History.TisReferenceInfo;
-import uk.nhs.tis.trainee.notifications.model.LocalOffice;
+import uk.nhs.tis.trainee.notifications.model.LocalOfficeContact;
 import uk.nhs.tis.trainee.notifications.model.LocalOfficeContactType;
 import uk.nhs.tis.trainee.notifications.model.MessageType;
 import uk.nhs.tis.trainee.notifications.model.NotificationType;
@@ -116,8 +116,6 @@ class NotificationServiceTest {
   private static final String REFERENCE_URL = "reference-url";
   private static final String ACCOUNT_DETAILS_URL =
       SERVICE_URL + "/api/trainee-profile/account-details/{tisId}";
-  private static final String LOCAL_OFFICES_URL =
-      SERVICE_URL + "/api/trainee-profile/local-offices/{tisId}";
   private static final String JOB_KEY_STRING = "job-key";
   private static final JobKey JOB_KEY = new JobKey(JOB_KEY_STRING);
   private static final String TIS_ID = "tis-id";
@@ -1565,40 +1563,61 @@ class NotificationServiceTest {
     assertThat("Unexpected result.", result, is(nullValue()));
   }
 
-  @Test
-  void shouldReturnEmptySetWhenRestClientExceptionsInGetTraineeLocalOffices() {
+  @ParameterizedTest
+  @EnumSource(LocalOfficeContactType.class)
+  void shouldReturnEmptySetWhenRestClientExceptionsInGetTraineeLocalOfficeContacts(
+      LocalOfficeContactType contactType) {
     when(restTemplate.getForObject(any(), any(), anyMap()))
         .thenThrow(new RestClientException("error"));
 
-    Set<LocalOffice> result = service.getTraineeLocalOffices(PERSON_ID);
+    Set<LocalOfficeContact> result = service.getTraineeLocalOfficeContacts(PERSON_ID, contactType);
 
     assertThat("Unexpected result.", result.size(), is(0));
   }
 
-  @Test
-  void shouldReturnEmptySetWhenTraineeLocalOfficesNull() {
+  @ParameterizedTest
+  @EnumSource(LocalOfficeContactType.class)
+  void shouldReturnEmptySetWhenTraineeLocalOfficeContactsNull(LocalOfficeContactType contactType) {
     when(restTemplate.getForObject(any(), any(), anyMap()))
         .thenReturn(null);
 
-    Set<LocalOffice> result = service.getTraineeLocalOffices(PERSON_ID);
+    Set<LocalOfficeContact> result = service.getTraineeLocalOfficeContacts(PERSON_ID, contactType);
 
     assertThat("Unexpected result.", result.size(), is(0));
   }
 
-  @Test
-  void shouldGetTraineeLocalOffices() {
-    Set<LocalOffice> localOffices = new HashSet<>();
-    localOffices.add(new LocalOffice("email", "name"));
+  @ParameterizedTest
+  @EnumSource(LocalOfficeContactType.class)
+  void shouldGetTraineeLocalOfficeContacts(LocalOfficeContactType contactType) {
+    Set<LocalOfficeContact> localOfficeContacts
+        = Set.of(new LocalOfficeContact("contact", "local office"));
 
-    when(restTemplate.getForObject(LOCAL_OFFICES_URL, Set.class,
-        Map.of(TIS_ID_FIELD, PERSON_ID))).thenReturn(localOffices);
+    when(restTemplate.getForObject(SERVICE_URL + API_TRAINEE_LOCAL_OFFICE_CONTACTS, Set.class,
+        Map.of(TIS_ID_FIELD, PERSON_ID, CONTACT_TYPE_FIELD, contactType)))
+        .thenReturn(localOfficeContacts);
 
-    Set<LocalOffice> result = service.getTraineeLocalOffices(PERSON_ID);
+    Set<LocalOfficeContact> result = service.getTraineeLocalOfficeContacts(PERSON_ID, contactType);
 
     assertThat("Unexpected local offices.", result.size(), is(1));
-    LocalOffice localOffice = localOffices.iterator().next();
-    LocalOffice resultLo = result.iterator().next();
-    assertThat("Unexpected local office email.", resultLo.email(), is(localOffice.email()));
-    assertThat("Unexpected local office name.", resultLo.name(), is(localOffice.name()));
+    LocalOfficeContact localOfficeContact = localOfficeContacts.iterator().next();
+    LocalOfficeContact resultLo = result.iterator().next();
+    assertThat("Unexpected local office contact.", resultLo.contact(),
+        is(localOfficeContact.contact()));
+    assertThat("Unexpected local office name.", resultLo.localOffice(),
+        is(localOfficeContact.localOffice()));
+  }
+
+  @ParameterizedTest
+  @NullAndEmptySource
+  @ValueSource(strings = {"https://a.url.com", "something else", "encoded%40thing.com"})
+  void shouldVerifyContactIsNotEmail(String contact) {
+    assertThat("Unexpected is-email check.", service.isLocalOfficeContactEmail(contact),
+        is(false));
+  }
+
+  @Test
+  void shouldVerifyContactIsEmail() {
+    assertThat("Unexpected is-email check.", service.isLocalOfficeContactEmail("a@b.com"),
+        is(true));
   }
 }

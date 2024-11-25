@@ -36,6 +36,7 @@ import static uk.nhs.tis.trainee.notifications.event.GmcListener.GIVEN_NAME_FIEL
 import static uk.nhs.tis.trainee.notifications.event.GmcListener.GMC_NUMBER_FIELD;
 import static uk.nhs.tis.trainee.notifications.event.GmcListener.GMC_STATUS_FIELD;
 import static uk.nhs.tis.trainee.notifications.event.GmcListener.TRAINEE_ID_FIELD;
+import static uk.nhs.tis.trainee.notifications.model.LocalOfficeContactType.GMC_UPDATE;
 
 import jakarta.mail.MessagingException;
 import java.util.HashMap;
@@ -49,7 +50,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 import uk.nhs.tis.trainee.notifications.dto.UserDetails;
 import uk.nhs.tis.trainee.notifications.model.GmcDetails;
 import uk.nhs.tis.trainee.notifications.model.GmcUpdateEvent;
-import uk.nhs.tis.trainee.notifications.model.LocalOffice;
+import uk.nhs.tis.trainee.notifications.model.LocalOfficeContact;
 import uk.nhs.tis.trainee.notifications.model.NotificationType;
 import uk.nhs.tis.trainee.notifications.service.EmailService;
 import uk.nhs.tis.trainee.notifications.service.MessagingControllerService;
@@ -78,9 +79,11 @@ class GmcListenerTest {
     doThrow(MessagingException.class).when(emailService)
         .sendMessage(any(), any(), any(), any(), any(), any(), anyBoolean());
 
-    Set<LocalOffice> localOffices = new HashSet<>();
-    localOffices.add(new LocalOffice("email", "name"));
-    when(notificationService.getTraineeLocalOffices(any())).thenReturn(localOffices);
+    Set<LocalOfficeContact> localOfficeContacts = new HashSet<>();
+    localOfficeContacts.add(new LocalOfficeContact("contact", "local office"));
+    when(notificationService.getTraineeLocalOfficeContacts(any(), eq(GMC_UPDATE)))
+        .thenReturn(localOfficeContacts);
+    when(notificationService.isLocalOfficeContactEmail(any())).thenReturn(true);
 
     GmcUpdateEvent event
         = new GmcUpdateEvent("traineeId", new GmcDetails("1234567", "CONFIRMED"));
@@ -90,7 +93,8 @@ class GmcListenerTest {
 
   @Test
   void shouldNotSendEmailIfNullLocalOffice() throws MessagingException {
-    when(notificationService.getTraineeLocalOffices(any())).thenReturn(null);
+    when(notificationService.getTraineeLocalOfficeContacts(any(), eq(GMC_UPDATE)))
+        .thenReturn(null);
 
     GmcUpdateEvent event
         = new GmcUpdateEvent("traineeId", new GmcDetails("1234567", "CONFIRMED"));
@@ -102,7 +106,8 @@ class GmcListenerTest {
 
   @Test
   void shouldNotSendEmailIfNoLocalOffice() throws MessagingException {
-    when(notificationService.getTraineeLocalOffices(any())).thenReturn(new HashSet<>());
+    when(notificationService.getTraineeLocalOfficeContacts(any(), eq(GMC_UPDATE)))
+        .thenReturn(new HashSet<>());
 
     GmcUpdateEvent event
         = new GmcUpdateEvent("traineeId", new GmcDetails("1234567", "CONFIRMED"));
@@ -114,9 +119,28 @@ class GmcListenerTest {
 
   @Test
   void shouldNotSendEmailIfLocalOfficeHasNoEmail() throws MessagingException {
-    Set<LocalOffice> localOffices = new HashSet<>();
-    localOffices.add(new LocalOffice(null, "name"));
-    when(notificationService.getTraineeLocalOffices(any())).thenReturn(localOffices);
+    Set<LocalOfficeContact> localOfficeContacts = new HashSet<>();
+    localOfficeContacts.add(new LocalOfficeContact(null, "local office"));
+    when(notificationService.getTraineeLocalOfficeContacts(any(), eq(GMC_UPDATE)))
+        .thenReturn(localOfficeContacts);
+    when(notificationService.isLocalOfficeContactEmail(any())).thenReturn(true);
+
+    GmcUpdateEvent event
+        = new GmcUpdateEvent("traineeId", new GmcDetails("1234567", "CONFIRMED"));
+
+    listener.handleGmcUpdate(event);
+
+    verify(emailService, never())
+        .sendMessage(any(), any(), any(), any(), any(), any(), anyBoolean());
+  }
+
+  @Test
+  void shouldNotSendEmailIfLocalOfficeContactNotEmail() throws MessagingException {
+    Set<LocalOfficeContact> localOfficeContacts = new HashSet<>();
+    localOfficeContacts.add(new LocalOfficeContact("https://url.com", "local office"));
+    when(notificationService.getTraineeLocalOfficeContacts(any(), eq(GMC_UPDATE)))
+        .thenReturn(localOfficeContacts);
+    when(notificationService.isLocalOfficeContactEmail(any())).thenReturn(false);
 
     GmcUpdateEvent event
         = new GmcUpdateEvent("traineeId", new GmcDetails("1234567", "CONFIRMED"));
@@ -129,10 +153,12 @@ class GmcListenerTest {
 
   @Test
   void shouldSendOneEmailIfLocalOfficesHaveSameEmail() throws MessagingException {
-    Set<LocalOffice> localOffices = new HashSet<>();
-    localOffices.add(new LocalOffice("email", "name"));
-    localOffices.add(new LocalOffice("email", "name2"));
-    when(notificationService.getTraineeLocalOffices(any())).thenReturn(localOffices);
+    Set<LocalOfficeContact> localOfficeContacts = new HashSet<>();
+    localOfficeContacts.add(new LocalOfficeContact("contact", "local office"));
+    localOfficeContacts.add(new LocalOfficeContact("contact", "name2"));
+    when(notificationService.getTraineeLocalOfficeContacts(any(), eq(GMC_UPDATE)))
+        .thenReturn(localOfficeContacts);
+    when(notificationService.isLocalOfficeContactEmail(any())).thenReturn(true);
 
     GmcUpdateEvent event
         = new GmcUpdateEvent("traineeId", new GmcDetails("1234567", "CONFIRMED"));
@@ -140,15 +166,17 @@ class GmcListenerTest {
     listener.handleGmcUpdate(event);
 
     verify(emailService)
-        .sendMessage(any(), eq("email"), any(), any(), any(), any(), anyBoolean());
+        .sendMessage(any(), eq("contact"), any(), any(), any(), any(), anyBoolean());
   }
 
   @Test
   void shouldSendMultipleEmailIfLocalOfficesHaveDifferentEmail() throws MessagingException {
-    Set<LocalOffice> localOffices = new HashSet<>();
-    localOffices.add(new LocalOffice("email", "name"));
-    localOffices.add(new LocalOffice("email2", "name2"));
-    when(notificationService.getTraineeLocalOffices(any())).thenReturn(localOffices);
+    Set<LocalOfficeContact> localOfficeContacts = new HashSet<>();
+    localOfficeContacts.add(new LocalOfficeContact("contact", "local office"));
+    localOfficeContacts.add(new LocalOfficeContact("contact2", "name2"));
+    when(notificationService.getTraineeLocalOfficeContacts(any(), eq(GMC_UPDATE)))
+        .thenReturn(localOfficeContacts);
+    when(notificationService.isLocalOfficeContactEmail(any())).thenReturn(true);
 
     GmcUpdateEvent event
         = new GmcUpdateEvent("traineeId", new GmcDetails("1234567", "CONFIRMED"));
@@ -156,19 +184,21 @@ class GmcListenerTest {
     listener.handleGmcUpdate(event);
 
     verify(emailService)
-        .sendMessage(any(), eq("email"), any(), any(), any(), any(), anyBoolean());
+        .sendMessage(any(), eq("contact"), any(), any(), any(), any(), anyBoolean());
     verify(emailService)
-        .sendMessage(any(), eq("email2"), any(), any(), any(), any(), anyBoolean());
+        .sendMessage(any(), eq("contact2"), any(), any(), any(), any(), anyBoolean());
     verifyNoMoreInteractions(emailService);
   }
 
   @ParameterizedTest
   @ValueSource(booleans = {true, false})
   void shouldLogEmailIfMessagingNotEnabled(boolean isMessagingEnabled) throws MessagingException {
-    Set<LocalOffice> localOffices = new HashSet<>();
-    localOffices.add(new LocalOffice("email", "name"));
-    when(notificationService.getTraineeLocalOffices(any())).thenReturn(localOffices);
+    Set<LocalOfficeContact> localOfficeContacts = new HashSet<>();
+    localOfficeContacts.add(new LocalOfficeContact("contact", "local office"));
+    when(notificationService.getTraineeLocalOfficeContacts(any(), eq(GMC_UPDATE)))
+        .thenReturn(localOfficeContacts);
     when(messagingControllerService.isMessagingEnabled(any())).thenReturn(isMessagingEnabled);
+    when(notificationService.isLocalOfficeContactEmail(any())).thenReturn(true);
 
     GmcUpdateEvent event
         = new GmcUpdateEvent("traineeId", new GmcDetails("1234567", "CONFIRMED"));
@@ -176,17 +206,19 @@ class GmcListenerTest {
     listener.handleGmcUpdate(event);
 
     verify(emailService)
-        .sendMessage(any(), eq("email"), any(), any(), any(), any(), eq(!isMessagingEnabled));
+        .sendMessage(any(), eq("contact"), any(), any(), any(), any(), eq(!isMessagingEnabled));
   }
 
   @Test
   void shouldIncludeUserDetailsInTemplateIfAvailable() throws MessagingException {
-    Set<LocalOffice> localOffices = new HashSet<>();
-    localOffices.add(new LocalOffice("email", "name"));
-    when(notificationService.getTraineeLocalOffices(any())).thenReturn(localOffices);
+    Set<LocalOfficeContact> localOfficeContacts = new HashSet<>();
+    localOfficeContacts.add(new LocalOfficeContact("contact", "local office"));
+    when(notificationService.getTraineeLocalOfficeContacts(any(), eq(GMC_UPDATE)))
+        .thenReturn(localOfficeContacts);
     UserDetails userDetails
         = new UserDetails(true, "traineeemail", "title", "family", "given", "1111111");
     when(notificationService.getTraineeDetails(any())).thenReturn(userDetails);
+    when(notificationService.isLocalOfficeContactEmail(any())).thenReturn(true);
 
     GmcUpdateEvent event
         = new GmcUpdateEvent("traineeId", new GmcDetails("1234567", "CONFIRMED"));
@@ -201,16 +233,18 @@ class GmcListenerTest {
     expectedTemplateVariables.put(GMC_STATUS_FIELD, "CONFIRMED");
 
     verify(emailService)
-        .sendMessage(eq("traineeId"), eq("email"), eq(NotificationType.GMC_UPDATED), any(),
+        .sendMessage(eq("traineeId"), eq("contact"), eq(NotificationType.GMC_UPDATED), any(),
             eq(expectedTemplateVariables), eq(null), anyBoolean());
   }
 
   @Test
   void shouldNotIncludeUserDetailsInTemplateIfNotAvailable() throws MessagingException {
-    Set<LocalOffice> localOffices = new HashSet<>();
-    localOffices.add(new LocalOffice("email", "name"));
-    when(notificationService.getTraineeLocalOffices(any())).thenReturn(localOffices);
+    Set<LocalOfficeContact> localOfficeContacts = new HashSet<>();
+    localOfficeContacts.add(new LocalOfficeContact("email@contact.com", "local office"));
+    when(notificationService.getTraineeLocalOfficeContacts(any(), eq(GMC_UPDATE)))
+        .thenReturn(localOfficeContacts);
     when(notificationService.getTraineeDetails(any())).thenReturn(null);
+    when(notificationService.isLocalOfficeContactEmail(any())).thenReturn(true);
 
     GmcUpdateEvent event
         = new GmcUpdateEvent("traineeId", new GmcDetails("1234567", "CONFIRMED"));
@@ -225,8 +259,8 @@ class GmcListenerTest {
     expectedTemplateVariables.put(GMC_STATUS_FIELD, "CONFIRMED");
 
     verify(emailService)
-        .sendMessage(eq("traineeId"), eq("email"), eq(NotificationType.GMC_UPDATED), any(),
-            eq(expectedTemplateVariables), eq(null), anyBoolean());
+        .sendMessage(eq("traineeId"), eq("email@contact.com"), eq(NotificationType.GMC_UPDATED),
+            any(), eq(expectedTemplateVariables), eq(null), anyBoolean());
   }
 
 }
