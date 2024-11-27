@@ -197,45 +197,20 @@ public class NotificationService implements Job {
 
     String templatesVersion = getTemplateVersion(notificationType);
 
-
-    //only consider sending programme-created mails; ignore the programme-updated-* notifications
-    if (notificationType == NotificationType.PROGRAMME_CREATED
-        || notificationType == NotificationType.PROGRAMME_DAY_ONE) {
-
-      jobName = jobDetails.getString(ProgrammeMembershipService.PROGRAMME_NAME_FIELD);
-      startDate = (LocalDate) jobDetails.get(ProgrammeMembershipService.START_DATE_FIELD);
-      tisReferenceInfo = new TisReferenceInfo(PROGRAMME_MEMBERSHIP,
-          jobDetails.get(ProgrammeMembershipService.TIS_ID_FIELD).toString());
-
-    } else if (notificationType == NotificationType.PLACEMENT_UPDATED_WEEK_12
-        || notificationType == NotificationType.PLACEMENT_ROLLOUT_2024_CORRECTION) {
-
-      jobName = jobDetails.getString(PlacementService.PLACEMENT_TYPE_FIELD);
-      startDate = (LocalDate) jobDetails.get(PlacementService.START_DATE_FIELD);
-      tisReferenceInfo = new TisReferenceInfo(PLACEMENT,
-          jobDetails.get(PlacementService.TIS_ID_FIELD).toString());
-    }
-
-    if (tisReferenceInfo != null) {
-      if (userAccountDetails != null) {
-        try {
-          emailService.sendMessage(personId, userAccountDetails.email(), notificationType,
-              templateVersion, jobDetails.getWrappedMap(), tisReferenceInfo,
-              !shouldActuallySendEmail(notificationType, personId, tisReferenceInfo.id()));
-        } catch (MessagingException e) {
-          throw new RuntimeException(e);
-        }
-
-        log.info("Sent {} notification for {} ({}, starting {}) to {} using template {}", jobKey,
-            jobDetails.getString(TIS_ID_FIELD), jobName, startDate, userAccountDetails.email(),
-            templateVersion);
-        Instant processedOn = Instant.now();
-        result.put("status", "sent " + processedOn.toString());
-      } else {
-        log.info("No notification could be sent, no TSS details found for tisId {}", personId);
+    if (userAccountDetails != null) {
+      try {
+        emailService.sendMessage(personId, userAccountDetails.email(), notificationType,
+            templatesVersion, jobDetails.getWrappedMap(), null, true);
+        log.info("Sent notification using template version {}", templatesVersion);
+        result.put("status", "sent");
+      } catch (MessagingException e) {
+        throw new RuntimeException(e);
       }
+    } else {
+      log.info("No notification sent, no user details found for personId {}", personId);
     }
     return result;
+
   }
 
   /**
