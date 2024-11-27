@@ -27,6 +27,7 @@ import static uk.nhs.tis.trainee.notifications.model.NotificationType.GMC_UPDATE
 import io.awspring.cloud.sqs.annotation.SqsListener;
 import jakarta.mail.MessagingException;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -36,7 +37,6 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import uk.nhs.tis.trainee.notifications.dto.UserDetails;
 import uk.nhs.tis.trainee.notifications.model.GmcUpdateEvent;
-import uk.nhs.tis.trainee.notifications.model.LocalOfficeContact;
 import uk.nhs.tis.trainee.notifications.model.MessageType;
 import uk.nhs.tis.trainee.notifications.service.EmailService;
 import uk.nhs.tis.trainee.notifications.service.MessagingControllerService;
@@ -93,14 +93,14 @@ public class GmcListener {
     templateVariables.put(GMC_STATUS_FIELD, event.gmcDetails().gmcStatus());
 
     String traineeId = event.traineeId();
-    Set<LocalOfficeContact> localOfficeContacts = notificationService
+    List<Map<String, String>> localOfficeContacts = notificationService
         .getTraineeLocalOfficeContacts(traineeId, GMC_UPDATE);
 
     if (localOfficeContacts != null && !localOfficeContacts.isEmpty()) {
       boolean canSendMail = messagingControllerService.isMessagingEnabled(MessageType.EMAIL);
       //since some LO's share a contact we need to eliminate possible duplicates:
       Set<String> distinctContacts = localOfficeContacts.stream()
-          .map(LocalOfficeContact::contact).filter(Objects::nonNull).collect(Collectors.toSet());
+          .map(c -> c.get("contact")).filter(Objects::nonNull).collect(Collectors.toSet());
 
       for (String loContact : distinctContacts) {
         if (notificationService.isLocalOfficeContactEmail(loContact)) {

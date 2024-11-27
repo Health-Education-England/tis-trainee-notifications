@@ -40,9 +40,8 @@ import static uk.nhs.tis.trainee.notifications.model.LocalOfficeContactType.GMC_
 
 import jakarta.mail.MessagingException;
 import java.util.HashMap;
-import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -50,7 +49,6 @@ import org.junit.jupiter.params.provider.ValueSource;
 import uk.nhs.tis.trainee.notifications.dto.UserDetails;
 import uk.nhs.tis.trainee.notifications.model.GmcDetails;
 import uk.nhs.tis.trainee.notifications.model.GmcUpdateEvent;
-import uk.nhs.tis.trainee.notifications.model.LocalOfficeContact;
 import uk.nhs.tis.trainee.notifications.model.NotificationType;
 import uk.nhs.tis.trainee.notifications.service.EmailService;
 import uk.nhs.tis.trainee.notifications.service.MessagingControllerService;
@@ -79,8 +77,8 @@ class GmcListenerTest {
     doThrow(MessagingException.class).when(emailService)
         .sendMessage(any(), any(), any(), any(), any(), any(), anyBoolean());
 
-    Set<LocalOfficeContact> localOfficeContacts = new HashSet<>();
-    localOfficeContacts.add(new LocalOfficeContact("contact", "local office"));
+    List<Map<String, String>> localOfficeContacts
+        = List.of(Map.of("contact", "contact", "localOffice", "local office"));
     when(notificationService.getTraineeLocalOfficeContacts(any(), eq(GMC_UPDATE)))
         .thenReturn(localOfficeContacts);
     when(notificationService.isLocalOfficeContactEmail(any())).thenReturn(true);
@@ -107,7 +105,7 @@ class GmcListenerTest {
   @Test
   void shouldNotSendEmailIfNoLocalOffice() throws MessagingException {
     when(notificationService.getTraineeLocalOfficeContacts(any(), eq(GMC_UPDATE)))
-        .thenReturn(new HashSet<>());
+        .thenReturn(List.of());
 
     GmcUpdateEvent event
         = new GmcUpdateEvent("traineeId", new GmcDetails("1234567", "CONFIRMED"));
@@ -119,8 +117,8 @@ class GmcListenerTest {
 
   @Test
   void shouldNotSendEmailIfLocalOfficeHasNoEmail() throws MessagingException {
-    Set<LocalOfficeContact> localOfficeContacts = new HashSet<>();
-    localOfficeContacts.add(new LocalOfficeContact(null, "local office"));
+    List<Map<String, String>> localOfficeContacts
+        = List.of(Map.of("localOffice", "local office"));
     when(notificationService.getTraineeLocalOfficeContacts(any(), eq(GMC_UPDATE)))
         .thenReturn(localOfficeContacts);
     when(notificationService.isLocalOfficeContactEmail(any())).thenReturn(true);
@@ -136,8 +134,8 @@ class GmcListenerTest {
 
   @Test
   void shouldNotSendEmailIfLocalOfficeContactNotEmail() throws MessagingException {
-    Set<LocalOfficeContact> localOfficeContacts = new HashSet<>();
-    localOfficeContacts.add(new LocalOfficeContact("https://url.com", "local office"));
+    List<Map<String, String>> localOfficeContacts
+        = List.of(Map.of("contact", "https://url.com", "localOffice", "local office"));
     when(notificationService.getTraineeLocalOfficeContacts(any(), eq(GMC_UPDATE)))
         .thenReturn(localOfficeContacts);
     when(notificationService.isLocalOfficeContactEmail(any())).thenReturn(false);
@@ -153,9 +151,9 @@ class GmcListenerTest {
 
   @Test
   void shouldSendOneEmailIfLocalOfficesHaveSameEmail() throws MessagingException {
-    Set<LocalOfficeContact> localOfficeContacts = new HashSet<>();
-    localOfficeContacts.add(new LocalOfficeContact("contact", "local office"));
-    localOfficeContacts.add(new LocalOfficeContact("contact", "name2"));
+    List<Map<String, String>> localOfficeContacts
+        = List.of(Map.of("contact", "contact", "localOffice", "local office"),
+        Map.of("contact", "contact", "localOffice", "name2"));
     when(notificationService.getTraineeLocalOfficeContacts(any(), eq(GMC_UPDATE)))
         .thenReturn(localOfficeContacts);
     when(notificationService.isLocalOfficeContactEmail(any())).thenReturn(true);
@@ -171,9 +169,9 @@ class GmcListenerTest {
 
   @Test
   void shouldSendMultipleEmailIfLocalOfficesHaveDifferentEmail() throws MessagingException {
-    Set<LocalOfficeContact> localOfficeContacts = new HashSet<>();
-    localOfficeContacts.add(new LocalOfficeContact("contact", "local office"));
-    localOfficeContacts.add(new LocalOfficeContact("contact2", "name2"));
+    List<Map<String, String>> localOfficeContacts
+        = List.of(Map.of("contact", "contact", "localOffice", "local office"),
+        Map.of("contact", "contact2", "localOffice", "name2"));
     when(notificationService.getTraineeLocalOfficeContacts(any(), eq(GMC_UPDATE)))
         .thenReturn(localOfficeContacts);
     when(notificationService.isLocalOfficeContactEmail(any())).thenReturn(true);
@@ -193,8 +191,8 @@ class GmcListenerTest {
   @ParameterizedTest
   @ValueSource(booleans = {true, false})
   void shouldLogEmailIfMessagingNotEnabled(boolean isMessagingEnabled) throws MessagingException {
-    Set<LocalOfficeContact> localOfficeContacts = new HashSet<>();
-    localOfficeContacts.add(new LocalOfficeContact("contact", "local office"));
+    List<Map<String, String>> localOfficeContacts
+        = List.of(Map.of("contact", "contact", "localOffice", "local office"));
     when(notificationService.getTraineeLocalOfficeContacts(any(), eq(GMC_UPDATE)))
         .thenReturn(localOfficeContacts);
     when(messagingControllerService.isMessagingEnabled(any())).thenReturn(isMessagingEnabled);
@@ -211,8 +209,8 @@ class GmcListenerTest {
 
   @Test
   void shouldIncludeUserDetailsInTemplateIfAvailable() throws MessagingException {
-    Set<LocalOfficeContact> localOfficeContacts = new HashSet<>();
-    localOfficeContacts.add(new LocalOfficeContact("contact", "local office"));
+    List<Map<String, String>> localOfficeContacts
+        = List.of(Map.of("contact", "contact", "localOffice", "local office"));
     when(notificationService.getTraineeLocalOfficeContacts(any(), eq(GMC_UPDATE)))
         .thenReturn(localOfficeContacts);
     UserDetails userDetails
@@ -239,8 +237,8 @@ class GmcListenerTest {
 
   @Test
   void shouldNotIncludeUserDetailsInTemplateIfNotAvailable() throws MessagingException {
-    Set<LocalOfficeContact> localOfficeContacts = new HashSet<>();
-    localOfficeContacts.add(new LocalOfficeContact("email@contact.com", "local office"));
+    List<Map<String, String>> localOfficeContacts
+        = List.of(Map.of("contact", "email@contact.com", "localOffice", "local office"));
     when(notificationService.getTraineeLocalOfficeContacts(any(), eq(GMC_UPDATE)))
         .thenReturn(localOfficeContacts);
     when(notificationService.getTraineeDetails(any())).thenReturn(null);

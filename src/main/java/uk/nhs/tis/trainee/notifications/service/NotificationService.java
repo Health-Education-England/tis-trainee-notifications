@@ -45,7 +45,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.bson.types.ObjectId;
@@ -65,7 +64,6 @@ import software.amazon.awssdk.services.cognitoidentityprovider.model.UserNotFoun
 import uk.nhs.tis.trainee.notifications.dto.UserDetails;
 import uk.nhs.tis.trainee.notifications.model.History;
 import uk.nhs.tis.trainee.notifications.model.History.TisReferenceInfo;
-import uk.nhs.tis.trainee.notifications.model.LocalOfficeContact;
 import uk.nhs.tis.trainee.notifications.model.LocalOfficeContactType;
 import uk.nhs.tis.trainee.notifications.model.MessageType;
 import uk.nhs.tis.trainee.notifications.model.NotificationStatus;
@@ -527,19 +525,19 @@ public class NotificationService implements Job {
    * @param contactType The contact type to search for.
    * @return The trainee's local office contacts, or null if trainee not found.
    */
-  public Set<LocalOfficeContact> getTraineeLocalOfficeContacts(String personId,
+  public List<Map<String, String>> getTraineeLocalOfficeContacts(String personId,
       LocalOfficeContactType contactType) {
     try {
       @SuppressWarnings("unchecked")
-      Set<LocalOfficeContact> localOfficeContacts
+      List<Map<String, String>> localOfficeContacts
           = restTemplate.getForObject(serviceUrl + API_TRAINEE_LOCAL_OFFICE_CONTACTS,
-          Set.class, Map.of(TIS_ID_FIELD, personId, CONTACT_TYPE_FIELD, contactType));
-      return localOfficeContacts == null ? Collections.emptySet() : localOfficeContacts;
+          List.class, Map.of(TIS_ID_FIELD, personId, CONTACT_TYPE_FIELD, contactType));
+      return localOfficeContacts == null ? Collections.emptyList() : localOfficeContacts;
     } catch (RestClientException rce) {
       log.warn("Exception requesting local-office-contacts endpoint for trainee {} type {}: {}",
           personId, contactType, rce.toString());
-      return Collections.emptySet();
     }
+    return Collections.emptyList();
   }
 
   /**
