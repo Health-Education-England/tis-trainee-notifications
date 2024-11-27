@@ -51,6 +51,7 @@ import static uk.nhs.tis.trainee.notifications.model.NotificationType.PLACEMENT_
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_CREATED;
 import static uk.nhs.tis.trainee.notifications.model.TisReferenceType.PLACEMENT;
 import static uk.nhs.tis.trainee.notifications.model.TisReferenceType.PROGRAMME_MEMBERSHIP;
+import static uk.nhs.tis.trainee.notifications.service.NotificationService.API_TRAINEE_LOCAL_OFFICE_CONTACTS;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.CONTACT_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.CONTACT_TYPE_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.DEFAULT_NO_CONTACT_MESSAGE;
@@ -76,6 +77,7 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -100,6 +102,7 @@ import software.amazon.awssdk.services.cognitoidentityprovider.model.UserNotFoun
 import uk.nhs.tis.trainee.notifications.dto.UserDetails;
 import uk.nhs.tis.trainee.notifications.model.History;
 import uk.nhs.tis.trainee.notifications.model.History.TisReferenceInfo;
+import uk.nhs.tis.trainee.notifications.model.LocalOfficeContact;
 import uk.nhs.tis.trainee.notifications.model.LocalOfficeContactType;
 import uk.nhs.tis.trainee.notifications.model.MessageType;
 import uk.nhs.tis.trainee.notifications.model.NotificationType;
@@ -1558,5 +1561,63 @@ class NotificationServiceTest {
     UserDetails result = service.getTraineeDetails(PERSON_ID);
 
     assertThat("Unexpected result.", result, is(nullValue()));
+  }
+
+  @ParameterizedTest
+  @EnumSource(LocalOfficeContactType.class)
+  void shouldReturnEmptySetWhenRestClientExceptionsInGetTraineeLocalOfficeContacts(
+      LocalOfficeContactType contactType) {
+    when(restTemplate.getForObject(any(), any(), anyMap()))
+        .thenThrow(new RestClientException("error"));
+
+    Set<LocalOfficeContact> result = service.getTraineeLocalOfficeContacts(PERSON_ID, contactType);
+
+    assertThat("Unexpected result.", result.size(), is(0));
+  }
+
+  @ParameterizedTest
+  @EnumSource(LocalOfficeContactType.class)
+  void shouldReturnEmptySetWhenTraineeLocalOfficeContactsNull(LocalOfficeContactType contactType) {
+    when(restTemplate.getForObject(any(), any(), anyMap()))
+        .thenReturn(null);
+
+    Set<LocalOfficeContact> result = service.getTraineeLocalOfficeContacts(PERSON_ID, contactType);
+
+    assertThat("Unexpected result.", result.size(), is(0));
+  }
+
+  @ParameterizedTest
+  @EnumSource(LocalOfficeContactType.class)
+  void shouldGetTraineeLocalOfficeContacts(LocalOfficeContactType contactType) {
+    Set<LocalOfficeContact> localOfficeContacts
+        = Set.of(new LocalOfficeContact("contact", "local office"));
+
+    when(restTemplate.getForObject(SERVICE_URL + API_TRAINEE_LOCAL_OFFICE_CONTACTS, Set.class,
+        Map.of(TIS_ID_FIELD, PERSON_ID, CONTACT_TYPE_FIELD, contactType)))
+        .thenReturn(localOfficeContacts);
+
+    Set<LocalOfficeContact> result = service.getTraineeLocalOfficeContacts(PERSON_ID, contactType);
+
+    assertThat("Unexpected local offices.", result.size(), is(1));
+    LocalOfficeContact localOfficeContact = localOfficeContacts.iterator().next();
+    LocalOfficeContact resultLo = result.iterator().next();
+    assertThat("Unexpected local office contact.", resultLo.contact(),
+        is(localOfficeContact.contact()));
+    assertThat("Unexpected local office name.", resultLo.localOffice(),
+        is(localOfficeContact.localOffice()));
+  }
+
+  @ParameterizedTest
+  @NullAndEmptySource
+  @ValueSource(strings = {"https://a.url.com", "something else", "encoded%40thing.com"})
+  void shouldVerifyContactIsNotEmail(String contact) {
+    assertThat("Unexpected is-email check.", service.isLocalOfficeContactEmail(contact),
+        is(false));
+  }
+
+  @Test
+  void shouldVerifyContactIsEmail() {
+    assertThat("Unexpected is-email check.", service.isLocalOfficeContactEmail("a@b.com"),
+        is(true));
   }
 }

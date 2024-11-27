@@ -21,23 +21,13 @@
 
 package uk.nhs.tis.trainee.notifications.model;
 
-import lombok.AllArgsConstructor;
-import lombok.Getter;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 /**
- * An enumeration of possible local office contact types.
+ * An event to receive GMC details updated by a trainee.
  */
-@Getter
-@AllArgsConstructor
-public enum LocalOfficeContactType {
+public record GmcUpdateEvent(
+    @JsonProperty("personId") String traineeId,
+    GmcDetails gmcDetails) {
 
-  GMC_UPDATE("GMC Update"),
-  LTFT("Less Than Full Time"),
-  ONBOARDING_SUPPORT("Onboarding Support"),
-  SPONSORSHIP("Sponsorship"),
-  DEFERRAL("Deferral"),
-  TSS_SUPPORT("TIS Self-Service Support"),
-  LOCAL_OFFICE_WEBSITE("Local office website");
-
-  private final String contactTypeName;
 }
