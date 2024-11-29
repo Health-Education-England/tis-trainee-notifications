@@ -51,7 +51,6 @@ import static uk.nhs.tis.trainee.notifications.model.NotificationType.PLACEMENT_
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_CREATED;
 import static uk.nhs.tis.trainee.notifications.model.TisReferenceType.PLACEMENT;
 import static uk.nhs.tis.trainee.notifications.model.TisReferenceType.PROGRAMME_MEMBERSHIP;
-import static uk.nhs.tis.trainee.notifications.service.NotificationService.API_TRAINEE_LOCAL_OFFICE_CONTACTS;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.CONTACT_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.CONTACT_TYPE_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.DEFAULT_NO_CONTACT_MESSAGE;
@@ -77,6 +76,7 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -95,6 +95,9 @@ import org.quartz.Scheduler;
 import org.quartz.SchedulerException;
 import org.quartz.Trigger;
 import org.quartz.TriggerKey;
+import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 import org.testcontainers.shaded.org.apache.commons.lang3.time.DateUtils;
@@ -1567,7 +1570,9 @@ class NotificationServiceTest {
   @EnumSource(LocalOfficeContactType.class)
   void shouldReturnEmptySetWhenRestClientExceptionsInGetTraineeLocalOfficeContacts(
       LocalOfficeContactType contactType) {
-    when(restTemplate.getForObject(any(), any(), anyMap()))
+    ParameterizedTypeReference<Set<LocalOfficeContact>> loContactListListType
+        = new ParameterizedTypeReference<>(){};
+    when(restTemplate.exchange(any(), any(), any(), eq(loContactListListType), anyMap()))
         .thenThrow(new RestClientException("error"));
 
     Set<LocalOfficeContact> result = service.getTraineeLocalOfficeContacts(PERSON_ID, contactType);
@@ -1577,9 +1582,11 @@ class NotificationServiceTest {
 
   @ParameterizedTest
   @EnumSource(LocalOfficeContactType.class)
-  void shouldReturnEmptySetWhenTraineeLocalOfficeContactsNull(LocalOfficeContactType contactType) {
-    when(restTemplate.getForObject(any(), any(), anyMap()))
-        .thenReturn(null);
+  void shouldReturnEmptySetWhenTraineeLocalOfficeContactsEmpty(LocalOfficeContactType contactType) {
+    ParameterizedTypeReference<Set<LocalOfficeContact>> loContactListListType
+        = new ParameterizedTypeReference<>(){};
+    when(restTemplate.exchange(any(), any(), any(), eq(loContactListListType), anyMap()))
+        .thenReturn(new ResponseEntity<>(HttpStatus.OK));
 
     Set<LocalOfficeContact> result = service.getTraineeLocalOfficeContacts(PERSON_ID, contactType);
 
@@ -1592,9 +1599,11 @@ class NotificationServiceTest {
     Set<LocalOfficeContact> localOfficeContacts
         = Set.of(new LocalOfficeContact("contact", "local office"));
 
-    when(restTemplate.getForObject(SERVICE_URL + API_TRAINEE_LOCAL_OFFICE_CONTACTS, Set.class,
-        Map.of(TIS_ID_FIELD, PERSON_ID, CONTACT_TYPE_FIELD, contactType)))
-        .thenReturn(localOfficeContacts);
+    ParameterizedTypeReference<Set<LocalOfficeContact>> loContactListListType
+        = new ParameterizedTypeReference<>(){};
+    when(restTemplate.exchange(any(), any(), any(), eq(loContactListListType),
+        eq(Map.of(TIS_ID_FIELD, PERSON_ID, CONTACT_TYPE_FIELD, contactType))))
+        .thenReturn(ResponseEntity.of(Optional.of(localOfficeContacts)));
 
     Set<LocalOfficeContact> result = service.getTraineeLocalOfficeContacts(PERSON_ID, contactType);
 

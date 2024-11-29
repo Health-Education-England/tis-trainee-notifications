@@ -33,6 +33,8 @@ import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipServic
 
 import jakarta.mail.MessagingException;
 import java.net.MalformedURLException;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URL;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -42,6 +44,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -58,6 +61,10 @@ import org.quartz.Scheduler;
 import org.quartz.SchedulerException;
 import org.quartz.Trigger;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.RequestEntity;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
@@ -530,10 +537,13 @@ public class NotificationService implements Job {
   public Set<LocalOfficeContact> getTraineeLocalOfficeContacts(String personId,
       LocalOfficeContactType contactType) {
     try {
-      @SuppressWarnings("unchecked")
-      Set<LocalOfficeContact> localOfficeContacts
-          = restTemplate.getForObject(serviceUrl + API_TRAINEE_LOCAL_OFFICE_CONTACTS,
-          Set.class, Map.of(TIS_ID_FIELD, personId, CONTACT_TYPE_FIELD, contactType));
+      ParameterizedTypeReference<Set<LocalOfficeContact>> loContactListListType
+          = new ParameterizedTypeReference<>(){};
+      Set<LocalOfficeContact> localOfficeContacts =
+          restTemplate.exchange(serviceUrl + API_TRAINEE_LOCAL_OFFICE_CONTACTS,
+              HttpMethod.GET, null, loContactListListType,
+              Map.of(TIS_ID_FIELD, personId, CONTACT_TYPE_FIELD, contactType))
+              .getBody();
       return localOfficeContacts == null ? Collections.emptySet() : localOfficeContacts;
     } catch (RestClientException rce) {
       log.warn("Exception requesting local-office-contacts endpoint for trainee {} type {}: {}",
