@@ -91,8 +91,6 @@ class UpdateInAppTvTest {
   void setUp() {
     mongoTemplate.dropCollection(History.class);
     migrator = new UpdateInAppTvContact(mongoTemplate, notificationService);
-
-
   }
 
   @ParameterizedTest
