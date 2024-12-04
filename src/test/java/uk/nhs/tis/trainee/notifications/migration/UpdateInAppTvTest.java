@@ -31,6 +31,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static uk.nhs.tis.trainee.notifications.TestContainerConfiguration.MONGODB;
 import static uk.nhs.tis.trainee.notifications.migration.UpdateInAppTvContact.DESIGNATED_BODY;
+import static uk.nhs.tis.trainee.notifications.model.HrefType.ABSOLUTE_URL;
 import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.UNREAD;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.LTFT;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.CONTACT_TYPE_FIELD;
@@ -48,6 +49,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mockito;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
@@ -73,6 +75,8 @@ class UpdateInAppTvTest {
   @Container
   @ServiceConnection
   private static final MongoDBContainer MONGODB_CONTAINER = new MongoDBContainer(MONGODB);
+
+  private static final String CONTACT_URL = "https://ltft.com";
 
   @SpyBean
   private MongoTemplate mongoTemplate;
@@ -106,16 +110,16 @@ class UpdateInAppTvTest {
         LocalOfficeContactType.TSS_SUPPORT, "")).thenReturn(contact);
     when(notificationService.getHrefTypeForContact(contact)).thenReturn(
         contactType.getHrefTypeName());
-    History history = buildHistoryByType(notificationType, DESIGNATED_BODY, UNREAD);
+    History history = buildHistoryByType(notificationType, DESIGNATED_BODY, UNREAD, null);
 
     migrator.migrate();
 
     History migratedHistoryLtft = mongoTemplate.findById(history.id(), History.class);
 
-    assertThat("Unexpected LTFT contact.",
+    assertThat("Unexpected contact.",
         migratedHistoryLtft.template().variables().get(LOCAL_OFFICE_CONTACT_FIELD),
         is(contact));
-    assertThat("Unexpected LTFT contact type.",
+    assertThat("Unexpected contact type.",
         migratedHistoryLtft.template().variables().get(LOCAL_OFFICE_CONTACT_TYPE_FIELD),
         is(contactType.getHrefTypeName()));
   }
@@ -124,7 +128,7 @@ class UpdateInAppTvTest {
   @EnumSource(value = NotificationType.class, mode = EnumSource.Mode.EXCLUDE,
       names = {"LTFT", "DEFERRAL", "SPONSORSHIP"})
   void shouldNotUpdateInAppTvContactWithWrongType(NotificationType notificationType) {
-    History history = buildHistoryByType(notificationType, DESIGNATED_BODY, UNREAD);
+    History history = buildHistoryByType(notificationType, DESIGNATED_BODY, UNREAD, null);
 
     migrator.migrate();
 
@@ -142,7 +146,7 @@ class UpdateInAppTvTest {
   @EnumSource(value = NotificationStatus.class, mode = EnumSource.Mode.EXCLUDE,
       names = "UNREAD")
   void shouldNotUpdateNonUnreadInAppTvContact(NotificationStatus notificationStatus) {
-    History history = buildHistoryByType(LTFT, DESIGNATED_BODY, notificationStatus);
+    History history = buildHistoryByType(LTFT, DESIGNATED_BODY, notificationStatus, null);
 
     migrator.migrate();
 
@@ -158,7 +162,48 @@ class UpdateInAppTvTest {
 
   @Test
   void shouldNotUpdateNonTvInAppTvContact() {
-    History history = buildHistoryByType(LTFT, "something else", UNREAD);
+    History history = buildHistoryByType(LTFT, "something else", UNREAD, null);
+
+    migrator.migrate();
+
+    History migratedHistory = mongoTemplate.findById(history.id(), History.class);
+
+    assertThat("Unexpected contact.",
+        migratedHistory.template().variables().get(LOCAL_OFFICE_CONTACT_FIELD),
+        is(nullValue()));
+    assertThat("Unexpected contact type.",
+        migratedHistory.template().variables().get(LOCAL_OFFICE_CONTACT_TYPE_FIELD),
+        is(nullValue()));
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"", "your local office"})
+  void shouldUpdateInAppTvEmptyContactOnly(String loContact) {
+    List<Map<String, String>> contactList = List.of(
+        Map.of(CONTACT_TYPE_FIELD, LocalOfficeContactType.LTFT.getContactTypeName()));
+    when(notificationService.getOwnerContactList("Thames Valley"))
+        .thenReturn(contactList);
+    when(notificationService.getOwnerContact(contactList, LocalOfficeContactType.LTFT,
+        LocalOfficeContactType.TSS_SUPPORT, "")).thenReturn(CONTACT_URL);
+    when(notificationService.getHrefTypeForContact(CONTACT_URL)).thenReturn(
+        ABSOLUTE_URL.getHrefTypeName());
+    History history = buildHistoryByType(LTFT, DESIGNATED_BODY, UNREAD, "");
+
+    migrator.migrate();
+
+    History migratedHistoryLtft = mongoTemplate.findById(history.id(), History.class);
+
+    assertThat("Unexpected LTFT contact.",
+        migratedHistoryLtft.template().variables().get(LOCAL_OFFICE_CONTACT_FIELD),
+        is(CONTACT_URL));
+    assertThat("Unexpected LTFT contact type.",
+        migratedHistoryLtft.template().variables().get(LOCAL_OFFICE_CONTACT_TYPE_FIELD),
+        is(ABSOLUTE_URL.getHrefTypeName()));
+  }
+
+  @Test
+  void shouldNotUpdateMigratedInAppTvContact() {
+    History history = buildHistoryByType(LTFT, DESIGNATED_BODY, UNREAD, "something else");
 
     migrator.migrate();
 
@@ -189,10 +234,12 @@ class UpdateInAppTvTest {
 
   private History buildHistoryByType(NotificationType notificationType,
                                      String designatedBody,
-                                     NotificationStatus notificationStatus) {
+                                     NotificationStatus notificationStatus,
+                                     String loContact) {
     ObjectId objectId = ObjectId.get();
     Map<String, Object> variables = new HashMap<>();
     variables.put("designatedBody", designatedBody);
+    variables.put("localOfficeContact", loContact);
     History.TemplateInfo templateInfo =
         new History.TemplateInfo(null, null, variables);
     History history = History.builder()

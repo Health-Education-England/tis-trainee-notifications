@@ -97,6 +97,11 @@ public class UpdateInAppTvContact {
     CriteriaDefinition criteriaTv = Criteria.where("template.variables.designatedBody")
         .is(DESIGNATED_BODY);
     CriteriaDefinition criteriaUnread = Criteria.where("status").is("UNREAD");
+    Criteria.where("").orOperator(
+        Criteria.where("template.variables.localOfficeContact").is(null),
+        Criteria.where("template.variables.localOfficeContact").is(""),
+        Criteria.where("template.variables.localOfficeContact").is("your local office")
+    );
 
     Query query = Query.query(criteriaTv);
     query.addCriteria(criteriaUnread);
