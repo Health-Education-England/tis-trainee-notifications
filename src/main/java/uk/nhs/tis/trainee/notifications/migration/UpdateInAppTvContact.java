@@ -24,6 +24,7 @@ package uk.nhs.tis.trainee.notifications.migration;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.DEFERRAL;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.LTFT;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.SPONSORSHIP;
+import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.DESIGNATED_BODY_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.LOCAL_OFFICE_CONTACT_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.LOCAL_OFFICE_CONTACT_TYPE_FIELD;
 
@@ -94,16 +95,18 @@ public class UpdateInAppTvContact {
   private void migrateByType(List<Map<String, String>> contactList,
                              NotificationType notificationType,
                            LocalOfficeContactType localOfficeContactType) {
-    CriteriaDefinition criteriaTv = Criteria.where("template.variables.designatedBody")
+    String fieldPrefix = "template.variables.";
+    CriteriaDefinition criteriaTv = Criteria.where(fieldPrefix + DESIGNATED_BODY_FIELD)
         .is(DESIGNATED_BODY);
     CriteriaDefinition criteriaUnread = Criteria.where("status").is("UNREAD");
-    Criteria.where("").orOperator(
-        Criteria.where("template.variables.localOfficeContact").is(null),
-        Criteria.where("template.variables.localOfficeContact").is(""),
-        Criteria.where("template.variables.localOfficeContact").is("your local office")
+    CriteriaDefinition criteriaEmptyContact = new Criteria().orOperator(
+        Criteria.where(fieldPrefix + LOCAL_OFFICE_CONTACT_FIELD).is(null),
+        Criteria.where(fieldPrefix + LOCAL_OFFICE_CONTACT_FIELD).is(""),
+        Criteria.where(fieldPrefix + LOCAL_OFFICE_CONTACT_FIELD).is("your local office")
     );
 
     Query query = Query.query(criteriaTv);
+    query.addCriteria(criteriaEmptyContact);
     query.addCriteria(criteriaUnread);
     query.addCriteria(Criteria.where("type").is(notificationType));
     String localOfficeContact = notificationService.getOwnerContact(contactList,
@@ -111,16 +114,13 @@ public class UpdateInAppTvContact {
     String contactType =
         notificationService.getHrefTypeForContact(localOfficeContact);
 
-    String fieldPrefix = "template.variables.";
-    Update updateContact = Update.update(
-        fieldPrefix + LOCAL_OFFICE_CONTACT_FIELD, localOfficeContact);
-    Update updateContactType = Update.update(
-        fieldPrefix + LOCAL_OFFICE_CONTACT_TYPE_FIELD, contactType);
+    Update update = new Update();
+    update.set(fieldPrefix + LOCAL_OFFICE_CONTACT_FIELD, localOfficeContact);
+    update.set(fieldPrefix + LOCAL_OFFICE_CONTACT_TYPE_FIELD, contactType);
 
     try {
       UpdateResult resultContact =
-          mongoTemplate.updateMulti(query, updateContact, HISTORY_COLLECTION);
-      mongoTemplate.updateMulti(query, updateContactType, HISTORY_COLLECTION);
+          mongoTemplate.updateMulti(query, update, HISTORY_COLLECTION);
       log.info("Thames Valley contact updated on {} {} historic notifications.",
           resultContact.getModifiedCount(), notificationType);
     } catch (MongoException e) {

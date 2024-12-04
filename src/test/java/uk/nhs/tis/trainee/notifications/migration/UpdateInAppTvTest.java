@@ -35,6 +35,7 @@ import static uk.nhs.tis.trainee.notifications.model.HrefType.ABSOLUTE_URL;
 import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.UNREAD;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.LTFT;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.CONTACT_TYPE_FIELD;
+import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.DESIGNATED_BODY_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.LOCAL_OFFICE_CONTACT_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.LOCAL_OFFICE_CONTACT_TYPE_FIELD;
 
@@ -114,13 +115,13 @@ class UpdateInAppTvTest {
 
     migrator.migrate();
 
-    History migratedHistoryLtft = mongoTemplate.findById(history.id(), History.class);
+    History migratedHistory = mongoTemplate.findById(history.id(), History.class);
 
     assertThat("Unexpected contact.",
-        migratedHistoryLtft.template().variables().get(LOCAL_OFFICE_CONTACT_FIELD),
+        migratedHistory.template().variables().get(LOCAL_OFFICE_CONTACT_FIELD),
         is(contact));
     assertThat("Unexpected contact type.",
-        migratedHistoryLtft.template().variables().get(LOCAL_OFFICE_CONTACT_TYPE_FIELD),
+        migratedHistory.template().variables().get(LOCAL_OFFICE_CONTACT_TYPE_FIELD),
         is(contactType.getHrefTypeName()));
   }
 
@@ -191,13 +192,13 @@ class UpdateInAppTvTest {
 
     migrator.migrate();
 
-    History migratedHistoryLtft = mongoTemplate.findById(history.id(), History.class);
+    History migratedHistory = mongoTemplate.findById(history.id(), History.class);
 
-    assertThat("Unexpected LTFT contact.",
-        migratedHistoryLtft.template().variables().get(LOCAL_OFFICE_CONTACT_FIELD),
+    assertThat("Unexpected contact.",
+        migratedHistory.template().variables().get(LOCAL_OFFICE_CONTACT_FIELD),
         is(CONTACT_URL));
-    assertThat("Unexpected LTFT contact type.",
-        migratedHistoryLtft.template().variables().get(LOCAL_OFFICE_CONTACT_TYPE_FIELD),
+    assertThat("Unexpected contact type.",
+        migratedHistory.template().variables().get(LOCAL_OFFICE_CONTACT_TYPE_FIELD),
         is(ABSOLUTE_URL.getHrefTypeName()));
   }
 
@@ -211,10 +212,7 @@ class UpdateInAppTvTest {
 
     assertThat("Unexpected contact.",
         migratedHistory.template().variables().get(LOCAL_OFFICE_CONTACT_FIELD),
-        is(nullValue()));
-    assertThat("Unexpected contact type.",
-        migratedHistory.template().variables().get(LOCAL_OFFICE_CONTACT_TYPE_FIELD),
-        is(nullValue()));
+        is("something else"));
   }
 
   @Test
@@ -238,8 +236,8 @@ class UpdateInAppTvTest {
                                      String loContact) {
     ObjectId objectId = ObjectId.get();
     Map<String, Object> variables = new HashMap<>();
-    variables.put("designatedBody", designatedBody);
-    variables.put("localOfficeContact", loContact);
+    variables.put(DESIGNATED_BODY_FIELD, designatedBody);
+    variables.put(LOCAL_OFFICE_CONTACT_FIELD, loContact);
     History.TemplateInfo templateInfo =
         new History.TemplateInfo(null, null, variables);
     History history = History.builder()
