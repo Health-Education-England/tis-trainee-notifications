@@ -159,6 +159,7 @@ class NotificationServiceTest {
   private NotificationService serviceWhitelisted;
   private EmailService emailService;
   private HistoryService historyService;
+  private ApplicationPropertiesService appPropService;
   private RestTemplate restTemplate;
   private Scheduler scheduler;
   private MessagingControllerService messagingControllerService;
@@ -201,12 +202,18 @@ class NotificationServiceTest {
         .usingJobData(placementJobDataMap)
         .build();
 
-    service = new NotificationService(emailService, historyService, restTemplate, scheduler,
-        messagingControllerService, TEMPLATE_VERSION, SERVICE_URL, REFERENCE_URL,
-        NOTIFICATION_DELAY, NOT_WHITELISTED, TIMEZONE);
-    serviceWhitelisted = new NotificationService(emailService, historyService, restTemplate,
-        scheduler, messagingControllerService, TEMPLATE_VERSION, SERVICE_URL, REFERENCE_URL,
-        NOTIFICATION_DELAY, WHITELISTED, TIMEZONE);
+    // Initialize NotificationService with updated constructor
+    service = new NotificationService(
+        emailService, historyService, restTemplate, scheduler, messagingControllerService,
+        appPropService, TEMPLATE_VERSION, SERVICE_URL, REFERENCE_URL, NOTIFICATION_DELAY,
+        WHITELISTED, TIMEZONE
+    );
+
+    serviceWhitelisted = new NotificationService(
+        emailService, historyService, restTemplate, scheduler, messagingControllerService,
+        appPropService, TEMPLATE_VERSION, SERVICE_URL, REFERENCE_URL, NOTIFICATION_DELAY,
+        WHITELISTED, TIMEZONE
+    );
   }
 
   @Test

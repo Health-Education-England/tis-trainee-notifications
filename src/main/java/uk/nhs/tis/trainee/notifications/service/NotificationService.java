@@ -118,6 +118,7 @@ public class NotificationService implements Job {
   private final List<String> notificationsWhitelist;
   private final String timezone;
   protected final Integer immediateNotificationDelayMinutes;
+  private final ApplicationPropertiesService appPropService;
 
   /**
    * Initialise the Notification Service.
@@ -137,6 +138,7 @@ public class NotificationService implements Job {
   public NotificationService(EmailService emailService, HistoryService historyService,
       RestTemplate restTemplate, Scheduler scheduler,
       MessagingControllerService messagingControllerService,
+      ApplicationPropertiesService appPropService,
       @Value("${application.template-versions.form-updated.email}") String templateVersion,
       @Value("${service.trainee.url}") String serviceUrl,
       @Value("${service.reference.url}") String referenceUrl,
@@ -154,6 +156,28 @@ public class NotificationService implements Job {
     this.immediateNotificationDelayMinutes = notificationDelay;
     this.notificationsWhitelist = notificationsWhitelist;
     this.timezone = timezone;
+    this.appPropService = appPropService;
+    String props1 = null;
+    props1 = appPropService.getProperty("application.template-versions.coj-confirmation.email");
+    log.info("Returned prop", props1);
+  }
+
+  /**
+   * Get the template version for a specific notification type.
+   *
+   * @param notificationType The notification type.
+   * @return The template version.
+   */
+  private String getTemplateVersion(NotificationType notificationType) {
+    String propertyKey = switch (notificationType) {
+      case PROGRAMME_CREATED -> "application.template-versions.programme-created.email";
+      case PROGRAMME_DAY_ONE -> "application.template-versions.programme-day-one.email";
+      default -> throw new IllegalArgumentException("Unsupported notification type: " + notificationType);
+    };
+
+    String templateVersion = appPropService.getProperty(propertyKey);
+    log.info("Using template version {} for notification type {}", templateVersion, notificationType);
+    return templateVersion;
   }
 
   /**
@@ -183,44 +207,22 @@ public class NotificationService implements Job {
     NotificationType notificationType =
         NotificationType.valueOf(jobDetails.get(TEMPLATE_NOTIFICATION_TYPE_FIELD).toString());
 
-    //only consider sending programme-created mails; ignore the programme-updated-* notifications
-    if (notificationType == NotificationType.PROGRAMME_CREATED
-        || notificationType == NotificationType.PROGRAMME_DAY_ONE) {
+    String templatesVersion = getTemplateVersion(notificationType);
 
-      jobName = jobDetails.getString(ProgrammeMembershipService.PROGRAMME_NAME_FIELD);
-      startDate = (LocalDate) jobDetails.get(ProgrammeMembershipService.START_DATE_FIELD);
-      tisReferenceInfo = new TisReferenceInfo(PROGRAMME_MEMBERSHIP,
-          jobDetails.get(ProgrammeMembershipService.TIS_ID_FIELD).toString());
-
-    } else if (notificationType == NotificationType.PLACEMENT_UPDATED_WEEK_12
-        || notificationType == NotificationType.PLACEMENT_ROLLOUT_2024_CORRECTION) {
-
-      jobName = jobDetails.getString(PlacementService.PLACEMENT_TYPE_FIELD);
-      startDate = (LocalDate) jobDetails.get(PlacementService.START_DATE_FIELD);
-      tisReferenceInfo = new TisReferenceInfo(PLACEMENT,
-          jobDetails.get(PlacementService.TIS_ID_FIELD).toString());
-    }
-
-    if (tisReferenceInfo != null) {
-      if (userAccountDetails != null) {
-        try {
-          emailService.sendMessage(personId, userAccountDetails.email(), notificationType,
-              templateVersion, jobDetails.getWrappedMap(), tisReferenceInfo,
-              !shouldActuallySendEmail(notificationType, personId, tisReferenceInfo.id()));
-        } catch (MessagingException e) {
-          throw new RuntimeException(e);
-        }
-
-        log.info("Sent {} notification for {} ({}, starting {}) to {} using template {}", jobKey,
-            jobDetails.getString(TIS_ID_FIELD), jobName, startDate, userAccountDetails.email(),
-            templateVersion);
-        Instant processedOn = Instant.now();
-        result.put("status", "sent " + processedOn.toString());
-      } else {
-        log.info("No notification could be sent, no TSS details found for tisId {}", personId);
+    if (userAccountDetails != null) {
+      try {
+        emailService.sendMessage(personId, userAccountDetails.email(), notificationType,
+            templatesVersion, jobDetails.getWrappedMap(), null, true);
+        log.info("Sent notification using template version {}", templatesVersion);
+        result.put("status", "sent");
+      } catch (MessagingException e) {
+        throw new RuntimeException(e);
       }
+    } else {
+      log.info("No notification sent, no user details found for personId {}", personId);
     }
     return result;
+
   }
 
   /**
@@ -311,7 +313,6 @@ public class NotificationService implements Job {
 
   /**
    * Get a display date for an in-app notification from the start date and day offset.
-   *
    * @param startDate       The starting date.
    * @param daysBeforeStart The number of days prior to the start date.
    * @return The in-app notification display date and time.
