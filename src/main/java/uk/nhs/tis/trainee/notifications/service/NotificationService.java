@@ -677,7 +677,7 @@ public class NotificationService implements Job {
    * @param localOfficeName The local office name.
    * @return The list of contacts, or an empty list if there is an error.
    */
-  protected List<Map<String, String>> getOwnerContactList(String localOfficeName) {
+  public List<Map<String, String>> getOwnerContactList(String localOfficeName) {
     if (localOfficeName != null) {
       try {
         @SuppressWarnings("unchecked")
@@ -718,7 +718,7 @@ public class NotificationService implements Job {
    * @param defaultMessage      The default message if the contact was not found.
    * @return The specific contact of the owner, or the default message if not found.
    */
-  protected String getOwnerContact(List<Map<String, String>> ownerContactList,
+  public String getOwnerContact(List<Map<String, String>> ownerContactList,
       LocalOfficeContactType contactType, LocalOfficeContactType fallbackContactType,
       String defaultMessage) {
 
@@ -745,7 +745,7 @@ public class NotificationService implements Job {
    * @return "email" if it looks like an email address, "url" if it looks like a URL, and "NOT_HREF"
    *     otherwise.
    */
-  protected String getHrefTypeForContact(String contact) {
+  public String getHrefTypeForContact(String contact) {
     try {
       new URL(contact);
       return ABSOLUTE_URL.getHrefTypeName();
