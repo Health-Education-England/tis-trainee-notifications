@@ -47,6 +47,7 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import uk.nhs.tis.trainee.notifications.model.History;
 import uk.nhs.tis.trainee.notifications.model.History.TemplateInfo;
+import uk.nhs.tis.trainee.notifications.service.ApplicationPropertiesService;
 
 @SpringBootTest
 @ActiveProfiles("test")
@@ -55,6 +56,9 @@ class MongoConfigurationIntegrationTest {
 
   @MockBean
   private S3Template s3Template;
+
+  @MockBean
+  private ApplicationPropertiesService appPropService;
 
   @Container
   @ServiceConnection

@@ -46,6 +46,7 @@ import org.testcontainers.containers.MongoDBContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import uk.nhs.tis.trainee.notifications.model.History;
+import uk.nhs.tis.trainee.notifications.service.ApplicationPropertiesService;
 
 @SpringBootTest
 @ActiveProfiles("test")
@@ -55,6 +56,9 @@ class PopulateNotificationHistoryStatusIntegrationTest {
   @Container
   @ServiceConnection
   private static final MongoDBContainer MONGODB_CONTAINER = new MongoDBContainer(MONGODB);
+
+  @MockBean
+  private ApplicationPropertiesService appPropService;
 
   @SpyBean
   private MongoTemplate mongoTemplate;

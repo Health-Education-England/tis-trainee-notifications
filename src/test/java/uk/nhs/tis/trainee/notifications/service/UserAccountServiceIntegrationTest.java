@@ -78,6 +78,9 @@ class UserAccountServiceIntegrationTest {
   @Mock
   private SdkIterable<UserType> users;
 
+  @MockBean
+  private ApplicationPropertiesService appPropService;
+
   @Autowired
   UserAccountService service;
 

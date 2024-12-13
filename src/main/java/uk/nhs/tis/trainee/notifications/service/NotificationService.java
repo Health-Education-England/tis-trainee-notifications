@@ -106,6 +106,7 @@ public class NotificationService implements Job {
   private final List<String> notificationsWhitelist;
   private final String timezone;
   protected final Integer immediateNotificationDelayMinutes;
+  private final ApplicationPropertiesService appPropService;
 
   /**
    * Initialise the Notification Service.
@@ -125,6 +126,7 @@ public class NotificationService implements Job {
   public NotificationService(EmailService emailService, HistoryService historyService,
       RestTemplate restTemplate, Scheduler scheduler,
       MessagingControllerService messagingControllerService,
+      ApplicationPropertiesService appPropService,
       @Value("${application.template-versions.form-updated.email}") String templateVersion,
       @Value("${service.trainee.url}") String serviceUrl,
       @Value("${service.reference.url}") String referenceUrl,
@@ -142,6 +144,50 @@ public class NotificationService implements Job {
     this.immediateNotificationDelayMinutes = notificationDelay;
     this.notificationsWhitelist = notificationsWhitelist;
     this.timezone = timezone;
+    this.appPropService = appPropService;
+    String props1 = null;
+    props1 = appPropService.getProperty("application.template-versions.coj-confirmation.email");
+    log.info("Returned prop", props1);
+  }
+
+  /**
+   * Get the template version for a specific notification type.
+   *
+   * @param notificationType The notification type.
+   * @return The template version.
+   */
+  private String getTemplateVersion(NotificationType notificationType) {
+    String propertyKey = switch (notificationType) {
+      case PROGRAMME_CREATED -> "application.template-versions.programme-created.email";
+      case PROGRAMME_DAY_ONE -> "application.template-versions.programme-day-one.email";
+      case PLACEMENT_ROLLOUT_2024_CORRECTION -> "application.template-versions.placement-rollout-2024-correction.email";
+      case PLACEMENT_UPDATED_WEEK_12 -> "application.template-versions.placement-updated-week-12.email";
+      case COJ_CONFIRMATION -> "application.template-versions.coj-confirmation.email";
+      case CREDENTIAL_REVOKED -> "application.template-versions.credential-revoked.email";
+      case DAY_ONE -> "application.template-versions.day-one.email";
+      case DEFERRAL -> "application.template-versions.deferral.email";
+      case E_PORTFOLIO -> "application.template-versions.e-portfolio.email";
+      case EMAIL_UPDATED_NEW -> "application.template-versions.email-updated-new.email";
+      case EMAIL_UPDATED_OLD -> "application.template-versions.email-updated-old.email";
+      case FORM_UPDATED -> "application.template-versions.form-updated.email";
+      case INDEMNITY_INSURANCE -> "application.template-versions.indemnity-insurance.email";
+      case LTFT -> "application.template-versions.ltft.email";
+      case NON_EMPLOYMENT -> "application.template-versions.non-employment.email";
+      case PLACEMENT_INFORMATION -> "application.template-versions.placement-information.email";
+      case USEFUL_INFORMATION -> "application.template-versions.useful-information.email";
+      case PROGRAMME_UPDATED_WEEK_8 -> "application.template-versions.programme-updated-week-8.email";
+      case PROGRAMME_UPDATED_WEEK_4 -> "application.template-versions.programme-updated-week-4.email";
+      case PROGRAMME_UPDATED_WEEK_1 -> "application.template-versions.programme-updated-week-1.email";
+      case PROGRAMME_UPDATED_WEEK_0 -> "application.template-versions.programme-updated-week-0.email";
+      case SPONSORSHIP -> "application.template-versions.sponsorship.email";
+      case WELCOME -> "application.template-versions.welcome.email";
+
+      default -> throw new IllegalArgumentException("Unsupported notification type: " + notificationType);
+    };
+
+    String templateVersion = appPropService.getProperty(propertyKey);
+    log.info("Using template version {} for notification type {}", templateVersion, notificationType);
+    return templateVersion;
   }
 
   /**
@@ -171,6 +217,8 @@ public class NotificationService implements Job {
     NotificationType notificationType =
         NotificationType.valueOf(jobDetails.get(TEMPLATE_NOTIFICATION_TYPE_FIELD).toString());
 
+    String templatesVersion = getTemplateVersion(notificationType);
+
     //only consider sending programme-created mails; ignore the programme-updated-* notifications
     if (notificationType == NotificationType.PROGRAMME_CREATED
         || notificationType == NotificationType.PROGRAMME_DAY_ONE) {
@@ -193,7 +241,7 @@ public class NotificationService implements Job {
       if (userAccountDetails != null) {
         try {
           emailService.sendMessage(personId, userAccountDetails.email(), notificationType,
-              templateVersion, jobDetails.getWrappedMap(), tisReferenceInfo,
+              templatesVersion, jobDetails.getWrappedMap(), tisReferenceInfo,
               !shouldActuallySendEmail(notificationType, personId, tisReferenceInfo.id()));
         } catch (MessagingException e) {
           throw new RuntimeException(e);
@@ -201,7 +249,7 @@ public class NotificationService implements Job {
 
         log.info("Sent {} notification for {} ({}, starting {}) to {} using template {}", jobKey,
             jobDetails.getString(TIS_ID_FIELD), jobName, startDate, userAccountDetails.email(),
-            templateVersion);
+            templatesVersion);
         Instant processedOn = Instant.now();
         result.put("status", "sent " + processedOn.toString());
       } else {

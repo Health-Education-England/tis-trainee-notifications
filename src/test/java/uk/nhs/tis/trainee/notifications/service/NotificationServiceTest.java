@@ -30,6 +30,7 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyMap;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.doThrow;
@@ -154,6 +155,7 @@ class NotificationServiceTest {
   private EmailService emailService;
   private HistoryService historyService;
   private RestTemplate restTemplate;
+  private ApplicationPropertiesService appPropService;
   private Scheduler scheduler;
   private MessagingControllerService messagingControllerService;
   private JobExecutionContext jobExecutionContext;
@@ -166,6 +168,10 @@ class NotificationServiceTest {
     restTemplate = mock(RestTemplate.class);
     scheduler = mock(Scheduler.class);
     messagingControllerService = mock(MessagingControllerService.class);
+    appPropService = mock(ApplicationPropertiesService.class);
+
+    // Mock behavior for appPropService
+    when(appPropService.getProperty(anyString())).thenReturn("1.0.0");
 
     programmeJobDataMap = new JobDataMap();
     programmeJobDataMap.put(TIS_ID_FIELD, TIS_ID);
@@ -195,12 +201,18 @@ class NotificationServiceTest {
         .usingJobData(placementJobDataMap)
         .build();
 
-    service = new NotificationService(emailService, historyService, restTemplate, scheduler,
-        messagingControllerService, TEMPLATE_VERSION, SERVICE_URL, REFERENCE_URL,
-        NOTIFICATION_DELAY, NOT_WHITELISTED, TIMEZONE);
-    serviceWhitelisted = new NotificationService(emailService, historyService, restTemplate,
-        scheduler, messagingControllerService, TEMPLATE_VERSION, SERVICE_URL, REFERENCE_URL,
-        NOTIFICATION_DELAY, WHITELISTED, TIMEZONE);
+    // Initialize NotificationService with updated constructor
+    service = new NotificationService(
+        emailService, historyService, restTemplate, scheduler, messagingControllerService,
+        appPropService, TEMPLATE_VERSION, SERVICE_URL, REFERENCE_URL, NOTIFICATION_DELAY,
+        WHITELISTED, TIMEZONE
+    );
+
+    serviceWhitelisted = new NotificationService(
+        emailService, historyService, restTemplate, scheduler, messagingControllerService,
+        appPropService, TEMPLATE_VERSION, SERVICE_URL, REFERENCE_URL, NOTIFICATION_DELAY,
+        WHITELISTED, TIMEZONE
+    );
   }
 
   @Test

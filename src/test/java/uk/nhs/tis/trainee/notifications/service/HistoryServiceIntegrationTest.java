@@ -73,6 +73,9 @@ import uk.nhs.tis.trainee.notifications.repository.HistoryRepository;
 @Testcontainers(disabledWithoutDocker = true)
 class HistoryServiceIntegrationTest {
 
+  @MockBean
+  private ApplicationPropertiesService appPropService;
+
   private static final String TRAINEE_ID = UUID.randomUUID().toString();
   private static final String TRAINEE_CONTACT = "test@tis.nhs.uk";
 
