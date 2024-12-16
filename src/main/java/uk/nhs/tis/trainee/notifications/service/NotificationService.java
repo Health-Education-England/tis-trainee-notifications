@@ -33,8 +33,6 @@ import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipServic
 
 import jakarta.mail.MessagingException;
 import java.net.MalformedURLException;
-import java.net.URI;
-import java.net.URISyntaxException;
 import java.net.URL;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -44,7 +42,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -63,12 +60,11 @@ import org.quartz.Trigger;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpMethod;
-import org.springframework.http.RequestEntity;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 import software.amazon.awssdk.services.cognitoidentityprovider.model.UserNotFoundException;
+import uk.nhs.tis.trainee.notifications.config.TemplateVersionsProperties;
 import uk.nhs.tis.trainee.notifications.dto.UserDetails;
 import uk.nhs.tis.trainee.notifications.model.History;
 import uk.nhs.tis.trainee.notifications.model.History.TisReferenceInfo;
@@ -110,7 +106,7 @@ public class NotificationService implements Job {
   private final EmailService emailService;
   private final HistoryService historyService;
   private final RestTemplate restTemplate;
-  private final String templateVersion;
+  private final TemplateVersionsProperties templateVersions;
   private final String serviceUrl;
   private final String referenceUrl;
   private final Scheduler scheduler;
@@ -127,7 +123,7 @@ public class NotificationService implements Job {
    * @param scheduler                  The messaging scheduler.
    * @param messagingControllerService The messaging controller service to control whether to
    *                                   dispatch messages.
-   * @param templateVersion            The email template version.
+   * @param templateVersions           The notification template versions.
    * @param serviceUrl                 The URL for the tis-trainee-details service to use for
    *                                   profile information.
    * @param referenceUrl               The URL for the tis-trainee-reference service to use for
@@ -137,7 +133,7 @@ public class NotificationService implements Job {
   public NotificationService(EmailService emailService, HistoryService historyService,
       RestTemplate restTemplate, Scheduler scheduler,
       MessagingControllerService messagingControllerService,
-      @Value("${application.template-versions.form-updated.email}") String templateVersion,
+      TemplateVersionsProperties templateVersions,
       @Value("${service.trainee.url}") String serviceUrl,
       @Value("${service.reference.url}") String referenceUrl,
       @Value("${application.immediate-notifications-delay-minutes}") Integer notificationDelay,
@@ -147,7 +143,7 @@ public class NotificationService implements Job {
     this.historyService = historyService;
     this.restTemplate = restTemplate;
     this.scheduler = scheduler;
-    this.templateVersion = templateVersion;
+    this.templateVersions = templateVersions;
     this.serviceUrl = serviceUrl;
     this.referenceUrl = referenceUrl;
     this.messagingControllerService = messagingControllerService;
@@ -203,9 +199,18 @@ public class NotificationService implements Job {
 
     if (tisReferenceInfo != null) {
       if (userAccountDetails != null) {
+        Optional<String> templateVersion = templateVersions.getTemplateVersion(notificationType,
+            EMAIL);
+
+        if (templateVersion.isEmpty()) {
+          throw new IllegalArgumentException(
+              "No email template version found for notification type '{}'.");
+        }
+
         try {
+
           emailService.sendMessage(personId, userAccountDetails.email(), notificationType,
-              templateVersion, jobDetails.getWrappedMap(), tisReferenceInfo,
+              templateVersion.get(), jobDetails.getWrappedMap(), tisReferenceInfo,
               !shouldActuallySendEmail(notificationType, personId, tisReferenceInfo.id()));
         } catch (MessagingException e) {
           throw new RuntimeException(e);
@@ -214,7 +219,7 @@ public class NotificationService implements Job {
         log.info("Executed {} notification for {} ({}, starting {}) to {} using template {}",
             jobKey,
             jobDetails.getString(TIS_ID_FIELD), jobName, startDate, userAccountDetails.email(),
-            templateVersion);
+            templateVersion.get());
         Instant processedOn = Instant.now();
         result.put("status", "sent " + processedOn.toString());
       } else {
@@ -471,8 +476,17 @@ public class NotificationService implements Job {
     // get Recipient Info
     History.RecipientInfo recipientInfo = new History.RecipientInfo(
         personId, EMAIL, jobDetails.getString("email"));
+
+    Optional<String> templateVersion = templateVersions.getTemplateVersion(notificationType,
+        EMAIL);
+
+    if (templateVersion.isEmpty()) {
+      throw new IllegalArgumentException(
+          "No email template version found for notification type '{}'.");
+    }
+
     History.TemplateInfo templateInfo = new History.TemplateInfo(notificationType.getTemplateName(),
-        templateVersion, jobDetails.getWrappedMap());
+        templateVersion.get(), jobDetails.getWrappedMap());
 
     // Only save when notificationType is correct and in Pilot/Rollout
     if (tisReferenceInfo != null

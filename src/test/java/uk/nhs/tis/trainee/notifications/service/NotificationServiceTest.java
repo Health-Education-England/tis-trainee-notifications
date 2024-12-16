@@ -71,6 +71,7 @@ import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.HashMap;
@@ -78,6 +79,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -102,6 +104,8 @@ import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 import org.testcontainers.shaded.org.apache.commons.lang3.time.DateUtils;
 import software.amazon.awssdk.services.cognitoidentityprovider.model.UserNotFoundException;
+import uk.nhs.tis.trainee.notifications.config.TemplateVersionsProperties;
+import uk.nhs.tis.trainee.notifications.config.TemplateVersionsProperties.MessageTypeVersions;
 import uk.nhs.tis.trainee.notifications.dto.UserDetails;
 import uk.nhs.tis.trainee.notifications.model.History;
 import uk.nhs.tis.trainee.notifications.model.History.TisReferenceInfo;
@@ -173,6 +177,12 @@ class NotificationServiceTest {
     scheduler = mock(Scheduler.class);
     messagingControllerService = mock(MessagingControllerService.class);
 
+    TemplateVersionsProperties templateVersions = new TemplateVersionsProperties(
+        Arrays.stream(NotificationType.values()).collect(Collectors.toMap(
+            NotificationType::getTemplateName,
+            e -> new MessageTypeVersions(TEMPLATE_VERSION, null)
+        )));
+
     programmeJobDataMap = new JobDataMap();
     programmeJobDataMap.put(TIS_ID_FIELD, TIS_ID);
     programmeJobDataMap.put(PERSON_ID_FIELD, PERSON_ID);
@@ -202,10 +212,10 @@ class NotificationServiceTest {
         .build();
 
     service = new NotificationService(emailService, historyService, restTemplate, scheduler,
-        messagingControllerService, TEMPLATE_VERSION, SERVICE_URL, REFERENCE_URL,
+        messagingControllerService, templateVersions, SERVICE_URL, REFERENCE_URL,
         NOTIFICATION_DELAY, NOT_WHITELISTED, TIMEZONE);
     serviceWhitelisted = new NotificationService(emailService, historyService, restTemplate,
-        scheduler, messagingControllerService, TEMPLATE_VERSION, SERVICE_URL, REFERENCE_URL,
+        scheduler, messagingControllerService, templateVersions, SERVICE_URL, REFERENCE_URL,
         NOTIFICATION_DELAY, WHITELISTED, TIMEZONE);
   }
 
