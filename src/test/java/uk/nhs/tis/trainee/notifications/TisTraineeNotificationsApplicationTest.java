@@ -34,6 +34,7 @@ import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.ApplicationContext;
 import org.springframework.test.context.ActiveProfiles;
 import uk.nhs.tis.trainee.notifications.config.MongoCollectionConfiguration;
+import uk.nhs.tis.trainee.notifications.service.ApplicationPropertiesService;
 
 @SpringBootTest
 @ActiveProfiles("test")
@@ -44,6 +45,9 @@ class TisTraineeNotificationsApplicationTest {
 
   @MockBean
   private QuartzAutoConfiguration quartzConfiguration;
+
+  @MockBean
+  private ApplicationPropertiesService appPropService;
 
   @MockBean
   private Scheduler scheduler;

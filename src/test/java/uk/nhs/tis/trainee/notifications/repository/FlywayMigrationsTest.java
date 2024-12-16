@@ -39,6 +39,7 @@ import org.testcontainers.containers.MySQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import uk.nhs.tis.trainee.notifications.config.MongoCollectionConfiguration;
+import uk.nhs.tis.trainee.notifications.service.ApplicationPropertiesService;
 
 @SpringBootTest
 @ActiveProfiles("test")
@@ -60,6 +61,9 @@ class FlywayMigrationsTest implements TestExecutionListener {
 
   @MockBean
   private MongoCollectionConfiguration mongoConfiguration;
+
+  @MockBean
+  private ApplicationPropertiesService appPropService;
 
   @MockBean
   private S3Template s3Template;
