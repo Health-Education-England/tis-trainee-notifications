@@ -21,6 +21,7 @@
 
 package uk.nhs.tis.trainee.notifications.model;
 
+import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.Set;
 import lombok.AllArgsConstructor;
@@ -83,4 +84,17 @@ public enum NotificationType {
       DAY_ONE);
 
   private final String templateName;
+
+  /**
+   * TODO: javadocs
+   *
+   * @param templateName
+   * @return
+   */
+  public static NotificationType fromTemplateName(String templateName) {
+    return Arrays.stream(values())
+        .filter(v -> v.getTemplateName().equals(templateName))
+        .findFirst()
+        .orElse(null);
+  }
 }
