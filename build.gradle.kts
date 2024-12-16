@@ -1,6 +1,6 @@
 plugins {
   java
-  id("org.springframework.boot") version "3.3.0"
+  id("org.springframework.boot") version "3.3.6"
   id("io.spring.dependency-management") version "1.1.4"
 
   // Code quality plugins
@@ -10,7 +10,7 @@ plugins {
 }
 
 group = "uk.nhs.tis.trainee"
-version = "1.35.2"
+version = "1.35.3"
 
 configurations {
   compileOnly {

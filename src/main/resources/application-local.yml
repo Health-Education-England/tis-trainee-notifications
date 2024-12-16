@@ -1,0 +1,38 @@
+application:
+  cognito:
+    user-pool-id: eu-west-2_abc123
+  email:
+    sender: no-reply@example.com
+  environment: local
+  queues:
+    account-confirmed: ${local.sqs-path}/tis-trainee-notifications-local-account-confirmed
+    account-updated: ${local.sqs-path}/tis-trainee-notifications-local-account-updated
+    coj-published: ${local.sqs-path}/tis-trainee-notifications-local-coj-published
+    credential-revoked: ${local.sqs-path}/tis-trainee-notifications-local-credential-revoked
+    contact-details-updated: ${local.sqs-path}/tis-trainee-notifications-local-contact-details-updated
+    email-failure: ${local.sqs-path}/tis-trainee-notifications-local-email-failure
+    form-updated: ${local.sqs-path}/tis-trainee-notifications-local-form-updated
+    gmc-updated: ${local.sqs-path}/tis-trainee-notifications-local-gmc-updated
+    placement-deleted: ${local.sqs-path}/tis-trainee-notifications-local-placement-deleted
+    placement-updated: ${local.sqs-path}/tis-trainee-notifications-local-placement-updated
+    programme-membership-deleted: ${local.sqs-path}/tis-trainee-notifications-local-programme-membership-deleted
+    programme-membership-updated: ${local.sqs-path}/tis-trainee-notifications-local-programme-membership-updated
+  sns:
+    notifications-event:
+      arn: arn:aws:sns:eu-west-2:${local.account-id}:tis-trainee-notifications-event
+
+local:
+  account-id: "000000000000"
+  sqs-path: ${spring.cloud.aws.endpoint}/${local.account-id}
+
+spring:
+  cloud:
+    aws:
+      credentials:
+        access-key: ${local.account-id}
+        secret-key: ${local.account-id}
+      endpoint: http://${LOCALSTACK_HOST:localhost}:4566
+      region:
+        static: eu-west-2
+      s3:
+        path-style-access-enabled: true
