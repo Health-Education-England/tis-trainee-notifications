@@ -31,7 +31,8 @@ import uk.nhs.tis.trainee.notifications.model.MessageType;
 import uk.nhs.tis.trainee.notifications.model.NotificationType;
 
 /**
- * TODO: javadocs
+ * Configuration properties for managing template versions associated with different
+ * notification types.
  */
 @ConfigurationProperties("application")
 public final class TemplateVersionsProperties {
@@ -39,9 +40,12 @@ public final class TemplateVersionsProperties {
   private final Map<NotificationType, MessageTypeVersions> templateVersions;
 
   /**
-   * TODO: javadocs
+   * Constructs an instance of TemplateVersionsProperties.
    *
-   * @param templateVersions
+   * @param templateVersions A map where the key is a template name and the value is
+   *                         MessageTypeVersions specifying template versions.
+   *                         The template names are converted to
+   *                         NotificationType.
    */
   @ConstructorBinding
   public TemplateVersionsProperties(Map<String, MessageTypeVersions> templateVersions) {
@@ -53,27 +57,30 @@ public final class TemplateVersionsProperties {
   }
 
   /**
-   * TODO: javadocs
+   * Retrieves the template version for a given notification type or message type.
    *
-   * @param notificationType
-   * @param messageType
-   * @return
+   * @param notificationType The type of notification for which to retrieve the template version.
+   * @param messageType The type of message (e.g., email, in-app) for which to retrieve the
+   *                    template version.
+   * @return An Optional containing the template version for email or inapp notification
    */
   public Optional<String> getTemplateVersion(NotificationType notificationType,
       MessageType messageType) {
     MessageTypeVersions versionProperties = templateVersions.get(notificationType);
 
-    return Optional.of(switch (messageType) {
+    String templateVersion = switch (messageType) {
       case EMAIL -> versionProperties.email();
       case IN_APP -> versionProperties.inApp();
-    });
+    };
+
+    return Optional.ofNullable(templateVersion);
   }
 
   /**
-   * TODO: javadocs
+   * A record that holds template versions for different message types.
    *
-   * @param email
-   * @param inApp
+   * @param email The version of the email template.
+   * @param inApp The version of the in-app template.
    */
   public record MessageTypeVersions(String email, String inApp) {
 

@@ -86,10 +86,10 @@ public enum NotificationType {
   private final String templateName;
 
   /**
-   * TODO: javadocs
+   * Converts a template name to its corresponding notification type.
    *
-   * @param templateName
-   * @return
+   * @param templateName The name of the template to be mapped to a notification type.
+   * @return The matching notification type that is found, or null if no match is found.
    */
   public static NotificationType fromTemplateName(String templateName) {
     return Arrays.stream(values())

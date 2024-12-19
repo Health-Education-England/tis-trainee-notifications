@@ -177,12 +177,6 @@ class NotificationServiceTest {
     scheduler = mock(Scheduler.class);
     messagingControllerService = mock(MessagingControllerService.class);
 
-    TemplateVersionsProperties templateVersions = new TemplateVersionsProperties(
-        Arrays.stream(NotificationType.values()).collect(Collectors.toMap(
-            NotificationType::getTemplateName,
-            e -> new MessageTypeVersions(TEMPLATE_VERSION, null)
-        )));
-
     programmeJobDataMap = new JobDataMap();
     programmeJobDataMap.put(TIS_ID_FIELD, TIS_ID);
     programmeJobDataMap.put(PERSON_ID_FIELD, PERSON_ID);
@@ -211,12 +205,88 @@ class NotificationServiceTest {
         .usingJobData(placementJobDataMap)
         .build();
 
+    TemplateVersionsProperties templateVersions = new TemplateVersionsProperties(
+        Arrays.stream(NotificationType.values()).collect(Collectors.toMap(
+            NotificationType::getTemplateName,
+            e -> new MessageTypeVersions(TEMPLATE_VERSION, null)
+        )));
+
     service = new NotificationService(emailService, historyService, restTemplate, scheduler,
         messagingControllerService, templateVersions, SERVICE_URL, REFERENCE_URL,
         NOTIFICATION_DELAY, NOT_WHITELISTED, TIMEZONE);
     serviceWhitelisted = new NotificationService(emailService, historyService, restTemplate,
         scheduler, messagingControllerService, templateVersions, SERVICE_URL, REFERENCE_URL,
         NOTIFICATION_DELAY, WHITELISTED, TIMEZONE);
+  }
+
+  @Test
+  void shouldNotSendNotificationWhenTemplateVersionIsEmpty() {
+
+    TemplateVersionsProperties templateVersions = new TemplateVersionsProperties(
+        Arrays.stream(NotificationType.values()).collect(Collectors.toMap(
+            NotificationType::getTemplateName,
+            e -> new MessageTypeVersions(null, null)
+        )));
+
+    service = new NotificationService(emailService, historyService, restTemplate, scheduler,
+        messagingControllerService, templateVersions, SERVICE_URL, REFERENCE_URL,
+        NOTIFICATION_DELAY, NOT_WHITELISTED, TIMEZONE);
+
+    JobDataMap jobDataMap = new JobDataMap();
+    jobDataMap.put(TIS_ID_FIELD, TIS_ID);
+    jobDataMap.put(PERSON_ID_FIELD, PERSON_ID);
+    jobDataMap.put(TEMPLATE_NOTIFICATION_TYPE_FIELD, "PROGRAMME_CREATED");
+
+    JobDetail jobDetail = newJob(NotificationService.class)
+        .withIdentity(JOB_KEY)
+        .usingJobData(jobDataMap)
+        .build();
+
+    when(jobExecutionContext.getJobDetail()).thenReturn(jobDetail);
+
+    when(messagingControllerService.isValidRecipient(PERSON_ID, MessageType.EMAIL))
+        .thenReturn(true);
+
+    when(restTemplate.getForObject(eq(ACCOUNT_DETAILS_URL), eq(UserDetails.class), anyMap()))
+        .thenReturn(mock(UserDetails.class));
+
+    when(emailService.getRecipientAccountByEmail(any())).thenReturn(null);
+
+    Exception exception = assertThrows(IllegalArgumentException.class,
+        () -> service.execute(jobExecutionContext));
+
+    assertThat(exception.getMessage(),
+        is("No email template version found for notification type '{}'."));
+    verifyNoInteractions(emailService);
+  }
+
+  @Test
+  void shouldSendNotificationWhenTemplateVersionIsUnrecognised() throws MessagingException {
+
+    JobDataMap jobDataMap = new JobDataMap();
+    jobDataMap.put(TIS_ID_FIELD, TIS_ID);
+    jobDataMap.put(PERSON_ID_FIELD, PERSON_ID);
+    jobDataMap.put(TEMPLATE_NOTIFICATION_TYPE_FIELD, "PROGRAMME_DAY_ONE");
+
+    JobDetail jobDetail = newJob(NotificationService.class)
+        .withIdentity(JOB_KEY)
+        .usingJobData(jobDataMap)
+        .build();
+
+    when(jobExecutionContext.getJobDetail()).thenReturn(jobDetail);
+
+    when(messagingControllerService.isValidRecipient(PERSON_ID, MessageType.EMAIL))
+        .thenReturn(true);
+
+    when(restTemplate.getForObject(eq(ACCOUNT_DETAILS_URL), eq(UserDetails.class), anyMap()))
+        .thenReturn(mock(UserDetails.class));
+
+    when(emailService.getRecipientAccountByEmail(any())).thenReturn(null);
+
+    service.execute(jobExecutionContext);
+
+    verify(emailService).sendMessage(any(), any(), any(), any(), any(), any(), eq(true));
+    verify(jobExecutionContext).setResult(any());
   }
 
   @Test
