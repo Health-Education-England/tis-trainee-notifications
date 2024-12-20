@@ -71,6 +71,7 @@ import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.HashMap;
@@ -78,6 +79,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -102,6 +104,8 @@ import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 import org.testcontainers.shaded.org.apache.commons.lang3.time.DateUtils;
 import software.amazon.awssdk.services.cognitoidentityprovider.model.UserNotFoundException;
+import uk.nhs.tis.trainee.notifications.config.TemplateVersionsProperties;
+import uk.nhs.tis.trainee.notifications.config.TemplateVersionsProperties.MessageTypeVersions;
 import uk.nhs.tis.trainee.notifications.dto.UserDetails;
 import uk.nhs.tis.trainee.notifications.model.History;
 import uk.nhs.tis.trainee.notifications.model.History.TisReferenceInfo;
@@ -201,12 +205,88 @@ class NotificationServiceTest {
         .usingJobData(placementJobDataMap)
         .build();
 
+    TemplateVersionsProperties templateVersions = new TemplateVersionsProperties(
+        Arrays.stream(NotificationType.values()).collect(Collectors.toMap(
+            NotificationType::getTemplateName,
+            e -> new MessageTypeVersions(TEMPLATE_VERSION, null)
+        )));
+
     service = new NotificationService(emailService, historyService, restTemplate, scheduler,
-        messagingControllerService, TEMPLATE_VERSION, SERVICE_URL, REFERENCE_URL,
+        messagingControllerService, templateVersions, SERVICE_URL, REFERENCE_URL,
         NOTIFICATION_DELAY, NOT_WHITELISTED, TIMEZONE);
     serviceWhitelisted = new NotificationService(emailService, historyService, restTemplate,
-        scheduler, messagingControllerService, TEMPLATE_VERSION, SERVICE_URL, REFERENCE_URL,
+        scheduler, messagingControllerService, templateVersions, SERVICE_URL, REFERENCE_URL,
         NOTIFICATION_DELAY, WHITELISTED, TIMEZONE);
+  }
+
+  @Test
+  void shouldNotSendNotificationWhenTemplateVersionIsEmpty() {
+
+    TemplateVersionsProperties templateVersions = new TemplateVersionsProperties(
+        Arrays.stream(NotificationType.values()).collect(Collectors.toMap(
+            NotificationType::getTemplateName,
+            e -> new MessageTypeVersions(null, null)
+        )));
+
+    service = new NotificationService(emailService, historyService, restTemplate, scheduler,
+        messagingControllerService, templateVersions, SERVICE_URL, REFERENCE_URL,
+        NOTIFICATION_DELAY, NOT_WHITELISTED, TIMEZONE);
+
+    JobDataMap jobDataMap = new JobDataMap();
+    jobDataMap.put(TIS_ID_FIELD, TIS_ID);
+    jobDataMap.put(PERSON_ID_FIELD, PERSON_ID);
+    jobDataMap.put(TEMPLATE_NOTIFICATION_TYPE_FIELD, "PROGRAMME_CREATED");
+
+    JobDetail jobDetail = newJob(NotificationService.class)
+        .withIdentity(JOB_KEY)
+        .usingJobData(jobDataMap)
+        .build();
+
+    when(jobExecutionContext.getJobDetail()).thenReturn(jobDetail);
+
+    when(messagingControllerService.isValidRecipient(PERSON_ID, MessageType.EMAIL))
+        .thenReturn(true);
+
+    when(restTemplate.getForObject(eq(ACCOUNT_DETAILS_URL), eq(UserDetails.class), anyMap()))
+        .thenReturn(mock(UserDetails.class));
+
+    when(emailService.getRecipientAccountByEmail(any())).thenReturn(null);
+
+    Exception exception = assertThrows(IllegalArgumentException.class,
+        () -> service.execute(jobExecutionContext));
+
+    assertThat(exception.getMessage(),
+        is("No email template version found for notification type '{}'."));
+    verifyNoInteractions(emailService);
+  }
+
+  @Test
+  void shouldSendNotificationWhenTemplateVersionIsUnrecognised() throws MessagingException {
+
+    JobDataMap jobDataMap = new JobDataMap();
+    jobDataMap.put(TIS_ID_FIELD, TIS_ID);
+    jobDataMap.put(PERSON_ID_FIELD, PERSON_ID);
+    jobDataMap.put(TEMPLATE_NOTIFICATION_TYPE_FIELD, "PROGRAMME_DAY_ONE");
+
+    JobDetail jobDetail = newJob(NotificationService.class)
+        .withIdentity(JOB_KEY)
+        .usingJobData(jobDataMap)
+        .build();
+
+    when(jobExecutionContext.getJobDetail()).thenReturn(jobDetail);
+
+    when(messagingControllerService.isValidRecipient(PERSON_ID, MessageType.EMAIL))
+        .thenReturn(true);
+
+    when(restTemplate.getForObject(eq(ACCOUNT_DETAILS_URL), eq(UserDetails.class), anyMap()))
+        .thenReturn(mock(UserDetails.class));
+
+    when(emailService.getRecipientAccountByEmail(any())).thenReturn(null);
+
+    service.execute(jobExecutionContext);
+
+    verify(emailService).sendMessage(any(), any(), any(), any(), any(), any(), eq(true));
+    verify(jobExecutionContext).setResult(any());
   }
 
   @Test

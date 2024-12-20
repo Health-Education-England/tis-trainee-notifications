@@ -63,8 +63,22 @@ application:
       in-app: v1.0.0
     placement-rollout-2024-correction:
       in-app: v1.0.0
+    placement-updated-week-12:
+      email: v1.0.0
     placement-useful-information:
       in-app: v1.0.0
+    programme-created:
+      email: v1.1.0
+    programme-day-one:
+      email: v1.0.0
+    programme-updated-week-0:
+      email: v1.0.0
+    programme-updated-week-1:
+      email: v1.0.0
+    programme-updated-week-4:
+      email: v1.0.0
+    programme-updated-week-8:
+      email: v1.0.0
     sponsorship:
       in-app: v1.0.0
     welcome:
