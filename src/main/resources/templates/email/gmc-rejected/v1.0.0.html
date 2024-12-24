@@ -1,0 +1,49 @@
+<!--
+  ~ The MIT License (MIT)
+  ~
+  ~ Copyright 2024 Crown Copyright (Health Education England)
+  ~
+  ~ Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
+  ~ associated documentation files (the "Software"), to deal in the Software without restriction,
+  ~ including without limitation the rights to use, copy, modify, merge, publish, distribute,
+  ~ sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is
+  ~ furnished to do so, subject to the following conditions:
+  ~
+  ~ The above copyright notice and this permission notice shall be included in all copies or
+  ~ substantial portions of the Software.
+  ~
+  ~ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT
+  ~ NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+  ~ NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
+  ~ DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+  ~  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+  -->
+
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+  <title>Form Updated</title>
+</head>
+<body>
+<h1>Email Message</h1>
+<h2>Subject</h2>
+<th:block th:fragment="subject">GMC Number update rejected</th:block>
+<h2>Content</h2>
+<th:block th:fragment="content">
+  <div th:replace="fragments/retry/v1.0.0 :: body"></div>
+  <div style="text-align:right"><img style="margin-right:25px" src='https://trainee.tis.nhs.uk/nhse-logo.png' alt="NHS England logo"/></div>
+  <p>Dear ___,</p>
+  <p id="doctorName">Doctor <span th:text="${not #strings.isEmpty(givenName)} ? |${givenName}| : _"></span
+  > <span th:text="${not #strings.isEmpty(familyName)} ? |${familyName}| : _">(family name missing)</span
+  > reverted to GMC number <span th:text="${not #strings.isEmpty(gmcNumber)} ? |${gmcNumber}| : _">(GMC number missing)</span
+  ></p>
+  <p>The recent update to GMC details was rejected by TIS. <a id="tisTraineeLink"
+      th:href="${'https://apps.tis.nhs.uk/admin/people/person/' + {traineeId} + '/edit-personal-details'}">Review</a> their details to confirm.</p>
+  <p>This may be due to a variety of factors. For example, duplicate GMC numbers are not allowed. This error can occur when the doctor has duplicate profiles in TIS and this GMC number is already set in the other profile.</p>
+  <p>Kind Regards,</p>
+  <p>TIS Self-Service</p>
+  <div th:replace="fragments/disclaimer/v1.0.0 :: body"></div>
+</th:block>
+</body>
+</html>

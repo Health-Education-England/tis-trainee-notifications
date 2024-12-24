@@ -44,8 +44,10 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.bson.types.ObjectId;
@@ -577,6 +579,47 @@ public class NotificationService implements Job {
    */
   public boolean isLocalOfficeContactEmail(String contact) {
     return (contact != null && contact.contains("@"));
+  }
+
+  /**
+   * Send (or log) email to the distinct list of local office contacts of given type for the
+   * trainee.
+   *
+   * @param traineeId           The id of the trainee.
+   * @param contactType         The type of local office contact to notify.
+   * @param templateVariables   The template variables.
+   * @param templateVersion     The template version.
+   * @param notificationType    The notification type (template type).
+   *
+   * @throws MessagingException If the email(s) could not be sent.
+   */
+  public void sendLocalOfficeMail(String traineeId, LocalOfficeContactType contactType,
+      Map<String, Object> templateVariables, String templateVersion,
+      NotificationType notificationType)
+      throws MessagingException {
+    Set<LocalOfficeContact> localOfficeContacts
+        = getTraineeLocalOfficeContacts(traineeId, contactType);
+
+    boolean canSendMail = messagingControllerService.isMessagingEnabled(MessageType.EMAIL);
+    if (localOfficeContacts != null && !localOfficeContacts.isEmpty()) {
+      //since some LO's share a contact we need to eliminate possible duplicates:
+      Set<String> distinctContacts = localOfficeContacts.stream()
+          .map(LocalOfficeContact::contact).filter(Objects::nonNull).collect(Collectors.toSet());
+      for (String loContact : distinctContacts) {
+        if (isLocalOfficeContactEmail(loContact)) {
+          emailService.sendMessage(traineeId, loContact, notificationType, templateVersion,
+              templateVariables, null, !canSendMail);
+          log.info("{} notification {} for trainee {} to {}.", notificationType,
+              (canSendMail ? "sent" : "logged"), traineeId, loContact);
+        } else {
+          log.info("{} notification skipped for trainee {} to non-email {}.", notificationType,
+              traineeId, loContact);
+        }
+      }
+    } else {
+      log.warn("{} notification not processed for trainee {}: no local office contacts.",
+          notificationType, traineeId);
+    }
   }
 
   /**

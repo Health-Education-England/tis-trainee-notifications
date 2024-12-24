@@ -43,9 +43,11 @@ import static org.quartz.JobBuilder.newJob;
 import static uk.nhs.tis.trainee.notifications.model.HrefType.ABSOLUTE_URL;
 import static uk.nhs.tis.trainee.notifications.model.HrefType.NON_HREF;
 import static uk.nhs.tis.trainee.notifications.model.HrefType.PROTOCOL_EMAIL;
+import static uk.nhs.tis.trainee.notifications.model.LocalOfficeContactType.GMC_UPDATE;
 import static uk.nhs.tis.trainee.notifications.model.LocalOfficeContactType.ONBOARDING_SUPPORT;
 import static uk.nhs.tis.trainee.notifications.model.MessageType.EMAIL;
 import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.SCHEDULED;
+import static uk.nhs.tis.trainee.notifications.model.NotificationType.GMC_UPDATED;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PLACEMENT_ROLLOUT_2024_CORRECTION;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PLACEMENT_UPDATED_WEEK_12;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_CREATED;
@@ -75,6 +77,7 @@ import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -1709,4 +1712,93 @@ class NotificationServiceTest {
     assertThat("Unexpected is-email check.", service.isLocalOfficeContactEmail("a@b.com"),
         is(true));
   }
+
+  @Test
+  void shouldNotSendEmailIfNoLocalOfficeContact() throws MessagingException {
+    ParameterizedTypeReference<Set<LocalOfficeContact>> loContactListListType
+        = new ParameterizedTypeReference<>(){};
+    when(restTemplate.exchange(any(), any(), any(), eq(loContactListListType), anyMap()))
+        .thenReturn(new ResponseEntity<>(HttpStatus.OK));
+    when(messagingControllerService.isMessagingEnabled(any())).thenReturn(true);
+
+    service.sendLocalOfficeMail(PERSON_ID, GMC_UPDATE, new HashMap<>(), "", GMC_UPDATED);
+
+    verifyNoInteractions(emailService);
+  }
+
+  @ParameterizedTest
+  @NullAndEmptySource
+  @ValueSource(strings = "not an email")
+  void shouldNotSendEmailIfLocalOfficeHasNoEmail(String contact) throws MessagingException {
+    Set<LocalOfficeContact> localOfficeContacts = new HashSet<>();
+    localOfficeContacts.add(new LocalOfficeContact(contact, "local office"));
+    ParameterizedTypeReference<Set<LocalOfficeContact>> loContactListListType
+        = new ParameterizedTypeReference<>(){};
+    when(restTemplate.exchange(any(), any(), any(), eq(loContactListListType), anyMap()))
+        .thenReturn(ResponseEntity.of(Optional.of(localOfficeContacts)));
+    when(messagingControllerService.isMessagingEnabled(any())).thenReturn(true);
+
+    service.sendLocalOfficeMail(PERSON_ID, GMC_UPDATE, new HashMap<>(), "", GMC_UPDATED);
+
+    verifyNoInteractions(emailService);
+  }
+
+  @Test
+  void shouldSendOneEmailIfLocalOfficesHaveSameEmail() throws MessagingException {
+    Set<LocalOfficeContact> localOfficeContacts = new HashSet<>();
+    localOfficeContacts.add(new LocalOfficeContact("contact@email.com", "local office"));
+    localOfficeContacts.add(new LocalOfficeContact("contact@email.com", "name2"));
+    ParameterizedTypeReference<Set<LocalOfficeContact>> loContactListListType
+        = new ParameterizedTypeReference<>(){};
+    when(restTemplate.exchange(any(), any(), any(), eq(loContactListListType), anyMap()))
+        .thenReturn(ResponseEntity.of(Optional.of(localOfficeContacts)));
+    when(messagingControllerService.isMessagingEnabled(any())).thenReturn(true);
+
+    service.sendLocalOfficeMail(PERSON_ID, GMC_UPDATE, new HashMap<>(), "", GMC_UPDATED);
+
+    verify(emailService)
+        .sendMessage(any(), eq("contact@email.com"), any(), any(), any(), any(), anyBoolean());
+    verifyNoMoreInteractions(emailService);
+  }
+
+  @Test
+  void shouldSendMultipleEmailIfLocalOfficesHaveDifferentEmail() throws MessagingException {
+    Set<LocalOfficeContact> localOfficeContacts = new HashSet<>();
+    localOfficeContacts.add(new LocalOfficeContact("contact@email.com", "local office"));
+    localOfficeContacts.add(new LocalOfficeContact("contact2@email.com", "name2"));
+    ParameterizedTypeReference<Set<LocalOfficeContact>> loContactListListType
+        = new ParameterizedTypeReference<>(){};
+    when(restTemplate.exchange(any(), any(), any(), eq(loContactListListType), anyMap()))
+        .thenReturn(ResponseEntity.of(Optional.of(localOfficeContacts)));
+    when(messagingControllerService.isMessagingEnabled(any())).thenReturn(true);
+
+    service.sendLocalOfficeMail(PERSON_ID, GMC_UPDATE, new HashMap<>(), "", GMC_UPDATED);
+
+    verify(emailService)
+        .sendMessage(any(), eq("contact@email.com"), any(), any(), any(), any(),
+            anyBoolean());
+    verify(emailService)
+        .sendMessage(any(), eq("contact2@email.com"), any(), any(), any(), any(),
+            anyBoolean());
+    verifyNoMoreInteractions(emailService);
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {true, false})
+  void shouldLogEmailIfMessagingNotEnabled(boolean isMessagingEnabled) throws MessagingException {
+    Set<LocalOfficeContact> localOfficeContacts = new HashSet<>();
+    localOfficeContacts.add(new LocalOfficeContact("contact@email.com", "local office"));
+    ParameterizedTypeReference<Set<LocalOfficeContact>> loContactListListType
+        = new ParameterizedTypeReference<>(){};
+    when(restTemplate.exchange(any(), any(), any(), eq(loContactListListType), anyMap()))
+        .thenReturn(ResponseEntity.of(Optional.of(localOfficeContacts)));
+    when(messagingControllerService.isMessagingEnabled(any())).thenReturn(isMessagingEnabled);
+
+    service.sendLocalOfficeMail(PERSON_ID, GMC_UPDATE, new HashMap<>(), "", GMC_UPDATED);
+
+    verify(emailService)
+        .sendMessage(any(), eq("contact@email.com"), any(), any(), any(), any(),
+            eq(!isMessagingEnabled));
+  }
+
 }

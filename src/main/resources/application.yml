@@ -8,7 +8,7 @@ application:
     key-prefix: Notifications
     time-to-live: PT24H
   cognito:
-    user-pool-id: ${COGNITO_USER_POOL_ID}
+    user-pool-id: ${COGNITO_USER_POOL_ID:asfsdf}
   domain: ${APP_DOMAIN:}
   email:
     sender: ${EMAIL_SENDER}
