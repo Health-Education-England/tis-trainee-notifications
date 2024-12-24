@@ -211,7 +211,8 @@ public class NotificationService implements Job {
           throw new RuntimeException(e);
         }
 
-        log.info("Sent {} notification for {} ({}, starting {}) to {} using template {}", jobKey,
+        log.info("Executed {} notification for {} ({}, starting {}) to {} using template {}",
+            jobKey,
             jobDetails.getString(TIS_ID_FIELD), jobName, startDate, userAccountDetails.email(),
             templateVersion);
         Instant processedOn = Instant.now();
@@ -473,7 +474,7 @@ public class NotificationService implements Job {
     History.TemplateInfo templateInfo = new History.TemplateInfo(notificationType.getTemplateName(),
         templateVersion, jobDetails.getWrappedMap());
 
-    // Only save then notificationType is correct and in Pilot/Rollout
+    // Only save when notificationType is correct and in Pilot/Rollout
     if (tisReferenceInfo != null
         && shouldActuallySendEmail(notificationType, personId, tisReferenceInfo.id())) {
 

@@ -181,7 +181,7 @@ public class EmailService {
       TisReferenceInfo tisReferenceInfo, StoredFile attachment, boolean doNotSendJustLog)
       throws MessagingException {
     String templateName = templateService.getTemplatePath(EMAIL, notificationType, templateVersion);
-    log.info("Sending template {} to {}.", templateName, recipient);
+    log.info("Processing send job template {} to {}.", templateName, recipient);
 
     if (!doNotSendJustLog) {
       ObjectId notificationId = ObjectId.get();
@@ -189,12 +189,12 @@ public class EmailService {
       String statusDetail = null;
 
       // find scheduled history from DB
-      History scheduledHistory = null;
+      History latestScheduledHistory = null;
       if (tisReferenceInfo != null) {
-        scheduledHistory = historyService.findScheduledEmailForTraineeByRefAndType(
+        latestScheduledHistory = historyService.findScheduledEmailForTraineeByRefAndType(
             traineeId, tisReferenceInfo.type(), tisReferenceInfo.id(), notificationType);
-        if (scheduledHistory != null) {
-          notificationId = scheduledHistory.id();
+        if (latestScheduledHistory != null) {
+          notificationId = latestScheduledHistory.id();
         }
       }
 
@@ -204,6 +204,7 @@ public class EmailService {
         MimeMessageHelper helper = buildMessageHelper(recipient, templateName, templateVariables,
             notificationId, attachments);
         mailSender.send(helper.getMimeMessage());
+        log.info("Sent template {} to {}.", templateName, recipient);
         status = NotificationStatus.SENT;
       } else {
         log.info("No email address available for trainee {}, this failure will be recorded.",
@@ -221,10 +222,21 @@ public class EmailService {
           null);
       historyService.save(history);
 
-      log.info("Sent template {} to {}.", templateName, recipient);
+      log.info("Finish processing send job {} to {}.", templateName, recipient);
     } else {
-      log.info("For now, just logging mail to '{}' from template '{}' with variables '{}'",
+      log.info("Send job is ignored. "
+              + "For now, just logging mail to '{}' from template '{}' with variables '{}'",
           recipient, templateName, templateVariables);
+    }
+
+    // Delete SCHEDULED history after the notification is sent or ignored
+    if (tisReferenceInfo != null) {
+      List<History> allScheduledHistories =
+          historyService.findAllScheduledEmailForTraineeByRefAndType(
+          traineeId, tisReferenceInfo.type(), tisReferenceInfo.id(), notificationType);
+      for (History history : allScheduledHistories) {
+        historyService.deleteHistoryForTrainee(history.id(), traineeId);
+      }
     }
   }
 
@@ -242,7 +254,7 @@ public class EmailService {
     } else {
       String templateName = templateService.getTemplatePath(EMAIL, toResend.type(),
           toResend.template().version());
-      log.info("Sending template {} to {}.", templateName, updatedEmailAddress);
+      log.info("Re-sending template {} to {}.", templateName, updatedEmailAddress);
       ObjectId notificationId = toResend.id();
       Map<String, Object> resendVariables = new HashMap<>(toResend.template().variables());
       resendVariables.putIfAbsent("originallySentOn", toResend.sentAt());
@@ -262,7 +274,7 @@ public class EmailService {
           toResend.readAt(), NotificationStatus.SENT, null, Instant.now());
       historyService.save(updatedHistory);
 
-      log.info("Sent template {} to {}.", templateName, updatedEmailAddress);
+      log.info("Re-sent template {} to {}.", templateName, updatedEmailAddress);
     }
   }
 
