@@ -473,7 +473,7 @@ public class NotificationService implements Job {
     History.TemplateInfo templateInfo = new History.TemplateInfo(notificationType.getTemplateName(),
         templateVersion, jobDetails.getWrappedMap());
 
-    // Only save then notificationType is correct and in Pilot/Rollout
+    // Only save when notificationType is correct and in Pilot/Rollout
     if (tisReferenceInfo != null
         && shouldActuallySendEmail(notificationType, personId, tisReferenceInfo.id())) {
 
