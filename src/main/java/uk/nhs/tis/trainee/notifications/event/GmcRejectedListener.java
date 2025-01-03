@@ -33,9 +33,6 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import uk.nhs.tis.trainee.notifications.dto.UserDetails;
 import uk.nhs.tis.trainee.notifications.model.GmcRejectedEvent;
-import uk.nhs.tis.trainee.notifications.model.MessageType;
-import uk.nhs.tis.trainee.notifications.service.EmailService;
-import uk.nhs.tis.trainee.notifications.service.MessagingControllerService;
 import uk.nhs.tis.trainee.notifications.service.NotificationService;
 
 /**
@@ -53,23 +50,19 @@ public class GmcRejectedListener {
   public static final String TIS_TRIGGER_FIELD = "tisTrigger";
   public static final String TIS_TRIGGER_DETAIL_FIELD = "tisTriggerDetail";
 
-  private final EmailService emailService;
   private final String templateVersion;
   private final NotificationService notificationService;
-  private final MessagingControllerService messagingControllerService;
 
   /**
    * Construct a listener for GMC rejected events.
    *
-   * @param emailService The service to use for sending emails.
+   * @param notificationService The notification service to use.
+   * @param templateVersion     The template version to use.
    */
-  public GmcRejectedListener(EmailService emailService, NotificationService notificationService,
-      MessagingControllerService messagingControllerService,
+  public GmcRejectedListener(NotificationService notificationService,
       @Value("${application.template-versions.gmc-rejected.email}") String templateVersion) {
-    this.emailService = emailService;
     this.templateVersion = templateVersion;
     this.notificationService = notificationService;
-    this.messagingControllerService = messagingControllerService;
   }
 
   /**
@@ -93,19 +86,8 @@ public class GmcRejectedListener {
     templateVariables.put(GMC_STATUS_FIELD, event.update().gmcDetails().gmcStatus());
 
     String traineeId = event.traineeId();
-    notificationService.sendLocalOfficeMail(traineeId, GMC_UPDATE, templateVariables,
-        templateVersion, GMC_REJECTED);
-
-    boolean canSendMail = messagingControllerService.isMessagingEnabled(MessageType.EMAIL);
     String traineeEmail = userDetails != null ? userDetails.email() : null;
-    if (traineeEmail != null) {
-      emailService.sendMessage(traineeId, traineeEmail, GMC_REJECTED, templateVersion,
-          templateVariables, null, !canSendMail);
-      log.info("GMC rejected notification {} for trainee {} to {}.",
-          (canSendMail ? "sent" : "logged"), traineeId, traineeEmail);
-    } else {
-      log.info("GMC rejected notification skipped for trainee {} without email address.",
-          traineeId);
-    }
+    notificationService.sendLocalOfficeMail(traineeId, GMC_UPDATE, templateVariables,
+        templateVersion, GMC_REJECTED, traineeEmail);
   }
 }

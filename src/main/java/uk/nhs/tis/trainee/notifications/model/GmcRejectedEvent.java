@@ -23,20 +23,29 @@ package uk.nhs.tis.trainee.notifications.model;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
+/**
+ * An event to receive details of a rejected trainee GMC update.
+ *
+ * @param traineeId        The trainee ID.
+ * @param tisTrigger       The TIS trigger for the rejection.
+ * @param tisTriggerDetail The details of the reason for rejection.
+ * @param update           The reverted GMC details.
+ */
 public record GmcRejectedEvent(
-  @JsonProperty("tisId") String traineeId,
-  String tisTrigger,
-  String tisTriggerDetail,
-  @JsonProperty("record")
-  Update update) {
+    @JsonProperty("tisId") String traineeId,
+    String tisTrigger,
+    String tisTriggerDetail,
+    @JsonProperty("record")
+    Update update) {
 
-    /**
-     * A wrapper around the update data, used so the record structure matches the incoming message.
-     *
-     * @param gmcDetails The updated GMC details.
-     */
-    public record Update(
-        @JsonProperty("data")
-        GmcDetails gmcDetails) {
-    }
+  /**
+   * A wrapper around the update data, used so the record structure matches the incoming message.
+   *
+   * @param gmcDetails The updated GMC details.
+   */
+  public record Update(
+      @JsonProperty("data")
+      GmcDetails gmcDetails) {
+
   }
+}
