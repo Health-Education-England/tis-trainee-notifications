@@ -225,7 +225,9 @@ public class HistoryService {
     List<History> history = repository.findAllByRecipient_IdOrderBySentAtDesc(traineeId);
 
     return history.stream()
-        .takeWhile(h -> h.sentAt().isAfter(Instant.now()))
+        // In-app notifications scheduled by future send date,
+        // while email notification scheduled by SCHEDULED status
+        .filter(h -> (h.sentAt().isAfter(Instant.now())) || (h.status().equals(SCHEDULED)))
         .filter(h -> h.tisReference().id().equals(refId)
             && h.tisReference().type().equals(tisReferenceType))
         .toList();
@@ -240,7 +242,7 @@ public class HistoryService {
    * @param notificationType The notification Type of the notification.
    * @return The found notifications, empty if none found.
    */
-  public History findScheduledEmailForTraineeByRefAndType(String traineeId,
+  public List<History> findAllScheduledEmailForTraineeByRefAndType(String traineeId,
       TisReferenceType tisReferenceType, String refId, NotificationType notificationType) {
     List<History> history = repository.findAllByRecipient_IdOrderBySentAtDesc(traineeId);
 
@@ -250,6 +252,24 @@ public class HistoryService {
         .filter(h -> h.tisReference().id().equals(refId)
             && h.tisReference().type().equals(tisReferenceType))
         .filter(h -> h.type().equals(notificationType))
+        .toList();
+  }
+
+  /**
+   * Find latest scheduled email notification for the given Trainee by reference and type from DB.
+   *
+   * @param traineeId The ID of the trainee to get notifications for.
+   * @param tisReferenceType The reference type of the object.
+   * @param refId The reference ID of the TisReferenceType.
+   * @param notificationType The notification Type of the notification.
+   * @return The found notifications, empty if none found.
+   */
+  public History findScheduledEmailForTraineeByRefAndType(String traineeId,
+      TisReferenceType tisReferenceType, String refId, NotificationType notificationType) {
+    List<History> history = findAllScheduledEmailForTraineeByRefAndType(traineeId,
+        tisReferenceType, refId, notificationType);
+
+    return history.stream()
         .findFirst()
         .orElse(null);
   }

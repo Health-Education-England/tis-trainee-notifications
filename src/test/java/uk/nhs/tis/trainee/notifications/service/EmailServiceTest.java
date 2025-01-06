@@ -524,16 +524,21 @@ class EmailServiceTest {
 
   @ParameterizedTest
   @EnumSource(NotificationType.class)
-  void shouldUpdateHistoryWhenScheduledHistoryFound(NotificationType notificationType)
+  void shouldUpdateAndDeleteOrphanHistoryWhenScheduledHistoryFound(
+      NotificationType notificationType)
       throws MessagingException {
     ObjectId notificationId = ObjectId.get();
-    History scheduledHistory = new History(notificationId, null, notificationType,
+    History latestScheduledHistory = new History(notificationId, null, notificationType,
+        null, null, null, null, null, SCHEDULED, null, null);
+    History redundantScheduledHistory = new History(notificationId, null, notificationType,
         null, null, null, null, null, SCHEDULED, null, null);
     when(historyService.findScheduledEmailForTraineeByRefAndType(any(), any(), any(), any()))
-        .thenReturn(scheduledHistory);
+        .thenReturn(latestScheduledHistory);
     when(userAccountService.getUserDetailsById(USER_ID)).thenReturn(
         new UserDetails(true, RECIPIENT, "Mr", "Gilliam",
             "Anthony", GMC));
+    when(historyService.findAllScheduledEmailForTraineeByRefAndType(any(), any(), any(), any()))
+        .thenReturn(List.of(redundantScheduledHistory));
     String templateVersion = "v1.2.3";
     TisReferenceInfo tisReferenceInfo = new TisReferenceInfo(REFERENCE_TABLE, REFERENCE_KEY);
 
@@ -570,6 +575,8 @@ class EmailServiceTest {
     assertThat("Unexpected template variable.", storedVariables.get("familyName"),
         is("Gilliam"));
     assertThat("Unexpected template variable.", storedVariables.get("domain"), is(APP_DOMAIN));
+
+    verify(historyService).deleteHistoryForTrainee(redundantScheduledHistory.id(), TRAINEE_ID);
   }
 
   @ParameterizedTest
@@ -677,24 +684,35 @@ class EmailServiceTest {
   @Test
   void shouldNotActuallySendMessageIfFlagged() throws MessagingException {
     String template = "<div>Test message body</div>";
+    TisReferenceInfo tisReferenceInfo = new TisReferenceInfo(REFERENCE_TABLE, REFERENCE_KEY);
+    History scheduledHistory = new History(ObjectId.get(), null, NOTIFICATION_TYPE,
+        null, null, null, null, null, SCHEDULED, null, null);
     when(templateService.process(any(), eq(Set.of("content")), (Context) any())).thenReturn(
         template);
+    when(historyService.findAllScheduledEmailForTraineeByRefAndType(any(), any(), any(), any()))
+        .thenReturn(List.of(scheduledHistory));
 
-    service.sendMessage(TRAINEE_ID, RECIPIENT, NOTIFICATION_TYPE, "", Map.of("key1", "val1"), null,
-        true);
+    service.sendMessage(TRAINEE_ID, RECIPIENT, NOTIFICATION_TYPE, "", Map.of("key1", "val1"),
+        tisReferenceInfo, true);
 
     verify(mailSender, never()).send((MimeMessage) any());
     verify(historyService, never()).save(any());
+    verify(historyService).deleteHistoryForTrainee(scheduledHistory.id(), TRAINEE_ID);
   }
 
   @Test
   void shouldNotActuallySendMessageIfNoRecipient() throws MessagingException {
     String template = "<div>Test message body</div>";
+    TisReferenceInfo tisReferenceInfo = new TisReferenceInfo(REFERENCE_TABLE, REFERENCE_KEY);
+    History scheduledHistory = new History(ObjectId.get(), null, NOTIFICATION_TYPE,
+        null, null, null, null, null, SCHEDULED, null, null);
     when(templateService.process(any(), eq(Set.of("content")), (Context) any())).thenReturn(
         template);
+    when(historyService.findAllScheduledEmailForTraineeByRefAndType(any(), any(), any(), any()))
+        .thenReturn(List.of(scheduledHistory));
 
     service.sendMessage(TRAINEE_ID, null, NOTIFICATION_TYPE, "", new HashMap<>(),
-        null, false);
+        tisReferenceInfo, false);
 
     verify(mailSender, never()).send((MimeMessage) any());
 
@@ -706,6 +724,8 @@ class EmailServiceTest {
     assertThat("Unexpected status.", history.status(), is(FAILED));
     assertThat("Unexpected status detail.", history.statusDetail(),
         is("No email address available."));
+
+    verify(historyService).deleteHistoryForTrainee(scheduledHistory.id(), TRAINEE_ID);
   }
 
   @Test
