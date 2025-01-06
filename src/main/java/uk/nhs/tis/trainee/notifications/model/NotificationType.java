@@ -21,6 +21,7 @@
 
 package uk.nhs.tis.trainee.notifications.model;
 
+import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.Set;
 import lombok.AllArgsConstructor;
@@ -83,4 +84,17 @@ public enum NotificationType {
       DAY_ONE);
 
   private final String templateName;
+
+  /**
+   * Converts a template name to its corresponding notification type.
+   *
+   * @param templateName The name of the template to be mapped to a notification type.
+   * @return The matching notification type that is found, or null if no match is found.
+   */
+  public static NotificationType fromTemplateName(String templateName) {
+    return Arrays.stream(values())
+        .filter(v -> v.getTemplateName().equals(templateName))
+        .findFirst()
+        .orElse(null);
+  }
 }
