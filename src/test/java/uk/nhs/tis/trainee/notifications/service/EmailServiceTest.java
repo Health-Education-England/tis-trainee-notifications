@@ -528,17 +528,17 @@ class EmailServiceTest {
       NotificationType notificationType)
       throws MessagingException {
     ObjectId notificationId = ObjectId.get();
-    History scheduledHistory = new History(notificationId, null, notificationType,
+    History latestScheduledHistory = new History(notificationId, null, notificationType,
         null, null, null, null, null, SCHEDULED, null, null);
-    History scheduledHistory2 = new History(notificationId, null, notificationType,
+    History redundantScheduledHistory = new History(notificationId, null, notificationType,
         null, null, null, null, null, SCHEDULED, null, null);
     when(historyService.findScheduledEmailForTraineeByRefAndType(any(), any(), any(), any()))
-        .thenReturn(scheduledHistory);
+        .thenReturn(latestScheduledHistory);
     when(userAccountService.getUserDetailsById(USER_ID)).thenReturn(
         new UserDetails(true, RECIPIENT, "Mr", "Gilliam",
             "Anthony", GMC));
     when(historyService.findAllScheduledEmailForTraineeByRefAndType(any(), any(), any(), any()))
-        .thenReturn(List.of(scheduledHistory2));
+        .thenReturn(List.of(redundantScheduledHistory));
     String templateVersion = "v1.2.3";
     TisReferenceInfo tisReferenceInfo = new TisReferenceInfo(REFERENCE_TABLE, REFERENCE_KEY);
 
@@ -576,7 +576,7 @@ class EmailServiceTest {
         is("Gilliam"));
     assertThat("Unexpected template variable.", storedVariables.get("domain"), is(APP_DOMAIN));
 
-    verify(historyService).deleteHistoryForTrainee(scheduledHistory2.id(), TRAINEE_ID);
+    verify(historyService).deleteHistoryForTrainee(redundantScheduledHistory.id(), TRAINEE_ID);
   }
 
   @ParameterizedTest
