@@ -59,8 +59,9 @@ public class GmcListener {
   /**
    * Construct a listener for GMC update events.
    *
-   * @param notificationService The service to use for notifications.
-   * @param updateTemplateVersion     The template version to use.
+   * @param notificationService   The service to use for notifications.
+   * @param updateTemplateVersion The update-GMC template version to use.
+   * @param rejectTemplateVersion The rejected-GMC template version to use.
    */
   public GmcListener(NotificationService notificationService,
       @Value("${application.template-versions.gmc-updated.email}") String updateTemplateVersion,
@@ -115,6 +116,6 @@ public class GmcListener {
     String traineeId = event.traineeId();
     String traineeEmail = userDetails != null ? userDetails.email() : null;
     notificationService.sendLocalOfficeMail(traineeId, GMC_UPDATE, templateVariables,
-       rejectTemplateVersion, GMC_REJECTED, traineeEmail);
+        rejectTemplateVersion, GMC_REJECTED, traineeEmail);
   }
 }
