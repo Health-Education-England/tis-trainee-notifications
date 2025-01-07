@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+  <title>Form Updated</title>
+</head>
+<body>
+<h1>Email Message</h1>
+<h2>Subject</h2>
+<th:block th:fragment="subject">GMC Number update rejected</th:block>
+<h2>Content</h2>
+<th:block th:fragment="content">
+  <div th:replace="fragments/retry/v1.0.0 :: body"></div>
+  <div th:replace="fragments/cc/v1.0.0 :: body"></div>
+  <div style="text-align:right"><img style="margin-right:25px" src='https://trainee.tis.nhs.uk/nhse-logo.png' alt="NHS England logo"/></div>
+  <p>Dear Local Office,</p>
+  <p id="doctorName">Doctor <span th:text="${not #strings.isEmpty(givenName)} ? |${givenName}| : _"></span
+  > <span th:text="${not #strings.isEmpty(familyName)} ? |${familyName}| : _">(family name missing)</span
+  > GMC number <span th:text="${not #strings.isEmpty(gmcNumber)} ? |${gmcNumber}| : _">(GMC number missing)</span
+  ></p>
+  <p>The recent update to GMC details was rejected by TIS, and the GMC number has been reset to that shown above. <a id="tisTraineeLink"
+      th:href="${'https://apps.tis.nhs.uk/admin/people/person/' + {traineeId} + '/edit-personal-details'}">Review</a> their details to confirm.</p>
+  <p>This may be caused by a variety of factors. For example, duplicate GMC numbers are not allowed. Please review the TIS profile and/or liaise with the doctor as required.</p>
+  <p>Kind Regards,</p>
+  <p>TIS Self-Service</p>
+  <div th:replace="fragments/disclaimer/v1.0.0 :: body"></div>
+</th:block>
+</body>
+</html>

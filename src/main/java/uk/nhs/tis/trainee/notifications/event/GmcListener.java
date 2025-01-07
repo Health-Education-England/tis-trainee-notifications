@@ -22,24 +22,19 @@
 package uk.nhs.tis.trainee.notifications.event;
 
 import static uk.nhs.tis.trainee.notifications.model.LocalOfficeContactType.GMC_UPDATE;
+import static uk.nhs.tis.trainee.notifications.model.NotificationType.GMC_REJECTED;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.GMC_UPDATED;
 
 import io.awspring.cloud.sqs.annotation.SqsListener;
 import jakarta.mail.MessagingException;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
-import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import uk.nhs.tis.trainee.notifications.dto.UserDetails;
+import uk.nhs.tis.trainee.notifications.model.GmcRejectedEvent;
 import uk.nhs.tis.trainee.notifications.model.GmcUpdateEvent;
-import uk.nhs.tis.trainee.notifications.model.LocalOfficeContact;
-import uk.nhs.tis.trainee.notifications.model.MessageType;
-import uk.nhs.tis.trainee.notifications.service.EmailService;
-import uk.nhs.tis.trainee.notifications.service.MessagingControllerService;
 import uk.nhs.tis.trainee.notifications.service.NotificationService;
 
 /**
@@ -54,24 +49,26 @@ public class GmcListener {
   public static final String FAMILY_NAME_FIELD = "familyName";
   public static final String GMC_NUMBER_FIELD = "gmcNumber";
   public static final String GMC_STATUS_FIELD = "gmcStatus";
+  public static final String TIS_TRIGGER_FIELD = "tisTrigger";
+  public static final String TIS_TRIGGER_DETAIL_FIELD = "tisTriggerDetail";
 
-  private final EmailService emailService;
-  private final String templateVersion;
+  private final String updateTemplateVersion;
+  private final String rejectTemplateVersion;
   private final NotificationService notificationService;
-  private final MessagingControllerService messagingControllerService;
 
   /**
-   * Construct a listener for GMC events.
+   * Construct a listener for GMC update events.
    *
-   * @param emailService The service to use for sending emails.
+   * @param notificationService   The service to use for notifications.
+   * @param updateTemplateVersion The update-GMC template version to use.
+   * @param rejectTemplateVersion The rejected-GMC template version to use.
    */
-  public GmcListener(EmailService emailService, NotificationService notificationService,
-      MessagingControllerService messagingControllerService,
-      @Value("${application.template-versions.gmc-updated.email}") String templateVersion) {
-    this.emailService = emailService;
-    this.templateVersion = templateVersion;
+  public GmcListener(NotificationService notificationService,
+      @Value("${application.template-versions.gmc-updated.email}") String updateTemplateVersion,
+      @Value("${application.template-versions.gmc-rejected.email}") String rejectTemplateVersion) {
+    this.updateTemplateVersion = updateTemplateVersion;
+    this.rejectTemplateVersion = rejectTemplateVersion;
     this.notificationService = notificationService;
-    this.messagingControllerService = messagingControllerService;
   }
 
   /**
@@ -92,31 +89,33 @@ public class GmcListener {
     templateVariables.put(GMC_NUMBER_FIELD, event.gmcDetails().gmcNumber());
     templateVariables.put(GMC_STATUS_FIELD, event.gmcDetails().gmcStatus());
 
+    notificationService.sendLocalOfficeMail(event.traineeId(), GMC_UPDATE, templateVariables,
+        updateTemplateVersion, GMC_UPDATED);
+  }
+
+  /**
+   * Handle GMC rejected events.
+   *
+   * @param event The GMC rejected event message, which contains the reset GMC details.
+   * @throws MessagingException If the message could not be sent.
+   */
+  @SqsListener("${application.queues.gmc-rejected}")
+  public void handleGmcRejected(GmcRejectedEvent event) throws MessagingException {
+    log.info("Handling GMC rejected event {}.", event);
+
+    UserDetails userDetails = notificationService.getTraineeDetails(event.traineeId());
+    Map<String, Object> templateVariables = new HashMap<>();
+    templateVariables.put(TRAINEE_ID_FIELD, event.traineeId());
+    templateVariables.put(TIS_TRIGGER_FIELD, event.tisTrigger());
+    templateVariables.put(TIS_TRIGGER_DETAIL_FIELD, event.tisTriggerDetail());
+    templateVariables.put(GIVEN_NAME_FIELD, userDetails != null ? userDetails.givenName() : null);
+    templateVariables.put(FAMILY_NAME_FIELD, userDetails != null ? userDetails.familyName() : null);
+    templateVariables.put(GMC_NUMBER_FIELD, event.update().gmcDetails().gmcNumber());
+    templateVariables.put(GMC_STATUS_FIELD, event.update().gmcDetails().gmcStatus());
+
     String traineeId = event.traineeId();
-    Set<LocalOfficeContact> localOfficeContacts = notificationService
-        .getTraineeLocalOfficeContacts(traineeId, GMC_UPDATE);
-
-    if (localOfficeContacts != null && !localOfficeContacts.isEmpty()) {
-      boolean canSendMail = messagingControllerService.isMessagingEnabled(MessageType.EMAIL);
-      //since some LO's share a contact we need to eliminate possible duplicates:
-      Set<String> distinctContacts = localOfficeContacts.stream()
-          .map(LocalOfficeContact::contact).filter(Objects::nonNull).collect(Collectors.toSet());
-
-      for (String loContact : distinctContacts) {
-        if (notificationService.isLocalOfficeContactEmail(loContact)) {
-          emailService.sendMessage(traineeId, loContact, GMC_UPDATED, templateVersion,
-              templateVariables, null, !canSendMail);
-          log.info("GMC updated notification {} for trainee {} to {}.",
-              (canSendMail ? "sent" : "logged"), traineeId, loContact);
-        } else {
-          log.info("GMC updated notification skipped for trainee {} to non-email {}.",
-              traineeId, loContact);
-        }
-      }
-
-    } else {
-      log.warn("GMC updated notification not processed for trainee {}: no local office contacts.",
-          traineeId);
-    }
+    String traineeEmail = userDetails != null ? userDetails.email() : null;
+    notificationService.sendLocalOfficeMail(traineeId, GMC_UPDATE, templateVariables,
+        rejectTemplateVersion, GMC_REJECTED, traineeEmail);
   }
 }

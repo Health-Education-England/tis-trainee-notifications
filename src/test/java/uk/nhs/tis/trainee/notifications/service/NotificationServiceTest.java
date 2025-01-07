@@ -35,6 +35,7 @@ import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
@@ -43,14 +44,18 @@ import static org.quartz.JobBuilder.newJob;
 import static uk.nhs.tis.trainee.notifications.model.HrefType.ABSOLUTE_URL;
 import static uk.nhs.tis.trainee.notifications.model.HrefType.NON_HREF;
 import static uk.nhs.tis.trainee.notifications.model.HrefType.PROTOCOL_EMAIL;
+import static uk.nhs.tis.trainee.notifications.model.LocalOfficeContactType.GMC_UPDATE;
 import static uk.nhs.tis.trainee.notifications.model.LocalOfficeContactType.ONBOARDING_SUPPORT;
 import static uk.nhs.tis.trainee.notifications.model.MessageType.EMAIL;
 import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.SCHEDULED;
+import static uk.nhs.tis.trainee.notifications.model.NotificationType.GMC_REJECTED;
+import static uk.nhs.tis.trainee.notifications.model.NotificationType.GMC_UPDATED;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PLACEMENT_ROLLOUT_2024_CORRECTION;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PLACEMENT_UPDATED_WEEK_12;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_CREATED;
 import static uk.nhs.tis.trainee.notifications.model.TisReferenceType.PLACEMENT;
 import static uk.nhs.tis.trainee.notifications.model.TisReferenceType.PROGRAMME_MEMBERSHIP;
+import static uk.nhs.tis.trainee.notifications.service.NotificationService.CC_OF_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.CONTACT_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.CONTACT_TYPE_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.DEFAULT_NO_CONTACT_MESSAGE;
@@ -75,6 +80,7 @@ import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -1708,5 +1714,193 @@ class NotificationServiceTest {
   void shouldVerifyContactIsEmail() {
     assertThat("Unexpected is-email check.", service.isLocalOfficeContactEmail("a@b.com"),
         is(true));
+  }
+
+  @Test
+  void shouldNotSendEmailIfNoLocalOfficeContact() throws MessagingException {
+    ParameterizedTypeReference<Set<LocalOfficeContact>> loContactListListType
+        = new ParameterizedTypeReference<>(){};
+    when(restTemplate.exchange(any(), any(), any(), eq(loContactListListType), anyMap()))
+        .thenReturn(new ResponseEntity<>(HttpStatus.OK));
+    when(messagingControllerService.isMessagingEnabled(any())).thenReturn(true);
+
+    service.sendLocalOfficeMail(PERSON_ID, GMC_UPDATE, new HashMap<>(), "", GMC_UPDATED);
+
+    verifyNoInteractions(emailService);
+  }
+
+  @ParameterizedTest
+  @NullAndEmptySource
+  @ValueSource(strings = "not an email")
+  void shouldNotSendEmailIfLocalOfficeHasNoEmail(String contact) throws MessagingException {
+    Set<LocalOfficeContact> localOfficeContacts = new HashSet<>();
+    localOfficeContacts.add(new LocalOfficeContact(contact, "local office"));
+    ParameterizedTypeReference<Set<LocalOfficeContact>> loContactListListType
+        = new ParameterizedTypeReference<>(){};
+    when(restTemplate.exchange(any(), any(), any(), eq(loContactListListType), anyMap()))
+        .thenReturn(ResponseEntity.of(Optional.of(localOfficeContacts)));
+    when(messagingControllerService.isMessagingEnabled(any())).thenReturn(true);
+
+    service.sendLocalOfficeMail(PERSON_ID, GMC_UPDATE, new HashMap<>(), "", GMC_UPDATED);
+
+    verifyNoInteractions(emailService);
+  }
+
+  @Test
+  void shouldSendOneEmailIfLocalOfficesHaveSameEmail() throws MessagingException {
+    Set<LocalOfficeContact> localOfficeContacts = new HashSet<>();
+    localOfficeContacts.add(new LocalOfficeContact("contact@email.com", "local office"));
+    localOfficeContacts.add(new LocalOfficeContact("contact@email.com", "name2"));
+    ParameterizedTypeReference<Set<LocalOfficeContact>> loContactListListType
+        = new ParameterizedTypeReference<>(){};
+    when(restTemplate.exchange(any(), any(), any(), eq(loContactListListType), anyMap()))
+        .thenReturn(ResponseEntity.of(Optional.of(localOfficeContacts)));
+    when(messagingControllerService.isMessagingEnabled(any())).thenReturn(true);
+
+    service.sendLocalOfficeMail(PERSON_ID, GMC_UPDATE, new HashMap<>(), "", GMC_UPDATED);
+
+    verify(emailService)
+        .sendMessage(any(), eq("contact@email.com"), any(), any(), any(), any(), anyBoolean());
+    verifyNoMoreInteractions(emailService);
+  }
+
+  @Test
+  void shouldSendMultipleEmailIfLocalOfficesHaveDifferentEmail() throws MessagingException {
+    Set<LocalOfficeContact> localOfficeContacts = new HashSet<>();
+    localOfficeContacts.add(new LocalOfficeContact("contact@email.com", "local office"));
+    localOfficeContacts.add(new LocalOfficeContact("contact2@email.com", "name2"));
+    ParameterizedTypeReference<Set<LocalOfficeContact>> loContactListListType
+        = new ParameterizedTypeReference<>(){};
+    when(restTemplate.exchange(any(), any(), any(), eq(loContactListListType), anyMap()))
+        .thenReturn(ResponseEntity.of(Optional.of(localOfficeContacts)));
+    when(messagingControllerService.isMessagingEnabled(any())).thenReturn(true);
+
+    service.sendLocalOfficeMail(PERSON_ID, GMC_UPDATE, new HashMap<>(), "", GMC_UPDATED);
+
+    verify(emailService)
+        .sendMessage(any(), eq("contact@email.com"), any(), any(), any(), any(),
+            anyBoolean());
+    verify(emailService)
+        .sendMessage(any(), eq("contact2@email.com"), any(), any(), any(), any(),
+            anyBoolean());
+    verifyNoMoreInteractions(emailService);
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {true, false})
+  void shouldLogEmailIfMessagingNotEnabled(boolean isMessagingEnabled) throws MessagingException {
+    Set<LocalOfficeContact> localOfficeContacts = new HashSet<>();
+    localOfficeContacts.add(new LocalOfficeContact("contact@email.com", "local office"));
+    ParameterizedTypeReference<Set<LocalOfficeContact>> loContactListListType
+        = new ParameterizedTypeReference<>(){};
+    when(restTemplate.exchange(any(), any(), any(), eq(loContactListListType), anyMap()))
+        .thenReturn(ResponseEntity.of(Optional.of(localOfficeContacts)));
+    when(messagingControllerService.isMessagingEnabled(any())).thenReturn(isMessagingEnabled);
+
+    service.sendLocalOfficeMail(PERSON_ID, GMC_UPDATE, new HashMap<>(), "", GMC_UPDATED);
+
+    verify(emailService)
+        .sendMessage(any(), eq("contact@email.com"), any(), any(), any(), any(),
+            eq(!isMessagingEnabled));
+  }
+
+  @Test
+  void shouldSendLocalOfficeMailWhenCcingTrainee() throws MessagingException {
+    ParameterizedTypeReference<Set<LocalOfficeContact>> loContactListListType
+        = new ParameterizedTypeReference<>(){};
+    when(restTemplate.exchange(any(), any(), any(), eq(loContactListListType), anyMap()))
+        .thenReturn(new ResponseEntity<>(HttpStatus.OK));
+
+    NotificationService notificationServiceSpy = spy(service);
+    HashMap<String, Object> templateVariables = new HashMap<>();
+    notificationServiceSpy.sendLocalOfficeMail(PERSON_ID, GMC_UPDATE, new HashMap<>(), "",
+        GMC_REJECTED, "trainee@email.com");
+
+    verify(notificationServiceSpy).sendLocalOfficeMail(PERSON_ID, GMC_UPDATE, templateVariables,
+        "", GMC_REJECTED);
+  }
+
+  @ParameterizedTest
+  @NullAndEmptySource
+  void shouldNotCcTraineeEmailIfNoEmailAddress(String email) throws MessagingException {
+    ParameterizedTypeReference<Set<LocalOfficeContact>> loContactListListType
+        = new ParameterizedTypeReference<>(){};
+    when(restTemplate.exchange(any(), any(), any(), eq(loContactListListType), anyMap()))
+        .thenReturn(new ResponseEntity<>(HttpStatus.OK));
+
+    Map<String, Object> templateVariables = new HashMap<>();
+    service.sendLocalOfficeMail(PERSON_ID, GMC_UPDATE, templateVariables, "", GMC_REJECTED, email);
+
+    verifyNoInteractions(emailService);
+  }
+
+  @Test
+  void shouldCcTraineeEmailEvenIfNoLocalOfficeContact() throws MessagingException {
+    ParameterizedTypeReference<Set<LocalOfficeContact>> loContactListListType
+        = new ParameterizedTypeReference<>(){};
+    when(restTemplate.exchange(any(), any(), any(), eq(loContactListListType), anyMap()))
+        .thenReturn(new ResponseEntity<>(HttpStatus.OK));
+
+    Map<String, Object> templateVariables = new HashMap<>();
+    service.sendLocalOfficeMail(PERSON_ID, GMC_UPDATE, templateVariables, "", GMC_REJECTED,
+        "trainee@test.com");
+
+    ArgumentCaptor<Map<String, Object>> templateVarCaptor = ArgumentCaptor.captor();
+    verify(emailService)
+        .sendMessage(any(), eq("trainee@test.com"), eq(GMC_REJECTED), any(),
+            templateVarCaptor.capture(), any(), anyBoolean());
+    verifyNoMoreInteractions(emailService);
+    Map<String, Object> templateVarsSent = templateVarCaptor.getValue();
+    assertThat("Unexpected template variables.", templateVarsSent.get(CC_OF_FIELD),
+        is(nullValue()));
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {true, false})
+  void shouldCcTraineeEmailWithOfficeContactDetails(boolean isMessagingEnabled)
+      throws MessagingException {
+    Set<LocalOfficeContact> localOfficeContacts = new HashSet<>();
+    localOfficeContacts.add(new LocalOfficeContact("contact@email.com", "local office"));
+    localOfficeContacts.add(new LocalOfficeContact("contact2@email.com", "name2"));
+    ParameterizedTypeReference<Set<LocalOfficeContact>> loContactListListType
+        = new ParameterizedTypeReference<>(){};
+    when(restTemplate.exchange(any(), any(), any(), eq(loContactListListType), anyMap()))
+        .thenReturn(ResponseEntity.of(Optional.of(localOfficeContacts)));
+    when(messagingControllerService.isMessagingEnabled(any())).thenReturn(isMessagingEnabled);
+
+    Map<String, Object> templateVariables = new HashMap<>();
+    service.sendLocalOfficeMail(PERSON_ID, GMC_UPDATE, templateVariables, "", GMC_REJECTED,
+        "trainee@test.com");
+
+    ArgumentCaptor<Map<String, Object>> templateVarCaptor = ArgumentCaptor.captor();
+    verify(emailService)
+        .sendMessage(eq(PERSON_ID), eq("trainee@test.com"), eq(GMC_REJECTED), eq(""),
+            templateVarCaptor.capture(), eq(null), eq(!isMessagingEnabled));
+    Map<String, Object> templateVarsSent = templateVarCaptor.getValue();
+    assertThat("Unexpected template variables.", templateVarsSent.get(CC_OF_FIELD),
+        is("contact@email.com; contact2@email.com"));
+  }
+
+  @Test
+  void shouldCcTraineeEmailEvenIfOfficeContactsEmpty() throws MessagingException {
+    Set<LocalOfficeContact> localOfficeContacts = new HashSet<>();
+    localOfficeContacts.add(new LocalOfficeContact(null, "local office"));
+    localOfficeContacts.add(new LocalOfficeContact(" ", "name2"));
+    ParameterizedTypeReference<Set<LocalOfficeContact>> loContactListListType
+        = new ParameterizedTypeReference<>(){};
+    when(restTemplate.exchange(any(), any(), any(), eq(loContactListListType), anyMap()))
+        .thenReturn(ResponseEntity.of(Optional.of(localOfficeContacts)));
+
+    Map<String, Object> templateVariables = new HashMap<>();
+    service.sendLocalOfficeMail(PERSON_ID, GMC_UPDATE, templateVariables, "", GMC_REJECTED,
+        "trainee@test.com");
+
+    ArgumentCaptor<Map<String, Object>> templateVarCaptor = ArgumentCaptor.captor();
+    verify(emailService)
+        .sendMessage(eq(PERSON_ID), eq("trainee@test.com"), eq(GMC_REJECTED), eq(""),
+            templateVarCaptor.capture(), eq(null), eq(true));
+    Map<String, Object> templateVarsSent = templateVarCaptor.getValue();
+    assertThat("Unexpected template variables.", templateVarsSent.get(CC_OF_FIELD),
+        is(nullValue()));
   }
 }
