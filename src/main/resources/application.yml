@@ -26,7 +26,6 @@ application:
     contact-details-updated: ${CONTACT_DETAILS_UPDATED_QUEUE}
     email-failure: ${EMAIL_FAILURE_QUEUE}
     form-updated: ${FORM_UPDATED_QUEUE}
-    gmc-rejected: ${GMC_REJECTED_QUEUE}
     gmc-updated: ${GMC_UPDATED_QUEUE}
     placement-updated: ${PLACEMENT_UPDATED_QUEUE}
     placement-deleted: ${PLACEMENT_DELETED_QUEUE}
@@ -51,8 +50,6 @@ application:
     email-updated-old:
       email: v1.0.0
     form-updated:
-      email: v1.0.0
-    gmc-rejected:
       email: v1.0.0
     gmc-updated:
       email: v1.0.0
