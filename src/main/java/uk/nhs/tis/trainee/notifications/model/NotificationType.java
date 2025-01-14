@@ -42,7 +42,6 @@ public enum NotificationType {
   EMAIL_UPDATED_NEW("email-updated-new"),
   EMAIL_UPDATED_OLD("email-updated-old"),
   FORM_UPDATED("form-updated"),
-  GMC_REJECTED("gmc-rejected"),
   GMC_UPDATED("gmc-updated"),
   INDEMNITY_INSURANCE("indemnity-insurance"),
   LTFT("less-than-full-time"),
