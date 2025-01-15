@@ -204,7 +204,7 @@ class GmcListenerTest {
 
     GmcRejectedEvent event
         = new GmcRejectedEvent(TRAINEE_ID, TIS_TRIGGER, TIS_TRIGGER_DETAIL,
-        new Update(new GmcDetails(GMC_NO, GMC_STATUS)));
+            new Update(new GmcDetails(GMC_NO, GMC_STATUS)));
 
     listener.handleGmcRejected(event);
 
