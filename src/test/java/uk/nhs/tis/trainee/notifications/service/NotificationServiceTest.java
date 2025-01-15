@@ -35,6 +35,7 @@ import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
@@ -43,9 +44,13 @@ import static org.quartz.JobBuilder.newJob;
 import static uk.nhs.tis.trainee.notifications.model.HrefType.ABSOLUTE_URL;
 import static uk.nhs.tis.trainee.notifications.model.HrefType.NON_HREF;
 import static uk.nhs.tis.trainee.notifications.model.HrefType.PROTOCOL_EMAIL;
+import static uk.nhs.tis.trainee.notifications.model.LocalOfficeContactType.GMC_UPDATE;
 import static uk.nhs.tis.trainee.notifications.model.LocalOfficeContactType.ONBOARDING_SUPPORT;
 import static uk.nhs.tis.trainee.notifications.model.MessageType.EMAIL;
 import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.SCHEDULED;
+import static uk.nhs.tis.trainee.notifications.model.NotificationType.GMC_REJECTED_LO;
+import static uk.nhs.tis.trainee.notifications.model.NotificationType.GMC_REJECTED_TRAINEE;
+import static uk.nhs.tis.trainee.notifications.model.NotificationType.GMC_UPDATED;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PLACEMENT_ROLLOUT_2024_CORRECTION;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PLACEMENT_UPDATED_WEEK_12;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_CREATED;
@@ -75,6 +80,7 @@ import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -1708,5 +1714,142 @@ class NotificationServiceTest {
   void shouldVerifyContactIsEmail() {
     assertThat("Unexpected is-email check.", service.isLocalOfficeContactEmail("a@b.com"),
         is(true));
+  }
+
+  @ParameterizedTest
+  @EnumSource(LocalOfficeContactType.class)
+  void shouldNotSendEmailIfNoLocalOfficeContact(LocalOfficeContactType localOfficeContactType)
+      throws MessagingException {
+    ParameterizedTypeReference<Set<LocalOfficeContact>> loContactListListType
+        = new ParameterizedTypeReference<>(){};
+    when(restTemplate.exchange(any(), any(), any(), eq(loContactListListType), anyMap()))
+        .thenReturn(new ResponseEntity<>(HttpStatus.OK));
+    when(messagingControllerService.isMessagingEnabled(any())).thenReturn(true);
+
+    service.sendLocalOfficeMail(PERSON_ID, GMC_UPDATE, new HashMap<>(), "", GMC_UPDATED);
+    Set<String> sentTo = service.sendLocalOfficeMail(PERSON_ID, localOfficeContactType,
+        new HashMap<>(), "", GMC_REJECTED_LO);
+
+    assertThat("Unexpected sent to set.", sentTo.size(), is(0));
+    verifyNoInteractions(emailService);
+  }
+
+  @ParameterizedTest
+  @NullAndEmptySource
+  @ValueSource(strings = "not an email")
+  void shouldNotSendEmailIfLocalOfficeHasNoEmail(String contact) throws MessagingException {
+    Set<LocalOfficeContact> localOfficeContacts = new HashSet<>();
+    localOfficeContacts.add(new LocalOfficeContact(contact, "local office"));
+    ParameterizedTypeReference<Set<LocalOfficeContact>> loContactListListType
+        = new ParameterizedTypeReference<>(){};
+    when(restTemplate.exchange(any(), any(), any(), eq(loContactListListType), anyMap()))
+        .thenReturn(ResponseEntity.of(Optional.of(localOfficeContacts)));
+    when(messagingControllerService.isMessagingEnabled(any())).thenReturn(true);
+
+    Set<String> sentTo = service.sendLocalOfficeMail(PERSON_ID, GMC_UPDATE, new HashMap<>(), "",
+        GMC_UPDATED);
+
+    assertThat("Unexpected sent to set.", sentTo.size(), is(0));
+    verifyNoInteractions(emailService);
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {true, false})
+  void shouldLogEmailIfMessagingNotEnabled(boolean isMessagingEnabled) throws MessagingException {
+    Set<LocalOfficeContact> localOfficeContacts = new HashSet<>();
+    localOfficeContacts.add(new LocalOfficeContact("contact@email.com", "local office"));
+    ParameterizedTypeReference<Set<LocalOfficeContact>> loContactListListType
+        = new ParameterizedTypeReference<>(){};
+    when(restTemplate.exchange(any(), any(), any(), eq(loContactListListType), anyMap()))
+        .thenReturn(ResponseEntity.of(Optional.of(localOfficeContacts)));
+    when(messagingControllerService.isMessagingEnabled(any())).thenReturn(isMessagingEnabled);
+
+    service.sendLocalOfficeMail(PERSON_ID, GMC_UPDATE, new HashMap<>(), "", GMC_UPDATED);
+
+    verify(emailService)
+        .sendMessage(any(), eq("contact@email.com"), any(), any(), any(), any(),
+            eq(!isMessagingEnabled));
+  }
+
+  @ParameterizedTest
+  @EnumSource(LocalOfficeContactType.class)
+  void shouldSendLocalOfficeMailToDistinctEmailContacts(
+      LocalOfficeContactType localOfficeContactType) throws MessagingException {
+    Set<LocalOfficeContact> localOfficeContacts = new HashSet<>();
+    localOfficeContacts.add(new LocalOfficeContact("contact@email.com", "local office"));
+    localOfficeContacts.add(new LocalOfficeContact("contact2@email.com", "name2"));
+    localOfficeContacts.add(new LocalOfficeContact("contact2@email.com", "name3"));
+    ParameterizedTypeReference<Set<LocalOfficeContact>> loContactListListType
+        = new ParameterizedTypeReference<>(){};
+    when(restTemplate.exchange(any(), any(), any(), eq(loContactListListType), anyMap()))
+        .thenReturn(ResponseEntity.of(Optional.of(localOfficeContacts)));
+
+    Map<String, Object> templateVars = new HashMap<>();
+    Set<String> sentTo = service.sendLocalOfficeMail(PERSON_ID, localOfficeContactType,
+        templateVars, "", GMC_REJECTED_LO);
+
+    assertThat("Unexpected sent to set.", sentTo.size(), is(2));
+    verify(emailService, times(2)).sendMessage(
+        eq(PERSON_ID), any(), eq(GMC_REJECTED_LO), eq(""), eq(templateVars), eq(null),
+        anyBoolean());
+    assertThat("Unexpected sent to element.", sentTo.contains("contact@email.com"), is(true));
+    assertThat("Unexpected sent to element.", sentTo.contains("contact2@email.com"), is(true));
+  }
+
+  @ParameterizedTest
+  @EnumSource(LocalOfficeContactType.class)
+  void shouldSendLocalOfficeMailWithCorrectDetails(
+      LocalOfficeContactType localOfficeContactType) throws MessagingException {
+    Set<LocalOfficeContact> localOfficeContacts = new HashSet<>();
+    localOfficeContacts.add(new LocalOfficeContact("contact@email.com", "local office"));
+    ParameterizedTypeReference<Set<LocalOfficeContact>> loContactListListType
+        = new ParameterizedTypeReference<>(){};
+    when(restTemplate.exchange(any(), any(), any(), eq(loContactListListType), anyMap()))
+        .thenReturn(ResponseEntity.of(Optional.of(localOfficeContacts)));
+    when(messagingControllerService.isMessagingEnabled(any())).thenReturn(true);
+
+    Map<String, Object> templateVars = new HashMap<>();
+    templateVars.put("key", "value");
+    service.sendLocalOfficeMail(PERSON_ID, localOfficeContactType, templateVars, TEMPLATE_VERSION,
+        GMC_REJECTED_LO);
+
+    ArgumentCaptor<Map<String, Object>> sentTemplateCaptor = ArgumentCaptor.captor();
+    verify(emailService).sendMessage(
+        eq(PERSON_ID), eq("contact@email.com"), eq(GMC_REJECTED_LO), eq(TEMPLATE_VERSION),
+        sentTemplateCaptor.capture(), eq(null), eq(false));
+
+    Map<String, Object> sentTemplate = sentTemplateCaptor.getValue();
+    assertThat("Unexpected sent template size.", sentTemplate.size(), is(1));
+    assertThat("Unexpected sent template element.", sentTemplate.get("key"), is("value"));
+  }
+
+  @ParameterizedTest
+  @NullAndEmptySource
+  void shouldNotSendTraineeEmailIfNoEmailAddress(String email) throws MessagingException {
+
+    service.sendTraineeMail(PERSON_ID, email, new HashMap<>(), "", GMC_REJECTED_TRAINEE);
+
+    verifyNoInteractions(emailService);
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {true, false})
+  void shouldSendTraineeEmailWithCorrectDetails(boolean isMessagingEnabled)
+      throws MessagingException {
+    when(messagingControllerService.isMessagingEnabled(any())).thenReturn(isMessagingEnabled);
+
+    Map<String, Object> templateVars = new HashMap<>();
+    templateVars.put("key", "value");
+    service.sendTraineeMail(PERSON_ID, "email@email.com", templateVars, TEMPLATE_VERSION,
+        GMC_REJECTED_TRAINEE);
+
+    ArgumentCaptor<Map<String, Object>> sentTemplateCaptor = ArgumentCaptor.captor();
+    verify(emailService).sendMessage(
+        eq(PERSON_ID), eq("email@email.com"), eq(GMC_REJECTED_TRAINEE), eq(TEMPLATE_VERSION),
+        sentTemplateCaptor.capture(), eq(null), eq(!isMessagingEnabled));
+
+    Map<String, Object> sentTemplate = sentTemplateCaptor.getValue();
+    assertThat("Unexpected sent template size.", sentTemplate.size(), is(1));
+    assertThat("Unexpected sent template element.", sentTemplate.get("key"), is("value"));
   }
 }

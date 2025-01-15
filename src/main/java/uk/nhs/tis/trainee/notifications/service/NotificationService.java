@@ -42,10 +42,13 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.bson.types.ObjectId;
@@ -102,6 +105,7 @@ public class NotificationService implements Job {
   public static final String OWNER_FIELD = "localOfficeName";
   public static final String CONTACT_TYPE_FIELD = "contactTypeName";
   public static final String CONTACT_FIELD = "contact";
+  public static final String CC_OF_FIELD = "ccOfSentTo";
 
   private final EmailService emailService;
   private final HistoryService historyService;
@@ -553,11 +557,11 @@ public class NotificationService implements Job {
       LocalOfficeContactType contactType) {
     try {
       ParameterizedTypeReference<Set<LocalOfficeContact>> loContactListListType
-          = new ParameterizedTypeReference<>(){};
+          = new ParameterizedTypeReference<>() {};
       Set<LocalOfficeContact> localOfficeContacts =
           restTemplate.exchange(serviceUrl + API_TRAINEE_LOCAL_OFFICE_CONTACTS,
-              HttpMethod.GET, null, loContactListListType,
-              Map.of(TIS_ID_FIELD, personId, CONTACT_TYPE_FIELD, contactType))
+                  HttpMethod.GET, null, loContactListListType,
+                  Map.of(TIS_ID_FIELD, personId, CONTACT_TYPE_FIELD, contactType))
               .getBody();
       return localOfficeContacts == null ? Collections.emptySet() : localOfficeContacts;
     } catch (RestClientException rce) {
@@ -572,11 +576,82 @@ public class NotificationService implements Job {
    * (this is the validation applied in TIS), so only very basic checking is applied.
    *
    * @param contact The contact to check.
-   *
    * @return True if it looks like an email, otherwise false.
    */
   public boolean isLocalOfficeContactEmail(String contact) {
     return (contact != null && contact.contains("@"));
+  }
+
+  /**
+   * Send (or log) email to the distinct list of local office contacts of given type for the
+   * trainee.
+   *
+   * @param traineeId         The id of the trainee.
+   * @param contactType       The type of local office contact to notify.
+   * @param templateVariables The template variables.
+   * @param templateVersion   The template version.
+   * @param notificationType  The notification type (template type).
+   *
+   * @return The list of email addresses to which the mail was sent (or logged).
+   * @throws MessagingException If the email(s) could not be sent.
+   */
+  public Set<String> sendLocalOfficeMail(String traineeId, LocalOfficeContactType contactType,
+      Map<String, Object> templateVariables, String templateVersion,
+      NotificationType notificationType) throws MessagingException {
+    Set<LocalOfficeContact> localOfficeContacts
+        = getTraineeLocalOfficeContacts(traineeId, contactType);
+    Set<String> sentTo = new HashSet<>();
+
+    boolean canSendMail = messagingControllerService.isMessagingEnabled(MessageType.EMAIL);
+    if (!localOfficeContacts.isEmpty()) {
+      //since some LO's share a contact we need to eliminate possible duplicates:
+      Set<String> distinctContacts = localOfficeContacts.stream()
+          .map(LocalOfficeContact::contact).filter(Objects::nonNull).collect(Collectors.toSet());
+      for (String loContact : distinctContacts) {
+        if (isLocalOfficeContactEmail(loContact)) {
+          emailService.sendMessage(traineeId, loContact, notificationType, templateVersion,
+              templateVariables, null, !canSendMail);
+          sentTo.add(loContact);
+          log.info("{} local office notification {} for trainee {} to {}.", notificationType,
+              (canSendMail ? "sent" : "logged"), traineeId, loContact);
+        } else {
+          log.info("{} local office notification skipped for trainee {} to non-email {}.",
+              notificationType, traineeId, loContact);
+        }
+      }
+    } else {
+      log.warn("{} local office notification not processed for trainee {}: no local office "
+              + "contacts.", notificationType, traineeId);
+    }
+    return sentTo;
+  }
+
+  /**
+   * Send (or log) an email to the trainee.
+   *
+   * @param traineeId         The id of the trainee.
+   * @param traineeEmail      The email address of the trainee send the mail to.
+   * @param templateVariables The template variables.
+   * @param templateVersion   The template version.
+   * @param notificationType  The notification type (template type).
+   *
+   * @throws MessagingException If the email could not be sent.
+   */
+  public void sendTraineeMail(String traineeId, String traineeEmail,
+      Map<String, Object> templateVariables, String templateVersion,
+      NotificationType notificationType) throws MessagingException {
+
+    boolean canSendMail = messagingControllerService.isMessagingEnabled(MessageType.EMAIL);
+    if (traineeEmail != null && !traineeEmail.isBlank()) {
+      emailService.sendMessage(traineeId, traineeEmail, notificationType, templateVersion,
+          templateVariables, null, !canSendMail);
+      log.info("{} trainee notification {} for trainee {} to {}.",
+          (canSendMail ? "sent" : "logged"), notificationType, traineeId, traineeEmail);
+
+    } else {
+      log.warn("{} trainee notification skipped for trainee {} without email address.",
+          notificationType, traineeId);
+    }
   }
 
   /**
