@@ -21,6 +21,8 @@
 
 package uk.nhs.tis.trainee.notifications.event;
 
+import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -37,6 +39,7 @@ import static uk.nhs.tis.trainee.notifications.event.GmcListener.TIS_TRIGGER_FIE
 import static uk.nhs.tis.trainee.notifications.event.GmcListener.TRAINEE_ID_FIELD;
 import static uk.nhs.tis.trainee.notifications.model.LocalOfficeContactType.GMC_UPDATE;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.GMC_REJECTED_LO;
+import static uk.nhs.tis.trainee.notifications.model.NotificationType.GMC_REJECTED_TRAINEE;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.CC_OF_FIELD;
 
 import jakarta.mail.MessagingException;
@@ -45,6 +48,7 @@ import java.util.Map;
 import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import uk.nhs.tis.trainee.notifications.dto.UserDetails;
 import uk.nhs.tis.trainee.notifications.model.GmcDetails;
 import uk.nhs.tis.trainee.notifications.model.GmcRejectedEvent;
@@ -211,11 +215,27 @@ class GmcListenerTest {
     verify(notificationService).sendLocalOfficeMail(TRAINEE_ID, GMC_UPDATE,
         expectedLoTemplateVariables, REJECT_LO_VERSION, GMC_REJECTED_LO);
 
-    Map<String, Object> expectedTraineeTemplateVariables = new HashMap<>(
-        Map.copyOf(expectedLoTemplateVariables));
-    expectedTraineeTemplateVariables.put(CC_OF_FIELD, "lo@1.com; lo@2.com");
-    verify(notificationService).sendTraineeMail(TRAINEE_ID, "traineeemail",
-        expectedTraineeTemplateVariables, REJECT_TRAINEE_VERSION,
-        NotificationType.GMC_REJECTED_TRAINEE);
+    ArgumentCaptor<Map<String, Object>> sentTemplateVarsCaptor = ArgumentCaptor.captor();
+    verify(notificationService).sendTraineeMail(eq(TRAINEE_ID), eq("traineeemail"),
+        sentTemplateVarsCaptor.capture(), eq(REJECT_TRAINEE_VERSION),
+        eq(GMC_REJECTED_TRAINEE));
+
+    Map<String, Object> sentTemplateVars = sentTemplateVarsCaptor.getValue();
+    assertThat("Unexpected template trainee id.",
+        sentTemplateVars.get(TRAINEE_ID_FIELD), is(TRAINEE_ID));
+    assertThat("Unexpected template given name.",
+        sentTemplateVars.get(GIVEN_NAME_FIELD), is("given"));
+    assertThat("Unexpected template family name.",
+        sentTemplateVars.get(FAMILY_NAME_FIELD), is("family"));
+    assertThat("Unexpected template gmc number field.",
+        sentTemplateVars.get(GMC_NUMBER_FIELD), is(GMC_NO));
+    assertThat("Unexpected template gmc status field.",
+        sentTemplateVars.get(GMC_STATUS_FIELD), is(GMC_STATUS));
+    assertThat("Unexpected template tis trigger field.",
+        sentTemplateVars.get(TIS_TRIGGER_FIELD), is(TIS_TRIGGER));
+    assertThat("Unexpected template tis trigger detail field.",
+        sentTemplateVars.get(TIS_TRIGGER_DETAIL_FIELD), is(TIS_TRIGGER_DETAIL));
+    assertThat("Unexpected template cc of field.",
+        sentTemplateVars.get(CC_OF_FIELD), is("lo@1.com; lo@2.com"));
   }
 }
