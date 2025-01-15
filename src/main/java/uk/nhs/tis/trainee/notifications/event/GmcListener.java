@@ -32,18 +32,12 @@ import jakarta.mail.MessagingException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
-import java.util.Objects;
-import java.util.Set;
-import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import uk.nhs.tis.trainee.notifications.dto.UserDetails;
+import uk.nhs.tis.trainee.notifications.model.GmcRejectedEvent;
 import uk.nhs.tis.trainee.notifications.model.GmcUpdateEvent;
-import uk.nhs.tis.trainee.notifications.model.LocalOfficeContact;
-import uk.nhs.tis.trainee.notifications.model.MessageType;
-import uk.nhs.tis.trainee.notifications.service.EmailService;
-import uk.nhs.tis.trainee.notifications.service.MessagingControllerService;
 import uk.nhs.tis.trainee.notifications.service.NotificationService;
 
 /**
@@ -61,13 +55,10 @@ public class GmcListener {
   public static final String TIS_TRIGGER_FIELD = "tisTrigger";
   public static final String TIS_TRIGGER_DETAIL_FIELD = "tisTriggerDetail";
 
-  private final EmailService emailService;
-  private final String templateVersion;
   private final String updateTemplateVersion;
   private final String rejectLoTemplateVersion;
   private final String rejectTraineeTemplateVersion;
   private final NotificationService notificationService;
-  private final MessagingControllerService messagingControllerService;
 
   /**
    * Construct a listener for GMC events.
@@ -87,7 +78,6 @@ public class GmcListener {
     this.rejectLoTemplateVersion = rejectLoTemplateVersion;
     this.rejectTraineeTemplateVersion = rejectTraineeTemplateVersion;
     this.notificationService = notificationService;
-    this.messagingControllerService = messagingControllerService;
   }
 
   /**

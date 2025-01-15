@@ -623,7 +623,8 @@ class EmailServiceIntegrationTest {
     Document content = Jsoup.parse((String) message.getContent());
     Element body = content.body();
 
-    assertNull(body.getElementById("ccOf"), "Unexpected cc details.");
+    String ccOfText = Objects.requireNonNull(body.getElementById("ccOf")).wholeText();
+    assertThat("Unexpected cc details.", ccOfText.isEmpty(), is(true));
   }
 
   int getGreetingElementIndex(NotificationType notificationType) {
