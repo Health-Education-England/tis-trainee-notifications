@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright 2024 Crown Copyright (Health Education England)
+ * Copyright 2025 Crown Copyright (Health Education England)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
  * associated documentation files (the "Software"), to deal in the Software without restriction,
@@ -18,8 +18,11 @@
  * DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  *  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
+
 package uk.nhs.tis.trainee.notifications.model;
+
 import com.fasterxml.jackson.annotation.JsonProperty;
+
 /**
  * An event to receive details of a rejected trainee GMC update.
  *
@@ -34,6 +37,7 @@ public record GmcRejectedEvent(
     String tisTriggerDetail,
     @JsonProperty("record")
     Update update) {
+
   /**
    * A wrapper around the update data, used so the record structure matches the incoming message.
    *
@@ -42,5 +46,6 @@ public record GmcRejectedEvent(
   public record Update(
       @JsonProperty("data")
       GmcDetails gmcDetails) {
+
   }
 }
