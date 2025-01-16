@@ -1727,7 +1727,7 @@ class NotificationServiceTest {
     when(messagingControllerService.isMessagingEnabled(any())).thenReturn(true);
 
     service.sendLocalOfficeMail(PERSON_ID, GMC_UPDATE, new HashMap<>(), "", GMC_UPDATED);
-    Set<String> sentTo = service.sendLocalOfficeMail(PERSON_ID, localOfficeContactType,
+    List<String> sentTo = service.sendLocalOfficeMail(PERSON_ID, localOfficeContactType,
         new HashMap<>(), "", GMC_REJECTED_LO);
 
     assertThat("Unexpected sent to set.", sentTo.size(), is(0));
@@ -1746,7 +1746,7 @@ class NotificationServiceTest {
         .thenReturn(ResponseEntity.of(Optional.of(localOfficeContacts)));
     when(messagingControllerService.isMessagingEnabled(any())).thenReturn(true);
 
-    Set<String> sentTo = service.sendLocalOfficeMail(PERSON_ID, GMC_UPDATE, new HashMap<>(), "",
+    List<String> sentTo = service.sendLocalOfficeMail(PERSON_ID, GMC_UPDATE, new HashMap<>(), "",
         GMC_UPDATED);
 
     assertThat("Unexpected sent to set.", sentTo.size(), is(0));
@@ -1773,27 +1773,33 @@ class NotificationServiceTest {
 
   @ParameterizedTest
   @EnumSource(LocalOfficeContactType.class)
-  void shouldSendLocalOfficeMailToDistinctEmailContacts(
+  void shouldSendLocalOfficeMailToDistinctEmailContactsAndReturnAlphabeticList(
       LocalOfficeContactType localOfficeContactType) throws MessagingException {
     Set<LocalOfficeContact> localOfficeContacts = new HashSet<>();
-    localOfficeContacts.add(new LocalOfficeContact("contact@email.com", "local office"));
-    localOfficeContacts.add(new LocalOfficeContact("contact2@email.com", "name2"));
+    localOfficeContacts.add(new LocalOfficeContact("contact2@email.com", "local office"));
+    localOfficeContacts.add(new LocalOfficeContact("contact1@email.com", "name2"));
     localOfficeContacts.add(new LocalOfficeContact("contact2@email.com", "name3"));
+    localOfficeContacts.add(new LocalOfficeContact("a@email.com", "name4"));
     ParameterizedTypeReference<Set<LocalOfficeContact>> loContactListListType
         = new ParameterizedTypeReference<>(){};
     when(restTemplate.exchange(any(), any(), any(), eq(loContactListListType), anyMap()))
         .thenReturn(ResponseEntity.of(Optional.of(localOfficeContacts)));
 
     Map<String, Object> templateVars = new HashMap<>();
-    Set<String> sentTo = service.sendLocalOfficeMail(PERSON_ID, localOfficeContactType,
+    List<String> sentTo = service.sendLocalOfficeMail(PERSON_ID, localOfficeContactType,
         templateVars, "", GMC_REJECTED_LO);
 
-    assertThat("Unexpected sent to set.", sentTo.size(), is(2));
-    verify(emailService, times(2)).sendMessage(
+    assertThat("Unexpected sent to set.", sentTo.size(), is(3));
+    verify(emailService, times(3)).sendMessage(
         eq(PERSON_ID), any(), eq(GMC_REJECTED_LO), eq(""), eq(templateVars), eq(null),
         anyBoolean());
-    assertThat("Unexpected sent to element.", sentTo.contains("contact@email.com"), is(true));
+    assertThat("Unexpected sent to element.", sentTo.contains("contact1@email.com"), is(true));
     assertThat("Unexpected sent to element.", sentTo.contains("contact2@email.com"), is(true));
+    assertThat("Unexpected sent to element.", sentTo.contains("a@email.com"), is(true));
+    //verify ordering of list is alphabetic
+    assertThat("Unexpected sent to ordering.", sentTo.get(0).equals("a@email.com"));
+    assertThat("Unexpected sent to ordering.", sentTo.get(1).equals("contact1@email.com"));
+    assertThat("Unexpected sent to ordering.", sentTo.get(2).equals("contact2@email.com"));
   }
 
   @ParameterizedTest

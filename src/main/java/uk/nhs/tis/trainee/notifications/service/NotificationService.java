@@ -42,7 +42,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -592,15 +591,15 @@ public class NotificationService implements Job {
    * @param templateVersion   The template version.
    * @param notificationType  The notification type (template type).
    *
-   * @return The list of email addresses to which the mail was sent (or logged).
+   * @return The list of email addresses to which the mail was sent (or logged) in alphabetic order.
    * @throws MessagingException If the email(s) could not be sent.
    */
-  public Set<String> sendLocalOfficeMail(String traineeId, LocalOfficeContactType contactType,
+  public List<String> sendLocalOfficeMail(String traineeId, LocalOfficeContactType contactType,
       Map<String, Object> templateVariables, String templateVersion,
       NotificationType notificationType) throws MessagingException {
     Set<LocalOfficeContact> localOfficeContacts
         = getTraineeLocalOfficeContacts(traineeId, contactType);
-    Set<String> sentTo = new HashSet<>();
+    List<String> sentTo = new ArrayList<>();
 
     boolean canSendMail = messagingControllerService.isMessagingEnabled(MessageType.EMAIL);
     if (!localOfficeContacts.isEmpty()) {
@@ -623,6 +622,7 @@ public class NotificationService implements Job {
       log.warn("{} local office notification not processed for trainee {}: no local office "
               + "contacts.", notificationType, traineeId);
     }
+    Collections.sort(sentTo);
     return sentTo;
   }
 

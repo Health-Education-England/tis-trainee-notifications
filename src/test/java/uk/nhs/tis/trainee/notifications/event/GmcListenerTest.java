@@ -44,8 +44,8 @@ import static uk.nhs.tis.trainee.notifications.service.NotificationService.CC_OF
 
 import jakarta.mail.MessagingException;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -202,7 +202,7 @@ class GmcListenerTest {
     expectedLoTemplateVariables.put(TIS_TRIGGER_FIELD, TIS_TRIGGER);
     expectedLoTemplateVariables.put(TIS_TRIGGER_DETAIL_FIELD, TIS_TRIGGER_DETAIL);
 
-    Set<String> losContacted = Set.of("lo@1.com", "lo@2.com");
+    List<String> losContacted = List.of("lo@1.com", "lo@2.com");
     when(notificationService.sendLocalOfficeMail(eq(TRAINEE_ID), eq(GMC_UPDATE), any(),
         eq(REJECT_LO_VERSION), eq(GMC_REJECTED_LO))).thenReturn(losContacted);
 
@@ -236,9 +236,7 @@ class GmcListenerTest {
     assertThat("Unexpected template tis trigger detail field.",
         sentTemplateVars.get(TIS_TRIGGER_DETAIL_FIELD), is(TIS_TRIGGER_DETAIL));
     String ccField = (String) sentTemplateVars.get(CC_OF_FIELD);
-    assertThat("Unexpected template cc of field.",
-        ccField.contains("lo@1.com"), is(true));
-    assertThat("Unexpected template cc of field.",
-        ccField.contains("lo@2.com"), is(true));
+    assertThat("Unexpected template cc of field.", ccField.equals("lo@1.com; lo@2.com"),
+        is(true));
   }
 }
