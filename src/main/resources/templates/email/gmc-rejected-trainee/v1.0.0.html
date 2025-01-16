@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+  <title>Form Updated</title>
+</head>
+<body>
+<h1>Email Message</h1>
+<h2>Subject</h2>
+<th:block th:fragment="subject">GMC Number update rejected</th:block>
+<h2>Content</h2>
+<th:block th:fragment="content">
+  <div th:replace="fragments/retry/v1.0.0 :: body"></div>
+  <div style="text-align:right"><img style="margin-right:25px" src='https://trainee.tis.nhs.uk/nhse-logo.png' alt="NHS England logo"/></div>
+  <p th:replace="~{fragments/greeting/v1.0.0 :: p}"></p>
+  <p>GMC number <span th:text="${not #strings.isEmpty(gmcNumber)} ? |${gmcNumber}| : _">(GMC number missing)</span
+  ></p>
+  <p>Your recent update to GMC details was rejected by TIS, and the GMC number has been reset to that shown above. Please correct your GMC number on TIS Self-Service if it is still incorrect, or liaise with your local office if you have further concerns.</p>
+  <p><span id="ccOf" th:text="${ccOfSentTo} ? |This notification was also sent to local office contact(s): ${ccOfSentTo}.| : _"></span></p>
+  <p>Kind Regards,</p>
+  <p>TIS Self-Service</p>
+  <div th:replace="fragments/disclaimer/v1.0.0 :: body"></div>
+</th:block>
+</body>
+</html>

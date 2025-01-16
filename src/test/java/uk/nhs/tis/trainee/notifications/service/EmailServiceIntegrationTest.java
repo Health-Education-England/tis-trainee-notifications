@@ -31,11 +31,14 @@ import static uk.nhs.tis.trainee.notifications.event.GmcListener.FAMILY_NAME_FIE
 import static uk.nhs.tis.trainee.notifications.event.GmcListener.GIVEN_NAME_FIELD;
 import static uk.nhs.tis.trainee.notifications.event.GmcListener.GMC_STATUS_FIELD;
 import static uk.nhs.tis.trainee.notifications.event.GmcListener.TRAINEE_ID_FIELD;
+import static uk.nhs.tis.trainee.notifications.model.NotificationType.GMC_REJECTED_LO;
+import static uk.nhs.tis.trainee.notifications.model.NotificationType.GMC_REJECTED_TRAINEE;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.GMC_UPDATED;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PLACEMENT_ROLLOUT_2024_CORRECTION;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PLACEMENT_UPDATED_WEEK_12;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_CREATED;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_DAY_ONE;
+import static uk.nhs.tis.trainee.notifications.service.NotificationService.CC_OF_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.TEMPLATE_CONTACT_HREF_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.PlacementService.START_DATE_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.GMC_NUMBER_FIELD;
@@ -157,7 +160,7 @@ class EmailServiceIntegrationTest {
     Document content = Jsoup.parse((String) message.getContent());
     Element body = content.body();
 
-    if (notificationType.equals(GMC_UPDATED)) {
+    if (notificationType.equals(GMC_UPDATED) || notificationType.equals(GMC_REJECTED_LO)) {
       Element greeting = body.children().get(getGreetingElementIndex(notificationType));
       assertThat("Unexpected element tag.", greeting.tagName(), is("p"));
       assertThat("Unexpected greeting.", greeting.text(), is("Dear Local Office,"));
@@ -191,7 +194,7 @@ class EmailServiceIntegrationTest {
       Element greeting = body.children().get(getGreetingElementIndex(notificationType));
       assertThat("Unexpected element tag.", greeting.tagName(), is("p"));
       assertThat("Unexpected greeting.", greeting.text(), is("Dear Dr Anthony Gilliam,"));
-    } else if (notificationType.equals(GMC_UPDATED)) {
+    } else if (notificationType.equals(GMC_UPDATED) || notificationType.equals(GMC_REJECTED_LO)) {
       Element greeting = body.children().get(getGreetingElementIndex(notificationType));
       assertThat("Unexpected element tag.", greeting.tagName(), is("p"));
       assertThat("Unexpected greeting.", greeting.text(), is("Dear Local Office,"));
@@ -226,7 +229,7 @@ class EmailServiceIntegrationTest {
       Element greeting = body.children().get(getGreetingElementIndex(notificationType));
       assertThat("Unexpected element tag.", greeting.tagName(), is("p"));
       assertThat("Unexpected greeting.", greeting.text(), is("Dear Dr Anthony Maillig,"));
-    } else if (notificationType.equals(GMC_UPDATED)) {
+    } else if (notificationType.equals(GMC_UPDATED) || notificationType.equals(GMC_REJECTED_LO)) {
       Element greeting = body.children().get(getGreetingElementIndex(notificationType));
       assertThat("Unexpected element tag.", greeting.tagName(), is("p"));
       assertThat("Unexpected greeting.", greeting.text(), is("Dear Local Office,"));
@@ -556,11 +559,79 @@ class EmailServiceIntegrationTest {
     assertThat("Unexpected doctor name.", docName.contains("Maillig"), is(true));
   }
 
+  @Test
+  void shouldIncludeLinkToReviewTraineeOnTis() throws Exception {
+    when(userAccountService.getUserDetailsById(USER_ID)).thenReturn(
+        new UserDetails(true, RECIPIENT, null, null, null, GMC));
+
+    Map<String, Object> templateVariables = new HashMap<>();
+    templateVariables.put("traineeId", "12345");
+    service.sendMessage(PERSON_ID, RECIPIENT, GMC_REJECTED_LO, TEMPLATE_VERSION,
+        templateVariables, null, false);
+
+    ArgumentCaptor<MimeMessage> messageCaptor = ArgumentCaptor.captor();
+    verify(mailSender).send(messageCaptor.capture());
+
+    MimeMessage message = messageCaptor.getValue();
+    Document content = Jsoup.parse((String) message.getContent());
+    Element body = content.body();
+
+    assertThat("Unexpected missing TIS link.",
+        Objects.requireNonNull(body.getElementById("tisTraineeLink")).hasAttr("href"), is(true));
+    String tisLinkText = Objects.requireNonNull(body.getElementById("tisTraineeLink"))
+        .attributes().get("href");
+    assertThat("Unexpected TIS link content.", tisLinkText.contains(
+        "https://apps.tis.nhs.uk/admin/people/person/12345/edit-personal-details"), is(true));
+  }
+
+  @Test
+  void shouldIncludeCcDetailsWhenAvailable() throws Exception {
+    when(userAccountService.getUserDetailsById(USER_ID)).thenReturn(
+        new UserDetails(true, RECIPIENT, null, null, null, GMC));
+
+    Map<String, Object> templateVariables = new HashMap<>();
+    templateVariables.put(CC_OF_FIELD, "some@email.com");
+    service.sendMessage(PERSON_ID, RECIPIENT, GMC_REJECTED_TRAINEE, TEMPLATE_VERSION,
+        templateVariables, null, false);
+
+    ArgumentCaptor<MimeMessage> messageCaptor = ArgumentCaptor.captor();
+    verify(mailSender).send(messageCaptor.capture());
+
+    MimeMessage message = messageCaptor.getValue();
+    Document content = Jsoup.parse((String) message.getContent());
+    Element body = content.body();
+
+    String ccOfText = Objects.requireNonNull(body.getElementById("ccOf")).wholeText();
+    assertThat("Unexpected cc details.", ccOfText.contains(
+        "This notification was also sent to local office contact(s): some@email.com"), is(true));
+  }
+
+  @Test
+  void shouldIgnoreMissingCcDetails() throws Exception {
+    when(userAccountService.getUserDetailsById(USER_ID)).thenReturn(
+        new UserDetails(true, RECIPIENT, null, null, null, GMC));
+
+    Map<String, Object> templateVariables = new HashMap<>();
+    service.sendMessage(PERSON_ID, RECIPIENT, GMC_REJECTED_TRAINEE, TEMPLATE_VERSION,
+        templateVariables, null, false);
+
+    ArgumentCaptor<MimeMessage> messageCaptor = ArgumentCaptor.captor();
+    verify(mailSender).send(messageCaptor.capture());
+
+    MimeMessage message = messageCaptor.getValue();
+    Document content = Jsoup.parse((String) message.getContent());
+    Element body = content.body();
+
+    String ccOfText = Objects.requireNonNull(body.getElementById("ccOf")).wholeText();
+    assertThat("Unexpected cc details.", ccOfText.isEmpty(), is(true));
+  }
+
   int getGreetingElementIndex(NotificationType notificationType) {
     return switch (notificationType) {
       case PLACEMENT_UPDATED_WEEK_12, PLACEMENT_ROLLOUT_2024_CORRECTION, PROGRAMME_CREATED,
            PROGRAMME_DAY_ONE, EMAIL_UPDATED_NEW, EMAIL_UPDATED_OLD, COJ_CONFIRMATION,
-           CREDENTIAL_REVOKED, FORM_UPDATED, GMC_UPDATED -> 1;
+           CREDENTIAL_REVOKED, FORM_UPDATED, GMC_UPDATED, GMC_REJECTED_LO,
+           GMC_REJECTED_TRAINEE -> 1;
       default -> 0;
     };
   }
