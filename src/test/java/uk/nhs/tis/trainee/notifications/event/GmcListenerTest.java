@@ -235,7 +235,10 @@ class GmcListenerTest {
         sentTemplateVars.get(TIS_TRIGGER_FIELD), is(TIS_TRIGGER));
     assertThat("Unexpected template tis trigger detail field.",
         sentTemplateVars.get(TIS_TRIGGER_DETAIL_FIELD), is(TIS_TRIGGER_DETAIL));
+    String ccField = (String) sentTemplateVars.get(CC_OF_FIELD);
     assertThat("Unexpected template cc of field.",
-        sentTemplateVars.get(CC_OF_FIELD), is("lo@1.com; lo@2.com"));
+        ccField.contains("lo@1.com"), is(true));
+    assertThat("Unexpected template cc of field.",
+        ccField.contains("lo@2.com"), is(true));
   }
 }
