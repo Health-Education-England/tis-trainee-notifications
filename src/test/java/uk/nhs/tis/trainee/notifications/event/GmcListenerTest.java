@@ -45,7 +45,7 @@ import static uk.nhs.tis.trainee.notifications.service.NotificationService.CC_OF
 import jakarta.mail.MessagingException;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Set;
+import java.util.TreeSet;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -202,7 +202,9 @@ class GmcListenerTest {
     expectedLoTemplateVariables.put(TIS_TRIGGER_FIELD, TIS_TRIGGER);
     expectedLoTemplateVariables.put(TIS_TRIGGER_DETAIL_FIELD, TIS_TRIGGER_DETAIL);
 
-    Set<String> losContacted = Set.of("lo@1.com", "lo@2.com");
+    TreeSet<String> losContacted = new TreeSet<>();
+    losContacted.add("lo@2.com");
+    losContacted.add("lo@1.com");
     when(notificationService.sendLocalOfficeMail(eq(TRAINEE_ID), eq(GMC_UPDATE), any(),
         eq(REJECT_LO_VERSION), eq(GMC_REJECTED_LO))).thenReturn(losContacted);
 

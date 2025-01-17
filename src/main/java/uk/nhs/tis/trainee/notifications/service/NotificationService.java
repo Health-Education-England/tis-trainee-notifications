@@ -42,12 +42,12 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.TreeSet;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -592,7 +592,8 @@ public class NotificationService implements Job {
    * @param templateVersion   The template version.
    * @param notificationType  The notification type (template type).
    *
-   * @return The list of email addresses to which the mail was sent (or logged).
+   * @return The set of distinct email addresses to which the mail was sent (or logged) in
+   *         alphabetic order.
    * @throws MessagingException If the email(s) could not be sent.
    */
   public Set<String> sendLocalOfficeMail(String traineeId, LocalOfficeContactType contactType,
@@ -600,7 +601,7 @@ public class NotificationService implements Job {
       NotificationType notificationType) throws MessagingException {
     Set<LocalOfficeContact> localOfficeContacts
         = getTraineeLocalOfficeContacts(traineeId, contactType);
-    Set<String> sentTo = new HashSet<>();
+    Set<String> sentTo = new TreeSet<>();
 
     boolean canSendMail = messagingControllerService.isMessagingEnabled(MessageType.EMAIL);
     if (!localOfficeContacts.isEmpty()) {
