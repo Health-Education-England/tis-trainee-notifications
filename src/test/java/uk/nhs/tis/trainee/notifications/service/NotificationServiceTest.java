@@ -1727,7 +1727,7 @@ class NotificationServiceTest {
     when(messagingControllerService.isMessagingEnabled(any())).thenReturn(true);
 
     service.sendLocalOfficeMail(PERSON_ID, GMC_UPDATE, new HashMap<>(), "", GMC_UPDATED);
-    List<String> sentTo = service.sendLocalOfficeMail(PERSON_ID, localOfficeContactType,
+    Set<String> sentTo = service.sendLocalOfficeMail(PERSON_ID, localOfficeContactType,
         new HashMap<>(), "", GMC_REJECTED_LO);
 
     assertThat("Unexpected sent to set.", sentTo.size(), is(0));
@@ -1746,7 +1746,7 @@ class NotificationServiceTest {
         .thenReturn(ResponseEntity.of(Optional.of(localOfficeContacts)));
     when(messagingControllerService.isMessagingEnabled(any())).thenReturn(true);
 
-    List<String> sentTo = service.sendLocalOfficeMail(PERSON_ID, GMC_UPDATE, new HashMap<>(), "",
+    Set<String> sentTo = service.sendLocalOfficeMail(PERSON_ID, GMC_UPDATE, new HashMap<>(), "",
         GMC_UPDATED);
 
     assertThat("Unexpected sent to set.", sentTo.size(), is(0));
@@ -1786,7 +1786,7 @@ class NotificationServiceTest {
         .thenReturn(ResponseEntity.of(Optional.of(localOfficeContacts)));
 
     Map<String, Object> templateVars = new HashMap<>();
-    List<String> sentTo = service.sendLocalOfficeMail(PERSON_ID, localOfficeContactType,
+    Set<String> sentTo = service.sendLocalOfficeMail(PERSON_ID, localOfficeContactType,
         templateVars, "", GMC_REJECTED_LO);
 
     assertThat("Unexpected sent to set.", sentTo.size(), is(3));
@@ -1796,10 +1796,11 @@ class NotificationServiceTest {
     assertThat("Unexpected sent to element.", sentTo.contains("contact1@email.com"), is(true));
     assertThat("Unexpected sent to element.", sentTo.contains("contact2@email.com"), is(true));
     assertThat("Unexpected sent to element.", sentTo.contains("a@email.com"), is(true));
-    //verify ordering of list is alphabetic
-    assertThat("Unexpected sent to ordering.", sentTo.get(0).equals("a@email.com"));
-    assertThat("Unexpected sent to ordering.", sentTo.get(1).equals("contact1@email.com"));
-    assertThat("Unexpected sent to ordering.", sentTo.get(2).equals("contact2@email.com"));
+    //verify ordering of set is alphabetic
+    Object[] sentToArray = sentTo.toArray();
+    assertThat("Unexpected sent to ordering.", sentToArray[0].equals("a@email.com"));
+    assertThat("Unexpected sent to ordering.", sentToArray[1].equals("contact1@email.com"));
+    assertThat("Unexpected sent to ordering.", sentToArray[2].equals("contact2@email.com"));
   }
 
   @ParameterizedTest

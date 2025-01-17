@@ -47,6 +47,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.TreeSet;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -591,15 +592,16 @@ public class NotificationService implements Job {
    * @param templateVersion   The template version.
    * @param notificationType  The notification type (template type).
    *
-   * @return The list of email addresses to which the mail was sent (or logged) in alphabetic order.
+   * @return The set of distinct email addresses to which the mail was sent (or logged) in
+   *         alphabetic order.
    * @throws MessagingException If the email(s) could not be sent.
    */
-  public List<String> sendLocalOfficeMail(String traineeId, LocalOfficeContactType contactType,
+  public Set<String> sendLocalOfficeMail(String traineeId, LocalOfficeContactType contactType,
       Map<String, Object> templateVariables, String templateVersion,
       NotificationType notificationType) throws MessagingException {
     Set<LocalOfficeContact> localOfficeContacts
         = getTraineeLocalOfficeContacts(traineeId, contactType);
-    List<String> sentTo = new ArrayList<>();
+    Set<String> sentTo = new TreeSet<>();
 
     boolean canSendMail = messagingControllerService.isMessagingEnabled(MessageType.EMAIL);
     if (!localOfficeContacts.isEmpty()) {
@@ -622,7 +624,6 @@ public class NotificationService implements Job {
       log.warn("{} local office notification not processed for trainee {}: no local office "
               + "contacts.", notificationType, traineeId);
     }
-    Collections.sort(sentTo);
     return sentTo;
   }
 

@@ -30,8 +30,8 @@ import static uk.nhs.tis.trainee.notifications.service.NotificationService.CC_OF
 import io.awspring.cloud.sqs.annotation.SqsListener;
 import jakarta.mail.MessagingException;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -116,7 +116,7 @@ public class GmcListener {
     Map<String, Object> loTemplateVariables = buildGmcRejectedTemplateVariables(event, userDetails);
 
     String traineeId = event.traineeId();
-    List<String> sentTo = notificationService.sendLocalOfficeMail(traineeId, GMC_UPDATE,
+    Set<String> sentTo = notificationService.sendLocalOfficeMail(traineeId, GMC_UPDATE,
         loTemplateVariables, rejectLoTemplateVersion, GMC_REJECTED_LO);
 
     Map<String, Object> traineeTemplateVariables
