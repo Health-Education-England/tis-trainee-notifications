@@ -1773,7 +1773,7 @@ class NotificationServiceTest {
 
   @ParameterizedTest
   @EnumSource(LocalOfficeContactType.class)
-  void shouldSendLocalOfficeMailToDistinctEmailContactsAndReturnAlphabeticList(
+  void shouldSendLocalOfficeMailToDistinctEmailContactsAndReturnAlphabeticSet(
       LocalOfficeContactType localOfficeContactType) throws MessagingException {
     Set<LocalOfficeContact> localOfficeContacts = new HashSet<>();
     localOfficeContacts.add(new LocalOfficeContact("contact2@email.com", "local office"));
