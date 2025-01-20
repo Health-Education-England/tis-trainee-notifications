@@ -654,6 +654,32 @@ class EmailServiceIntegrationTest {
         is(false));
   }
 
+  @Test
+  void shouldExcludeRegionFromSubjectAndHighlightSiteInSpecifiedTemplateVersion() throws Exception {
+    when(userAccountService.getUserDetailsById(USER_ID)).thenReturn(
+        new UserDetails(true, RECIPIENT, null, null, null, null));
+
+    service.sendMessageToExistingUser(PERSON_ID, PLACEMENT_UPDATED_WEEK_12, "v1.2.0",
+        Map.of(TEMPLATE_CONTACT_HREF_FIELD, "email"), null);
+
+    ArgumentCaptor<MimeMessage> messageCaptor = ArgumentCaptor.captor();
+    verify(mailSender).send(messageCaptor.capture());
+
+    MimeMessage message = messageCaptor.getValue();
+    String subject = message.getSubject();
+    assertThat("Unexpected subject.", subject.contains("your local office"), is(false));
+    Document content = Jsoup.parse((String) message.getContent());
+    Element body = content.body();
+
+    String bodyText = body.wholeText();
+    assertThat("Unexpected local office inclusion.",
+        bodyText.contains("NHS England can now confirm your placement within your local office"),
+        is(false));
+    String bodyHtml = body.html();
+    assertThat("Unexpected site formatting.", bodyHtml.contains("<b>(site name missing)</b>"),
+        is(true));
+  }
+
   int getGreetingElementIndex(NotificationType notificationType) {
     return switch (notificationType) {
       case PLACEMENT_UPDATED_WEEK_12, PLACEMENT_ROLLOUT_2024_CORRECTION, PROGRAMME_CREATED,
