@@ -626,6 +626,34 @@ class EmailServiceIntegrationTest {
     assertThat("Unexpected cc details.", ccOfText.isEmpty(), is(true));
   }
 
+  @ParameterizedTest
+  @ValueSource(strings = {"PLACEMENT_UPDATED_WEEK_12", "PROGRAMME_CREATED", "PROGRAMME_DAY_ONE"})
+  void shouldExcludePilotAndSurveyWordingInSpecifiedTemplateVersions(
+      NotificationType notificationType) throws Exception {
+    when(userAccountService.getUserDetailsById(USER_ID)).thenReturn(
+        new UserDetails(true, RECIPIENT, null, null, null, null));
+
+    String templateVersion = notificationType == PROGRAMME_CREATED ? "v1.2.0" : "v1.1.0";
+    service.sendMessageToExistingUser(PERSON_ID, notificationType, templateVersion,
+        Map.of(TEMPLATE_CONTACT_HREF_FIELD, "email"), null);
+
+    ArgumentCaptor<MimeMessage> messageCaptor = ArgumentCaptor.captor();
+    verify(mailSender).send(messageCaptor.capture());
+
+    MimeMessage message = messageCaptor.getValue();
+    Document content = Jsoup.parse((String) message.getContent());
+    Element body = content.body();
+
+    String bodyText = body.wholeText();
+    assertThat("Unexpected pilot wording.", bodyText.contains("We are currently piloting"),
+        is(false));
+    String bodyHtml = body.outerHtml();
+    assertThat("Unexpected survey inclusion.", bodyHtml.contains("https://docs.google.com/forms"),
+        is(false));
+    assertThat("Unexpected survey inclusion.", bodyHtml.contains("https://forms.gle"),
+        is(false));
+  }
+
   int getGreetingElementIndex(NotificationType notificationType) {
     return switch (notificationType) {
       case PLACEMENT_UPDATED_WEEK_12, PLACEMENT_ROLLOUT_2024_CORRECTION, PROGRAMME_CREATED,
