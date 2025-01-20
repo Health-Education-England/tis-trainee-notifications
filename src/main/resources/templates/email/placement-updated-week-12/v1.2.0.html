@@ -1,0 +1,92 @@
+<!--
+  ~ The MIT License (MIT)
+  ~
+  ~ Copyright 2024 Crown Copyright (Health Education England)
+  ~
+  ~ Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
+  ~ associated documentation files (the "Software"), to deal in the Software without restriction,
+  ~ including without limitation the rights to use, copy, modify, merge, publish, distribute,
+  ~ sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is
+  ~ furnished to do so, subject to the following conditions:
+  ~
+  ~ The above copyright notice and this permission notice shall be included in all copies or
+  ~ substantial portions of the Software.
+  ~
+  ~ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT
+  ~ NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+  ~ NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
+  ~ DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+  ~  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+  -->
+
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+</head>
+<body>
+<h1>Email Message</h1>
+<h2>Subject</h2>
+<th:block th:fragment="subject">NHS England Notification of Placement</th:block>
+<h2>Content</h2>
+<th:block th:fragment="content">
+  <div th:replace="fragments/retry/v1.0.0 :: body"></div>
+  <div style="text-align:right"><img style="margin-right:25px" src='https://trainee.tis.nhs.uk/nhse-logo.png' alt="NHS England logo"/></div>
+  <p th:if="${#strings.isEmpty(givenName) AND #strings.isEmpty(familyName)}">Dear Doctor,</p>
+  <p th:if="${not (#strings.isEmpty(givenName) OR #strings.isEmpty(familyName))}">Dear <span th:text="${not #strings.isEmpty(title)} ? ${title} : 'Dr'"></span> <span th:text="${not #strings.isEmpty(givenName)} ? ${givenName} : _"></span> <span th:text="${not #strings.isEmpty(familyName)} ? ${familyName} : _"></span>,</p>
+  <p>
+    GMC <th:block th:text="${not #strings.isEmpty(gmcNumber)} ? ${gmcNumber} : _">UNKNOWN</th:block
+  ><th:block th:if="${#strings.isEmpty(isValidGmc) OR not isValidGmc}"> - We don't have a confirmed GMC no. please contact your local office to update this.</th:block>
+  </p>
+  <p>
+    For your placement starting <th:block th:text="${startDate} ? |${#temporals.format(startDate, 'dd MMMM yyyy')}| : _">(start date missing)</th:block
+  > at <b><th:block th:text="${not #strings.isEmpty(site)} ? ${site} : _">(site name missing)</th:block
+  ></b> in <th:block th:text="${not #strings.isEmpty(specialty)} ? ${specialty} : _">(speciality name missing)</th:block
+  >, please see the below information. We appreciate this must be a busy time for you but please set some time aside to read this letter as it contains some vital information regarding your training placement.
+  </p>
+  <p>
+    The NHS England team can now confirm your placement. Please note Health Education England is now part of NHS England. Our systems will be updated in due course.
+  </p>
+  <p>
+    Please note your allocation and grade progression (if appropriate) will be subject to you receiving a satisfactory ARCP outcome and your continued registration/licence to practise with the GMC for the duration of your training.
+  </p>
+  <p><b>Accessing TIS Self-Service (TSS)</b></p>
+  <p>Your placement details can be reviewed by signing in to TIS Self-Service, after you sign in TSS will inform you of any outstanding actions for you to complete.</p>
+  <th:block th:switch="${isRegistered}"
+  ><p th:case="true">
+    We have a registered account for you on TIS Self-Service against the email address <b><span th:text="${email}"></span></b>. To access your upcoming placement details please log in to <a href="https://trainee.tis.nhs.uk/">TIS Self-Service</a>.
+  </p>
+    <p th:case="false">
+      We have no TIS Self-Service account associated with your records. Please create one by clicking the link below. Please ensure you use the email address we have against our records, which is: <b><span th:text="${email}"></span></b>.<br/><br/>
+      <a href="https://trainee.tis.nhs.uk/">TIS Self-Service</a>
+    </p>
+  </th:block>
+  <p>
+    If your email address is likely to change, or you need support creating an account on TIS Self-Service then please contact us via <th:block th:switch="${contactHref}"
+  ><span th:case="url"><a th:href="${localOfficeContact}"><span th:text="${localOfficeContact}"></span></a></span
+  ><span th:case="email"><a id="loMail" th:href="|mailto:${localOfficeContact}?subject=Notification of Placement - GMC: ${not #strings.isEmpty(gmcNumber) ? gmcNumber : 'unknown'}, Start Date: ${#temporals.format(startDate, 'dd/MM/yyyy')}|"><span th:text="${localOfficeContact}"></span></a></span
+  ><span th:case="*"><span th:text="${localOfficeContact}"></span></span
+  ></th:block> or see our <a href="https://tis-support.hee.nhs.uk/trainees/changes-to-account/">FAQ</a> for details.
+  </p>
+  <p>
+    The placement information reflects what we have recorded on our Training Information System (TIS) as your next placement. Please be aware that when your Grade, Whole Time Equivalent (WTE) or Post Number changes, on TIS, a new placement will be created reflecting these changes.
+  </p>
+  <p>
+    Further details on the specialist area of your placement will be confirmed by your employing organisation. This is because we are only able to confirm details that relate specifically to your college recognised curriculum. For example, if you have given your Training Programme Director a preference of a job in a specific location or department, we will not record this level of detail on TIS.
+  </p>
+  <p>
+    Kind Regards,
+  </p>
+  <p>
+    <span th:text="${not #strings.isEmpty(localOfficeName)} ? ${localOfficeName} : _"></span>
+  </p>
+  <p>
+    Workforce, Training and Education
+  </p>
+  <p>
+    NHS England
+  </p>
+  <div th:replace="fragments/disclaimer/v1.0.0 :: body"></div>
+</th:block>
+</body>
+</html>
