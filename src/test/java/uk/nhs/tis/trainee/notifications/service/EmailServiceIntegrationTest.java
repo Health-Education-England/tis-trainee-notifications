@@ -647,9 +647,10 @@ class EmailServiceIntegrationTest {
     String bodyText = body.wholeText();
     assertThat("Unexpected pilot wording.", bodyText.contains("We are currently piloting"),
         is(false));
-    assertThat("Unexpected survey inclusion.", bodyText.contains("https://docs.google.com/forms"),
+    String bodyHtml = body.outerHtml();
+    assertThat("Unexpected survey inclusion.", bodyHtml.contains("https://docs.google.com/forms"),
         is(false));
-    assertThat("Unexpected survey inclusion.", bodyText.contains("https://forms.gle"),
+    assertThat("Unexpected survey inclusion.", bodyHtml.contains("https://forms.gle"),
         is(false));
   }
 

@@ -67,20 +67,6 @@
     NHS England
   </p>
   <div th:replace="fragments/disclaimer/v1.0.0 :: body"></div>
-  <hr>
-  <div th:with="segment_a = ${#strings.isEmpty(gmcNumber)
-    || #strings.substring(gmcNumber, #strings.length(gmcNumber) - 1) < '5'}">
-    <p th:if="${segment_a}">
-      Did you find this email useful? <a th:href="'https://docs.google.com/forms/d/e/1FAIpQLSfYErjEhKMPvbdXzxuzYdCSPmDx862kVPWC-ZUhGx2WsyN0Mg/formResponse?usp=pp_url&entry.489098247=Yes&entry.1875824869=' + ${hashedEmail} + '&submit=Submit'"
-    ><img src='https://trainee.tis.nhs.uk/thumbs-up.png' alt="thumbs up"/></a>&nbsp;<a th:href="'https://docs.google.com/forms/d/e/1FAIpQLSfYErjEhKMPvbdXzxuzYdCSPmDx862kVPWC-ZUhGx2WsyN0Mg/formResponse?usp=pp_url&entry.489098247=No&entry.1875824869=' + ${hashedEmail} + '&submit=Submit'"
-    ><img src='https://trainee.tis.nhs.uk/thumbs-down.png' alt="thumbs down"/></a>.
-    </p>
-    <p th:unless="${segment_a}">
-      Was the information in this email correct? <a th:href="'https://docs.google.com/forms/d/e/1FAIpQLSfYErjEhKMPvbdXzxuzYdCSPmDx862kVPWC-ZUhGx2WsyN0Mg/formResponse?usp=pp_url&entry.424677117=Yes&entry.1875824869=' + ${hashedEmail} + '&submit=Submit'"
-    ><img src='https://trainee.tis.nhs.uk/thumbs-up.png' alt="thumbs up"/></a>&nbsp;<a th:href="'https://docs.google.com/forms/d/e/1FAIpQLSfYErjEhKMPvbdXzxuzYdCSPmDx862kVPWC-ZUhGx2WsyN0Mg/formResponse?usp=pp_url&entry.424677117=No&entry.1875824869=' + ${hashedEmail} + '&submit=Submit'"
-    ><img src='https://trainee.tis.nhs.uk/thumbs-down.png' alt="thumbs down"/></a>.
-    </p>
-  </div>
 </th:block>
 </body>
 </html>
