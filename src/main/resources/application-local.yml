@@ -8,7 +8,6 @@ application:
     account-confirmed: ${local.sqs-path}/tis-trainee-notifications-local-account-confirmed
     account-updated: ${local.sqs-path}/tis-trainee-notifications-local-account-updated
     coj-published: ${local.sqs-path}/tis-trainee-notifications-local-coj-published
-    credential-revoked: ${local.sqs-path}/tis-trainee-notifications-local-credential-revoked
     contact-details-updated: ${local.sqs-path}/tis-trainee-notifications-local-contact-details-updated
     email-failure: ${local.sqs-path}/tis-trainee-notifications-local-email-failure
     form-updated: ${local.sqs-path}/tis-trainee-notifications-local-form-updated
