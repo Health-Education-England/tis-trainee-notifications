@@ -1,16 +1,16 @@
 plugins {
   java
-  id("org.springframework.boot") version "3.3.6"
-  id("io.spring.dependency-management") version "1.1.4"
+  alias(libs.plugins.spring.boot)
+  alias(libs.plugins.spring.dependency.management)
 
   // Code quality plugins
   checkstyle
   jacoco
-  id("org.sonarqube") version "5.1.0.4882"
+  alias(libs.plugins.sonarqube)
 }
 
 group = "uk.nhs.tis.trainee"
-version = "2.0.0"
+version = "2.0.1"
 
 configurations {
   compileOnly {
@@ -24,8 +24,8 @@ repositories {
 
 dependencyManagement {
   imports {
-    mavenBom("org.springframework.cloud:spring-cloud-dependencies:2023.0.0")
-    mavenBom("io.awspring.cloud:spring-cloud-aws-dependencies:3.1.0")
+    mavenBom(libs.spring.cloud.dependencies.core.get().toString())
+    mavenBom(libs.spring.cloud.dependencies.aws.get().toString())
   }
 }
 
@@ -46,7 +46,7 @@ dependencies {
   implementation("io.awspring.cloud:spring-cloud-aws-starter-sns")
   implementation("io.awspring.cloud:spring-cloud-aws-starter-sqs")
   implementation("software.amazon.awssdk:cognitoidentityprovider")
-  implementation("com.amazonaws:aws-xray-recorder-sdk-spring:2.15.1")
+  implementation(libs.aws.xray)
 
   implementation("com.mysql:mysql-connector-j")
   implementation("org.flywaydb:flyway-core")
@@ -57,19 +57,14 @@ dependencies {
   annotationProcessor("org.projectlombok:lombok")
 
   // MapStruct
-  val mapstructVersion = "1.5.5.Final"
-  implementation("org.mapstruct:mapstruct:${mapstructVersion}")
-  annotationProcessor("org.mapstruct:mapstruct-processor:${mapstructVersion}")
-  testAnnotationProcessor("org.mapstruct:mapstruct-processor:${mapstructVersion}")
+  implementation(libs.mapstruct.core)
+  annotationProcessor(libs.mapstruct.processor)
 
-  val mongockVersion = "5.4.4"
-  implementation("io.mongock:mongock-springboot-v3:${mongockVersion}")
-  implementation("io.mongock:mongodb-springdata-v4-driver:${mongockVersion}")
+  // Mongock
+  implementation(libs.bundles.mongock)
 
   // Sentry reporting
-  val sentryVersion = "7.6.0"
-  implementation("io.sentry:sentry-spring-boot-starter-jakarta:$sentryVersion")
-  implementation("io.sentry:sentry-logback:${sentryVersion}")
+  implementation(libs.bundles.sentry)
 
   testImplementation("org.springframework.cloud:spring-cloud-starter-bootstrap")
   testImplementation("com.playtika.testcontainers:embedded-redis:3.1.5")
@@ -80,7 +75,7 @@ dependencies {
   testImplementation("org.testcontainers:mysql")
   testImplementation("org.testcontainers:junit-jupiter")
 
-  testImplementation("org.jsoup:jsoup:1.17.2")
+  testImplementation(libs.jsoup)
 }
 
 java {
