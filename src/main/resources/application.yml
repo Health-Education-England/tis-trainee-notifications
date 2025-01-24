@@ -22,7 +22,6 @@ application:
     account-confirmed: ${ACCOUNT_CONFIRMED_QUEUE}
     account-updated: ${ACCOUNT_UPDATED_QUEUE}
     coj-published: ${COJ_PUBLISHED_QUEUE}
-    credential-revoked: ${CREDENTIAL_REVOKED_QUEUE}
     contact-details-updated: ${CONTACT_DETAILS_UPDATED_QUEUE}
     email-failure: ${EMAIL_FAILURE_QUEUE}
     form-updated: ${FORM_UPDATED_QUEUE}
