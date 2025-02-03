@@ -67,7 +67,7 @@ dependencies {
   implementation(libs.bundles.sentry)
 
   testImplementation("org.springframework.cloud:spring-cloud-starter-bootstrap")
-  testImplementation("com.playtika.testcontainers:embedded-redis:3.1.5")
+  testImplementation("com.playtika.testcontainers:embedded-redis:3.1.10")
   testImplementation("com.h2database:h2")
 
   testImplementation("org.springframework.boot:spring-boot-testcontainers")
