@@ -91,7 +91,6 @@ import java.util.stream.Stream;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.EnumSource.Mode;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -1106,11 +1105,11 @@ class NotificationServiceTest {
   @NullSource
   void shouldMapUserDetailsWhenCognitoAndTssAccountsExist(String gmcNumber) {
     UserDetails cognitoAccountDetails =
-        new UserDetails(
-            true, COGNITO_EMAIL, null, COGNITO_FAMILY_NAME, COGNITO_GIVEN_NAME, null);
+        new UserDetails(true, COGNITO_EMAIL, null, COGNITO_FAMILY_NAME,
+            COGNITO_GIVEN_NAME, null, List.of("should ignore"));
     UserDetails traineeProfileDetails =
-        new UserDetails(
-            null, USER_EMAIL, USER_TITLE, USER_FAMILY_NAME, USER_GIVEN_NAME, gmcNumber);
+        new UserDetails(null, USER_EMAIL, USER_TITLE, USER_FAMILY_NAME, USER_GIVEN_NAME,
+            gmcNumber, List.of("role"));
 
     UserDetails expectedResult =
         service.mapUserDetails(cognitoAccountDetails, traineeProfileDetails);
@@ -1120,6 +1119,8 @@ class NotificationServiceTest {
     assertThat("Unexpected title", expectedResult.title(), is(USER_TITLE));
     assertThat("Unexpected family name", expectedResult.familyName(), is(COGNITO_FAMILY_NAME));
     assertThat("Unexpected given name", expectedResult.givenName(), is(COGNITO_GIVEN_NAME));
+    assertThat("Unexpected user role size", expectedResult.role().size(), is(1));
+    assertThat("Unexpected user role", expectedResult.role().get(0), is("role"));
     if (gmcNumber == null) {
       assertThat("Unexpected gmc number.", expectedResult.gmcNumber(), nullValue());
       assertDoesNotThrow(() ->
@@ -1134,8 +1135,8 @@ class NotificationServiceTest {
   @NullSource
   void shouldMapUserDetailsWhenCognitoAccountNotExist(String gmcNumber) {
     UserDetails traineeProfileDetails =
-        new UserDetails(
-            null, USER_EMAIL, USER_TITLE, USER_FAMILY_NAME, USER_GIVEN_NAME, gmcNumber);
+        new UserDetails(null, USER_EMAIL, USER_TITLE, USER_FAMILY_NAME, USER_GIVEN_NAME,
+            gmcNumber, List.of("role"));
 
     UserDetails expectedResult = service.mapUserDetails(null, traineeProfileDetails);
 
@@ -1144,6 +1145,8 @@ class NotificationServiceTest {
     assertThat("Unexpected title", expectedResult.title(), is(USER_TITLE));
     assertThat("Unexpected family name", expectedResult.familyName(), is(USER_FAMILY_NAME));
     assertThat("Unexpected given name", expectedResult.givenName(), is(USER_GIVEN_NAME));
+    assertThat("Unexpected user role size", expectedResult.role().size(), is(1));
+    assertThat("Unexpected user role", expectedResult.role().get(0), is("role"));
     if (gmcNumber == null) {
       assertThat("Unexpected gmc number.", expectedResult.gmcNumber(), nullValue());
       assertDoesNotThrow(() -> service.mapUserDetails(null, traineeProfileDetails));
