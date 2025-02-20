@@ -39,6 +39,7 @@ import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
@@ -90,6 +91,7 @@ public class NotificationService implements Job {
       = "/api/local-office-contact-by-lo-name/{localOfficeName}";
   protected static final String DEFAULT_NO_CONTACT_MESSAGE
       = "your local office";
+  protected static final List<String> DUMMY_USER_ROLES = List.of("Placeholder", "Dummy Record");
 
   public static final String API_TRAINEE_DETAILS = "/api/trainee-profile/account-details/{tisId}";
   public static final String API_TRAINEE_LOCAL_OFFICE_CONTACTS
@@ -357,7 +359,8 @@ public class NotificationService implements Job {
           userTraineeDetails.title(),
           userCognitoAccountDetails.familyName(),
           userCognitoAccountDetails.givenName(),
-          (userTraineeDetails.gmcNumber() != null ? userTraineeDetails.gmcNumber().trim() : null));
+          (userTraineeDetails.gmcNumber() != null ? userTraineeDetails.gmcNumber().trim() : null),
+          userTraineeDetails.role());
     } else if (userTraineeDetails != null) {
       //no TSS account or duplicate accounts in Cognito
       String email = userTraineeDetails.email();
@@ -366,7 +369,8 @@ public class NotificationService implements Job {
           userTraineeDetails.title(),
           userTraineeDetails.familyName(),
           userTraineeDetails.givenName(),
-          (userTraineeDetails.gmcNumber() != null ? userTraineeDetails.gmcNumber().trim() : null));
+          (userTraineeDetails.gmcNumber() != null ? userTraineeDetails.gmcNumber().trim() : null),
+          userTraineeDetails.role());
     } else {
       return null;
     }
@@ -586,6 +590,7 @@ public class NotificationService implements Job {
    * Send (or log) email to the distinct list of local office contacts of given type for the
    * trainee.
    *
+   * @param traineeDetails    The details of the trainee.
    * @param traineeId         The id of the trainee.
    * @param contactType       The type of local office contact to notify.
    * @param templateVariables The template variables.
@@ -596,14 +601,15 @@ public class NotificationService implements Job {
    *         alphabetic order.
    * @throws MessagingException If the email(s) could not be sent.
    */
-  public Set<String> sendLocalOfficeMail(String traineeId, LocalOfficeContactType contactType,
-      Map<String, Object> templateVariables, String templateVersion,
-      NotificationType notificationType) throws MessagingException {
+  public Set<String> sendLocalOfficeMail(UserDetails traineeDetails, String traineeId,
+      LocalOfficeContactType contactType, Map<String, Object> templateVariables,
+      String templateVersion, NotificationType notificationType) throws MessagingException {
     Set<LocalOfficeContact> localOfficeContacts
         = getTraineeLocalOfficeContacts(traineeId, contactType);
     Set<String> sentTo = new TreeSet<>();
 
-    boolean canSendMail = messagingControllerService.isMessagingEnabled(MessageType.EMAIL);
+    boolean canSendMail = messagingControllerService.isMessagingEnabled(MessageType.EMAIL)
+        && !userHasDummyRole(traineeDetails); //do not notify (real) LO of dummy users
     if (!localOfficeContacts.isEmpty()) {
       //since some LO's share a contact we need to eliminate possible duplicates:
       Set<String> distinctContacts = localOfficeContacts.stream()
@@ -625,6 +631,19 @@ public class NotificationService implements Job {
               + "contacts.", notificationType, traineeId);
     }
     return sentTo;
+  }
+
+  /**
+   * Determine if a user is a dummy / placeholder user from their roles.
+   *
+   * @param userDetails The user details.
+   * @return true if they have a designated role, otherwise false.
+   */
+  protected boolean userHasDummyRole(UserDetails userDetails) {
+    if (userDetails.role() == null) {
+      return false;
+    }
+    return userDetails.role().stream().anyMatch(DUMMY_USER_ROLES::contains);
   }
 
   /**

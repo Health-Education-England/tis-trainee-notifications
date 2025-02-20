@@ -21,6 +21,7 @@
 
 package uk.nhs.tis.trainee.notifications.dto;
 
+import java.util.List;
 import lombok.Builder;
 
 /**
@@ -32,6 +33,7 @@ import lombok.Builder;
  * @param familyName    The user's family name.
  * @param givenName     The user's given name.
  * @param gmcNumber     The user's GMC number.
+ * @param role          The user's TIS role(s).
  */
 @Builder
 public record UserDetails(
@@ -40,6 +42,18 @@ public record UserDetails(
     String title,
     String familyName,
     String givenName,
-    String gmcNumber) {
+    String gmcNumber,
+    List<String> role) {
+
+  public UserDetails(
+      Boolean isRegistered,
+      String email,
+      String title,
+      String familyName,
+      String givenName,
+      String gmcNumber
+  ) {
+    this(isRegistered, email, title, familyName, givenName, gmcNumber, List.of());
+  }
 
 }

@@ -98,8 +98,8 @@ public class GmcListener {
     templateVariables.put(GMC_NUMBER_FIELD, event.gmcDetails().gmcNumber());
     templateVariables.put(GMC_STATUS_FIELD, event.gmcDetails().gmcStatus());
 
-    notificationService.sendLocalOfficeMail(event.traineeId(), GMC_UPDATE, templateVariables,
-        updateTemplateVersion, GMC_UPDATED);
+    notificationService.sendLocalOfficeMail(userDetails, event.traineeId(), GMC_UPDATE,
+        templateVariables, updateTemplateVersion, GMC_UPDATED);
   }
 
   /**
@@ -116,7 +116,7 @@ public class GmcListener {
     Map<String, Object> loTemplateVariables = buildGmcRejectedTemplateVariables(event, userDetails);
 
     String traineeId = event.traineeId();
-    Set<String> sentTo = notificationService.sendLocalOfficeMail(traineeId, GMC_UPDATE,
+    Set<String> sentTo = notificationService.sendLocalOfficeMail(userDetails, traineeId, GMC_UPDATE,
         loTemplateVariables, rejectLoTemplateVersion, GMC_REJECTED_LO);
 
     Map<String, Object> traineeTemplateVariables
