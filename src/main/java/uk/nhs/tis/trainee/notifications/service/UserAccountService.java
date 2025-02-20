@@ -176,7 +176,6 @@ public class UserAccountService {
         null,
         attributes.get(ATTRIBUTE_FAMILY_NAME),
         attributes.get(ATTRIBUTE_GIVEN_NAME),
-        null,
         null);
   }
 }

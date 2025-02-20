@@ -1897,9 +1897,9 @@ class NotificationServiceTest {
   }
 
   /**
-   * Provide the cartesian product of the tables and all operations that should trigger events.
+   * Provide all dummy user roles.
    *
-   * @return The stream of arguments.
+   * @return The stream of dummy / placeholder / test user roles.
    */
   private static Stream<String> provideAllDummyUserRoles() {
     return DUMMY_USER_ROLES.stream();
