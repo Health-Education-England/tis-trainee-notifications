@@ -41,7 +41,6 @@ import uk.nhs.tis.trainee.notifications.config.EventNotificationProperties;
 import uk.nhs.tis.trainee.notifications.config.EventNotificationProperties.SnsRoute;
 import uk.nhs.tis.trainee.notifications.config.ObjectIdSerializerModule;
 import uk.nhs.tis.trainee.notifications.model.History;
-import uk.nhs.tis.trainee.notifications.model.NotificationStatus;
 
 /**
  * A service for broadcasting form events to SNS.

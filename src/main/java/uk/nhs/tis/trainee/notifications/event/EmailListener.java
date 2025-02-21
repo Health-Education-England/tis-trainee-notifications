@@ -22,7 +22,6 @@
 package uk.nhs.tis.trainee.notifications.event;
 
 import io.awspring.cloud.sqs.annotation.SqsListener;
-import java.util.Arrays;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import uk.nhs.tis.trainee.notifications.dto.EmailEvent;

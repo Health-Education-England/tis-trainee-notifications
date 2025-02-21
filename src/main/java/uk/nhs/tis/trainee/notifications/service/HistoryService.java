@@ -24,7 +24,6 @@ package uk.nhs.tis.trainee.notifications.service;
 import static uk.nhs.tis.trainee.notifications.model.MessageType.EMAIL;
 import static uk.nhs.tis.trainee.notifications.model.MessageType.IN_APP;
 import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.ARCHIVED;
-import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.DELETED;
 import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.FAILED;
 import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.READ;
 import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.SCHEDULED;
