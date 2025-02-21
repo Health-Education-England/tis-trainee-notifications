@@ -59,6 +59,7 @@ import static uk.nhs.tis.trainee.notifications.model.TisReferenceType.PROGRAMME_
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.CONTACT_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.CONTACT_TYPE_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.DEFAULT_NO_CONTACT_MESSAGE;
+import static uk.nhs.tis.trainee.notifications.service.NotificationService.DUMMY_USER_ROLES;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.PERSON_ID_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.TEMPLATE_CONTACT_HREF_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.TEMPLATE_NOTIFICATION_TYPE_FIELD;
@@ -86,11 +87,13 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.EnumSource.Mode;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.NullSource;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -1102,11 +1105,11 @@ class NotificationServiceTest {
   @NullSource
   void shouldMapUserDetailsWhenCognitoAndTssAccountsExist(String gmcNumber) {
     UserDetails cognitoAccountDetails =
-        new UserDetails(
-            true, COGNITO_EMAIL, null, COGNITO_FAMILY_NAME, COGNITO_GIVEN_NAME, null);
+        new UserDetails(true, COGNITO_EMAIL, null, COGNITO_FAMILY_NAME,
+            COGNITO_GIVEN_NAME, null, List.of("should ignore"));
     UserDetails traineeProfileDetails =
-        new UserDetails(
-            null, USER_EMAIL, USER_TITLE, USER_FAMILY_NAME, USER_GIVEN_NAME, gmcNumber);
+        new UserDetails(null, USER_EMAIL, USER_TITLE, USER_FAMILY_NAME, USER_GIVEN_NAME,
+            gmcNumber, List.of("role"));
 
     UserDetails expectedResult =
         service.mapUserDetails(cognitoAccountDetails, traineeProfileDetails);
@@ -1116,6 +1119,8 @@ class NotificationServiceTest {
     assertThat("Unexpected title", expectedResult.title(), is(USER_TITLE));
     assertThat("Unexpected family name", expectedResult.familyName(), is(COGNITO_FAMILY_NAME));
     assertThat("Unexpected given name", expectedResult.givenName(), is(COGNITO_GIVEN_NAME));
+    assertThat("Unexpected user role size", expectedResult.role().size(), is(1));
+    assertThat("Unexpected user role", expectedResult.role().get(0), is("role"));
     if (gmcNumber == null) {
       assertThat("Unexpected gmc number.", expectedResult.gmcNumber(), nullValue());
       assertDoesNotThrow(() ->
@@ -1130,8 +1135,8 @@ class NotificationServiceTest {
   @NullSource
   void shouldMapUserDetailsWhenCognitoAccountNotExist(String gmcNumber) {
     UserDetails traineeProfileDetails =
-        new UserDetails(
-            null, USER_EMAIL, USER_TITLE, USER_FAMILY_NAME, USER_GIVEN_NAME, gmcNumber);
+        new UserDetails(null, USER_EMAIL, USER_TITLE, USER_FAMILY_NAME, USER_GIVEN_NAME,
+            gmcNumber, List.of("role"));
 
     UserDetails expectedResult = service.mapUserDetails(null, traineeProfileDetails);
 
@@ -1140,6 +1145,8 @@ class NotificationServiceTest {
     assertThat("Unexpected title", expectedResult.title(), is(USER_TITLE));
     assertThat("Unexpected family name", expectedResult.familyName(), is(USER_FAMILY_NAME));
     assertThat("Unexpected given name", expectedResult.givenName(), is(USER_GIVEN_NAME));
+    assertThat("Unexpected user role size", expectedResult.role().size(), is(1));
+    assertThat("Unexpected user role", expectedResult.role().get(0), is("role"));
     if (gmcNumber == null) {
       assertThat("Unexpected gmc number.", expectedResult.gmcNumber(), nullValue());
       assertDoesNotThrow(() -> service.mapUserDetails(null, traineeProfileDetails));
@@ -1725,9 +1732,12 @@ class NotificationServiceTest {
     when(restTemplate.exchange(any(), any(), any(), eq(loContactListListType), anyMap()))
         .thenReturn(new ResponseEntity<>(HttpStatus.OK));
     when(messagingControllerService.isMessagingEnabled(any())).thenReturn(true);
+    UserDetails userDetails = new UserDetails(
+        true, "traineeemail", "title", "family", "given", "1111111", List.of("role"));
 
-    service.sendLocalOfficeMail(PERSON_ID, GMC_UPDATE, new HashMap<>(), "", GMC_UPDATED);
-    Set<String> sentTo = service.sendLocalOfficeMail(PERSON_ID, localOfficeContactType,
+    service.sendLocalOfficeMail(userDetails, PERSON_ID, GMC_UPDATE, new HashMap<>(), "",
+        GMC_UPDATED);
+    Set<String> sentTo = service.sendLocalOfficeMail(userDetails, PERSON_ID, localOfficeContactType,
         new HashMap<>(), "", GMC_REJECTED_LO);
 
     assertThat("Unexpected sent to set.", sentTo.size(), is(0));
@@ -1745,9 +1755,11 @@ class NotificationServiceTest {
     when(restTemplate.exchange(any(), any(), any(), eq(loContactListListType), anyMap()))
         .thenReturn(ResponseEntity.of(Optional.of(localOfficeContacts)));
     when(messagingControllerService.isMessagingEnabled(any())).thenReturn(true);
+    UserDetails userDetails = new UserDetails(
+        true, "traineeemail", "title", "family", "given", "1111111", List.of("role"));
 
-    Set<String> sentTo = service.sendLocalOfficeMail(PERSON_ID, GMC_UPDATE, new HashMap<>(), "",
-        GMC_UPDATED);
+    Set<String> sentTo = service.sendLocalOfficeMail(userDetails, PERSON_ID, GMC_UPDATE,
+        new HashMap<>(), "", GMC_UPDATED);
 
     assertThat("Unexpected sent to set.", sentTo.size(), is(0));
     verifyNoInteractions(emailService);
@@ -1763,12 +1775,35 @@ class NotificationServiceTest {
     when(restTemplate.exchange(any(), any(), any(), eq(loContactListListType), anyMap()))
         .thenReturn(ResponseEntity.of(Optional.of(localOfficeContacts)));
     when(messagingControllerService.isMessagingEnabled(any())).thenReturn(isMessagingEnabled);
+    UserDetails userDetails = new UserDetails(
+        true, "traineeemail", "title", "family", "given", "1111111", List.of("role"));
 
-    service.sendLocalOfficeMail(PERSON_ID, GMC_UPDATE, new HashMap<>(), "", GMC_UPDATED);
+    service.sendLocalOfficeMail(userDetails, PERSON_ID, GMC_UPDATE, new HashMap<>(), "",
+        GMC_UPDATED);
 
     verify(emailService)
         .sendMessage(any(), eq("contact@email.com"), any(), any(), any(), any(),
             eq(!isMessagingEnabled));
+  }
+
+  @ParameterizedTest
+  @MethodSource("provideAllDummyUserRoles")
+  void shouldLogLoEmailIfDummyTrainee(String dummyRole) throws MessagingException {
+    Set<LocalOfficeContact> localOfficeContacts = new HashSet<>();
+    localOfficeContacts.add(new LocalOfficeContact("contact@email.com", "local office"));
+    ParameterizedTypeReference<Set<LocalOfficeContact>> loContactListListType
+        = new ParameterizedTypeReference<>(){};
+    when(restTemplate.exchange(any(), any(), any(), eq(loContactListListType), anyMap()))
+        .thenReturn(ResponseEntity.of(Optional.of(localOfficeContacts)));
+    when(messagingControllerService.isMessagingEnabled(any())).thenReturn(true);
+    UserDetails userDetails = new UserDetails(
+        true, "traineeemail", "title", "family", "given", "1111111", List.of("role", dummyRole));
+
+    service.sendLocalOfficeMail(userDetails, PERSON_ID, GMC_UPDATE, new HashMap<>(), "",
+        GMC_UPDATED);
+
+    verify(emailService)
+        .sendMessage(any(), eq("contact@email.com"), any(), any(), any(), any(), eq(true));
   }
 
   @ParameterizedTest
@@ -1785,8 +1820,10 @@ class NotificationServiceTest {
     when(restTemplate.exchange(any(), any(), any(), eq(loContactListListType), anyMap()))
         .thenReturn(ResponseEntity.of(Optional.of(localOfficeContacts)));
 
+    UserDetails userDetails = new UserDetails(
+        true, "traineeemail", "title", "family", "given", "1111111", List.of("role"));
     Map<String, Object> templateVars = new HashMap<>();
-    Set<String> sentTo = service.sendLocalOfficeMail(PERSON_ID, localOfficeContactType,
+    Set<String> sentTo = service.sendLocalOfficeMail(userDetails, PERSON_ID, localOfficeContactType,
         templateVars, "", GMC_REJECTED_LO);
 
     assertThat("Unexpected sent to set.", sentTo.size(), is(3));
@@ -1815,10 +1852,12 @@ class NotificationServiceTest {
         .thenReturn(ResponseEntity.of(Optional.of(localOfficeContacts)));
     when(messagingControllerService.isMessagingEnabled(any())).thenReturn(true);
 
+    UserDetails userDetails = new UserDetails(
+        true, "traineeemail", "title", "family", "given", "1111111", List.of("role"));
     Map<String, Object> templateVars = new HashMap<>();
     templateVars.put("key", "value");
-    service.sendLocalOfficeMail(PERSON_ID, localOfficeContactType, templateVars, TEMPLATE_VERSION,
-        GMC_REJECTED_LO);
+    service.sendLocalOfficeMail(userDetails, PERSON_ID, localOfficeContactType, templateVars,
+        TEMPLATE_VERSION, GMC_REJECTED_LO);
 
     ArgumentCaptor<Map<String, Object>> sentTemplateCaptor = ArgumentCaptor.captor();
     verify(emailService).sendMessage(
@@ -1858,5 +1897,14 @@ class NotificationServiceTest {
     Map<String, Object> sentTemplate = sentTemplateCaptor.getValue();
     assertThat("Unexpected sent template size.", sentTemplate.size(), is(1));
     assertThat("Unexpected sent template element.", sentTemplate.get("key"), is("value"));
+  }
+
+  /**
+   * Provide all dummy user roles.
+   *
+   * @return The stream of dummy / placeholder / test user roles.
+   */
+  private static Stream<String> provideAllDummyUserRoles() {
+    return DUMMY_USER_ROLES.stream();
   }
 }

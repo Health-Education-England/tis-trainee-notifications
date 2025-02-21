@@ -44,6 +44,7 @@ import static uk.nhs.tis.trainee.notifications.service.NotificationService.CC_OF
 
 import jakarta.mail.MessagingException;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.TreeSet;
 import org.junit.jupiter.api.BeforeEach;
@@ -81,7 +82,7 @@ class GmcListenerTest {
   @Test
   void shouldThrowExceptionWhenGmcUpdatedAndSendingFails() throws MessagingException {
     doThrow(MessagingException.class).when(notificationService)
-        .sendLocalOfficeMail(any(), any(), any(), any(), any());
+        .sendLocalOfficeMail(any(), any(), any(), any(), any(), any());
 
     GmcUpdateEvent event
         = new GmcUpdateEvent("traineeId", new GmcDetails("1234567", "CONFIRMED"));
@@ -92,7 +93,7 @@ class GmcListenerTest {
   @Test
   void shouldThrowExceptionWhenGmcRejectedAndSendingFails() throws MessagingException {
     doThrow(MessagingException.class).when(notificationService)
-        .sendLocalOfficeMail(any(), any(), any(), any(), any());
+        .sendLocalOfficeMail(any(), any(), any(), any(), any(), any());
 
     GmcRejectedEvent event
         = new GmcRejectedEvent(TRAINEE_ID, TIS_TRIGGER, TIS_TRIGGER_DETAIL,
@@ -103,8 +104,8 @@ class GmcListenerTest {
 
   @Test
   void shouldIncludeUserDetailsInUpdateTemplateIfAvailable() throws MessagingException {
-    UserDetails userDetails
-        = new UserDetails(true, "traineeemail", "title", "family", "given", "1111111");
+    UserDetails userDetails = new UserDetails(
+            true, "traineeemail", "title", "family", "given", "1111111", List.of("role"));
     when(notificationService.getTraineeDetails(any())).thenReturn(userDetails);
 
     GmcUpdateEvent event
@@ -119,14 +120,14 @@ class GmcListenerTest {
     expectedTemplateVariables.put(GMC_NUMBER_FIELD, GMC_NO);
     expectedTemplateVariables.put(GMC_STATUS_FIELD, GMC_STATUS);
 
-    verify(notificationService).sendLocalOfficeMail(eq("traineeId"), eq(GMC_UPDATE),
-        eq(expectedTemplateVariables), any(), eq(NotificationType.GMC_UPDATED));
+    verify(notificationService).sendLocalOfficeMail(eq(userDetails), eq("traineeId"),
+        eq(GMC_UPDATE), eq(expectedTemplateVariables), any(), eq(NotificationType.GMC_UPDATED));
   }
 
   @Test
   void shouldIncludeUserDetailsInRejectTemplateIfAvailable() throws MessagingException {
-    UserDetails userDetails
-        = new UserDetails(true, "traineeemail", "title", "family", "given", "1111111");
+    UserDetails userDetails = new UserDetails(
+            true, "traineeemail", "title", "family", "given", "1111111", List.of("role"));
     when(notificationService.getTraineeDetails(any())).thenReturn(userDetails);
 
     GmcRejectedEvent event
@@ -144,7 +145,7 @@ class GmcListenerTest {
     expectedTemplateVariables.put(TIS_TRIGGER_FIELD, TIS_TRIGGER);
     expectedTemplateVariables.put(TIS_TRIGGER_DETAIL_FIELD, TIS_TRIGGER_DETAIL);
 
-    verify(notificationService).sendLocalOfficeMail(eq(TRAINEE_ID), eq(GMC_UPDATE),
+    verify(notificationService).sendLocalOfficeMail(eq(userDetails), eq(TRAINEE_ID), eq(GMC_UPDATE),
         eq(expectedTemplateVariables), any(), eq(GMC_REJECTED_LO));
   }
 
@@ -162,8 +163,8 @@ class GmcListenerTest {
     expectedTemplateVariables.put(GMC_NUMBER_FIELD, GMC_NO);
     expectedTemplateVariables.put(GMC_STATUS_FIELD, GMC_STATUS);
 
-    verify(notificationService).sendLocalOfficeMail(eq("traineeId"), eq(GMC_UPDATE),
-        eq(expectedTemplateVariables), any(), eq(NotificationType.GMC_UPDATED));
+    verify(notificationService).sendLocalOfficeMail(eq(null), eq("traineeId"),
+        eq(GMC_UPDATE), eq(expectedTemplateVariables), any(), eq(NotificationType.GMC_UPDATED));
   }
 
   @Test
@@ -183,14 +184,14 @@ class GmcListenerTest {
     expectedTemplateVariables.put(TIS_TRIGGER_FIELD, TIS_TRIGGER);
     expectedTemplateVariables.put(TIS_TRIGGER_DETAIL_FIELD, TIS_TRIGGER_DETAIL);
 
-    verify(notificationService).sendLocalOfficeMail(eq(TRAINEE_ID), eq(GMC_UPDATE),
+    verify(notificationService).sendLocalOfficeMail(eq(null), eq(TRAINEE_ID), eq(GMC_UPDATE),
         eq(expectedTemplateVariables), any(), eq(GMC_REJECTED_LO));
   }
 
   @Test
   void shouldIncludeCcedToInRejectTraineeTemplate() throws MessagingException {
-    UserDetails userDetails
-        = new UserDetails(true, "traineeemail", "title", "family", "given", "1111111");
+    UserDetails userDetails = new UserDetails(
+        true, "traineeemail", "title", "family", "given", "1111111", List.of("role"));
     when(notificationService.getTraineeDetails(any())).thenReturn(userDetails);
 
     Map<String, Object> expectedLoTemplateVariables = new HashMap<>();
@@ -205,8 +206,8 @@ class GmcListenerTest {
     TreeSet<String> losContacted = new TreeSet<>();
     losContacted.add("lo@2.com");
     losContacted.add("lo@1.com");
-    when(notificationService.sendLocalOfficeMail(eq(TRAINEE_ID), eq(GMC_UPDATE), any(),
-        eq(REJECT_LO_VERSION), eq(GMC_REJECTED_LO))).thenReturn(losContacted);
+    when(notificationService.sendLocalOfficeMail(eq(userDetails), eq(TRAINEE_ID), eq(GMC_UPDATE),
+        any(), eq(REJECT_LO_VERSION), eq(GMC_REJECTED_LO))).thenReturn(losContacted);
 
     GmcRejectedEvent event
         = new GmcRejectedEvent(TRAINEE_ID, TIS_TRIGGER, TIS_TRIGGER_DETAIL,
@@ -214,7 +215,7 @@ class GmcListenerTest {
 
     listener.handleGmcRejected(event);
 
-    verify(notificationService).sendLocalOfficeMail(TRAINEE_ID, GMC_UPDATE,
+    verify(notificationService).sendLocalOfficeMail(userDetails, TRAINEE_ID, GMC_UPDATE,
         expectedLoTemplateVariables, REJECT_LO_VERSION, GMC_REJECTED_LO);
 
     ArgumentCaptor<Map<String, Object>> sentTemplateVarsCaptor = ArgumentCaptor.captor();

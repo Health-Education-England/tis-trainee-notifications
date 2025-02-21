@@ -34,7 +34,6 @@ import java.util.HashMap;
 import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mapstruct.Mapping;
 import org.mockito.ArgumentCaptor;
 import org.quartz.SchedulerException;
 import uk.nhs.tis.trainee.notifications.dto.PlacementEvent;

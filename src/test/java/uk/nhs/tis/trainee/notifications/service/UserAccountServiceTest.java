@@ -58,7 +58,6 @@ class UserAccountServiceTest {
 
   private static final String USER_ID_1 = UUID.randomUUID().toString();
   private static final String PERSON_ID_1 = "1";
-  private static final String GMC_NUMBER = "111111";
 
   private static final String USER_ID_2 = UUID.randomUUID().toString();
   private static final String PERSON_ID_2 = "2";
