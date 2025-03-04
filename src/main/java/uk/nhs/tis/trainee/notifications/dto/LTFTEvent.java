@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright 2023 Crown Copyright (Health Education England)
+ * Copyright 2025 Crown Copyright (Health Education England)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
  * associated documentation files (the "Software"), to deal in the Software without restriction,
@@ -19,17 +19,19 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package uk.nhs.tis.trainee.notifications.model;
+package uk.nhs.tis.trainee.notifications.dto;
+
+import com.fasterxml.jackson.annotation.JsonProperty;
+import java.io.Serializable;
 
 /**
- * An enumeration of possible TIS reference (core entity) types.
+ * A LTFT event.
+ *
+ * @param tisId The TIS ID of the LTFT.
+ * @param recrd The record DTO map.
  */
-public enum TisReferenceType {
-
-  PLACEMENT,
-  PROGRAMME_MEMBERSHIP,
-  FORMR_PARTA,
-  FORMR_PARTB,
-  LTFT
+public record LTFTEvent(
+    String tisId,
+    @JsonProperty("record") RecordDto recrd) implements Serializable {
 
 }

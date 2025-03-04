@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright 2023 Crown Copyright (Health Education England)
+ * Copyright 2025 Crown Copyright (Health Education England)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
  * associated documentation files (the "Software"), to deal in the Software without restriction,
@@ -21,15 +21,18 @@
 
 package uk.nhs.tis.trainee.notifications.model;
 
+import lombok.Data;
+
 /**
- * An enumeration of possible TIS reference (core entity) types.
+ * An LTFT.
  */
-public enum TisReferenceType {
+@Data
+public class LTFT {
 
-  PLACEMENT,
-  PROGRAMME_MEMBERSHIP,
-  FORMR_PARTA,
-  FORMR_PARTB,
-  LTFT
-
+  private String traineeTisId;
+  private String personId;
+  private String formId;
+  private String ltftName;
+  private String ltftStatus;
+  private String dateChanged;
 }

@@ -47,6 +47,7 @@ public enum NotificationType {
   GMC_UPDATED("gmc-updated"),
   INDEMNITY_INSURANCE("indemnity-insurance"),
   LTFT("less-than-full-time"),
+  LTFT_STATUS_CHANGE("ltft-status-change"),
   NON_EMPLOYMENT("non-employment"),
   PLACEMENT_INFORMATION("placement-information"),
   PLACEMENT_ROLLOUT_2024_CORRECTION("placement-rollout-2024-correction"),
@@ -72,6 +73,15 @@ public enum NotificationType {
       PROGRAMME_UPDATED_WEEK_1,
       PROGRAMME_UPDATED_WEEK_0,
       PROGRAMME_CREATED);
+
+  /**
+   * The set of LTFT email notification types.
+   */
+  @Getter
+  private static final Set<NotificationType> ltftNotificationTypes = EnumSet.of(
+      LTFT_STATUS_CHANGE
+      );
+
 
   /**
    * The set of Programme Updated in-app notification types.
