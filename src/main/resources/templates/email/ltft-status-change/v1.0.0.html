@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+  <title>LTFT Application Status Update</title>
+</head>
+<body>
+<h1>Email Message</h1>
+<h2>Subject</h2>
+<th:block th:fragment="subject">Your LTFT Application Status Update</th:block>
+<h2>Content</h2>
+<th:block th:fragment="content">
+  <div style="text-align:right">
+    <img style="margin-right:25px" src='https://trainee.tis.nhs.uk/nhse-logo.png' alt="NHS England logo"/>
+  </div>
+  <p>Dear Dr Gilliam,</p>
+  <p>
+    The status of your LTFT application (ref: <span th:text="${ltft_name}"></span>) has changed to <span th:text="${status}"></span> on <span th:text="${timestamp}"></span>.
+  </p>
+  <p>Peace Out,<br />TIS Self-Service</p>
+  <p><strong>Application Reference:</strong> <span th:text="${form_id}"></span></p>
+</th:block>
+</body>
+</html>

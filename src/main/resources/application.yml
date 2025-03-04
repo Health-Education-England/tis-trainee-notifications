@@ -57,6 +57,8 @@ application:
       email: v1.0.0
     gmc-updated:
       email: v1.0.0
+    ltft-status-change:
+      email: v1.0.0
     indemnity-insurance:
       in-app: v1.0.0
     less-than-full-time:
