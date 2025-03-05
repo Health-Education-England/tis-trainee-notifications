@@ -22,7 +22,6 @@
 package uk.nhs.tis.trainee.notifications.service;
 
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.LTFT;
-import static uk.nhs.tis.trainee.notifications.model.TisReferenceType.PROGRAMME_MEMBERSHIP;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.PERSON_ID_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.TEMPLATE_NOTIFICATION_TYPE_FIELD;
 
@@ -45,7 +44,7 @@ import uk.nhs.tis.trainee.notifications.model.LTFT;
 import uk.nhs.tis.trainee.notifications.model.TisReferenceType;
 
 /**
- * A service for Programme memberships.
+ * A service for LTFTs.
  */
 
 @Slf4j
@@ -65,7 +64,7 @@ public class LTFTService {
   private final String ltftVersion;
 
   /**
-   * Initialise the programme membership service.
+   * Initialise the ltft service.
    *
    * @param historyService            The history service to use.
    * @param inAppService              The in-app service to use.
@@ -96,7 +95,7 @@ public class LTFTService {
     List<History> correspondence = historyService.findAllHistoryForTrainee(traineeId);
 
     Set<NotificationType> notificationTypes = new HashSet<>(
-        NotificationType.getProgrammeUpdateNotificationTypes());
+        NotificationType.getLtftNotificationTypes());
     notificationTypes.add(LTFT);
 
 
@@ -181,7 +180,7 @@ public class LTFTService {
   public void deleteScheduledNotificationsFromDb(LTFT ltft) {
 
     List<History> scheduledHistories = historyService
-        .findAllScheduledForTrainee(ltft.getPersonId(), PROGRAMME_MEMBERSHIP,
+        .findAllScheduledForTrainee(ltft.getPersonId(), LTFT,
             ltft.getFormId());
 
     for (History history : scheduledHistories) {
