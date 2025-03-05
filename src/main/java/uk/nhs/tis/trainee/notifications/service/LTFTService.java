@@ -22,6 +22,7 @@
 package uk.nhs.tis.trainee.notifications.service;
 
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.LTFT;
+import static uk.nhs.tis.trainee.notifications.model.TisReferenceType.PROGRAMME_MEMBERSHIP;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.PERSON_ID_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.TEMPLATE_NOTIFICATION_TYPE_FIELD;
 
@@ -180,7 +181,7 @@ public class LTFTService {
   public void deleteScheduledNotificationsFromDb(LTFT ltft) {
 
     List<History> scheduledHistories = historyService
-        .findAllScheduledForTrainee(ltft.getPersonId(), LTFT,
+        .findAllScheduledForTrainee(ltft.getPersonId(), TisReferenceType.LTFT,
             ltft.getFormId());
 
     for (History history : scheduledHistories) {
