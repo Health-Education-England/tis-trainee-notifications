@@ -19,37 +19,11 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package uk.nhs.tis.trainee.notifications.model;
-
-import java.time.Instant;
-import jdk.jshell.Snippet.Status;
-import lombok.Data;
-import uk.nhs.tis.trainee.notifications.model.content.LtftContent.Declarations;
-import uk.nhs.tis.trainee.notifications.model.content.LtftContent.Discussions;
-import uk.nhs.tis.trainee.notifications.model.content.LtftContent.Reasons;
+package uk.nhs.tis.trainee.notifications.model.content;
 
 /**
- * An LTFT.
+ * The types of available CCT changes.
  */
-@Data
-public class LTFT {
-
-  private String traineeTisId;
-  private String formRef;
-  private int revision;
-  private String name;
-
-  private PersonalDetails personalDetails;
-  private ProgrammeMembership programmeMembership;
-  private Declarations declarations;
-  private Discussions discussions;
-  private CctChange change;
-  private Reasons reasons;
-  private Person assignedAdmin;
-  private Status status;
-
-  private Instant created;
-  private Instant lastModified;
-
+public enum CctChangeType {
+  LTFT
 }
-

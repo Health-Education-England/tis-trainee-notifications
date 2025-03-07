@@ -122,13 +122,12 @@ public class LTFTService {
   public void addNotifications(LTFT ltft)
       throws SchedulerException {
 
-    //first delete any stale notifications
     deleteNotificationsFromScheduler(ltft);
     deleteScheduledNotificationsFromDb(ltft);
 
 
     Map<NotificationType, History> notificationsAlreadySent
-        = getLatestNotificationsSent(ltft.getPersonId(),
+        = getLatestNotificationsSent(ltft.getPersonalDetails().getId(),
         ltft.getTraineeTisId());
 
     createDirectLtftNotifications(ltft, notificationsAlreadySent);
@@ -150,7 +149,7 @@ public class LTFTService {
       JobDataMap ltftCreatedJobDataMap = new JobDataMap();
     ltftCreatedJobDataMap.put(TEMPLATE_NOTIFICATION_TYPE_FIELD, LTFT);
     ltftCreatedJobDataMap.put(TIS_ID_FIELD, ltft.getTraineeTisId());
-    ltftCreatedJobDataMap.put(PERSON_ID_FIELD, ltft.getPersonId());
+    ltftCreatedJobDataMap.put(PERSON_ID_FIELD, ltft.getTraineeTisId());
 
       String jobId = LTFT + "-" + ltft.getTraineeTisId();
 
@@ -181,11 +180,11 @@ public class LTFTService {
   public void deleteScheduledNotificationsFromDb(LTFT ltft) {
 
     List<History> scheduledHistories = historyService
-        .findAllScheduledForTrainee(ltft.getPersonId(), TisReferenceType.LTFT,
-            ltft.getFormId());
+        .findAllScheduledForTrainee(ltft.getTraineeTisId(), TisReferenceType.LTFT,
+            ltft.getFormRef());
 
     for (History history : scheduledHistories) {
-      historyService.deleteHistoryForTrainee(history.id(), ltft.getPersonId());
+      historyService.deleteHistoryForTrainee(history.id(), ltft.getTraineeTisId());
     }
   }
 }
