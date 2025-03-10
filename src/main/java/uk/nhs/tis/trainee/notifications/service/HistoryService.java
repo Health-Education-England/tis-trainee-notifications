@@ -25,6 +25,7 @@ import static uk.nhs.tis.trainee.notifications.model.MessageType.EMAIL;
 import static uk.nhs.tis.trainee.notifications.model.MessageType.IN_APP;
 import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.ARCHIVED;
 import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.FAILED;
+import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.PENDING;
 import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.READ;
 import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.SCHEDULED;
 import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.SENT;
@@ -56,7 +57,7 @@ import uk.nhs.tis.trainee.notifications.repository.HistoryRepository;
 public class HistoryService {
 
   private static final Map<MessageType, Set<NotificationStatus>> VALID_STATUSES = Map.of(
-      EMAIL, Set.of(FAILED, SENT),
+      EMAIL, Set.of(FAILED, PENDING, SENT),
       IN_APP, Set.of(ARCHIVED, READ, SCHEDULED, UNREAD)
   );
 

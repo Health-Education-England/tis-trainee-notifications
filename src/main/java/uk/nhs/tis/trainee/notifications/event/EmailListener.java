@@ -66,6 +66,19 @@ public class EmailListener {
   }
 
   /**
+   * Handle delivery events.
+   *
+   * @param event The email event from SES.
+   */
+  @SqsListener("${application.queues.email-delivery}")
+  void handleDelivery(EmailEvent event) {
+    String notificationId = getNotificationId(event);
+    log.info("Handling delivery for notification {}.", notificationId);
+
+    historyService.updateStatus(notificationId, NotificationStatus.SENT, null);
+  }
+
+  /**
    * Get the notification ID from the email event.
    *
    * @param event The email event to get the notification ID from.

@@ -205,7 +205,7 @@ public class EmailService {
             notificationId, attachments);
         mailSender.send(helper.getMimeMessage());
         log.info("Sent template {} to {}.", templateName, recipient);
-        status = NotificationStatus.SENT;
+        status = NotificationStatus.PENDING;
       } else {
         log.info("No email address available for trainee {}, this failure will be recorded.",
             traineeId);
@@ -271,7 +271,7 @@ public class EmailService {
           toResend.recipient().type(), updatedEmailAddress);
       History updatedHistory = new History(notificationId, toResend.tisReference(), toResend.type(),
           updatedRecipientInfo, updatedTemplateInfo, toResend.attachments(), toResend.sentAt(),
-          toResend.readAt(), NotificationStatus.SENT, null, Instant.now());
+          toResend.readAt(), NotificationStatus.PENDING, null, Instant.now());
       historyService.save(updatedHistory);
 
       log.info("Re-sent template {} to {}.", templateName, updatedEmailAddress);
