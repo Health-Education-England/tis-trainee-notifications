@@ -26,6 +26,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.FAILED;
+import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.SENT;
 
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
@@ -95,5 +96,15 @@ class EmailListenerTest {
     listener.handleFailure(event);
 
     verifyNoInteractions(historyService);
+  }
+
+  @Test
+  void shouldHandleDelivery() {
+    Mail mail = new Mail(List.of(new MailHeader("NotificationId", NOTIFICATION_ID)));
+    EmailEvent event = new EmailEvent("Delivery", mail, null, null);
+
+    listener.handleDelivery(event);
+
+    verify(historyService).updateStatus(NOTIFICATION_ID, SENT, null);
   }
 }

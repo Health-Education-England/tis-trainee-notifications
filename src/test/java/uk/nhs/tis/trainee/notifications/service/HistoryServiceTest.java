@@ -150,7 +150,7 @@ class HistoryServiceTest {
 
   @ParameterizedTest
   @EnumSource(value = NotificationStatus.class, mode = Mode.EXCLUDE,
-      names = {"FAILED", "SENT", "DELETED"})
+      names = {"FAILED", "PENDING", "SENT", "DELETED"})
   void shouldThrowExceptionWhenUpdatingEmailHistoryWithInvalidStatus(NotificationStatus status) {
     ObjectId notificationId = new ObjectId(NOTIFICATION_ID);
     RecipientInfo recipientInfo = new RecipientInfo(TRAINEE_ID, EMAIL, TRAINEE_CONTACT);
@@ -228,7 +228,7 @@ class HistoryServiceTest {
 
   @ParameterizedTest
   @EnumSource(value = NotificationStatus.class, mode = Mode.EXCLUDE,
-      names = {"FAILED", "SENT", "DELETED"})
+      names = {"FAILED", "PENDING", "SENT", "DELETED"})
   void shouldUpdateValidStatusWhenInAppHistoryFound(NotificationStatus status) {
     ObjectId notificationId = new ObjectId(NOTIFICATION_ID);
     RecipientInfo recipientInfo = new RecipientInfo(TRAINEE_ID, IN_APP, TRAINEE_CONTACT);
@@ -285,7 +285,8 @@ class HistoryServiceTest {
   }
 
   @ParameterizedTest
-  @EnumSource(value = NotificationStatus.class, mode = Mode.EXCLUDE, names = {"FAILED", "SENT"})
+  @EnumSource(value = NotificationStatus.class, mode = Mode.EXCLUDE,
+      names = {"FAILED", "PENDING", "SENT"})
   void shouldThrowExceptionWhenUpdatingEmailHistoryForTraineeWithInvalidStatus(
       NotificationStatus status) {
     ObjectId notificationId = new ObjectId(NOTIFICATION_ID);
@@ -366,8 +367,8 @@ class HistoryServiceTest {
   }
 
   @ParameterizedTest
-  @EnumSource(value = NotificationStatus.class, mode = Mode.EXCLUDE, names = {"FAILED", "SENT",
-      "DELETED"})
+  @EnumSource(value = NotificationStatus.class, mode = Mode.EXCLUDE,
+      names = {"FAILED", "PENDING", "SENT", "DELETED"})
   void shouldUpdateValidStatusForTraineeWhenInAppHistoryFound(NotificationStatus status) {
     ObjectId notificationId = new ObjectId(NOTIFICATION_ID);
     RecipientInfo recipientInfo = new RecipientInfo(TRAINEE_ID, IN_APP, TRAINEE_CONTACT);
