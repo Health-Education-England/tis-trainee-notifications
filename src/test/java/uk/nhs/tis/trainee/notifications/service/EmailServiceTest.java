@@ -44,6 +44,7 @@ import static org.springframework.http.MediaType.MULTIPART_RELATED_VALUE;
 import static org.springframework.http.MediaType.TEXT_HTML_VALUE;
 import static uk.nhs.tis.trainee.notifications.model.MessageType.EMAIL;
 import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.FAILED;
+import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.PENDING;
 import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.SCHEDULED;
 import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.SENT;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_CREATED;
@@ -497,7 +498,7 @@ class EmailServiceTest {
     assertThat("Unexpected notification id.", history.id(), notNullValue());
     assertThat("Unexpected notification type.", history.type(), is(notificationType));
     assertThat("Unexpected sent at.", history.sentAt(), notNullValue());
-    assertThat("Unexpected status.", history.status(), is(SENT));
+    assertThat("Unexpected status.", history.status(), is(PENDING));
     assertThat("Unexpected status detail.", history.statusDetail(), nullValue());
 
     RecipientInfo recipient = history.recipient();
@@ -552,7 +553,7 @@ class EmailServiceTest {
     assertThat("Unexpected notification id.", history.id(), is(notificationId));
     assertThat("Unexpected notification type.", history.type(), is(notificationType));
     assertThat("Unexpected sent at.", history.sentAt(), notNullValue());
-    assertThat("Unexpected status.", history.status(), is(SENT));
+    assertThat("Unexpected status.", history.status(), is(PENDING));
     assertThat("Unexpected status detail.", history.statusDetail(), nullValue());
 
     RecipientInfo recipient = history.recipient();
@@ -609,7 +610,7 @@ class EmailServiceTest {
     assertThat("Unexpected notification id.", history.id(), is(notificationId));
     assertThat("Unexpected notification type.", history.type(), is(notificationType));
     assertThat("Unexpected sent at.", history.sentAt(), is(sentAt));
-    assertThat("Unexpected status.", history.status(), is(SENT));
+    assertThat("Unexpected status.", history.status(), is(PENDING));
     assertThat("Unexpected status detail.", history.statusDetail(), nullValue());
     assertThat("Unexpected last retry.", history.lastRetry(), notNullValue());
 
