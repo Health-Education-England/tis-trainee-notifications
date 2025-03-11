@@ -312,8 +312,10 @@ public class NotificationService implements Job {
           .plus(immediateNotificationDelayMinutes, ChronoUnit.MINUTES));
     } else {
       // Future milestone.
+      int nineHoursInSeconds = 9 * 60 * 60;
+      long randomOffset = (long) (Math.random() * nineHoursInSeconds);
       milestone = Date.from(milestoneDate
-          .atStartOfDay()
+          .atStartOfDay().plusSeconds(randomOffset)
           .atZone(ZoneId.of(timezone))
           .toInstant());
     }

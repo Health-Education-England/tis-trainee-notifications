@@ -1198,18 +1198,41 @@ class NotificationServiceTest {
   }
 
   @Test
-  void shouldScheduleFutureMilestonesAtStartOfCorrectDay() {
+  void shouldScheduleFutureMilestonesAtUpToNineHoursAfterStartOfCorrectDay() {
     LocalDate startDate = LocalDate.now().plusMonths(12);
     int daysBeforeStart = 100;
     LocalDate milestoneDate = startDate.minusDays(daysBeforeStart);
-    Date expectedMilestone = Date.from(milestoneDate
-        .atStartOfDay()
+    Date expectedAfter = Date.from(milestoneDate
+        .atStartOfDay().minus(1, ChronoUnit.MILLIS)
+        .atZone(ZoneId.of(TIMEZONE))
+        .toInstant());
+    Date expectedBefore = Date.from(milestoneDate
+        .atStartOfDay().plusHours(9)
         .atZone(ZoneId.of(TIMEZONE))
         .toInstant());
 
     Date scheduledDate = service.getScheduleDate(startDate, daysBeforeStart);
 
-    assertThat("Unexpected scheduled date", scheduledDate, is(expectedMilestone));
+    assertThat("Unexpected early scheduled date", scheduledDate.after(expectedAfter),
+        is(true));
+    assertThat("Unexpected late scheduled date", scheduledDate.before(expectedBefore),
+        is(true));
+  }
+
+  @Test
+  void shouldScheduleFutureMilestonesWithRandomness() {
+    LocalDate startDate = LocalDate.now().plusMonths(12);
+    int daysBeforeStart = 100;
+
+    Date scheduledDate1 = service.getScheduleDate(startDate, daysBeforeStart);
+    Date scheduledDate2 = service.getScheduleDate(startDate, daysBeforeStart);
+    Date scheduledDate3 = service.getScheduleDate(startDate, daysBeforeStart);
+    //there is a less than 1 in 10^9 chance that all three dates are the same
+
+    assertThat("Unexpected repeated scheduled date: either you are exceptionally unlucky "
+            + "or something is wrong.",
+        scheduledDate1.equals(scheduledDate2) && scheduledDate1.equals(scheduledDate3),
+        is(false));
   }
 
   @Test
