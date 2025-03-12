@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright 2023 Crown Copyright (Health Education England)
+ * Copyright 2025 Crown Copyright (Health Education England)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
  * associated documentation files (the "Software"), to deal in the Software without restriction,
@@ -30,12 +30,7 @@ import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
-import uk.nhs.tis.trainee.notifications.dto.ContactDetailsEvent;
-import uk.nhs.tis.trainee.notifications.dto.FormUpdateEvent;
 import uk.nhs.tis.trainee.notifications.dto.LtftUpdateEvent;
-import uk.nhs.tis.trainee.notifications.mapper.ContactDetailsMapper;
-import uk.nhs.tis.trainee.notifications.model.ContactDetails;
-import uk.nhs.tis.trainee.notifications.service.ContactDetailsService;
 import uk.nhs.tis.trainee.notifications.service.EmailService;
 
 /**

@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright 2023 Crown Copyright (Health Education England)
+ * Copyright 2025 Crown Copyright (Health Education England)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
  * associated documentation files (the "Software"), to deal in the Software without restriction,
@@ -29,7 +29,6 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
-import static uk.nhs.tis.trainee.notifications.model.NotificationType.FORM_UPDATED;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.LTFT_UPDATED;
 
 import jakarta.mail.MessagingException;
@@ -39,7 +38,6 @@ import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
-import uk.nhs.tis.trainee.notifications.dto.FormUpdateEvent;
 import uk.nhs.tis.trainee.notifications.dto.LtftUpdateEvent;
 import uk.nhs.tis.trainee.notifications.service.EmailService;
 
@@ -64,7 +62,7 @@ class LtftListenerTest {
   }
 
   @Test
-  void shouldThrowExceptionWhenFormUpdatedAndSendingFails() throws MessagingException {
+  void shouldThrowExceptionWhenLtftUpdatedAndSendingFails() throws MessagingException {
     doThrow(MessagingException.class).when(emailService)
         .sendMessageToExistingUser(any(), any(), any(), any(), any());
 
@@ -75,7 +73,7 @@ class LtftListenerTest {
   }
 
   @Test
-  void shouldSetTraineeIdWhenFormUpdated() throws MessagingException {
+  void shouldSetTraineeIdWhenLtftUpdated() throws MessagingException {
     LtftUpdateEvent event = new LtftUpdateEvent(LTFT_NAME, LTFT_STATUS, TRAINEE_TIS_ID,
         FORM_REFERENCE, TIMESTAMP, LTFT_CONTENT);
 
@@ -85,7 +83,7 @@ class LtftListenerTest {
   }
 
   @Test
-  void shouldSetNotificationTypeWhenFormUpdated() throws MessagingException {
+  void shouldSetNotificationTypeWhenLtftUpdated() throws MessagingException {
     LtftUpdateEvent event = new LtftUpdateEvent(LTFT_NAME, LTFT_STATUS, TRAINEE_TIS_ID,
         FORM_REFERENCE, TIMESTAMP, LTFT_CONTENT);
 
@@ -95,7 +93,7 @@ class LtftListenerTest {
   }
 
   @Test
-  void shouldSetTemplateVersionWhenFormUpdated() throws MessagingException {
+  void shouldSetTemplateVersionWhenLtftUpdated() throws MessagingException {
     LtftUpdateEvent event = new LtftUpdateEvent(LTFT_NAME, LTFT_STATUS, TRAINEE_TIS_ID,
         FORM_REFERENCE, TIMESTAMP, LTFT_CONTENT);
 
@@ -105,7 +103,7 @@ class LtftListenerTest {
   }
 
   @Test
-  void shouldIncludeFormNameWhenFormUpdated() throws MessagingException {
+  void shouldIncludeFormNameWhenLtftUpdated() throws MessagingException {
     LtftUpdateEvent event = new LtftUpdateEvent(LTFT_NAME, LTFT_STATUS, TRAINEE_TIS_ID,
         FORM_REFERENCE, TIMESTAMP, LTFT_CONTENT);
 
@@ -120,7 +118,7 @@ class LtftListenerTest {
   }
 
   @Test
-  void shouldIncludeLifecycleStateWhenFormUpdated() throws MessagingException {
+  void shouldIncludeLifecycleStateWhenLtftUpdated() throws MessagingException {
     LtftUpdateEvent event = new LtftUpdateEvent(LTFT_NAME, LTFT_STATUS, TRAINEE_TIS_ID,
         FORM_REFERENCE, TIMESTAMP, LTFT_CONTENT);
 
@@ -136,7 +134,7 @@ class LtftListenerTest {
   }
 
   @Test
-  void shouldIncludeFormTypeWhenFormUpdated() throws MessagingException {
+  void shouldIncludeFormTypeWhenLtftUpdated() throws MessagingException {
     LtftUpdateEvent event = new LtftUpdateEvent(LTFT_NAME, LTFT_STATUS, TRAINEE_TIS_ID,
         FORM_REFERENCE, TIMESTAMP, LTFT_CONTENT);
 
@@ -151,7 +149,7 @@ class LtftListenerTest {
   }
 
   @Test
-  void shouldIncludeUpdateDateWhenFormUpdated() throws MessagingException {
+  void shouldIncludeUpdateDateWhenLtftUpdated() throws MessagingException {
     LtftUpdateEvent event = new LtftUpdateEvent(LTFT_NAME, LTFT_STATUS, TRAINEE_TIS_ID,
         FORM_REFERENCE, TIMESTAMP, LTFT_CONTENT);
 
