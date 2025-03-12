@@ -22,6 +22,7 @@
 package uk.nhs.tis.trainee.notifications.service;
 
 import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.CoreMatchers.not;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -60,6 +61,7 @@ import static uk.nhs.tis.trainee.notifications.service.NotificationService.CONTA
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.CONTACT_TYPE_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.DEFAULT_NO_CONTACT_MESSAGE;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.DUMMY_USER_ROLES;
+import static uk.nhs.tis.trainee.notifications.service.NotificationService.NINE_HOURS_IN_SECONDS;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.PERSON_ID_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.TEMPLATE_CONTACT_HREF_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.TEMPLATE_NOTIFICATION_TYPE_FIELD;
@@ -718,7 +720,7 @@ class NotificationServiceTest {
         .thenReturn(true);
 
     String jobId = notificationType + "-" + TIS_ID;
-    service.scheduleNotification(jobId, programmeJobDataMap, when);
+    service.scheduleNotification(jobId, programmeJobDataMap, when, 0L);
 
     // create job in scheduler
     ArgumentCaptor<JobDetail> jobDetailCaptor = ArgumentCaptor.captor();
@@ -787,7 +789,7 @@ class NotificationServiceTest {
         .thenReturn(true);
 
     String jobId = notificationType + "-" + TIS_ID;
-    service.scheduleNotification(jobId, placementJobDataMap, when);
+    service.scheduleNotification(jobId, placementJobDataMap, when, 0L);
 
     // create job in scheduler
     ArgumentCaptor<JobDetail> jobDetailCaptor = ArgumentCaptor.captor();
@@ -854,7 +856,7 @@ class NotificationServiceTest {
         .thenReturn(true);
 
     String jobId = NotificationType.PROGRAMME_CREATED + "-" + TIS_ID;
-    service.scheduleNotification(jobId, programmeJobDataMap, when);
+    service.scheduleNotification(jobId, programmeJobDataMap, when, 0L);
 
     verify(historyService, never()).save(any());
   }
@@ -880,7 +882,7 @@ class NotificationServiceTest {
         .thenReturn(true);
 
     String jobId = NotificationType.PROGRAMME_CREATED + "-" + TIS_ID;
-    service.scheduleNotification(jobId, programmeJobDataMap, when);
+    service.scheduleNotification(jobId, programmeJobDataMap, when, 0L);
 
     verify(historyService, never()).save(any());
   }
@@ -908,7 +910,7 @@ class NotificationServiceTest {
         .thenReturn(false);
 
     String jobId = NotificationType.PROGRAMME_DAY_ONE + "-" + TIS_ID;
-    service.scheduleNotification(jobId, programmeJobDataMap, when);
+    service.scheduleNotification(jobId, programmeJobDataMap, when, 0L);
 
     verify(historyService, never()).save(any());
   }
@@ -934,7 +936,7 @@ class NotificationServiceTest {
         .thenReturn(true);
 
     String jobId = NotificationType.PLACEMENT_UPDATED_WEEK_12 + "-" + TIS_ID;
-    service.scheduleNotification(jobId, placementJobDataMap, when);
+    service.scheduleNotification(jobId, placementJobDataMap, when, 0L);
 
     verify(historyService, never()).save(any());
   }
@@ -960,7 +962,7 @@ class NotificationServiceTest {
         .thenReturn(false);
 
     String jobId = NotificationType.PLACEMENT_UPDATED_WEEK_12 + "-" + TIS_ID;
-    service.scheduleNotification(jobId, placementJobDataMap, when);
+    service.scheduleNotification(jobId, placementJobDataMap, when, 0L);
 
     verify(historyService, never()).save(any());
   }
@@ -1198,18 +1200,54 @@ class NotificationServiceTest {
   }
 
   @Test
-  void shouldScheduleFutureMilestonesAtStartOfCorrectDay() {
+  void shouldScheduleFutureMilestonesAtUpToNineHoursAfterStartOfCorrectDay() {
     LocalDate startDate = LocalDate.now().plusMonths(12);
     int daysBeforeStart = 100;
     LocalDate milestoneDate = startDate.minusDays(daysBeforeStart);
-    Date expectedMilestone = Date.from(milestoneDate
-        .atStartOfDay()
+    Date expectedAfter = Date.from(milestoneDate
+        .atStartOfDay().minus(1, ChronoUnit.MILLIS)
+        .atZone(ZoneId.of(TIMEZONE))
+        .toInstant());
+    Date expectedBefore = Date.from(milestoneDate
+        .atStartOfDay().plusHours(9)
         .atZone(ZoneId.of(TIMEZONE))
         .toInstant());
 
     Date scheduledDate = service.getScheduleDate(startDate, daysBeforeStart);
 
-    assertThat("Unexpected scheduled date", scheduledDate, is(expectedMilestone));
+    assertThat("Unexpected early scheduled date", scheduledDate.after(expectedAfter),
+        is(true));
+    assertThat("Unexpected late scheduled date", scheduledDate.before(expectedBefore),
+        is(true));
+  }
+
+  @Test
+  void shouldScheduleJobsWithRandomness() throws SchedulerException {
+    LocalDate startDate = LocalDate.now().plusMonths(12);
+    int daysBeforeStart = 100;
+    Date scheduledDate = service.getScheduleDate(startDate, daysBeforeStart);
+    JobDataMap jobDataMap = new JobDataMap(Map.of(
+        PERSON_ID_FIELD, PERSON_ID,
+        TIS_ID_FIELD, TIS_ID,
+        TEMPLATE_NOTIFICATION_TYPE_FIELD, PROGRAMME_CREATED
+    ));
+    UserDetails userAccountDetails = new UserDetails(false, USER_EMAIL, USER_TITLE,
+        USER_FAMILY_NAME, USER_GIVEN_NAME, USER_GMC);
+    when(emailService.getRecipientAccountByEmail(USER_EMAIL)).thenReturn(userAccountDetails);
+    when(restTemplate.getForObject(ACCOUNT_DETAILS_URL, UserDetails.class,
+        Map.of(TIS_ID_FIELD, PERSON_ID))).thenReturn(userAccountDetails);
+
+    service.scheduleNotification("id1", jobDataMap, scheduledDate, NINE_HOURS_IN_SECONDS);
+    service.scheduleNotification("id2", jobDataMap, scheduledDate, NINE_HOURS_IN_SECONDS);
+    service.scheduleNotification("id3", jobDataMap, scheduledDate, NINE_HOURS_IN_SECONDS);
+
+    ArgumentCaptor<Trigger> triggerCaptor = ArgumentCaptor.forClass(Trigger.class);
+    verify(scheduler, times(3)).scheduleJob(any(), triggerCaptor.capture());
+    //there is a less than 1 in 10^9 chance that all three dates are the same
+    assertThat("Unexpected repeated scheduled date: either you are exceptionally unlucky "
+            + "or something is wrong.",
+        triggerCaptor.getAllValues().stream().map(Trigger::getStartTime).distinct().count(),
+        not(1));
   }
 
   @Test

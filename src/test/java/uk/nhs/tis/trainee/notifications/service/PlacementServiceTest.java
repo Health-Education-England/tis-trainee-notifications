@@ -29,6 +29,7 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
@@ -47,6 +48,7 @@ import static uk.nhs.tis.trainee.notifications.model.NotificationType.USEFUL_INF
 import static uk.nhs.tis.trainee.notifications.model.TisReferenceType.PLACEMENT;
 import static uk.nhs.tis.trainee.notifications.model.TisReferenceType.PROGRAMME_MEMBERSHIP;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.CONTACT_TYPE_FIELD;
+import static uk.nhs.tis.trainee.notifications.service.NotificationService.NINE_HOURS_IN_SECONDS;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.PERSON_ID_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.TEMPLATE_OWNER_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.PlacementService.GMC_NUMBER_FIELD;
@@ -217,7 +219,7 @@ class PlacementServiceTest {
 
     service.addNotifications(placement);
 
-    verify(notificationService, never()).scheduleNotification(any(), any(), any());
+    verify(notificationService, never()).scheduleNotification(any(), any(), any(), anyLong());
     verifyNoInteractions(inAppService);
   }
 
@@ -232,7 +234,7 @@ class PlacementServiceTest {
 
     service.addNotifications(placement);
 
-    verify(notificationService, never()).scheduleNotification(any(), any(), any());
+    verify(notificationService, never()).scheduleNotification(any(), any(), any(), anyLong());
     verifyNoInteractions(inAppService);
   }
 
@@ -246,7 +248,7 @@ class PlacementServiceTest {
 
     service.addNotifications(placement);
 
-    verify(notificationService, never()).scheduleNotification(any(), any(), any());
+    verify(notificationService, never()).scheduleNotification(any(), any(), any(), anyLong());
     verifyNoInteractions(inAppService);
   }
 
@@ -279,7 +281,8 @@ class PlacementServiceTest {
     verify(notificationService).scheduleNotification(
         stringCaptor.capture(),
         jobDataMapCaptor.capture(),
-        dateCaptor.capture()
+        dateCaptor.capture(),
+        eq(NINE_HOURS_IN_SECONDS)
     );
 
     //verify the details of the last notification added
@@ -331,7 +334,8 @@ class PlacementServiceTest {
     verify(notificationService).scheduleNotification(
         stringCaptor.capture(),
         jobDataMapCaptor.capture(),
-        dateCaptor.capture()
+        dateCaptor.capture(),
+        eq(0L) //immediate
     );
 
     //verify the details of the last notification added
@@ -384,7 +388,7 @@ class PlacementServiceTest {
 
     service.addNotifications(placement);
 
-    verify(notificationService, never()).scheduleNotification(any(), any(), any());
+    verify(notificationService, never()).scheduleNotification(any(), any(), any(), anyLong());
   }
 
   @Test
@@ -404,7 +408,8 @@ class PlacementServiceTest {
     service.addNotifications(placement);
 
     String expectedNotificationJobId = PLACEMENT_UPDATED_WEEK_12 + "-" + TIS_ID;
-    verify(notificationService).scheduleNotification(eq(expectedNotificationJobId), any(), any());
+    verify(notificationService)
+        .scheduleNotification(eq(expectedNotificationJobId), any(), any(), anyLong());
   }
 
   @Test
@@ -437,7 +442,7 @@ class PlacementServiceTest {
 
     service.addNotifications(placement);
 
-    verify(notificationService, never()).scheduleNotification(any(), any(), any());
+    verify(notificationService, never()).scheduleNotification(any(), any(), any(), anyLong());
   }
 
   @Test
@@ -463,7 +468,7 @@ class PlacementServiceTest {
 
     String expectedNotificationJobId = PLACEMENT_UPDATED_WEEK_12 + "-" + TIS_ID;
     verify(notificationService)
-        .scheduleNotification(eq(expectedNotificationJobId), any(), any());
+        .scheduleNotification(eq(expectedNotificationJobId), any(), any(), anyLong());
   }
 
   @Test
@@ -488,7 +493,8 @@ class PlacementServiceTest {
     service.addNotifications(placement);
 
     String expectedNotificationJobId = PLACEMENT_UPDATED_WEEK_12 + "-" + TIS_ID;
-    verify(notificationService).scheduleNotification(eq(expectedNotificationJobId), any(), any());
+    verify(notificationService)
+        .scheduleNotification(eq(expectedNotificationJobId), any(), any(), anyLong());
   }
 
   @Test
@@ -513,7 +519,8 @@ class PlacementServiceTest {
     service.addNotifications(placement);
 
     String expectedNotificationJobId = PLACEMENT_UPDATED_WEEK_12 + "-" + TIS_ID;
-    verify(notificationService).scheduleNotification(eq(expectedNotificationJobId), any(), any());
+    verify(notificationService)
+        .scheduleNotification(eq(expectedNotificationJobId), any(), any(), anyLong());
   }
 
   @ParameterizedTest
@@ -541,7 +548,8 @@ class PlacementServiceTest {
     service.addNotifications(placement);
 
     ArgumentCaptor<String> stringCaptor = ArgumentCaptor.captor();
-    verify(notificationService).scheduleNotification(stringCaptor.capture(), any(), any());
+    verify(notificationService)
+        .scheduleNotification(stringCaptor.capture(), any(), any(), anyLong());
     String notExpectedNotificationJobId = notificationTypeAlreadySent + "-" + TIS_ID;
     assertThat(stringCaptor.getValue(), not(notExpectedNotificationJobId));
   }
@@ -568,7 +576,8 @@ class PlacementServiceTest {
     verify(notificationService).scheduleNotification(
         any(),
         any(),
-        dateCaptor.capture()
+        dateCaptor.capture(),
+        eq(NINE_HOURS_IN_SECONDS)
     );
 
     Date when = dateCaptor.getValue();
@@ -628,7 +637,7 @@ class PlacementServiceTest {
 
     service.addNotifications(placement);
 
-    verify(notificationService).scheduleNotification(any(), any(), any());
+    verify(notificationService).scheduleNotification(any(), any(), any(), anyLong());
   }
 
   @Test
@@ -641,7 +650,7 @@ class PlacementServiceTest {
     placement.setPlacementType(IN_POST);
 
     doThrow(new SchedulerException())
-        .when(notificationService).scheduleNotification(any(), any(), any());
+        .when(notificationService).scheduleNotification(any(), any(), any(), anyLong());
 
     assertThrows(SchedulerException.class,
         () -> service.addNotifications(placement));
@@ -667,7 +676,7 @@ class PlacementServiceTest {
     when(historyService.findAllForTrainee(PERSON_ID)).thenReturn(sentNotifications);
     //should skip week-12 notification and attempt to schedule the rollout correction notification
     doThrow(new SchedulerException())
-        .when(notificationService).scheduleNotification(any(), any(), any());
+        .when(notificationService).scheduleNotification(any(), any(), any(), anyLong());
 
     assertThrows(SchedulerException.class,
         () -> service.addNotifications(placement));

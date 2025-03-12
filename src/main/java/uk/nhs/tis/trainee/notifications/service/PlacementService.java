@@ -28,6 +28,7 @@ import static uk.nhs.tis.trainee.notifications.model.NotificationType.PLACEMENT_
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PLACEMENT_UPDATED_WEEK_12;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.USEFUL_INFORMATION;
 import static uk.nhs.tis.trainee.notifications.model.TisReferenceType.PLACEMENT;
+import static uk.nhs.tis.trainee.notifications.service.NotificationService.NINE_HOURS_IN_SECONDS;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.PERSON_ID_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.TEMPLATE_NOTIFICATION_TYPE_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.TEMPLATE_OWNER_FIELD;
@@ -267,7 +268,7 @@ public class PlacementService {
 
       String jobId = PLACEMENT_UPDATED_WEEK_12 + "-" + placement.getTisId();
       try {
-        notificationService.scheduleNotification(jobId, jobDataMap, when);
+        notificationService.scheduleNotification(jobId, jobDataMap, when, NINE_HOURS_IN_SECONDS);
       } catch (SchedulerException e) {
         log.error("Failed to schedule notification {}: {}", jobId, e.toString());
         throw (e); //to allow message to be requeue-ed
@@ -285,7 +286,7 @@ public class PlacementService {
       String jobId = PLACEMENT_ROLLOUT_2024_CORRECTION + "-" + placement.getTisId();
       try {
         Date sendInMinute = Date.from(Instant.now().plus(1, ChronoUnit.MINUTES));
-        notificationService.scheduleNotification(jobId, jobDataMap, sendInMinute);
+        notificationService.scheduleNotification(jobId, jobDataMap, sendInMinute, 0L);
       } catch (SchedulerException e) {
         log.error("Failed to schedule notification {}: {}", jobId, e.toString());
         throw (e); //to allow message to be requeue-ed
