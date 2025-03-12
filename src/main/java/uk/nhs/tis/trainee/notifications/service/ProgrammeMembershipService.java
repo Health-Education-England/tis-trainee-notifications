@@ -31,6 +31,7 @@ import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_DAY_ONE;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.SPONSORSHIP;
 import static uk.nhs.tis.trainee.notifications.model.TisReferenceType.PROGRAMME_MEMBERSHIP;
+import static uk.nhs.tis.trainee.notifications.service.NotificationService.NINE_HOURS_IN_SECONDS;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.PERSON_ID_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.TEMPLATE_NOTIFICATION_TYPE_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.TEMPLATE_OWNER_FIELD;
@@ -276,7 +277,8 @@ public class ProgrammeMembershipService {
       if (scheduleWhen == null) {
         notificationService.executeNow(jobId, pmCreatedJobDataMap);
       } else {
-        notificationService.scheduleNotification(jobId, pmCreatedJobDataMap, scheduleWhen);
+        notificationService.scheduleNotification(jobId, pmCreatedJobDataMap, scheduleWhen,
+            NINE_HOURS_IN_SECONDS);
       }
     }
 
@@ -303,7 +305,7 @@ public class ProgrammeMembershipService {
         notificationService.executeNow(jobId, pmDayOneJobDataMap);
       } else {
         notificationService.scheduleNotification(jobId, pmDayOneJobDataMap,
-            Date.from(startDate.atStartOfDay(timezone).toInstant()));
+            Date.from(startDate.atStartOfDay(timezone).toInstant()), NINE_HOURS_IN_SECONDS);
       }
     }
   }
