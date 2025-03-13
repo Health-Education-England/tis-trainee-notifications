@@ -38,6 +38,7 @@ import software.amazon.awssdk.services.cognitoidentityprovider.CognitoIdentityPr
 import software.amazon.awssdk.services.cognitoidentityprovider.model.AttributeType;
 import software.amazon.awssdk.services.cognitoidentityprovider.model.ListUsersRequest;
 import software.amazon.awssdk.services.cognitoidentityprovider.model.ListUsersResponse;
+import software.amazon.awssdk.services.cognitoidentityprovider.model.TooManyRequestsException;
 import software.amazon.awssdk.services.cognitoidentityprovider.model.UserNotFoundException;
 import software.amazon.awssdk.services.cognitoidentityprovider.model.UserType;
 import software.amazon.awssdk.services.cognitoidentityprovider.paginators.ListUsersIterable;
@@ -161,21 +162,25 @@ public class UserAccountService {
    * @return The found user account details.
    */
   private UserDetails getUserDetails(ListUsersRequest request) {
-    ListUsersResponse response = cognitoClient.listUsers(request);
+    //--------------TEST: DO NOT PUSH TO PROD - TOO MANY REQUESTS
+    throw TooManyRequestsException.builder().message("Test: Too many requests.").build();
+    //--------------TEST: END
 
-    if (!response.hasUsers() || response.users().isEmpty()) {
-      throw UserNotFoundException.builder().message("No matching user exists.").build();
-    }
-
-    Map<String, String> attributes = response.users().get(0).attributes().stream()
-        .collect(Collectors.toMap(AttributeType::name, AttributeType::value));
-
-    return new UserDetails(
-        true,
-        attributes.get(ATTRIBUTE_EMAIL),
-        null,
-        attributes.get(ATTRIBUTE_FAMILY_NAME),
-        attributes.get(ATTRIBUTE_GIVEN_NAME),
-        null);
+//    ListUsersResponse response = cognitoClient.listUsers(request);
+//
+//    if (!response.hasUsers() || response.users().isEmpty()) {
+//      throw UserNotFoundException.builder().message("No matching user exists.").build();
+//    }
+//
+//    Map<String, String> attributes = response.users().get(0).attributes().stream()
+//        .collect(Collectors.toMap(AttributeType::name, AttributeType::value));
+//
+//    return new UserDetails(
+//        true,
+//        attributes.get(ATTRIBUTE_EMAIL),
+//        null,
+//        attributes.get(ATTRIBUTE_FAMILY_NAME),
+//        attributes.get(ATTRIBUTE_GIVEN_NAME),
+//        null);
   }
 }
