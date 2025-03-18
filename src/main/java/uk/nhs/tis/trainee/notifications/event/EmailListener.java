@@ -44,14 +44,14 @@ public class EmailListener {
   }
 
   /**
-   * Handle failure events, such as bounce and complaints.
+   * Handle email events, such as delivery, bounce and complaints.
    *
    * @param event The email event from SES.
    */
-  @SqsListener("${application.queues.email-failure}")
-  void handleFailure(EmailEvent event) {
+  @SqsListener("${application.queues.email-event}")
+  void handleEmailEvent(EmailEvent event) {
     String notificationId = getNotificationId(event);
-    log.info("Handling failure for notification {}.", notificationId);
+    log.info("Handling email event for notification {}.", notificationId);
 
     String reason = switch (event.notificationType()) {
       case "Bounce" -> getReason(event.bounce());
@@ -62,20 +62,10 @@ public class EmailListener {
     if (reason != null) {
       log.info("Updating notification {} with failure detail '{}'", notificationId, reason);
       historyService.updateStatus(notificationId, NotificationStatus.FAILED, reason);
+    } else {
+      log.info("Delivered notification {}", notificationId);
+      historyService.updateStatus(notificationId, NotificationStatus.SENT, null);
     }
-  }
-
-  /**
-   * Handle delivery events.
-   *
-   * @param event The email event from SES.
-   */
-  @SqsListener("${application.queues.email-delivery}")
-  void handleDelivery(EmailEvent event) {
-    String notificationId = getNotificationId(event);
-    log.info("Handling delivery for notification {}.", notificationId);
-
-    historyService.updateStatus(notificationId, NotificationStatus.SENT, null);
   }
 
   /**

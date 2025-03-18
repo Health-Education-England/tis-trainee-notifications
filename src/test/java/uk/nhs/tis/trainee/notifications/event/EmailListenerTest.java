@@ -24,7 +24,6 @@ package uk.nhs.tis.trainee.notifications.event;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoInteractions;
 import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.FAILED;
 import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.SENT;
 
@@ -58,16 +57,16 @@ class EmailListenerTest {
     Mail mail = new Mail(List.of());
     EmailEvent event = new EmailEvent("bounce", mail, null, null);
 
-    assertThrows(IllegalArgumentException.class, () -> listener.handleFailure(event));
+    assertThrows(IllegalArgumentException.class, () -> listener.handleEmailEvent(event));
   }
 
   @Test
-  void shouldHandleFailureWhenBounceEvent() {
+  void shouldHandleEmailEventWhenBounceEvent() {
     Mail mail = new Mail(List.of(new MailHeader("NotificationId", NOTIFICATION_ID)));
     Bounce bounce = new Bounce("type1", "type2");
     EmailEvent event = new EmailEvent("Bounce", mail, bounce, null);
 
-    listener.handleFailure(event);
+    listener.handleEmailEvent(event);
 
     verify(historyService).updateStatus(NOTIFICATION_ID, FAILED, "Bounce: type1 - type2");
   }
@@ -78,32 +77,22 @@ class EmailListenerTest {
       null  | type2 | Complaint: type2
       null  | null  | Complaint: Undetermined
       """)
-  void shouldHandleFailureWhenComplaintEvent(String subType, String feedbackType, String message) {
+  void shouldHandleEmailEventWhenComplaintEvent(String subType, String feedbackType, String message) {
     Mail mail = new Mail(List.of(new MailHeader("NotificationId", NOTIFICATION_ID)));
     Complaint complaint = new Complaint(subType, feedbackType);
     EmailEvent event = new EmailEvent("Complaint", mail, null, complaint);
 
-    listener.handleFailure(event);
+    listener.handleEmailEvent(event);
 
     verify(historyService).updateStatus(NOTIFICATION_ID, FAILED, message);
   }
 
   @Test
-  void shouldNotHandleFailureWhenDeliveryEvent() {
+  void shouldHandleEmailEventWhenDeliveryEvent() {
     Mail mail = new Mail(List.of(new MailHeader("NotificationId", NOTIFICATION_ID)));
     EmailEvent event = new EmailEvent("Delivery", mail, null, null);
 
-    listener.handleFailure(event);
-
-    verifyNoInteractions(historyService);
-  }
-
-  @Test
-  void shouldHandleDelivery() {
-    Mail mail = new Mail(List.of(new MailHeader("NotificationId", NOTIFICATION_ID)));
-    EmailEvent event = new EmailEvent("Delivery", mail, null, null);
-
-    listener.handleDelivery(event);
+    listener.handleEmailEvent(event);
 
     verify(historyService).updateStatus(NOTIFICATION_ID, SENT, null);
   }
