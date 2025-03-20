@@ -28,6 +28,7 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
@@ -48,6 +49,7 @@ import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.SPONSORSHIP;
 import static uk.nhs.tis.trainee.notifications.model.TisReferenceType.PROGRAMME_MEMBERSHIP;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.CONTACT_TYPE_FIELD;
+import static uk.nhs.tis.trainee.notifications.service.NotificationService.NINE_HOURS_IN_SECONDS;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.PERSON_ID_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.PlacementService.GMC_NUMBER_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.BLOCK_INDEMNITY_FIELD;
@@ -263,7 +265,7 @@ class ProgrammeMembershipServiceTest {
 
     service.addNotifications(programmeMembership);
 
-    verify(notificationService, never()).scheduleNotification(any(), any(), any());
+    verify(notificationService, never()).scheduleNotification(any(), any(), any(), anyLong());
     verifyNoInteractions(inAppService);
   }
 
@@ -697,7 +699,8 @@ class ProgrammeMembershipServiceTest {
     verify(notificationService).scheduleNotification(
         dayOneStringCaptor.capture(),
         dayOneJobDataMapCaptor.capture(),
-        eq(Date.from(START_DATE.atStartOfDay(timezone).toInstant())));
+        eq(Date.from(START_DATE.atStartOfDay(timezone).toInstant())),
+        eq(NINE_HOURS_IN_SECONDS));
 
     String dayOneJobId = dayOneStringCaptor.getValue();
     String dayOneExpectedJobId = PROGRAMME_DAY_ONE + "-" + TIS_ID;
@@ -750,7 +753,7 @@ class ProgrammeMembershipServiceTest {
     ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
     service.addNotifications(programmeMembership);
 
-    verify(notificationService, never()).scheduleNotification(any(), any(), any());
+    verify(notificationService, never()).scheduleNotification(any(), any(), any(), anyLong());
     verify(notificationService, never()).executeNow(any(), any());
   }
 
@@ -818,7 +821,8 @@ class ProgrammeMembershipServiceTest {
     verify(notificationService).executeNow(eq(programmeCreatedExpectedJobId), any());
 
     String dayOneExpectedJobId = PROGRAMME_DAY_ONE + "-" + TIS_ID;
-    verify(notificationService).scheduleNotification(eq(dayOneExpectedJobId), any(), any());
+    verify(notificationService)
+        .scheduleNotification(eq(dayOneExpectedJobId), any(), any(), eq(NINE_HOURS_IN_SECONDS));
   }
 
   @Test
@@ -892,7 +896,8 @@ class ProgrammeMembershipServiceTest {
     verify(notificationService).executeNow(eq(programmeCreatedExpectedJobId), any());
 
     String dayOneExpectedJobId = PROGRAMME_DAY_ONE + "-" + TIS_ID;
-    verify(notificationService).scheduleNotification(eq(dayOneExpectedJobId), any(), any());
+    verify(notificationService)
+        .scheduleNotification(eq(dayOneExpectedJobId), any(), any(), eq(NINE_HOURS_IN_SECONDS));
   }
 
   @Test
@@ -960,7 +965,8 @@ class ProgrammeMembershipServiceTest {
     LocalDate expectedWhen = LocalDate.now().plusDays(DEFERRAL_IF_MORE_THAN_DAYS + 1 - 50);
     Date expectedWhenDate = Date.from(
         expectedWhen.atStartOfDay(timezone).toInstant());
-    verify(notificationService).scheduleNotification(any(), any(), eq(expectedWhenDate));
+    verify(notificationService)
+        .scheduleNotification(any(), any(), eq(expectedWhenDate), eq(NINE_HOURS_IN_SECONDS));
     verify(notificationService, never()).executeNow(any(), any());
   }
 
@@ -1043,7 +1049,8 @@ class ProgrammeMembershipServiceTest {
     LocalDate expectedWhen = LocalDate.now().plusDays(DEFERRAL_IF_MORE_THAN_DAYS + 1 - 50);
     Date expectedWhenDate = Date.from(
         expectedWhen.atStartOfDay(timezone).toInstant());
-    verify(notificationService).scheduleNotification(any(), any(), eq(expectedWhenDate));
+    verify(notificationService)
+        .scheduleNotification(any(), any(), eq(expectedWhenDate), eq(NINE_HOURS_IN_SECONDS));
     verify(notificationService, never()).executeNow(any(), any());
   }
 
@@ -1146,7 +1153,7 @@ class ProgrammeMembershipServiceTest {
     ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
     service.addNotifications(programmeMembership);
 
-    verify(notificationService, never()).scheduleNotification(any(), any(), any());
+    verify(notificationService, never()).scheduleNotification(any(), any(), any(), anyLong());
     verify(notificationService, never()).executeNow(any(), any());
   }
 
@@ -1440,7 +1447,7 @@ class ProgrammeMembershipServiceTest {
     when(historyService.findAllHistoryForTrainee(PERSON_ID)).thenReturn(sentNotifications);
 
     doThrow(new SchedulerException())
-        .when(notificationService).scheduleNotification(any(), any(), any());
+        .when(notificationService).scheduleNotification(any(), any(), any(), anyLong());
 
     ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
 
