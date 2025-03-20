@@ -46,6 +46,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Random;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
@@ -96,6 +97,7 @@ public class NotificationService implements Job {
   public static final String API_TRAINEE_LOCAL_OFFICE_CONTACTS
       = "/api/trainee-profile/local-office-contacts/{tisId}/{contactTypeName}";
   private static final String TRIGGER_ID_PREFIX = "trigger-";
+  public static final long NINE_HOURS_IN_SECONDS = 9 * 60 * 60L;
 
   public static final String TEMPLATE_NOTIFICATION_TYPE_FIELD = "notificationType";
   public static final String TEMPLATE_OWNER_CONTACT_FIELD = "localOfficeContact";
@@ -119,6 +121,8 @@ public class NotificationService implements Job {
   private final List<String> notificationsWhitelist;
   private final String timezone;
   protected final Integer immediateNotificationDelayMinutes;
+
+  private Random random;
 
   /**
    * Initialise the Notification Service.
@@ -155,6 +159,7 @@ public class NotificationService implements Job {
     this.immediateNotificationDelayMinutes = notificationDelay;
     this.notificationsWhitelist = notificationsWhitelist;
     this.timezone = timezone;
+    this.random = new Random();
   }
 
   /**
@@ -258,7 +263,7 @@ public class NotificationService implements Job {
    * @param when       The date to schedule the notification to be sent.
    * @throws SchedulerException if the job could not be scheduled.
    */
-  public void scheduleNotification(String jobId, JobDataMap jobDataMap, Date when)
+  private void scheduleNotification(String jobId, JobDataMap jobDataMap, Date when)
       throws SchedulerException {
     // schedule notification in Scheduler
     JobDetail job = newJob(NotificationService.class)
@@ -277,6 +282,23 @@ public class NotificationService implements Job {
 
     // save SCHEDULED history in DB
     saveScheduleHistory(jobDataMap, when);
+  }
+
+  /**
+   * Schedule a notification with a randomised offset.
+   *
+   * @param jobId           The job id. This must be unique for programme membership / placement and
+   *                        notification milestone.
+   * @param jobDataMap      The map of job data.
+   * @param when            The date to schedule the notification to be sent.
+   * @param windowInSeconds The randomised window in seconds.
+   * @throws SchedulerException if the job could not be scheduled.
+   */
+  public void scheduleNotification(String jobId, JobDataMap jobDataMap, Date when,
+      long windowInSeconds) throws SchedulerException {
+    long randomOffset = random.nextLong(windowInSeconds + 1);
+    Date randomisedWhen = Date.from(when.toInstant().plusSeconds(randomOffset));
+    scheduleNotification(jobId, jobDataMap, randomisedWhen);
   }
 
   /**
