@@ -45,6 +45,7 @@ public enum NotificationType {
   GMC_REJECTED_LO("gmc-rejected-lo"),
   GMC_REJECTED_TRAINEE("gmc-rejected-trainee"),
   GMC_UPDATED("gmc-updated"),
+  LTFT_UPDATED("ltft-updated"),
   INDEMNITY_INSURANCE("indemnity-insurance"),
   LTFT("less-than-full-time"),
   NON_EMPLOYMENT("non-employment"),
