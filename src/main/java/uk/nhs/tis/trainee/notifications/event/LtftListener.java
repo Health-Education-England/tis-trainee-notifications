@@ -59,7 +59,7 @@ public class LtftListener {
    * @param event The LTFT update event message.
    * @throws MessagingException If the message could not be sent.
    */
-  @SqsListener("${application.queues.ltft-updated}")
+  @SqsListener("${application.queues.ltft.status-update}")
   public void handleLtftUpdate(LtftUpdateEvent event) throws MessagingException {
     log.info("Handling LTFT update event {}.", event);
 
@@ -69,9 +69,9 @@ public class LtftListener {
     templateVariables.put("timestamp", event.timestamp());
     templateVariables.put("formRef", event.formRef());
 
-    String traineeId = event.traineeTisId();
-    emailService.sendMessageToExistingUser(traineeId, LTFT_UPDATED, templateVersion,
+    String traineeTisId = event.traineeTisId();
+    emailService.sendMessageToExistingUser(traineeTisId, LTFT_UPDATED, templateVersion,
         templateVariables, null);
-    log.info("LTFT updated notification sent for trainee {}.", traineeId);
+    log.info("LTFT updated notification sent for trainee {}.", traineeTisId);
   }
 }
