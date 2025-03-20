@@ -34,6 +34,7 @@ import static uk.nhs.tis.trainee.notifications.event.GmcListener.TRAINEE_ID_FIEL
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.GMC_REJECTED_LO;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.GMC_REJECTED_TRAINEE;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.GMC_UPDATED;
+import static uk.nhs.tis.trainee.notifications.model.NotificationType.LTFT_UPDATED;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PLACEMENT_ROLLOUT_2024_CORRECTION;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PLACEMENT_UPDATED_WEEK_12;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_CREATED;
@@ -685,7 +686,7 @@ class EmailServiceIntegrationTest {
       case PLACEMENT_UPDATED_WEEK_12, PLACEMENT_ROLLOUT_2024_CORRECTION, PROGRAMME_CREATED,
            PROGRAMME_DAY_ONE, EMAIL_UPDATED_NEW, EMAIL_UPDATED_OLD, COJ_CONFIRMATION,
            CREDENTIAL_REVOKED, FORM_UPDATED, GMC_UPDATED, GMC_REJECTED_LO,
-           GMC_REJECTED_TRAINEE -> 1;
+          GMC_REJECTED_TRAINEE, LTFT_UPDATED -> 1;
       default -> 0;
     };
   }
