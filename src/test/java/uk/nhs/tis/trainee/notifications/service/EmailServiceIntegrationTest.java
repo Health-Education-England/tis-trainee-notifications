@@ -34,7 +34,6 @@ import static uk.nhs.tis.trainee.notifications.event.GmcListener.TRAINEE_ID_FIEL
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.GMC_REJECTED_LO;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.GMC_REJECTED_TRAINEE;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.GMC_UPDATED;
-import static uk.nhs.tis.trainee.notifications.model.NotificationType.LTFT_UPDATED;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PLACEMENT_ROLLOUT_2024_CORRECTION;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PLACEMENT_UPDATED_WEEK_12;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_CREATED;
