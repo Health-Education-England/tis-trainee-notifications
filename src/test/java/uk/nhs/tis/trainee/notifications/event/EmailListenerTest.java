@@ -33,7 +33,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
-import org.junit.jupiter.params.provider.ValueSource;
 import uk.nhs.tis.trainee.notifications.dto.EmailEvent;
 import uk.nhs.tis.trainee.notifications.dto.EmailEvent.Bounce;
 import uk.nhs.tis.trainee.notifications.dto.EmailEvent.Complaint;
@@ -80,7 +79,8 @@ class EmailListenerTest {
       null  | type2 | Complaint: type2
       null  | null  | Complaint: Undetermined
       """)
-  void shouldHandleEmailEventWhenComplaintEvent(String subType, String feedbackType, String message) {
+  void shouldHandleEmailEventWhenComplaintEvent(String subType, String feedbackType,
+      String message) {
     Mail mail = new Mail(List.of(new MailHeader("NotificationId", NOTIFICATION_ID),
         new MailHeader("timestamp", TIMESTAMP.toString())));
     Complaint complaint = new Complaint(subType, feedbackType);

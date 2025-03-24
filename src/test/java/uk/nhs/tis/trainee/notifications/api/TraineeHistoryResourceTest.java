@@ -242,7 +242,8 @@ class TraineeHistoryResourceTest {
   @ParameterizedTest
   @ValueSource(strings = {"archive", "mark-read", "mark-unread"})
   void shouldReturnNotFoundWhenUpdatingStatusAndNotificationNotFound(String path) throws Exception {
-    when(service.updateStatus(TRAINEE_ID, NOTIFICATION_ID, READ, null)).thenReturn(Optional.empty());
+    when(service.updateStatus(TRAINEE_ID, NOTIFICATION_ID, READ, null))
+        .thenReturn(Optional.empty());
 
     mockMvc.perform(
             put("/api/history/trainee/notification/{notificationId}/{path}", NOTIFICATION_ID, path)
