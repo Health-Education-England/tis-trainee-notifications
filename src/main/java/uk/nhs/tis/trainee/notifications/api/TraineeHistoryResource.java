@@ -126,7 +126,7 @@ public class TraineeHistoryResource {
     }
 
     log.info("Archiving notification {}.", notificationId);
-    Optional<HistoryDto> history = service.updateStatus(traineeId, notificationId, ARCHIVED);
+    Optional<HistoryDto> history = service.updateStatus(traineeId, notificationId, ARCHIVED, null);
     return ResponseEntity.of(history);
   }
 
@@ -148,7 +148,7 @@ public class TraineeHistoryResource {
     }
 
     log.info("Marking notification {} as read.", notificationId);
-    Optional<HistoryDto> history = service.updateStatus(traineeId, notificationId, READ);
+    Optional<HistoryDto> history = service.updateStatus(traineeId, notificationId, READ, null);
     return ResponseEntity.of(history);
   }
 
@@ -170,7 +170,7 @@ public class TraineeHistoryResource {
     }
 
     log.info("Marking notification {} as unread.", notificationId);
-    Optional<HistoryDto> history = service.updateStatus(traineeId, notificationId, UNREAD);
+    Optional<HistoryDto> history = service.updateStatus(traineeId, notificationId, UNREAD, null);
     return ResponseEntity.of(history);
   }
 

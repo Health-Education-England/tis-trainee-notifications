@@ -529,9 +529,9 @@ class EmailServiceTest {
       throws MessagingException {
     ObjectId notificationId = ObjectId.get();
     History latestScheduledHistory = new History(notificationId, null, notificationType,
-        null, null, null, null, null, SCHEDULED, null, null);
+        null, null, null, null, null, SCHEDULED, null, null, null);
     History redundantScheduledHistory = new History(notificationId, null, notificationType,
-        null, null, null, null, null, SCHEDULED, null, null);
+        null, null, null, null, null, SCHEDULED, null, null, null);
     when(historyService.findScheduledEmailForTraineeByRefAndType(any(), any(), any(), any()))
         .thenReturn(latestScheduledHistory);
     when(userAccountService.getUserDetailsById(USER_ID)).thenReturn(
@@ -599,7 +599,7 @@ class EmailServiceTest {
     ObjectId notificationId = ObjectId.get();
     History toResend = new History(notificationId, tisReferenceInfo, notificationType,
         recipientInfo,
-        templateInfo, null, sentAt, null, FAILED, "bounced", null);
+        templateInfo, null, sentAt, null, FAILED, "bounced", null, null);
     service.resendMessage(toResend, "newemailaddress");
 
     ArgumentCaptor<History> historyCaptor = ArgumentCaptor.captor();
@@ -651,7 +651,7 @@ class EmailServiceTest {
 
     ObjectId notificationId = ObjectId.get();
     History toResend = new History(notificationId, tisReferenceInfo, PROGRAMME_CREATED,
-        recipientInfo, templateInfo, null, sentAt, null, FAILED, "bounced", null);
+        recipientInfo, templateInfo, null, sentAt, null, FAILED, "bounced", null, null);
     service.resendMessage(toResend, "newemailaddress");
 
     verify(mailSender, never()).send(any(MimeMessage.class));
@@ -686,7 +686,7 @@ class EmailServiceTest {
     String template = "<div>Test message body</div>";
     TisReferenceInfo tisReferenceInfo = new TisReferenceInfo(REFERENCE_TABLE, REFERENCE_KEY);
     History scheduledHistory = new History(ObjectId.get(), null, NOTIFICATION_TYPE,
-        null, null, null, null, null, SCHEDULED, null, null);
+        null, null, null, null, null, SCHEDULED, null, null, null);
     when(templateService.process(any(), eq(Set.of("content")), (Context) any())).thenReturn(
         template);
     when(historyService.findAllScheduledEmailForTraineeByRefAndType(any(), any(), any(), any()))
@@ -705,7 +705,7 @@ class EmailServiceTest {
     String template = "<div>Test message body</div>";
     TisReferenceInfo tisReferenceInfo = new TisReferenceInfo(REFERENCE_TABLE, REFERENCE_KEY);
     History scheduledHistory = new History(ObjectId.get(), null, NOTIFICATION_TYPE,
-        null, null, null, null, null, SCHEDULED, null, null);
+        null, null, null, null, null, SCHEDULED, null, null, null);
     when(templateService.process(any(), eq(Set.of("content")), (Context) any())).thenReturn(
         template);
     when(historyService.findAllScheduledEmailForTraineeByRefAndType(any(), any(), any(), any()))

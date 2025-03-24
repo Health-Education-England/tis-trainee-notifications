@@ -184,7 +184,7 @@ class EventBroadcastServiceTest {
     TisReferenceInfo tisReferenceInfo = new TisReferenceInfo(TIS_REFERENCE_TYPE, TIS_REFERENCE_ID);
     History history = new History(HISTORY_ID, tisReferenceInfo, NOTIFICATION_TYPE,
         recipientInfo, templateInfo, null, SENT_AT, READ_AT, NOTIFICATION_STATUS,
-        NOTIFICATION_STATUS_DETAIL, LAST_RETRY);
+        NOTIFICATION_STATUS_DETAIL, LAST_RETRY, null);
 
     service.publishNotificationsEvent(history);
 
@@ -298,7 +298,7 @@ class EventBroadcastServiceTest {
     RecipientInfo recipientInfo = new RecipientInfo(null, null, null);
     TemplateInfo templateInfo = new TemplateInfo(null, null, Map.of());
     TisReferenceInfo tisReferenceInfo = new TisReferenceInfo(null, null);
-    return new History(HISTORY_ID, tisReferenceInfo, NOTIFICATION_TYPE,
-        recipientInfo, templateInfo, null, SENT_AT, READ_AT, NOTIFICATION_STATUS, null, null);
+    return new History(HISTORY_ID, tisReferenceInfo, NOTIFICATION_TYPE, recipientInfo, templateInfo,
+        null, SENT_AT, READ_AT, NOTIFICATION_STATUS, null, null, null);
   }
 }

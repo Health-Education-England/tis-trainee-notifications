@@ -68,7 +68,7 @@ class EmailListenerTest {
 
     listener.handleEmailEvent(event);
 
-    verify(historyService).updateStatus(NOTIFICATION_ID, FAILED, "Bounce: type1 - type2");
+    verify(historyService).updateStatus(NOTIFICATION_ID, FAILED, "Bounce: type1 - type2", null);
   }
 
   @ParameterizedTest
@@ -84,7 +84,7 @@ class EmailListenerTest {
 
     listener.handleEmailEvent(event);
 
-    verify(historyService).updateStatus(NOTIFICATION_ID, FAILED, message);
+    verify(historyService).updateStatus(NOTIFICATION_ID, FAILED, message, null);
   }
 
   @Test
@@ -94,6 +94,6 @@ class EmailListenerTest {
 
     listener.handleEmailEvent(event);
 
-    verify(historyService).updateStatus(NOTIFICATION_ID, SENT, null);
+    verify(historyService).updateStatus(NOTIFICATION_ID, SENT, null, null);
   }
 }

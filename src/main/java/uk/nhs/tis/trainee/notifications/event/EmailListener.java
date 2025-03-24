@@ -22,11 +22,14 @@
 package uk.nhs.tis.trainee.notifications.event;
 
 import io.awspring.cloud.sqs.annotation.SqsListener;
+import java.time.Instant;
+import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import uk.nhs.tis.trainee.notifications.dto.EmailEvent;
 import uk.nhs.tis.trainee.notifications.dto.EmailEvent.Bounce;
 import uk.nhs.tis.trainee.notifications.dto.EmailEvent.Complaint;
+import uk.nhs.tis.trainee.notifications.dto.EmailEvent.Mail.MailHeader;
 import uk.nhs.tis.trainee.notifications.model.NotificationStatus;
 import uk.nhs.tis.trainee.notifications.service.HistoryService;
 
@@ -59,12 +62,18 @@ public class EmailListener {
       default -> null;
     };
 
+    Instant timestamp = event.mail().headers().stream()
+        .filter(mh -> mh.name().equals("timestamp")).findFirst()
+        .map(MailHeader::value)
+        .map(Instant::parse)
+        .orElse(null);
+
     if (reason != null) {
       log.info("Updating notification {} with failure detail '{}'", notificationId, reason);
-      historyService.updateStatus(notificationId, NotificationStatus.FAILED, reason);
+      historyService.updateStatus(notificationId, NotificationStatus.FAILED, reason, timestamp);
     } else {
       log.info("Delivered notification {}", notificationId);
-      historyService.updateStatus(notificationId, NotificationStatus.SENT, null);
+      historyService.updateStatus(notificationId, NotificationStatus.SENT, null, timestamp);
     }
   }
 

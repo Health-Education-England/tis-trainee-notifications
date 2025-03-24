@@ -533,6 +533,7 @@ public class NotificationService implements Job {
           null,
           NotificationStatus.SCHEDULED,
           null,
+          null,
           null);
       historyService.save(history);
     }

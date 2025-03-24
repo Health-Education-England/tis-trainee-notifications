@@ -219,7 +219,7 @@ public class EmailService {
           templateVersion, templateVariables);
       History history = new History(notificationId, tisReferenceInfo, notificationType,
           recipientInfo, templateInfo, attachments, Instant.now(), null, status, statusDetail,
-          null);
+          null, Instant.now());
       historyService.save(history);
 
       log.info("Finish processing send job {} to {}.", templateName, recipient);
@@ -271,7 +271,8 @@ public class EmailService {
           toResend.recipient().type(), updatedEmailAddress);
       History updatedHistory = new History(notificationId, toResend.tisReference(), toResend.type(),
           updatedRecipientInfo, updatedTemplateInfo, toResend.attachments(), toResend.sentAt(),
-          toResend.readAt(), NotificationStatus.PENDING, null, Instant.now());
+          toResend.readAt(), NotificationStatus.PENDING, null, Instant.now(),
+          Instant.now());
       historyService.save(updatedHistory);
 
       log.info("Re-sent template {} to {}.", templateName, updatedEmailAddress);
