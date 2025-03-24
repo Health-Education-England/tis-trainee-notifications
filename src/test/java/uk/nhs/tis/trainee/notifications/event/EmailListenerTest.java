@@ -27,11 +27,13 @@ import static org.mockito.Mockito.verify;
 import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.FAILED;
 import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.SENT;
 
+import java.time.Instant;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import uk.nhs.tis.trainee.notifications.dto.EmailEvent;
 import uk.nhs.tis.trainee.notifications.dto.EmailEvent.Bounce;
 import uk.nhs.tis.trainee.notifications.dto.EmailEvent.Complaint;
@@ -42,6 +44,7 @@ import uk.nhs.tis.trainee.notifications.service.HistoryService;
 class EmailListenerTest {
 
   private static final String NOTIFICATION_ID = "40";
+  private static final Instant TIMESTAMP = Instant.now();
 
   private EmailListener listener;
   private HistoryService historyService;
@@ -78,17 +81,29 @@ class EmailListenerTest {
       null  | null  | Complaint: Undetermined
       """)
   void shouldHandleEmailEventWhenComplaintEvent(String subType, String feedbackType, String message) {
-    Mail mail = new Mail(List.of(new MailHeader("NotificationId", NOTIFICATION_ID)));
+    Mail mail = new Mail(List.of(new MailHeader("NotificationId", NOTIFICATION_ID),
+        new MailHeader("timestamp", TIMESTAMP.toString())));
     Complaint complaint = new Complaint(subType, feedbackType);
     EmailEvent event = new EmailEvent("Complaint", mail, null, complaint);
 
     listener.handleEmailEvent(event);
 
-    verify(historyService).updateStatus(NOTIFICATION_ID, FAILED, message, null);
+    verify(historyService).updateStatus(NOTIFICATION_ID, FAILED, message, TIMESTAMP);
   }
 
   @Test
   void shouldHandleEmailEventWhenDeliveryEvent() {
+    Mail mail = new Mail(List.of(new MailHeader("NotificationId", NOTIFICATION_ID),
+        new MailHeader("timestamp", TIMESTAMP.toString())));
+    EmailEvent event = new EmailEvent("Delivery", mail, null, null);
+
+    listener.handleEmailEvent(event);
+
+    verify(historyService).updateStatus(NOTIFICATION_ID, SENT, null, TIMESTAMP);
+  }
+
+  @Test
+  void shouldHandleEmailEventWhenTimestampMissing() {
     Mail mail = new Mail(List.of(new MailHeader("NotificationId", NOTIFICATION_ID)));
     EmailEvent event = new EmailEvent("Delivery", mail, null, null);
 

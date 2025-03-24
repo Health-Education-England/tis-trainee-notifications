@@ -985,4 +985,62 @@ class HistoryServiceTest {
 
     verify(templateService).process(any(), eq(Set.of()), anyMap());
   }
+
+  @Test
+  void shouldNotUpdateStatusWhenTimestampIsOlderThanExisting() {
+    ObjectId notificationId = new ObjectId(NOTIFICATION_ID);
+    RecipientInfo recipientInfo = new RecipientInfo(TRAINEE_ID, EMAIL, TRAINEE_CONTACT);
+    TemplateInfo templateInfo = new TemplateInfo(TEMPLATE_NAME, TEMPLATE_VERSION, TEMPLATE_VARIABLES);
+    TisReferenceInfo tisReferenceInfo = new TisReferenceInfo(TIS_REFERENCE_TYPE, TIS_REFERENCE_ID);
+
+    Instant existingTimestamp = Instant.now();
+    Instant olderTimestamp = existingTimestamp.minusSeconds(60);
+
+    History foundHistory = new History(notificationId, tisReferenceInfo, PROGRAMME_CREATED,
+        recipientInfo, templateInfo, null, Instant.now(), null, UNREAD, null, null,
+        existingTimestamp);
+
+    when(repository.findById(notificationId)).thenReturn(Optional.of(foundHistory));
+    when(repository.updateStatusIfNewer(notificationId, olderTimestamp, SENT, null)).thenReturn(0);
+
+    Optional<HistoryDto> updatedHistory = service.updateStatus(NOTIFICATION_ID, SENT, null,
+        olderTimestamp);
+
+    assertThat("Unexpected updated history.", updatedHistory,
+        is(Optional.of(mapper.toDto(foundHistory))));
+    verify(repository, never()).save(any());
+    verify(repository).updateStatusIfNewer(notificationId, olderTimestamp, SENT, null);
+    verifyNoInteractions(eventBroadcastService);
+  }
+
+  @Test
+  void shouldUpdateStatusWhenTimestampIsNewerThanExisting() {
+    ObjectId notificationId = new ObjectId(NOTIFICATION_ID);
+    RecipientInfo recipientInfo = new RecipientInfo(TRAINEE_ID, EMAIL, TRAINEE_CONTACT);
+    TemplateInfo templateInfo = new TemplateInfo(TEMPLATE_NAME, TEMPLATE_VERSION, TEMPLATE_VARIABLES);
+    TisReferenceInfo tisReferenceInfo = new TisReferenceInfo(TIS_REFERENCE_TYPE, TIS_REFERENCE_ID);
+
+    Instant existingTimestamp = Instant.now();
+    Instant newerTimestamp = existingTimestamp.plusSeconds(60);
+    String statusDetail = "Updated status detail";
+
+    History foundHistory = new History(notificationId, tisReferenceInfo, PROGRAMME_CREATED,
+        recipientInfo, templateInfo, null, Instant.now(), null, UNREAD, null, null,
+        existingTimestamp);
+
+    History updatedHistory = new History(notificationId, tisReferenceInfo, PROGRAMME_CREATED,
+        recipientInfo, templateInfo, null, Instant.now(), null, SENT, statusDetail, null,
+        newerTimestamp);
+
+    when(repository.findById(notificationId)).thenReturn(Optional.of(foundHistory));
+    when(repository.updateStatusIfNewer(notificationId, newerTimestamp, SENT, statusDetail)).thenReturn(1);
+    when(repository.findById(notificationId)).thenReturn(Optional.of(updatedHistory));
+
+    Optional<HistoryDto> result = service.updateStatus(NOTIFICATION_ID, SENT, statusDetail, newerTimestamp);
+
+    assertThat("Unexpected updated history.", result, is(Optional.of(mapper.toDto(updatedHistory))));
+    verify(repository, never()).save(any());
+    verify(repository).updateStatusIfNewer(notificationId, newerTimestamp, SENT, statusDetail);
+    verify(eventBroadcastService).publishNotificationsEvent(updatedHistory);
+  }
 }
