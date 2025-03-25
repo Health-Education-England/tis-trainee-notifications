@@ -61,18 +61,14 @@ public class EmailListener {
       default -> null;
     };
 
-    Instant timestamp = event.mail().headers().stream()
-        .filter(mh -> mh.name().equals("timestamp")).findFirst()
-        .map(MailHeader::value)
-        .map(Instant::parse)
-        .orElse(null);
-
     if (reason != null) {
       log.info("Updating notification {} with failure detail '{}'", notificationId, reason);
-      historyService.updateStatus(notificationId, NotificationStatus.FAILED, reason, timestamp);
+      historyService.updateStatus(notificationId, NotificationStatus.FAILED, reason,
+          event.mail().timestamp());
     } else {
       log.info("Delivered notification {}", notificationId);
-      historyService.updateStatus(notificationId, NotificationStatus.SENT, null, timestamp);
+      historyService.updateStatus(notificationId, NotificationStatus.SENT, null,
+          event.mail().timestamp());
     }
   }
 

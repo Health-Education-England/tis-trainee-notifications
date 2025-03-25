@@ -31,6 +31,8 @@ import static org.mockito.ArgumentMatchers.any;
 import static uk.nhs.tis.trainee.notifications.TestContainerConfiguration.MONGODB;
 import static uk.nhs.tis.trainee.notifications.model.MessageType.EMAIL;
 import static uk.nhs.tis.trainee.notifications.model.MessageType.IN_APP;
+import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.FAILED;
+import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.PENDING;
 import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.SCHEDULED;
 import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.SENT;
 import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.UNREAD;
@@ -593,5 +595,93 @@ class HistoryServiceIntegrationTest {
     body.children().forEach(
         contentNode -> assertThat("Unexpected node type.", contentNode.tagName(),
             either(is("p")).or(is("ul"))));
+  }
+
+  @Test
+  void shouldUpdateStatusWhenNewStatusTimestampIsNewer() {
+    // Given a history record with an older status timestamp
+    RecipientInfo recipientInfo = new RecipientInfo(TRAINEE_ID, EMAIL, TRAINEE_CONTACT);
+    TemplateInfo templateInfo
+        = new TemplateInfo(TEMPLATE_NAME, TEMPLATE_VERSION, TEMPLATE_VARIABLES);
+    TisReferenceInfo tisReferenceInfo = new TisReferenceInfo(TIS_REFERENCE_TYPE, TIS_REFERENCE_ID);
+    Instant olderTimestamp = Instant.now().minus(Duration.ofDays(1));
+
+    History history = new History(NOTIFICATION_ID, tisReferenceInfo, PROGRAMME_DAY_ONE,
+        recipientInfo, templateInfo, null, SENT_AT, READ_AT, PENDING, null, olderTimestamp);
+    service.save(history);
+
+    // When attempting to update with a newer timestamp
+    Instant newerTimestamp = Instant.now();
+    service.updateStatus(NOTIFICATION_ID.toString(), FAILED, "Update with newer timestamp",
+        newerTimestamp);
+
+    // Then the status should be updated
+    Optional<History> updatedHistory = service.findAllHistoryForTrainee(TRAINEE_ID).stream()
+        .filter(h -> h.id().equals(NOTIFICATION_ID))
+        .findFirst();
+    assertThat("History should be present", updatedHistory.isPresent(), is(true));
+    assertThat("Unexpected status", updatedHistory.get().status(), is(FAILED));
+    assertThat("Unexpected status detail", updatedHistory.get().statusDetail(),
+        is("Update with newer timestamp"));
+    assertThat("Unexpected status timestamp", updatedHistory.get().latestStatusEventAt(),
+        is(newerTimestamp.truncatedTo(ChronoUnit.MILLIS)));
+  }
+
+  @Test
+  void shouldNotUpdateStatusWhenNewStatusTimestampIsOlder() {
+    // Given a history record with a newer status timestamp
+    RecipientInfo recipientInfo = new RecipientInfo(TRAINEE_ID, EMAIL, TRAINEE_CONTACT);
+    TemplateInfo templateInfo
+        = new TemplateInfo(TEMPLATE_NAME, TEMPLATE_VERSION, TEMPLATE_VARIABLES);
+    TisReferenceInfo tisReferenceInfo = new TisReferenceInfo(TIS_REFERENCE_TYPE, TIS_REFERENCE_ID);
+    Instant newerTimestamp = Instant.now();
+
+    History history = new History(NOTIFICATION_ID, tisReferenceInfo, FORM_UPDATED, recipientInfo,
+        templateInfo, null, SENT_AT, READ_AT, SENT, null, newerTimestamp);
+    service.save(history);
+
+    // When attempting to update with an older timestamp
+    Instant olderTimestamp = Instant.now().minus(Duration.ofDays(1));
+    service.updateStatus(NOTIFICATION_ID.toString(), FAILED, "Update with older timestamp",
+        olderTimestamp);
+
+    // Then the status should not be updated
+    Optional<History> updatedHistory = service.findAllHistoryForTrainee(TRAINEE_ID).stream()
+        .filter(h -> h.id().equals(NOTIFICATION_ID))
+        .findFirst();
+    assertThat("History should be present", updatedHistory.isPresent(), is(true));
+    assertThat("Status should not change", updatedHistory.get().status(), is(SENT));
+    assertThat("Status timestamp should not change",
+        updatedHistory.get().latestStatusEventAt(),
+        is(newerTimestamp.truncatedTo(ChronoUnit.MILLIS)));
+  }
+
+  @Test
+  void shouldUpdateStatusWhenCurrentTimestampIsNull() {
+    // Given a history record with no status timestamp
+    RecipientInfo recipientInfo = new RecipientInfo(TRAINEE_ID, EMAIL, TRAINEE_CONTACT);
+    TemplateInfo templateInfo
+        = new TemplateInfo(TEMPLATE_NAME, TEMPLATE_VERSION, TEMPLATE_VARIABLES);
+    TisReferenceInfo tisReferenceInfo = new TisReferenceInfo(TIS_REFERENCE_TYPE, TIS_REFERENCE_ID);
+
+    History history = new History(NOTIFICATION_ID, tisReferenceInfo, FORM_UPDATED, recipientInfo,
+        templateInfo, null, SENT_AT, READ_AT, SENT, null, null);
+    service.save(history);
+
+    // When updating with any timestamp
+    Instant updateTimestamp = Instant.now();
+    service.updateStatus(NOTIFICATION_ID.toString(), FAILED, "Update with new timestamp",
+        updateTimestamp);
+
+    // Then the status should be updated
+    Optional<History> updatedHistory = service.findAllHistoryForTrainee(TRAINEE_ID).stream()
+        .filter(h -> h.id().equals(NOTIFICATION_ID))
+        .findFirst();
+    assertThat("History should be present", updatedHistory.isPresent(), is(true));
+    assertThat("Unexpected status", updatedHistory.get().status(), is(FAILED));
+    assertThat("Unexpected status detail", updatedHistory.get().statusDetail(),
+        is("Update with new timestamp"));
+    assertThat("Unexpected status timestamp", updatedHistory.get().latestStatusEventAt(),
+        is(updateTimestamp.truncatedTo(ChronoUnit.MILLIS)));
   }
 }

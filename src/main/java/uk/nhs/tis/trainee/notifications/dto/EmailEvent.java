@@ -21,6 +21,7 @@
 
 package uk.nhs.tis.trainee.notifications.dto;
 
+import java.time.Instant;
 import java.util.List;
 
 /**
@@ -56,9 +57,10 @@ public record EmailEvent(String notificationType, Mail mail, Bounce bounce, Comp
   /**
    * A representation of the mail details included in an Amazon SES event.
    *
-   * @param headers The headers sent with the email.
+   * @param timestamp The timestamp of the email.
+   * @param headers   The headers sent with the email.
    */
-  public record Mail(List<MailHeader> headers) {
+  public record Mail(Instant timestamp, List<MailHeader> headers) {
 
     /**
      * An email header.

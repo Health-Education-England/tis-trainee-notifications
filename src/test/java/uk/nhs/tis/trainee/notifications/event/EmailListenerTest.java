@@ -56,7 +56,7 @@ class EmailListenerTest {
 
   @Test
   void shouldThrowExceptionHandlingFailureWhenNoNotificationId() {
-    Mail mail = new Mail(List.of());
+    Mail mail = new Mail(null, List.of());
     EmailEvent event = new EmailEvent("bounce", mail, null, null);
 
     assertThrows(IllegalArgumentException.class, () -> listener.handleEmailEvent(event));
@@ -64,7 +64,7 @@ class EmailListenerTest {
 
   @Test
   void shouldHandleEmailEventWhenBounceEvent() {
-    Mail mail = new Mail(List.of(new MailHeader("NotificationId", NOTIFICATION_ID)));
+    Mail mail = new Mail(null, List.of(new MailHeader("NotificationId", NOTIFICATION_ID)));
     Bounce bounce = new Bounce("type1", "type2");
     EmailEvent event = new EmailEvent("Bounce", mail, bounce, null);
 
@@ -81,8 +81,7 @@ class EmailListenerTest {
       """)
   void shouldHandleEmailEventWhenComplaintEvent(String subType, String feedbackType,
       String message) {
-    Mail mail = new Mail(List.of(new MailHeader("NotificationId", NOTIFICATION_ID),
-        new MailHeader("timestamp", TIMESTAMP.toString())));
+    Mail mail = new Mail(TIMESTAMP, List.of(new MailHeader("NotificationId", NOTIFICATION_ID)));
     Complaint complaint = new Complaint(subType, feedbackType);
     EmailEvent event = new EmailEvent("Complaint", mail, null, complaint);
 
@@ -93,8 +92,7 @@ class EmailListenerTest {
 
   @Test
   void shouldHandleEmailEventWhenDeliveryEvent() {
-    Mail mail = new Mail(List.of(new MailHeader("NotificationId", NOTIFICATION_ID),
-        new MailHeader("timestamp", TIMESTAMP.toString())));
+    Mail mail = new Mail(TIMESTAMP, List.of(new MailHeader("NotificationId", NOTIFICATION_ID)));
     EmailEvent event = new EmailEvent("Delivery", mail, null, null);
 
     listener.handleEmailEvent(event);
@@ -104,7 +102,7 @@ class EmailListenerTest {
 
   @Test
   void shouldHandleEmailEventWhenTimestampMissing() {
-    Mail mail = new Mail(List.of(new MailHeader("NotificationId", NOTIFICATION_ID)));
+    Mail mail = new Mail(null, List.of(new MailHeader("NotificationId", NOTIFICATION_ID)));
     EmailEvent event = new EmailEvent("Delivery", mail, null, null);
 
     listener.handleEmailEvent(event);
