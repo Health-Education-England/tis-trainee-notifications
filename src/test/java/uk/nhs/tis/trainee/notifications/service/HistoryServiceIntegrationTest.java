@@ -607,7 +607,7 @@ class HistoryServiceIntegrationTest {
     Instant olderTimestamp = Instant.now().minus(Duration.ofDays(1));
 
     History history = new History(NOTIFICATION_ID, tisReferenceInfo, PROGRAMME_DAY_ONE,
-        recipientInfo, templateInfo, null, SENT_AT, READ_AT, PENDING, null, olderTimestamp);
+        recipientInfo, templateInfo, null, SENT_AT, READ_AT, PENDING, null, null, olderTimestamp);
     service.save(history);
 
     // When attempting to update with a newer timestamp
@@ -637,7 +637,7 @@ class HistoryServiceIntegrationTest {
     Instant newerTimestamp = Instant.now();
 
     History history = new History(NOTIFICATION_ID, tisReferenceInfo, FORM_UPDATED, recipientInfo,
-        templateInfo, null, SENT_AT, READ_AT, SENT, null, newerTimestamp);
+        templateInfo, null, SENT_AT, READ_AT, SENT, null, null, newerTimestamp);
     service.save(history);
 
     // When attempting to update with an older timestamp
@@ -665,7 +665,7 @@ class HistoryServiceIntegrationTest {
     TisReferenceInfo tisReferenceInfo = new TisReferenceInfo(TIS_REFERENCE_TYPE, TIS_REFERENCE_ID);
 
     History history = new History(NOTIFICATION_ID, tisReferenceInfo, FORM_UPDATED, recipientInfo,
-        templateInfo, null, SENT_AT, READ_AT, SENT, null, null);
+        templateInfo, null, SENT_AT, READ_AT, SENT, null, null, null);
     service.save(history);
 
     // When updating with any timestamp

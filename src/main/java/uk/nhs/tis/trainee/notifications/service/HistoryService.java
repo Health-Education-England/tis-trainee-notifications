@@ -163,15 +163,14 @@ public class HistoryService {
       int updatedHistoryCount
           = repository.updateStatusIfNewer(history.id(), timestamp, status, detail);
 
+      Optional<History> updatedHistory = repository.findById(history.id());
       if (updatedHistoryCount > 0) {
-        Optional<History> updatedHistory = repository.findById(history.id());
         eventBroadcastService.publishNotificationsEvent(updatedHistory.orElse(null));
-        return updatedHistory.map(this::toDto);
       } else {
         log.info("Notification {} was not updated as the event timestamp {} was not newer than {}.",
             history.id(), timestamp, history.latestStatusEventAt());
-        return Optional.of(toDto(history));
       }
+      return updatedHistory.map(this::toDto);
     } else {
       //without an event timestamp, we simply update the notification status
       history = mapper.updateStatus(history, status, detail);
