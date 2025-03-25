@@ -298,7 +298,7 @@ class EventBroadcastServiceTest {
     RecipientInfo recipientInfo = new RecipientInfo(null, null, null);
     TemplateInfo templateInfo = new TemplateInfo(null, null, Map.of());
     TisReferenceInfo tisReferenceInfo = new TisReferenceInfo(null, null);
-    return new History(HISTORY_ID, tisReferenceInfo, NOTIFICATION_TYPE, recipientInfo, templateInfo,
-        null, SENT_AT, READ_AT, NOTIFICATION_STATUS, null, null, null);
+    return new History(HISTORY_ID, tisReferenceInfo, NOTIFICATION_TYPE,
+        recipientInfo, templateInfo, null, SENT_AT, READ_AT, NOTIFICATION_STATUS, null, null);
   }
 }

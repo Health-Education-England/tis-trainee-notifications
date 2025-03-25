@@ -191,15 +191,15 @@ class HistoryServiceIntegrationTest {
 
     Instant now = Instant.now().truncatedTo(ChronoUnit.MILLIS);
     service.save(new History(null, tisReferenceInfo, FORM_UPDATED, recipientInfo, templateInfo,
-        null, now, now, SENT, null, null, null));
+        null, now, now, SENT, null, null));
 
     Instant before = SENT_AT.minus(Duration.ofDays(1));
     Instant after = SENT_AT.plus(Duration.ofDays(1));
     service.save(new History(null, tisReferenceInfo, FORM_UPDATED, recipientInfo, templateInfo,
-        null, before, after, SENT, null, null, null));
+        null, before, after, SENT, null, null));
 
     service.save(new History(null, tisReferenceInfo, FORM_UPDATED, recipientInfo, templateInfo,
-        null, after, before, SENT, null, null, null));
+        null, after, before, SENT, null, null));
 
     List<HistoryDto> foundHistory = service.findAllForTrainee(TRAINEE_ID);
 
@@ -269,15 +269,15 @@ class HistoryServiceIntegrationTest {
 
     Instant now = Instant.now().truncatedTo(ChronoUnit.MILLIS);
     service.save(new History(null, tisReferenceInfo, FORM_UPDATED, recipientInfo, templateInfo,
-        null, now, now, SENT, null, null, null));
+        null, now, now, SENT, null, null));
 
     Instant before = SENT_AT.minus(Duration.ofDays(1));
     Instant after = SENT_AT.plus(Duration.ofDays(1));
     service.save(new History(null, tisReferenceInfo, FORM_UPDATED, recipientInfo, templateInfo,
-        null, before, after, SENT, null, null, null));
+        null, before, after, SENT, null, null));
 
     service.save(new History(null, tisReferenceInfo, FORM_UPDATED, recipientInfo, templateInfo,
-        null, after, before, SENT, null, null, null));
+        null, after, before, SENT, null, null));
 
     List<History> foundHistory = service.findAllHistoryForTrainee(TRAINEE_ID);
 
@@ -302,15 +302,15 @@ class HistoryServiceIntegrationTest {
 
     Instant now = Instant.now().truncatedTo(ChronoUnit.MILLIS);
     service.save(new History(null, tisReferenceInfo, FORM_UPDATED, recipientInfo, templateInfo,
-        null, now, now, SENT, null, null, null));
+        null, now, now, SENT, null, null));
 
     Instant before = SENT_AT.minus(Duration.ofDays(1));
     Instant after = SENT_AT.plus(Duration.ofDays(1));
     service.save(new History(null, tisReferenceInfo, FORM_UPDATED, recipientInfo, templateInfo,
-        null, before, after, SENT, null, null, null));
+        null, before, after, SENT, null, null));
 
     service.save(new History(null, tisReferenceInfo, FORM_UPDATED, recipientInfo, templateInfo,
-        null, after, before, SENT, null, null, null));
+        null, after, before, SENT, null, null));
 
     List<HistoryDto> foundHistory = service.findAllSentForTrainee(TRAINEE_ID);
 
@@ -334,13 +334,13 @@ class HistoryServiceIntegrationTest {
     Instant before = SENT_AT.minus(Duration.ofDays(1));
     Instant after = SENT_AT.plus(Duration.ofDays(1));
     service.save(new History(null, tisReferenceInfo, FORM_UPDATED, recipientInfo, templateInfo,
-        null, now, any(), SENT, null, null, null));
+        null, now, any(), SENT, null, null));
     service.save(new History(null, tisReferenceInfo, FORM_UPDATED, recipientInfo, templateInfo,
-        null, before, any(), SENT, null, null, null));
+        null, before, any(), SENT, null, null));
     service.save(new History(null, tisReferenceInfo, FORM_UPDATED, recipientInfo, templateInfo,
-        null, before, any(), SCHEDULED, null, null, null));
+        null, before, any(), SCHEDULED, null, null));
     service.save(new History(null, tisReferenceInfo, FORM_UPDATED, recipientInfo, templateInfo,
-        null, after, any(), UNREAD, null, null, null));
+        null, after, any(), UNREAD, null, null));
 
     List<History> foundHistory = service.findAllScheduledForTrainee(
         TRAINEE_ID, TisReferenceType.PLACEMENT, TIS_REFERENCE_ID);
@@ -372,15 +372,15 @@ class HistoryServiceIntegrationTest {
 
     Instant now = Instant.now().truncatedTo(ChronoUnit.MILLIS);
     service.save(new History(null, tisReferenceInfo1, FORM_UPDATED, recipientInfo, templateInfo,
-        null, now, now, SENT, null, null, null));
+        null, now, now, SENT, null, null));
     service.save(new History(null, tisReferenceInfo2, PROGRAMME_DAY_ONE, recipientInfo,
-        templateInfo, null, now, now, SCHEDULED, null, null, null));
+        templateInfo, null, now, now, SCHEDULED, null, null));
     service.save(new History(null, tisReferenceInfo3, PROGRAMME_DAY_ONE, recipientInfo,
-        templateInfo, null, now, now, SCHEDULED, null, null, null));
+        templateInfo, null, now, now, SCHEDULED, null, null));
     service.save(new History(null, tisReferenceInfo4, PROGRAMME_DAY_ONE, recipientInfo,
-        templateInfo, null, now, now, SCHEDULED, null, null, null));
+        templateInfo, null, now, now, SCHEDULED, null, null));
     service.save(new History(null, tisReferenceInfo5, PROGRAMME_DAY_ONE, recipientInfo,
-        templateInfo, null, now, now, SCHEDULED, null, null, null));
+        templateInfo, null, now, now, SCHEDULED, null, null));
 
     History foundHistory = service.findScheduledEmailForTraineeByRefAndType(
         TRAINEE_ID, TisReferenceType.PROGRAMME_MEMBERSHIP, TIS_REFERENCE_ID, PROGRAMME_DAY_ONE);
@@ -407,9 +407,9 @@ class HistoryServiceIntegrationTest {
 
     Instant now = Instant.now().truncatedTo(ChronoUnit.MILLIS);
     service.save(new History(null, tisReferenceInfo1, FORM_UPDATED, recipientInfo, templateInfo,
-        null, now, now, SENT, null, null, null));
+        null, now, now, SENT, null, null));
     service.save(new History(null, tisReferenceInfo2, PROGRAMME_DAY_ONE, recipientInfo,
-        templateInfo, null, now, now, SCHEDULED, null, null, null));
+        templateInfo, null, now, now, SCHEDULED, null, null));
 
     History foundHistory = service.findScheduledEmailForTraineeByRefAndType(
         TRAINEE_ID, TisReferenceType.PROGRAMME_MEMBERSHIP, TIS_REFERENCE_ID, PROGRAMME_DAY_ONE);
@@ -431,13 +431,13 @@ class HistoryServiceIntegrationTest {
 
     Instant after = SENT_AT.plus(Duration.ofDays(1));
     service.save(new History(null, tisRefInfoPm, FORM_UPDATED, recipientInfo, templateInfo,
-        null, after, after, SENT, null, null, null));
+        null, after, after, SENT, null, null));
 
     service.save(new History(null, tisRefInfoPlacement, FORM_UPDATED, recipientInfo, templateInfo,
-        null, after, after, SENT, null, null, null));
+        null, after, after, SENT, null, null));
 
     service.save(new History(null, tisRefInfoPlacement2, FORM_UPDATED, recipientInfo, templateInfo,
-        null, after, after, SENT, null, null, null));
+        null, after, after, SENT, null, null));
 
     List<History> foundHistory = service.findAllScheduledForTrainee(
         TRAINEE_ID, TisReferenceType.PLACEMENT, TIS_REFERENCE_ID);

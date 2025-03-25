@@ -117,7 +117,7 @@ class HistoryServiceTest {
       History saving = inv.getArgument(0);
       assertThat("Unexpected ID.", saving.id(), nullValue());
       return new History(id, saving.tisReference(), saving.type(), saving.recipient(),
-          saving.template(), null, saving.sentAt(), saving.readAt(), SENT, null, null, null);
+          saving.template(), null, saving.sentAt(), saving.readAt(), SENT, null, null);
     });
 
     History savedHistory = service.save(history);
