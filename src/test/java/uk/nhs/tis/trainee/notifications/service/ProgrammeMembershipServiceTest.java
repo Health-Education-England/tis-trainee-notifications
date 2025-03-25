@@ -1220,7 +1220,7 @@ class ProgrammeMembershipServiceTest {
         PROGRAMME_CREATED, recipientInfo,
         templateInfo, null,
         Instant.from(originalSentAt.atStartOfDay(timezone)), Instant.MAX,
-        SENT, null, null, null);
+        SENT, null, null);
     Map<NotificationType, History> alreadySent = Map.of(PROGRAMME_CREATED, sentNotification);
 
     ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
@@ -1245,7 +1245,7 @@ class ProgrammeMembershipServiceTest {
         PROGRAMME_CREATED, recipientInfo,
         templateInfo, null,
         Instant.from(originalSentAt.atStartOfDay(timezone)), Instant.MAX,
-        SENT, null, null, null);
+        SENT, null, null);
     Map<NotificationType, History> alreadySent = Map.of(PROGRAMME_CREATED, sentNotification);
 
     ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
@@ -1267,7 +1267,7 @@ class ProgrammeMembershipServiceTest {
         PROGRAMME_CREATED, recipientInfo,
         templateInfo, null,
         Instant.from(originalSentAt.atStartOfDay(timezone)), Instant.MAX,
-        SENT, null, null, null);
+        SENT, null, null);
     Map<NotificationType, History> alreadySent = Map.of(PROGRAMME_CREATED, sentNotification);
 
     ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
@@ -1286,7 +1286,7 @@ class ProgrammeMembershipServiceTest {
         PROGRAMME_CREATED, recipientInfo,
         null, null,
         Instant.MIN, Instant.MAX,
-        SENT, null, null, null);
+        SENT, null, null);
     Map<NotificationType, History> alreadySent = Map.of(PROGRAMME_CREATED, sentNotification);
 
     ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
@@ -1306,7 +1306,7 @@ class ProgrammeMembershipServiceTest {
         PROGRAMME_CREATED, recipientInfo,
         templateInfo, null,
         Instant.MIN, Instant.MAX,
-        SENT, null, null, null);
+        SENT, null, null);
     Map<NotificationType, History> alreadySent = Map.of(PROGRAMME_CREATED, sentNotification);
 
     ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
@@ -1327,7 +1327,7 @@ class ProgrammeMembershipServiceTest {
         PROGRAMME_CREATED, recipientInfo,
         templateInfo, null,
         Instant.MIN, Instant.MAX,
-        SENT, null, null, null);
+        SENT, null, null);
     Map<NotificationType, History> alreadySent = Map.of(PROGRAMME_CREATED, sentNotification);
 
     ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();

@@ -242,7 +242,7 @@ class TraineeHistoryResourceTest {
   @ParameterizedTest
   @ValueSource(strings = {"archive", "mark-read", "mark-unread"})
   void shouldReturnNotFoundWhenUpdatingStatusAndNotificationNotFound(String path) throws Exception {
-    when(service.updateStatus(TRAINEE_ID, NOTIFICATION_ID, READ, null))
+    when(service.updateStatus(TRAINEE_ID, NOTIFICATION_ID, READ))
         .thenReturn(Optional.empty());
 
     mockMvc.perform(
@@ -263,7 +263,7 @@ class TraineeHistoryResourceTest {
         = new TisReferenceInfo(TisReferenceType.FORMR_PARTA, TIS_REFERENCE_ID);
     HistoryDto history = new HistoryDto("1", tisReference, IN_APP, FORM_UPDATED, null,
         TRAINEE_CONTACT_1, Instant.MIN, Instant.MAX, status, "Additional detail");
-    when(service.updateStatus(TRAINEE_ID, NOTIFICATION_ID, status, null)).thenReturn(
+    when(service.updateStatus(TRAINEE_ID, NOTIFICATION_ID, status)).thenReturn(
         Optional.of(history));
 
     mockMvc.perform(

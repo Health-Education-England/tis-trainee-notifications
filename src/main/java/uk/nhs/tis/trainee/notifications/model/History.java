@@ -34,16 +34,16 @@ import uk.nhs.tis.trainee.notifications.dto.StoredFile;
 /**
  * A representation of a historical notification.
  *
- * @param id              A unique identifier for the notification.
- * @param type            The type of notification sent.
- * @param recipient       The recipient information the notification was sent to.
- * @param template        The template information used to generate the notification.
- * @param sentAt          The timestamp that the notification was sent at.
- * @param readAt          The timestamp that the notification was read at.
- * @param status          The status of the notification history e.g. SENT or FAILED.
- * @param statusDetail    Any additional detail about the status.
- * @param lastRetry       The timestamp of the last retry attempt.
- * @param statusChangedAt The timestamp of the last status change, derived from the SES event.
+ * @param id                  A unique identifier for the notification.
+ * @param type                The type of notification sent.
+ * @param recipient           The recipient information the notification was sent to.
+ * @param template            The template information used to generate the notification.
+ * @param sentAt              The timestamp that the notification was sent at.
+ * @param readAt              The timestamp that the notification was read at.
+ * @param status              The status of the notification history e.g. SENT or FAILED.
+ * @param statusDetail        Any additional detail about the status.
+ * @param lastRetry           The timestamp of the last retry attempt.
+ * @param latestStatusEventAt The timestamp of the last status change, if from an SES event.
  */
 @Document(collection = "History")
 @Builder
@@ -60,7 +60,36 @@ public record History(
     NotificationStatus status,
     String statusDetail,
     Instant lastRetry,
-    Instant statusChangedAt) {
+    Instant latestStatusEventAt) {
+
+  /**
+   * An alternate constructor for a historical notification without a status event timestamp.
+   *
+   * @param id           A unique identifier for the notification.
+   * @param type         The type of notification sent.
+   * @param recipient    The recipient information the notification was sent to.
+   * @param template     The template information used to generate the notification.
+   * @param sentAt       The timestamp that the notification was sent at.
+   * @param readAt       The timestamp that the notification was read at.
+   * @param status       The status of the notification history e.g. SENT or FAILED.
+   * @param statusDetail Any additional detail about the status.
+   * @param lastRetry    The timestamp of the last retry attempt.
+   */
+  public History(
+      ObjectId id,
+      TisReferenceInfo tisReference,
+      NotificationType type,
+      RecipientInfo recipient,
+      TemplateInfo template,
+      List<StoredFile> attachments,
+      Instant sentAt,
+      Instant readAt,
+      NotificationStatus status,
+      String statusDetail,
+      Instant lastRetry) {
+    this(id, tisReference, type, recipient, template, attachments, sentAt, readAt,
+        status, statusDetail, lastRetry, null);
+  }
 
   /**
    * A representation of a notified recipient.

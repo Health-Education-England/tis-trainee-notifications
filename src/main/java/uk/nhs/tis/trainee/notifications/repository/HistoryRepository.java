@@ -89,8 +89,8 @@ public interface HistoryRepository extends
   @Modifying
   @Transactional
   @Query("{ '_id': ?0, "
-      + "'$or': [ { 'statusChangedAt': null }, { 'statusChangedAt': { '$lte': ?1 } } ] }")
-  @Update("{ '$set': { 'status': ?2, 'statusDetail': ?3, 'statusChangedAt': ?1 } }")
+      + "'$or': [ { 'latestStatusEventAt': null }, { 'latestStatusEventAt': { '$lte': ?1 } } ] }")
+  @Update("{ '$set': { 'status': ?2, 'statusDetail': ?3, 'latestStatusEventAt': ?1 } }")
   int updateStatusIfNewer(ObjectId id, Instant newStatusChangedAt,
       NotificationStatus newStatus, String statusDetail);
 }

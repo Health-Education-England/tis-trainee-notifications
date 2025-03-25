@@ -110,7 +110,7 @@ class HistoryServiceTest {
     Instant sent = Instant.now();
     Instant read = Instant.now().plus(Duration.ofDays(1));
     History history = new History(null, tisReferenceInfo, notificationType, recipientInfo,
-        templateInfo, null, sent, read, SENT, null, null, null);
+        templateInfo, null, sent, read, SENT, null, null);
 
     ObjectId id = new ObjectId();
     when(repository.save(history)).then(inv -> {
@@ -155,7 +155,7 @@ class HistoryServiceTest {
     ObjectId notificationId = new ObjectId(NOTIFICATION_ID);
     RecipientInfo recipientInfo = new RecipientInfo(TRAINEE_ID, EMAIL, TRAINEE_CONTACT);
     History foundHistory = new History(notificationId, null, COJ_CONFIRMATION, recipientInfo, null,
-        null, Instant.MIN, Instant.MAX, null, null, null, null);
+        null, Instant.MIN, Instant.MAX, null, null, null);
 
     when(repository.findById(notificationId)).thenReturn(Optional.of(foundHistory));
 
@@ -176,7 +176,7 @@ class HistoryServiceTest {
         TEMPLATE_VARIABLES);
     TisReferenceInfo tisReferenceInfo = new TisReferenceInfo(TIS_REFERENCE_TYPE, TIS_REFERENCE_ID);
     History foundHistory = new History(notificationId, tisReferenceInfo, COJ_CONFIRMATION,
-        recipientInfo, templateInfo, null, Instant.MIN, Instant.MAX, null, null, null, null);
+        recipientInfo, templateInfo, null, Instant.MIN, Instant.MAX, null, null, null);
 
     when(repository.findById(notificationId)).thenReturn(Optional.of(foundHistory));
     when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
@@ -215,7 +215,7 @@ class HistoryServiceTest {
     ObjectId notificationId = new ObjectId(NOTIFICATION_ID);
     RecipientInfo recipientInfo = new RecipientInfo(TRAINEE_ID, IN_APP, TRAINEE_CONTACT);
     History foundHistory = new History(notificationId, null, COJ_CONFIRMATION, recipientInfo, null,
-        null, Instant.MIN, Instant.MAX, null, null, null, null);
+        null, Instant.MIN, Instant.MAX, null, null, null);
 
     when(repository.findById(notificationId)).thenReturn(Optional.of(foundHistory));
 
@@ -236,7 +236,7 @@ class HistoryServiceTest {
         TEMPLATE_VARIABLES);
     TisReferenceInfo tisReferenceInfo = new TisReferenceInfo(TIS_REFERENCE_TYPE, TIS_REFERENCE_ID);
     History foundHistory = new History(notificationId, tisReferenceInfo, COJ_CONFIRMATION,
-        recipientInfo, templateInfo, null, Instant.MIN, Instant.MAX, null, null, null, null);
+        recipientInfo, templateInfo, null, Instant.MIN, Instant.MAX, null, null, null);
 
     String templatePath = "in-app/test/template/v1.2.3";
     when(templateService.getTemplatePath(IN_APP, TEMPLATE_NAME, TEMPLATE_VERSION)).thenReturn(
@@ -279,8 +279,7 @@ class HistoryServiceTest {
   void shouldNotUpdateStatusForTraineeWhenHistoryNotFound(NotificationStatus status) {
     when(repository.findByIdAndRecipient_Id(any(), any())).thenReturn(Optional.empty());
 
-    Optional<HistoryDto> updatedHistory
-        = service.updateStatus(TRAINEE_ID, NOTIFICATION_ID, status, null);
+    Optional<HistoryDto> updatedHistory = service.updateStatus(TRAINEE_ID, NOTIFICATION_ID, status);
 
     assertThat("Unexpected history presence.", updatedHistory.isPresent(), is(false));
   }
@@ -293,13 +292,13 @@ class HistoryServiceTest {
     ObjectId notificationId = new ObjectId(NOTIFICATION_ID);
     RecipientInfo recipientInfo = new RecipientInfo(TRAINEE_ID, EMAIL, TRAINEE_CONTACT);
     History foundHistory = new History(notificationId, null, COJ_CONFIRMATION, recipientInfo, null,
-        null, Instant.MIN, Instant.MAX, null, null, null, null);
+        null, Instant.MIN, Instant.MAX, null, null, null);
 
     when(repository.findByIdAndRecipient_Id(notificationId, TRAINEE_ID)).thenReturn(
         Optional.of(foundHistory));
 
     assertThrows(IllegalArgumentException.class,
-        () -> service.updateStatus(TRAINEE_ID, NOTIFICATION_ID, status, null));
+        () -> service.updateStatus(TRAINEE_ID, NOTIFICATION_ID, status));
 
     verify(repository, never()).save(any());
     verifyNoInteractions(eventBroadcastService);
@@ -315,14 +314,13 @@ class HistoryServiceTest {
         TEMPLATE_VARIABLES);
     TisReferenceInfo tisReferenceInfo = new TisReferenceInfo(TIS_REFERENCE_TYPE, TIS_REFERENCE_ID);
     History foundHistory = new History(notificationId, tisReferenceInfo, COJ_CONFIRMATION,
-        recipientInfo, templateInfo, null, Instant.MIN, Instant.MAX, null, null, null, null);
+        recipientInfo, templateInfo, null, Instant.MIN, Instant.MAX, null, null, null);
 
     when(repository.findByIdAndRecipient_Id(notificationId, TRAINEE_ID)).thenReturn(
         Optional.of(foundHistory));
     when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
-    Optional<HistoryDto> updatedHistory
-        = service.updateStatus(TRAINEE_ID, NOTIFICATION_ID, status, null);
+    Optional<HistoryDto> updatedHistory = service.updateStatus(TRAINEE_ID, NOTIFICATION_ID, status);
 
     assertThat("Unexpected history presence.", updatedHistory.isPresent(), is(true));
     HistoryDto history = updatedHistory.get();
@@ -356,13 +354,13 @@ class HistoryServiceTest {
     ObjectId notificationId = new ObjectId(NOTIFICATION_ID);
     RecipientInfo recipientInfo = new RecipientInfo(TRAINEE_ID, IN_APP, TRAINEE_CONTACT);
     History foundHistory = new History(notificationId, null, COJ_CONFIRMATION, recipientInfo, null,
-        null, Instant.MIN, Instant.MAX, null, null, null, null);
+        null, Instant.MIN, Instant.MAX, null, null, null);
 
     when(repository.findByIdAndRecipient_Id(notificationId, TRAINEE_ID)).thenReturn(
         Optional.of(foundHistory));
 
     assertThrows(IllegalArgumentException.class,
-        () -> service.updateStatus(TRAINEE_ID, NOTIFICATION_ID, status, null));
+        () -> service.updateStatus(TRAINEE_ID, NOTIFICATION_ID, status));
 
     verify(repository, never()).save(any());
     verifyNoInteractions(eventBroadcastService);
@@ -378,7 +376,7 @@ class HistoryServiceTest {
         TEMPLATE_VARIABLES);
     TisReferenceInfo tisReferenceInfo = new TisReferenceInfo(TIS_REFERENCE_TYPE, TIS_REFERENCE_ID);
     History foundHistory = new History(notificationId, tisReferenceInfo, COJ_CONFIRMATION,
-        recipientInfo, templateInfo, null, Instant.MIN, Instant.MAX, null, null, null, null);
+        recipientInfo, templateInfo, null, Instant.MIN, Instant.MAX, null, null, null);
 
     String templatePath = "in-app/test/template/v1.2.3";
     when(templateService.getTemplatePath(IN_APP, TEMPLATE_NAME, TEMPLATE_VERSION)).thenReturn(
@@ -390,8 +388,7 @@ class HistoryServiceTest {
         Optional.of(foundHistory));
     when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
-    Optional<HistoryDto> updatedHistory
-        = service.updateStatus(TRAINEE_ID, NOTIFICATION_ID, status, null);
+    Optional<HistoryDto> updatedHistory = service.updateStatus(TRAINEE_ID, NOTIFICATION_ID, status);
 
     assertThat("Unexpected history presence.", updatedHistory.isPresent(), is(true));
     HistoryDto history = updatedHistory.get();
@@ -438,11 +435,11 @@ class HistoryServiceTest {
 
     ObjectId id1 = ObjectId.get();
     History history1 = new History(id1, tisReferenceInfo, notificationType, recipientInfo,
-        templateInfo, null, Instant.MIN, Instant.MAX, SENT, null, null, null);
+        templateInfo, null, Instant.MIN, Instant.MAX, SENT, null, null);
 
     ObjectId id2 = ObjectId.get();
     History history2 = new History(id2, tisReferenceInfo, notificationType, recipientInfo,
-        templateInfo, null, Instant.MAX, Instant.MIN, SENT, null, null, null);
+        templateInfo, null, Instant.MAX, Instant.MIN, SENT, null, null);
 
     when(repository.findAllByRecipient_IdOrderBySentAtDesc(TRAINEE_ID)).thenReturn(
         List.of(history1, history2));
@@ -491,11 +488,11 @@ class HistoryServiceTest {
 
     ObjectId id1 = ObjectId.get();
     History history1 = new History(id1, tisReferenceInfo, notificationType, recipientInfo,
-        templateInfo, null, Instant.MIN, Instant.MAX, SENT, null, null, null);
+        templateInfo, null, Instant.MIN, Instant.MAX, SENT, null, null);
 
     ObjectId id2 = ObjectId.get();
     History history2 = new History(id2, tisReferenceInfo, notificationType, recipientInfo,
-        templateInfo, null, Instant.MAX, Instant.MIN, SENT, null, null, null);
+        templateInfo, null, Instant.MAX, Instant.MIN, SENT, null, null);
 
     when(repository.findAllByRecipient_IdOrderBySentAtDesc(TRAINEE_ID)).thenReturn(
         List.of(history1, history2));
@@ -563,16 +560,16 @@ class HistoryServiceTest {
 
     ObjectId id1 = ObjectId.get();
     History history1 = new History(id1, tisReferenceInfo, notificationType, recipientInfo,
-        templateInfo, null, Instant.MIN, Instant.MAX, SENT, null, null, null);
+        templateInfo, null, Instant.MIN, Instant.MAX, SENT, null, null);
 
     ObjectId id2 = ObjectId.get();
     Instant timeNow = Instant.now();
     History history2 = new History(id2, tisReferenceInfo, notificationType, recipientInfo,
-        templateInfo, null, timeNow, Instant.MIN, SENT, null, null, null);
+        templateInfo, null, timeNow, Instant.MIN, SENT, null, null);
 
     ObjectId id3 = ObjectId.get();
     History history3 = new History(id3, tisReferenceInfo, notificationType, recipientInfo,
-        templateInfo, null, Instant.MAX, Instant.MIN, SENT, null, null, null);
+        templateInfo, null, Instant.MAX, Instant.MIN, SENT, null, null);
 
     when(repository.findAllByRecipient_IdOrderBySentAtDesc(TRAINEE_ID)).thenReturn(
         List.of(history3, history2, history1));
@@ -631,16 +628,16 @@ class HistoryServiceTest {
 
     ObjectId id1 = ObjectId.get();
     History history1 = new History(id1, tisReferenceInfo, notificationType, recipientInfo,
-        templateInfo, null, Instant.MIN, Instant.MAX, SENT, null, null, null);
+        templateInfo, null, Instant.MIN, Instant.MAX, SENT, null, null);
 
     ObjectId id2 = ObjectId.get();
     Instant timeNow = Instant.now();
     History history2 = new History(id2, tisReferenceInfo, notificationType, recipientInfo,
-        templateInfo, null, timeNow, Instant.MIN, SENT, null, null, null);
+        templateInfo, null, timeNow, Instant.MIN, SENT, null, null);
 
     ObjectId id3 = ObjectId.get();
     History history3 = new History(id3, tisReferenceInfo, notificationType, recipientInfo,
-        templateInfo, null, Instant.MAX, Instant.MIN, SENT, null, null, null);
+        templateInfo, null, Instant.MAX, Instant.MIN, SENT, null, null);
 
     when(repository.findAllByRecipient_IdOrderBySentAtDesc(TRAINEE_ID)).thenReturn(
         List.of(history3, history2, history1));
@@ -682,7 +679,7 @@ class HistoryServiceTest {
 
     ObjectId id1 = ObjectId.get();
     History history1 = new History(id1, tisReferenceInfo, PROGRAMME_CREATED, recipientInfo,
-        templateInfo, null, Instant.MIN, Instant.MAX, FAILED, null, Instant.MAX, null);
+        templateInfo, null, Instant.MIN, Instant.MAX, FAILED, null, Instant.MAX);
 
     when(repository.findAllByRecipient_IdAndStatus(TRAINEE_ID, FAILED.name()))
         .thenReturn(List.of(history1));
@@ -734,7 +731,7 @@ class HistoryServiceTest {
 
     ObjectId id1 = ObjectId.get();
     History history1 = new History(id1, tisReferenceInfo, notificationType, recipientInfo,
-        templateInfo, null, Instant.MIN, Instant.MAX, SENT, null, null, null);
+        templateInfo, null, Instant.MIN, Instant.MAX, SENT, null, null);
 
     when(repository.findAllByRecipient_IdOrderBySentAtDesc(TRAINEE_ID)).thenReturn(
         List.of(history1));
@@ -764,7 +761,7 @@ class HistoryServiceTest {
 
     ObjectId id1 = ObjectId.get();
     History history1 = new History(id1, tisReferenceInfo, notificationType, recipientInfo,
-        templateInfo, null, Instant.MIN, Instant.MAX, SENT, null, null, null);
+        templateInfo, null, Instant.MIN, Instant.MAX, SENT, null, null);
 
     when(repository.findAllByRecipient_IdOrderBySentAtDesc(TRAINEE_ID)).thenReturn(
         List.of(history1));
@@ -794,7 +791,7 @@ class HistoryServiceTest {
 
     ObjectId id1 = ObjectId.get();
     History history1 = new History(id1, tisReferenceInfo, notificationType, recipientInfo,
-        templateInfo, null, Instant.MIN, Instant.MAX, SENT, null, null, null);
+        templateInfo, null, Instant.MIN, Instant.MAX, SENT, null, null);
 
     when(repository.findAllByRecipient_IdOrderBySentAtDesc(TRAINEE_ID)).thenReturn(
         List.of(history1));
@@ -818,7 +815,7 @@ class HistoryServiceTest {
 
     ObjectId id1 = ObjectId.get();
     History history1 = new History(id1, tisReferenceInfo, notificationType, recipientInfo,
-        templateInfo, null, Instant.MAX, null, UNREAD, null, null, null);
+        templateInfo, null, Instant.MAX, null, UNREAD, null, null);
 
     when(repository.findAllByRecipient_IdOrderBySentAtDesc(TRAINEE_ID)).thenReturn(
         List.of(history1));
@@ -848,7 +845,7 @@ class HistoryServiceTest {
 
     ObjectId id1 = ObjectId.get();
     History history1 = new History(id1, tisReferenceInfo, notificationType, recipientInfo,
-        templateInfo, null, Instant.MIN, null, UNREAD, null, null, null);
+        templateInfo, null, Instant.MIN, null, UNREAD, null, null);
 
     when(repository.findAllByRecipient_IdOrderBySentAtDesc(TRAINEE_ID)).thenReturn(
         List.of(history1));
@@ -889,7 +886,7 @@ class HistoryServiceTest {
     TisReferenceInfo tisReferenceInfo = new TisReferenceInfo(TIS_REFERENCE_TYPE, TIS_REFERENCE_ID);
 
     History history = new History(notificationId, tisReferenceInfo, notificationType, recipientInfo,
-        templateInfo, null, Instant.now(), Instant.now(), SENT, null, null, null);
+        templateInfo, null, Instant.now(), Instant.now(), SENT, null, null);
     when(repository.findById(any())).thenReturn(Optional.of(history));
 
     String templatePath = "type/test/template/v1.2.3";
@@ -930,7 +927,7 @@ class HistoryServiceTest {
     TisReferenceInfo tisReferenceInfo = new TisReferenceInfo(TIS_REFERENCE_TYPE, TIS_REFERENCE_ID);
 
     History history = new History(notificationId, tisReferenceInfo, notificationType, recipientInfo,
-        templateInfo, null, Instant.now(), Instant.now(), SENT, null, null, null);
+        templateInfo, null, Instant.now(), Instant.now(), SENT, null, null);
     when(repository.findByIdAndRecipient_Id(any(), any())).thenReturn(Optional.of(history));
 
     String templatePath = "type/test/template/v1.2.3";
@@ -958,7 +955,7 @@ class HistoryServiceTest {
     RecipientInfo recipientInfo = new RecipientInfo(null, IN_APP, null);
     TemplateInfo templateInfo = new TemplateInfo(null, null, TEMPLATE_VARIABLES);
     History history = new History(notificationId, null, notificationType, recipientInfo,
-        templateInfo, null, null, null, null, null, null, null);
+        templateInfo, null, null, null, null, null, null);
 
     when(repository.findByIdAndRecipient_Id(any(), any())).thenReturn(Optional.of(history));
     when(templateService.process(any(), any(), eq(TEMPLATE_VARIABLES))).thenReturn("");
@@ -976,7 +973,7 @@ class HistoryServiceTest {
     RecipientInfo recipientInfo = new RecipientInfo(null, EMAIL, null);
     TemplateInfo templateInfo = new TemplateInfo(null, null, TEMPLATE_VARIABLES);
     History history = new History(notificationId, null, notificationType, recipientInfo,
-        templateInfo, null, null, null, null, null, null, null);
+        templateInfo, null, null, null, null, null, null);
 
     when(repository.findByIdAndRecipient_Id(any(), any())).thenReturn(Optional.of(history));
     when(templateService.process(any(), any(), eq(TEMPLATE_VARIABLES))).thenReturn("");
