@@ -21,12 +21,18 @@
 
 package uk.nhs.tis.trainee.notifications.repository;
 
+import jakarta.transaction.Transactional;
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import org.bson.types.ObjectId;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.mongodb.repository.MongoRepository;
+import org.springframework.data.mongodb.repository.Query;
+import org.springframework.data.mongodb.repository.Update;
 import org.springframework.stereotype.Repository;
 import uk.nhs.tis.trainee.notifications.model.History;
+import uk.nhs.tis.trainee.notifications.model.NotificationStatus;
 
 /**
  * A repository of historical notifications.
@@ -68,4 +74,23 @@ public interface HistoryRepository extends
    * @param recipientId The ID of the recipient to get the history for.
    */
   void deleteByIdAndRecipient_Id(ObjectId id, String recipientId);
+
+  /**
+   * Update the status of a notification if the new status changed-at is newer than the current one
+   * or the current one is null.
+   *
+   * @param id                 The ID of the history item.
+   * @param newStatusChangedAt The timestamp of the new status change.
+   * @param newStatus          The new status.
+   * @param statusDetail       The new status detail.
+   * @return The number of updated documents (zero if no matching object or if new status
+   *         update is older than the existing one).
+   */
+  @Modifying
+  @Transactional
+  @Query("{ '_id': ?0, "
+      + "'$or': [ { 'latestStatusEventAt': null }, { 'latestStatusEventAt': { '$lte': ?1 } } ] }")
+  @Update("{ '$set': { 'status': ?2, 'statusDetail': ?3, 'latestStatusEventAt': ?1 } }")
+  int updateStatusIfNewer(ObjectId id, Instant newStatusChangedAt,
+      NotificationStatus newStatus, String statusDetail);
 }

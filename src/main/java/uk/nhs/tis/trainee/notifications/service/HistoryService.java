@@ -25,6 +25,7 @@ import static uk.nhs.tis.trainee.notifications.model.MessageType.EMAIL;
 import static uk.nhs.tis.trainee.notifications.model.MessageType.IN_APP;
 import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.ARCHIVED;
 import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.FAILED;
+import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.PENDING;
 import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.READ;
 import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.SCHEDULED;
 import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.SENT;
@@ -56,7 +57,7 @@ import uk.nhs.tis.trainee.notifications.repository.HistoryRepository;
 public class HistoryService {
 
   private static final Map<MessageType, Set<NotificationStatus>> VALID_STATUSES = Map.of(
-      EMAIL, Set.of(FAILED, SENT),
+      EMAIL, Set.of(FAILED, PENDING, SENT),
       IN_APP, Set.of(ARCHIVED, READ, SCHEDULED, UNREAD)
   );
 
@@ -98,10 +99,11 @@ public class HistoryService {
    * @param notificationId The notification to update the status of.
    * @param status         The new status.
    * @param detail         The detail of the status.
+   * @param timestamp      The timestamp of the status update, if it is event-driven.
    * @return The updated notification history, or empty if not found.
    */
   public Optional<HistoryDto> updateStatus(String notificationId, NotificationStatus status,
-      String detail) {
+      String detail, Instant timestamp) {
     Optional<History> optionalHistory = repository.findById(new ObjectId(notificationId));
 
     if (optionalHistory.isEmpty()) {
@@ -109,7 +111,7 @@ public class HistoryService {
       return Optional.empty();
     }
 
-    return updateStatus(optionalHistory.get(), status, detail);
+    return updateStatus(optionalHistory.get(), status, detail, timestamp);
   }
 
   /**
@@ -118,7 +120,7 @@ public class HistoryService {
    * @param traineeId      The ID of the trainee.
    * @param notificationId The notification to update the status of.
    * @param status         The new status.
-   * @return The updated notification history, or empty if not found.
+   * @return The (possibly) updated notification history, or empty if not found.
    */
   public Optional<HistoryDto> updateStatus(String traineeId, String notificationId,
       NotificationStatus status) {
@@ -130,19 +132,20 @@ public class HistoryService {
       return Optional.empty();
     }
 
-    return updateStatus(optionalHistory.get(), status, null);
+    return updateStatus(optionalHistory.get(), status, null, null);
   }
 
   /**
-   * Update the status of a notification.
+   * Update the status of a notification, ensuring no retrograde event-driven changes.
    *
    * @param history The notification history to update.
    * @param status  The new status.
    * @param detail  The detail of the status.
+   * @param timestamp The timestamp of the status update, if it is event-driven.
    * @return The updated notification history, or empty if not found.
    */
   private Optional<HistoryDto> updateStatus(History history, NotificationStatus status,
-      String detail) {
+      String detail, Instant timestamp) {
 
     // Validate the status is valid for the notification type.
     MessageType type = history.recipient().type();
@@ -155,9 +158,25 @@ public class HistoryService {
       throw new IllegalArgumentException(message);
     }
 
-    history = mapper.updateStatus(history, status, detail);
-    history = repository.save(history);
-    eventBroadcastService.publishNotificationsEvent(history);
+    if (timestamp != null) {
+      //only update the status if the event timestamp is after the existing latestStatusEventAt
+      int updatedHistoryCount
+          = repository.updateStatusIfNewer(history.id(), timestamp, status, detail);
+
+      Optional<History> updatedHistory = repository.findById(history.id());
+      if (updatedHistoryCount > 0) {
+        eventBroadcastService.publishNotificationsEvent(updatedHistory.orElse(null));
+      } else {
+        log.info("Notification {} was not updated as the event timestamp {} was not newer than {}.",
+            history.id(), timestamp, history.latestStatusEventAt());
+      }
+      return updatedHistory.map(this::toDto);
+    } else {
+      //without an event timestamp, we simply update the notification status
+      history = mapper.updateStatus(history, status, detail);
+      history = repository.save(history);
+      eventBroadcastService.publishNotificationsEvent(history);
+    }
     return Optional.of(toDto(history));
   }
 

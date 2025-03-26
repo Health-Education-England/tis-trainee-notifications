@@ -22,11 +22,13 @@
 package uk.nhs.tis.trainee.notifications.event;
 
 import io.awspring.cloud.sqs.annotation.SqsListener;
+import java.time.Instant;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import uk.nhs.tis.trainee.notifications.dto.EmailEvent;
 import uk.nhs.tis.trainee.notifications.dto.EmailEvent.Bounce;
 import uk.nhs.tis.trainee.notifications.dto.EmailEvent.Complaint;
+import uk.nhs.tis.trainee.notifications.dto.EmailEvent.Mail.MailHeader;
 import uk.nhs.tis.trainee.notifications.model.NotificationStatus;
 import uk.nhs.tis.trainee.notifications.service.HistoryService;
 
@@ -44,14 +46,14 @@ public class EmailListener {
   }
 
   /**
-   * Handle failure events, such as bounce and complaints.
+   * Handle email events, such as delivery, bounce and complaints.
    *
    * @param event The email event from SES.
    */
-  @SqsListener("${application.queues.email-failure}")
-  void handleFailure(EmailEvent event) {
+  @SqsListener("${application.queues.email-event}")
+  void handleEmailEvent(EmailEvent event) {
     String notificationId = getNotificationId(event);
-    log.info("Handling failure for notification {}.", notificationId);
+    log.info("Handling email event for notification {}.", notificationId);
 
     String reason = switch (event.notificationType()) {
       case "Bounce" -> getReason(event.bounce());
@@ -61,7 +63,12 @@ public class EmailListener {
 
     if (reason != null) {
       log.info("Updating notification {} with failure detail '{}'", notificationId, reason);
-      historyService.updateStatus(notificationId, NotificationStatus.FAILED, reason);
+      historyService.updateStatus(notificationId, NotificationStatus.FAILED, reason,
+          event.mail().timestamp());
+    } else {
+      log.info("Delivered notification {}", notificationId);
+      historyService.updateStatus(notificationId, NotificationStatus.SENT, null,
+          event.mail().timestamp());
     }
   }
 
