@@ -30,17 +30,33 @@ import java.util.Map;
  * @param ltftName       The name of the LTFT.
  * @param status         The state the LTFT form has been changed to (e.g. SUBMITTED).
  * @param traineeTisId   The id of the person who submitted the form.
- * @param formRef        The LTFTs refference.
+ * @param formRef        The LTFTs reference.
  * @param timestamp      The date and time the LTFT was updated.
  * @param ltftContentDto The LTFT content map of fields and values.
  */
 public record LtftUpdateEvent(
     String ltftName,
-    String status,
+    LtftStatus status,
     String traineeTisId,
     String formRef,
     Instant timestamp,
     Map<String, Object> ltftContentDto
 ) {
 
+  /**
+   * A representation of the status details of the LTFT included in an Amazon SES event.
+   *
+   * @param current The current state of the LTFT with a timestamp.
+   */
+  public record LtftStatus(StatusDetails current) {
+
+    /**
+     * A representation the status details included in an Amazon SES event.
+     *
+     * @param state     The current state of the LTFT.
+     * @param timestamp The timestamp of the status change.
+     */
+    public record StatusDetails(String state, Instant timestamp) {
+    }
+  }
 }
