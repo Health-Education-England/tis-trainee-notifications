@@ -55,6 +55,11 @@ class LtftListenerTest {
   private LtftListener listener;
   private EmailService emailService;
 
+  LtftUpdateEvent.LtftStatus.StatusDetails statusDetails =
+      new LtftUpdateEvent.LtftStatus.StatusDetails(LTFT_STATUS, TIMESTAMP);
+
+  LtftUpdateEvent.LtftStatus ltftStatus = new LtftUpdateEvent.LtftStatus(statusDetails);
+
   @BeforeEach
   void setUp() {
     emailService = mock(EmailService.class);
@@ -66,7 +71,7 @@ class LtftListenerTest {
     doThrow(MessagingException.class).when(emailService)
         .sendMessageToExistingUser(any(), any(), any(), any(), any());
 
-    LtftUpdateEvent event = new LtftUpdateEvent(LTFT_NAME, LTFT_STATUS, TRAINEE_TIS_ID,
+    LtftUpdateEvent event = new LtftUpdateEvent(LTFT_NAME, ltftStatus, TRAINEE_TIS_ID,
         FORM_REFERENCE, TIMESTAMP, LTFT_CONTENT);
 
     assertThrows(MessagingException.class, () -> listener.handleLtftUpdate(event));
@@ -74,7 +79,7 @@ class LtftListenerTest {
 
   @Test
   void shouldSetTraineeIdWhenLtftUpdated() throws MessagingException {
-    LtftUpdateEvent event = new LtftUpdateEvent(LTFT_NAME, LTFT_STATUS, TRAINEE_TIS_ID,
+    LtftUpdateEvent event = new LtftUpdateEvent(LTFT_NAME, ltftStatus, TRAINEE_TIS_ID,
         FORM_REFERENCE, TIMESTAMP, LTFT_CONTENT);
 
     listener.handleLtftUpdate(event);
@@ -84,7 +89,7 @@ class LtftListenerTest {
 
   @Test
   void shouldSetNotificationTypeWhenLtftUpdated() throws MessagingException {
-    LtftUpdateEvent event = new LtftUpdateEvent(LTFT_NAME, LTFT_STATUS, TRAINEE_TIS_ID,
+    LtftUpdateEvent event = new LtftUpdateEvent(LTFT_NAME, ltftStatus, TRAINEE_TIS_ID,
         FORM_REFERENCE, TIMESTAMP, LTFT_CONTENT);
 
     listener.handleLtftUpdate(event);
@@ -94,7 +99,7 @@ class LtftListenerTest {
 
   @Test
   void shouldSetTemplateVersionWhenLtftUpdated() throws MessagingException {
-    LtftUpdateEvent event = new LtftUpdateEvent(LTFT_NAME, LTFT_STATUS, TRAINEE_TIS_ID,
+    LtftUpdateEvent event = new LtftUpdateEvent(LTFT_NAME, ltftStatus, TRAINEE_TIS_ID,
         FORM_REFERENCE, TIMESTAMP, LTFT_CONTENT);
 
     listener.handleLtftUpdate(event);
@@ -104,7 +109,7 @@ class LtftListenerTest {
 
   @Test
   void shouldIncludeFormNameWhenLtftUpdated() throws MessagingException {
-    LtftUpdateEvent event = new LtftUpdateEvent(LTFT_NAME, LTFT_STATUS, TRAINEE_TIS_ID,
+    LtftUpdateEvent event = new LtftUpdateEvent(LTFT_NAME, ltftStatus, TRAINEE_TIS_ID,
         FORM_REFERENCE, TIMESTAMP, LTFT_CONTENT);
 
     listener.handleLtftUpdate(event);
@@ -119,7 +124,7 @@ class LtftListenerTest {
 
   @Test
   void shouldIncludeLifecycleStateWhenLtftUpdated() throws MessagingException {
-    LtftUpdateEvent event = new LtftUpdateEvent(LTFT_NAME, LTFT_STATUS, TRAINEE_TIS_ID,
+    LtftUpdateEvent event = new LtftUpdateEvent(LTFT_NAME, ltftStatus, TRAINEE_TIS_ID,
         FORM_REFERENCE, TIMESTAMP, LTFT_CONTENT);
 
     listener.handleLtftUpdate(event);
@@ -135,7 +140,7 @@ class LtftListenerTest {
 
   @Test
   void shouldIncludeFormTypeWhenLtftUpdated() throws MessagingException {
-    LtftUpdateEvent event = new LtftUpdateEvent(LTFT_NAME, LTFT_STATUS, TRAINEE_TIS_ID,
+    LtftUpdateEvent event = new LtftUpdateEvent(LTFT_NAME, ltftStatus, TRAINEE_TIS_ID,
         FORM_REFERENCE, TIMESTAMP, LTFT_CONTENT);
 
     listener.handleLtftUpdate(event);
@@ -150,7 +155,7 @@ class LtftListenerTest {
 
   @Test
   void shouldIncludeUpdateDateWhenLtftUpdated() throws MessagingException {
-    LtftUpdateEvent event = new LtftUpdateEvent(LTFT_NAME, LTFT_STATUS, TRAINEE_TIS_ID,
+    LtftUpdateEvent event = new LtftUpdateEvent(LTFT_NAME, ltftStatus, TRAINEE_TIS_ID,
         FORM_REFERENCE, TIMESTAMP, LTFT_CONTENT);
 
     listener.handleLtftUpdate(event);
