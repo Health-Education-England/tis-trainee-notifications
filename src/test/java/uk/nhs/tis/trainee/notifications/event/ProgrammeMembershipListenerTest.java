@@ -25,6 +25,7 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import java.time.LocalDate;
 import java.util.HashMap;
@@ -41,6 +42,7 @@ import uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService;
 class ProgrammeMembershipListenerTest {
 
   private static final String TIS_ID = "123";
+  private static final String PERSON_ID = "47165";
   private static final LocalDate START_DATE = LocalDate.now();
 
   private ProgrammeMembershipListener listener;
@@ -85,12 +87,16 @@ class ProgrammeMembershipListenerTest {
   @Test
   void shouldDeleteNotifications() throws SchedulerException {
     Map<String, String> dataMap = new HashMap<>();
+    dataMap.put("personId", PERSON_ID);
     RecordDto data = new RecordDto();
     data.setData(dataMap);
     ProgrammeMembershipEvent event = new ProgrammeMembershipEvent(TIS_ID, data);
 
     ProgrammeMembership expectedProgrammeMembership = new ProgrammeMembership();
     expectedProgrammeMembership.setTisId(TIS_ID);
+    expectedProgrammeMembership.setPersonId(PERSON_ID);
+
+    when(mapper.toEntity(dataMap)).thenReturn(expectedProgrammeMembership);
 
     listener.handleProgrammeMembershipDelete(event);
 

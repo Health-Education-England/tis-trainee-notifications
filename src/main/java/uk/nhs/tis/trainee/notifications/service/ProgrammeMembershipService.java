@@ -463,6 +463,8 @@ public class ProgrammeMembershipService {
             programmeMembership.getTisId());
 
     for (History history : scheduledHistories) {
+      log.info("Deleting scheduled programme membership notification {} (person {}, PM {}).",
+          history.id(), programmeMembership.getPersonId(), programmeMembership.getTisId());
       historyService.deleteHistoryForTrainee(history.id(), programmeMembership.getPersonId());
     }
   }

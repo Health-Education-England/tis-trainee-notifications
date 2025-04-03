@@ -78,8 +78,8 @@ public class ProgrammeMembershipListener {
       throws SchedulerException {
     log.info("Handling programme membership delete event {}.", event);
     if (event.recrd() != null && event.recrd().getData() != null) {
-      ProgrammeMembership programmeMembership = new ProgrammeMembership();
-      programmeMembership.setTisId(event.tisId()); //delete messages have empty recrd data
+      ProgrammeMembership programmeMembership = mapper.toEntity(event.recrd().getData());
+      programmeMembership.setTisId(event.tisId());
       programmeMembershipService.deleteNotificationsFromScheduler(programmeMembership);
       programmeMembershipService.deleteScheduledNotificationsFromDb(programmeMembership);
     } else {
