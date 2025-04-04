@@ -66,7 +66,7 @@ public class LtftListener {
     Map<String, Object> templateVariables = new HashMap<>();
     templateVariables.put("ltftName", event.ltftName());
     templateVariables.put("status", event.status().current().state());
-    templateVariables.put("timestamp", event.status().current().timestamp());
+    templateVariables.put("eventDate", event.status().current().timestamp());
     templateVariables.put("formRef", event.formRef());
 
     String traineeTisId = event.traineeTisId();

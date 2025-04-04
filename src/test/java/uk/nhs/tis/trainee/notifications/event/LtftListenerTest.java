@@ -47,7 +47,7 @@ class LtftListenerTest {
 
   private static final String TRAINEE_TIS_ID = "47165";
   private static final Instant TIMESTAMP = Instant.now();
-  private static final String LTFT_NAME = "123.json";
+  private static final String LTFT_NAME = "My LTFT";
   private static final String FORM_REFERENCE = "ltft_47165_002";
   private static final String LTFT_STATUS = "SUBMITTED";
   private static final Map<String, Object> LTFT_CONTENT = new HashMap<>();
@@ -165,7 +165,7 @@ class LtftListenerTest {
         templateVarsCaptor.capture(), any());
 
     Map<String, Object> templateVariables = templateVarsCaptor.getValue();
-    assertThat("Unexpected form updated at.", templateVariables.get("timestamp"),
+    assertThat("Unexpected form updated at.", templateVariables.get("eventDate"),
         is(TIMESTAMP));
   }
 }

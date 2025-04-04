@@ -11,14 +11,19 @@
 <h2>Content</h2>
 <th:block th:fragment="content">
   <div th:replace="fragments/retry/v1.0.0 :: body"></div>
-  <p style="text-align:right"><img style="margin-right:25px; height:100px" src='https://trainee.tis.nhs.uk/nhse-logo.png' alt="NHS England logo"/></p>
+  <div style="text-align:right"><img style="margin-right:25px; height:100px" src='https://trainee.tis.nhs.uk/nhse-logo.png' alt="NHS England logo"/></div>
   <p th:replace="~{fragments/greeting/v1.0.0 :: p}"></p>
   <p>
-    The status of your LTFT application (ref: <span th:text="${form_ref}"></span>) has changed to <span th:text="${status}"></span> on <span th:text="${timestamp}"></span>.
+    The status of your LTFT application<span
+      th:text="${not #strings.isEmpty(formRef)}? | (ref: ${formRef})| : _"></span> has changed<span
+      th:text="${not #strings.isEmpty(status)}? | to ${status}| : _"></span><span
+      th:text="${eventDate}? | on ${#temporals.format(eventDate, 'dd MMMM yyyy')}| : _"></span>.
   </p>
   <p>Kind Regards,</p>
   <p>TIS Self-Service</p>
-  <p><strong>Application Reference:</strong> <span th:text="${form_name}"></span></p>
+  <p><strong>Application Reference:</strong> <span
+      th:text="${not #strings.isEmpty(ltftName)}? |${ltftName}| : _">(not set)</span></p>
+  <div th:replace="fragments/disclaimer/v1.0.0 :: body"></div>
 </th:block>
 </body>
 </html>
