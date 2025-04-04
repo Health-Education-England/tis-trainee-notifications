@@ -22,29 +22,33 @@
 package uk.nhs.tis.trainee.notifications.dto;
 
 import java.time.Instant;
-import java.util.Map;
 
 /**
  * A LTFT update event.
  *
- * @param ltftName       The name of the LTFT.
- * @param status         The state the LTFT form has been changed to (e.g. SUBMITTED).
- * @param traineeTisId   The id of the person who submitted the form.
- * @param formRef        The LTFTs reference.
- * @param timestamp      The date and time the LTFT was updated.
- * @param ltftContentDto The LTFT content map of fields and values.
+ * @param traineeTisId The id of the person who submitted the form.
+ * @param formRef      The reference of the LTFT form.
+ * @param content      The content of the LTFT form.
+ * @param status       The status of the LTFT form.
  */
 public record LtftUpdateEvent(
-    String ltftName,
-    LtftStatus status,
     String traineeTisId,
     String formRef,
-    Instant timestamp,
-    Map<String, Object> ltftContentDto
+    LtftContent content,
+    LtftStatus status
 ) {
 
   /**
-   * A representation of the status details of the LTFT included in an Amazon SES event.
+   * A representation of the LTFT content.
+   *
+   * @param name The LTFT form name.
+   */
+  public record LtftContent(String name) {
+
+  }
+
+  /**
+   * A representation of the status details of the LTFT.
    *
    * @param current The current state of the LTFT with a timestamp.
    */
@@ -57,6 +61,7 @@ public record LtftUpdateEvent(
      * @param timestamp The timestamp of the status change.
      */
     public record StatusDetails(String state, Instant timestamp) {
+
     }
   }
 }

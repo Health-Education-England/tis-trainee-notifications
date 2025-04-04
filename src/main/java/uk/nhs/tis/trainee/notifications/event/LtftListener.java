@@ -59,12 +59,12 @@ public class LtftListener {
    * @param event The LTFT update event message.
    * @throws MessagingException If the message could not be sent.
    */
-  @SqsListener("${application.queues.ltft.status-update}")
+  @SqsListener("${application.queues.ltft-updated}")
   public void handleLtftUpdate(LtftUpdateEvent event) throws MessagingException {
     log.info("Handling LTFT update event {}.", event);
 
     Map<String, Object> templateVariables = new HashMap<>();
-    templateVariables.put("ltftName", event.ltftName());
+    templateVariables.put("ltftName", event.content().name());
     templateVariables.put("status", event.status().current().state());
     templateVariables.put("eventDate", event.status().current().timestamp());
     templateVariables.put("formRef", event.formRef());

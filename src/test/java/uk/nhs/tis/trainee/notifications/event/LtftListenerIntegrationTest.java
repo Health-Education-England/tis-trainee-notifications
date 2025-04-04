@@ -33,7 +33,6 @@ import jakarta.mail.MessagingException;
 import jakarta.mail.Session;
 import jakarta.mail.internet.MimeMessage;
 import java.time.Instant;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -55,6 +54,7 @@ import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.test.context.ActiveProfiles;
 import uk.nhs.tis.trainee.notifications.dto.LtftUpdateEvent;
+import uk.nhs.tis.trainee.notifications.dto.LtftUpdateEvent.LtftContent;
 import uk.nhs.tis.trainee.notifications.dto.LtftUpdateEvent.LtftStatus;
 import uk.nhs.tis.trainee.notifications.dto.UserDetails;
 import uk.nhs.tis.trainee.notifications.model.History;
@@ -93,7 +93,6 @@ class LtftListenerIntegrationTest {
   private static final String STATUS = "Approved";
   private static final Instant TIMESTAMP = Instant.parse("2025-03-15T10:00:00Z");
   private static final String FORM_REF = "ltft_47165_001";
-  private static final Map<String, Object> LTFT_CONTENT_DTO = new HashMap<>();
 
   @MockBean
   private JavaMailSender mailSender;
@@ -129,8 +128,8 @@ class LtftListenerIntegrationTest {
     LtftStatus status = new LtftStatus(
         new LtftStatus.StatusDetails(missingValue, null)
     );
-    LtftUpdateEvent event = new LtftUpdateEvent(missingValue, status, TIS_TRAINEE_ID,
-        missingValue, null, LTFT_CONTENT_DTO);
+    LtftContent ltftContent = new LtftContent(missingValue);
+    LtftUpdateEvent event = new LtftUpdateEvent(TIS_TRAINEE_ID, missingValue, ltftContent, status);
 
     when(userAccountService.getUserDetailsById(USER_ID)).thenReturn(
         new UserDetails(true, EMAIL, TITLE, missingValue, missingValue, GMC));
@@ -169,8 +168,8 @@ class LtftListenerIntegrationTest {
     LtftStatus status = new LtftStatus(
         new LtftStatus.StatusDetails(STATUS, TIMESTAMP)
     );
-    LtftUpdateEvent event = new LtftUpdateEvent(LTFT_NAME, status, TIS_TRAINEE_ID,
-        FORM_REF, TIMESTAMP, LTFT_CONTENT_DTO);
+    LtftContent ltftContent = new LtftContent(LTFT_NAME);
+    LtftUpdateEvent event = new LtftUpdateEvent(TIS_TRAINEE_ID, FORM_REF, ltftContent, status);
     when(userAccountService.getUserDetailsById(USER_ID)).thenReturn(
         new UserDetails(true, EMAIL, TITLE, FAMILY_NAME, GIVEN_NAME, GMC));
 
@@ -209,8 +208,8 @@ class LtftListenerIntegrationTest {
     LtftStatus status = new LtftStatus(
         new LtftStatus.StatusDetails(STATUS, TIMESTAMP)
     );
-    LtftUpdateEvent event = new LtftUpdateEvent(LTFT_NAME, status, TIS_TRAINEE_ID,
-        FORM_REF, TIMESTAMP, LTFT_CONTENT_DTO);
+    LtftContent ltftContent = new LtftContent(LTFT_NAME);
+    LtftUpdateEvent event = new LtftUpdateEvent(TIS_TRAINEE_ID, FORM_REF, ltftContent, status);
     when(userAccountService.getUserDetailsById(USER_ID)).thenReturn(
         new UserDetails(true, EMAIL, TITLE, FAMILY_NAME, GIVEN_NAME, GMC));
 
