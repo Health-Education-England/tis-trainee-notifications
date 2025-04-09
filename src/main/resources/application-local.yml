@@ -9,11 +9,11 @@ application:
     account-updated: ${local.sqs-path}/tis-trainee-notifications-local-account-updated
     coj-published: ${local.sqs-path}/tis-trainee-notifications-local-coj-published
     contact-details-updated: ${local.sqs-path}/tis-trainee-notifications-local-contact-details-updated
-    email-failure: ${local.sqs-path}/tis-trainee-notifications-local-email-failure
     email-event: ${local.sqs-path}/tis-trainee-notifications-local-email-failure
-    ltft-updated: ${local.sqs-path}/tis-trainee-notifications-local-ltft-updated
     form-updated: ${local.sqs-path}/tis-trainee-notifications-local-form-updated
+    gmc-rejected: ${local.sqs-path}/tis-trainee-notifications-local-gmc-rejected
     gmc-updated: ${local.sqs-path}/tis-trainee-notifications-local-gmc-updated
+    ltft-updated: ${local.sqs-path}/tis-trainee-notifications-local-ltft-updated
     placement-deleted: ${local.sqs-path}/tis-trainee-notifications-local-placement-deleted
     placement-updated: ${local.sqs-path}/tis-trainee-notifications-local-placement-updated
     programme-membership-deleted: ${local.sqs-path}/tis-trainee-notifications-local-programme-membership-deleted
@@ -37,3 +37,6 @@ spring:
         static: eu-west-2
       s3:
         path-style-access-enabled: true
+  datasource:
+    username: root
+    password:
