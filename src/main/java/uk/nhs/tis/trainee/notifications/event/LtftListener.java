@@ -40,17 +40,27 @@ import uk.nhs.tis.trainee.notifications.service.EmailService;
 @Component
 public class LtftListener {
   private final EmailService emailService;
-  private final String templateVersion;
+
+  private final Map<String, String> templateVersions;
 
   /**
    * Construct a listener for LTFT events.
    *
    * @param emailService The service to use for sending emails.
+   * @param submittedTemplateVersion The email template version for submitted status.
+   * @param updatedTemplateVersion The email template version for updated status.
    */
-  public LtftListener(EmailService emailService,
-      @Value("${application.template-versions.ltft-updated.email}") String templateVersion) {
+  public LtftListener(
+      EmailService emailService,
+      @Value("${application.template-versions.ltft-submitted.email}") String submittedTemplateVersion,
+      @Value("${application.template-versions.ltft-updated.email}") String updatedTemplateVersion) {
     this.emailService = emailService;
-    this.templateVersion = templateVersion;
+    this.templateVersions = Map.of(
+        "SUBMITTED", submittedTemplateVersion,
+        "UNSUBMITTED", updatedTemplateVersion,
+        "APPROVED", updatedTemplateVersion,
+        "WITHDRAWN", updatedTemplateVersion
+    );
   }
 
   /**
@@ -70,8 +80,18 @@ public class LtftListener {
     templateVariables.put("formRef", event.formRef());
 
     String traineeTisId = event.traineeTisId();
+    String currentState = event.status().current().state();
+
+    String templateVersion = templateVersions.get(currentState);
+    if (templateVersion == null) {
+      throw new IllegalStateException("No template version configured for LTFT state: " + currentState);
+    }
+
     emailService.sendMessageToExistingUser(traineeTisId, LTFT_UPDATED, templateVersion,
         templateVariables, null);
-    log.info("LTFT updated notification sent for trainee {}.", traineeTisId);
+
+    log.info("LTFT {} notification sent for trainee {}.",
+        "SUBMITTED".equalsIgnoreCase(currentState) ? "submitted" : "updated",
+        traineeTisId);
   }
 }
