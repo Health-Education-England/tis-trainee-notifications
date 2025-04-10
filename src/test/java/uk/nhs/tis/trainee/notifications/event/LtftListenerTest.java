@@ -36,6 +36,8 @@ import java.time.Instant;
 import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import uk.nhs.tis.trainee.notifications.dto.LtftUpdateEvent;
 import uk.nhs.tis.trainee.notifications.dto.LtftUpdateEvent.LtftContent;
@@ -43,129 +45,144 @@ import uk.nhs.tis.trainee.notifications.service.EmailService;
 
 class LtftListenerTest {
 
-  private static final String VERSION = "v1.2.3";
+  private static final String VERSION_SUBMITTED = "v1.2.3-submitted";
+  private static final String VERSION_UPDATED = "v1.2.3-updated";
 
   private static final String TRAINEE_TIS_ID = "47165";
   private static final Instant TIMESTAMP = Instant.now();
   private static final String LTFT_NAME = "My LTFT";
   private static final String FORM_REFERENCE = "ltft_47165_002";
-  private static final String LTFT_STATUS = "SUBMITTED";
 
   private LtftListener listener;
   private EmailService emailService;
 
-  private final LtftUpdateEvent.LtftStatus.StatusDetails statusDetails =
-      new LtftUpdateEvent.LtftStatus.StatusDetails(LTFT_STATUS, TIMESTAMP);
-  private final LtftUpdateEvent.LtftStatus ltftStatus
-      = new LtftUpdateEvent.LtftStatus(statusDetails);
   private final LtftContent ltftContent = new LtftContent(LTFT_NAME);
 
   @BeforeEach
   void setUp() {
     emailService = mock(EmailService.class);
-    listener = new LtftListener(emailService, VERSION);
+    listener = new LtftListener(emailService, VERSION_SUBMITTED, VERSION_UPDATED);
   }
 
-  @Test
-  void shouldThrowExceptionWhenLtftUpdatedAndSendingFails() throws MessagingException {
+  @ParameterizedTest
+  @ValueSource(strings = {"SUBMITTED", "APPROVED"})
+  void shouldThrowExceptionWhenLtftUpdatedAndSendingFails(String status) throws MessagingException {
+    LtftUpdateEvent event = buildEvent(status);
     doThrow(MessagingException.class).when(emailService)
         .sendMessageToExistingUser(any(), any(), any(), any(), any());
-
-    LtftUpdateEvent event
-        = new LtftUpdateEvent(TRAINEE_TIS_ID, FORM_REFERENCE, ltftContent, ltftStatus);
 
     assertThrows(MessagingException.class, () -> listener.handleLtftUpdate(event));
   }
 
-  @Test
-  void shouldSetTraineeIdWhenLtftUpdated() throws MessagingException {
-    LtftUpdateEvent event
-        = new LtftUpdateEvent(TRAINEE_TIS_ID, FORM_REFERENCE, ltftContent, ltftStatus);
+  @ParameterizedTest
+  @ValueSource(strings = {"SUBMITTED", "APPROVED"})
+  void shouldSetTraineeIdWhenLtftUpdated(String status) throws MessagingException {
+    LtftUpdateEvent event = buildEvent(status);
 
     listener.handleLtftUpdate(event);
 
     verify(emailService).sendMessageToExistingUser(eq(TRAINEE_TIS_ID), any(), any(), any(), any());
   }
 
-  @Test
-  void shouldSetNotificationTypeWhenLtftUpdated() throws MessagingException {
-    LtftUpdateEvent event
-        = new LtftUpdateEvent(TRAINEE_TIS_ID, FORM_REFERENCE, ltftContent, ltftStatus);
+  @ParameterizedTest
+  @ValueSource(strings = {"SUBMITTED", "APPROVED"})
+  void shouldSetNotificationTypeWhenLtftUpdated(String status) throws MessagingException {
+    LtftUpdateEvent event = buildEvent(status);
 
     listener.handleLtftUpdate(event);
 
     verify(emailService).sendMessageToExistingUser(any(), eq(LTFT_UPDATED), any(), any(), any());
   }
 
-  @Test
-  void shouldSetTemplateVersionWhenLtftUpdated() throws MessagingException {
-    LtftUpdateEvent event
-        = new LtftUpdateEvent(TRAINEE_TIS_ID, FORM_REFERENCE, ltftContent, ltftStatus);
+  @ParameterizedTest
+  @ValueSource(strings = {"SUBMITTED"})
+  void shouldUseSubmittedTemplateVersionWhenStatusIsSubmitted(String status) throws MessagingException {
+    LtftUpdateEvent event = buildEvent(status);
 
     listener.handleLtftUpdate(event);
 
-    verify(emailService).sendMessageToExistingUser(any(), any(), eq(VERSION), any(), any());
+    verify(emailService).sendMessageToExistingUser(any(), any(), eq(VERSION_SUBMITTED), any(), any());
   }
 
-  @Test
-  void shouldIncludeFormNameWhenLtftUpdated() throws MessagingException {
-    LtftUpdateEvent event
-        = new LtftUpdateEvent(TRAINEE_TIS_ID, FORM_REFERENCE, ltftContent, ltftStatus);
+  @ParameterizedTest
+  @ValueSource(strings = {"APPROVED"})
+  void shouldUseUpdatedTemplateVersionWhenStatusIsNotSubmitted(String status) throws MessagingException {
+    LtftUpdateEvent event = buildEvent(status);
 
     listener.handleLtftUpdate(event);
 
-    ArgumentCaptor<Map<String, Object>> templateVarsCaptor = ArgumentCaptor.captor();
-    verify(emailService).sendMessageToExistingUser(any(), any(), any(),
-        templateVarsCaptor.capture(), any());
-
-    Map<String, Object> templateVariables = templateVarsCaptor.getValue();
-    assertThat("Unexpected LTFT name.", templateVariables.get("ltftName"), is(LTFT_NAME));
+    verify(emailService).sendMessageToExistingUser(any(), any(), eq(VERSION_UPDATED), any(), any());
   }
 
-  @Test
-  void shouldIncludeLifecycleStateWhenLtftUpdated() throws MessagingException {
-    LtftUpdateEvent event
-        = new LtftUpdateEvent(TRAINEE_TIS_ID, FORM_REFERENCE, ltftContent, ltftStatus);
+  @ParameterizedTest
+  @ValueSource(strings = {"SUBMITTED", "APPROVED"})
+  void shouldIncludeFormNameWhenLtftUpdated(String status) throws MessagingException {
+    LtftUpdateEvent event = buildEvent(status);
 
     listener.handleLtftUpdate(event);
 
-    ArgumentCaptor<Map<String, Object>> templateVarsCaptor = ArgumentCaptor.captor();
-    verify(emailService).sendMessageToExistingUser(any(), any(), any(),
-        templateVarsCaptor.capture(), any());
+    ArgumentCaptor<Map<String, Object>> captor = ArgumentCaptor.forClass(Map.class);
+    verify(emailService).sendMessageToExistingUser(any(), any(), any(), captor.capture(), any());
 
-    Map<String, Object> templateVariables = templateVarsCaptor.getValue();
-    assertThat("Unexpected LTFT status.", templateVariables.get("status"),
-        is(LTFT_STATUS));
+    assertThat("Unexpected LTFT name.", captor.getValue().get("ltftName"), is(LTFT_NAME));
   }
 
-  @Test
-  void shouldIncludeFormTypeWhenLtftUpdated() throws MessagingException {
-    LtftUpdateEvent event
-        = new LtftUpdateEvent(TRAINEE_TIS_ID, FORM_REFERENCE, ltftContent, ltftStatus);
+  @ParameterizedTest
+  @ValueSource(strings = {"SUBMITTED", "APPROVED"})
+  void shouldIncludeLifecycleStateWhenLtftUpdated(String status) throws MessagingException {
+    LtftUpdateEvent event = buildEvent(status);
 
     listener.handleLtftUpdate(event);
 
-    ArgumentCaptor<Map<String, Object>> templateVarsCaptor = ArgumentCaptor.captor();
-    verify(emailService).sendMessageToExistingUser(any(), any(), any(),
-        templateVarsCaptor.capture(), any());
+    ArgumentCaptor<Map<String, Object>> captor = ArgumentCaptor.forClass(Map.class);
+    verify(emailService).sendMessageToExistingUser(any(), any(), any(), captor.capture(), any());
 
-    Map<String, Object> templateVariables = templateVarsCaptor.getValue();
-    assertThat("Unexpected form ref.", templateVariables.get("formRef"), is(FORM_REFERENCE));
+    assertThat("Unexpected LTFT status.", captor.getValue().get("status"), is(status));
   }
 
-  @Test
-  void shouldIncludeUpdateDateWhenLtftUpdated() throws MessagingException {
-    LtftUpdateEvent event
-        = new LtftUpdateEvent(TRAINEE_TIS_ID, FORM_REFERENCE, ltftContent, ltftStatus);
+  @ParameterizedTest
+  @ValueSource(strings = {"SUBMITTED", "APPROVED"})
+  void shouldIncludeFormTypeWhenLtftUpdated(String status) throws MessagingException {
+    LtftUpdateEvent event = buildEvent(status);
 
     listener.handleLtftUpdate(event);
 
-    ArgumentCaptor<Map<String, Object>> templateVarsCaptor = ArgumentCaptor.captor();
-    verify(emailService).sendMessageToExistingUser(any(), any(), any(),
-        templateVarsCaptor.capture(), any());
+    ArgumentCaptor<Map<String, Object>> captor = ArgumentCaptor.forClass(Map.class);
+    verify(emailService).sendMessageToExistingUser(any(), any(), any(), captor.capture(), any());
 
-    Map<String, Object> templateVariables = templateVarsCaptor.getValue();
-    assertThat("Unexpected form updated at.", templateVariables.get("eventDate"),
-        is(TIMESTAMP));
+    assertThat("Unexpected form ref.", captor.getValue().get("formRef"), is(FORM_REFERENCE));
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"SUBMITTED"})
+  void shouldIncludeLocalOfficeWhenLtftUpdated2(String status) throws MessagingException {
+    LtftUpdateEvent event = buildEvent(status);
+
+    listener.handleLtftUpdate(event);
+
+    ArgumentCaptor<Map<String, Object>> captor = ArgumentCaptor.forClass(Map.class);
+    verify(emailService).sendMessageToExistingUser(any(), any(), any(), captor.capture(), any());
+
+    assertThat("Unexpected local office.", captor.getValue().get("localOfficeName"), is(FORM_REFERENCE));
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"SUBMITTED", "APPROVED"})
+  void shouldIncludeUpdateDateWhenLtftUpdated(String status) throws MessagingException {
+    LtftUpdateEvent event = buildEvent(status);
+
+    listener.handleLtftUpdate(event);
+
+    ArgumentCaptor<Map<String, Object>> captor = ArgumentCaptor.forClass(Map.class);
+    verify(emailService).sendMessageToExistingUser(any(), any(), any(), captor.capture(), any());
+
+    assertThat("Unexpected form updated at.", captor.getValue().get("eventDate"), is(TIMESTAMP));
+  }
+
+  private LtftUpdateEvent buildEvent(String status) {
+    LtftUpdateEvent.LtftStatus.StatusDetails statusDetails =
+        new LtftUpdateEvent.LtftStatus.StatusDetails(status, TIMESTAMP);
+    LtftUpdateEvent.LtftStatus ltftStatus = new LtftUpdateEvent.LtftStatus(statusDetails);
+    return new LtftUpdateEvent(TRAINEE_TIS_ID, FORM_REFERENCE, ltftContent, ltftStatus);
   }
 }

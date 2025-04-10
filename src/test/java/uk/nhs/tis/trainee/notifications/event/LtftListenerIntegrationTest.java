@@ -90,7 +90,7 @@ class LtftListenerIntegrationTest {
       + "in this email. Thank you.";
 
   private static final String LTFT_NAME = "ltft_name";
-  private static final String STATUS = "Approved";
+  private static final String STATUS = "APPROVED";
   private static final Instant TIMESTAMP = Instant.parse("2025-03-15T10:00:00Z");
   private static final String FORM_REF = "ltft_47165_001";
 
@@ -196,7 +196,7 @@ class LtftListenerIntegrationTest {
     Element detail = bodyChildren.get(2);
     assertThat("Unexpected detail.", detail.text(),
         is("The status of your LTFT application (ref: ltft_47165_001) has changed "
-            + "to Approved on 15 March 2025."));
+            + "to APPROVED on 15 March 2025."));
 
     Element applicationRef = bodyChildren.get(5);
     assertThat("Unexpected application reference.", applicationRef.text(),
