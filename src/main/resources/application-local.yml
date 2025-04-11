@@ -37,6 +37,3 @@ spring:
         static: eu-west-2
       s3:
         path-style-access-enabled: true
-  datasource:
-    username: root
-    password:
