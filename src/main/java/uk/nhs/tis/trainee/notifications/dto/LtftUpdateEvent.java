@@ -43,8 +43,15 @@ public record LtftUpdateEvent(
    *
    * @param name The LTFT form name.
    */
-  public record LtftContent(String name) {
+  public record LtftContent(String name, ProgrammeMembershipDetails programmeMembership) {
+    /**
+     * A representation of the ProgrammeMembership attatched to the LTFT.
+     *
+     * @param designatedBodyCode The programmeMemberships DBC.
+     */
+    public record ProgrammeMembershipDetails(String designatedBodyCode) {
 
+    }
   }
 
   /**

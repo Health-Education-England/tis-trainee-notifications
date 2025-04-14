@@ -35,28 +35,31 @@ import jakarta.mail.MessagingException;
 import java.time.Instant;
 import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import uk.nhs.tis.trainee.notifications.dto.LtftUpdateEvent;
-import uk.nhs.tis.trainee.notifications.dto.LtftUpdateEvent.LtftContent;
 import uk.nhs.tis.trainee.notifications.service.EmailService;
 
 class LtftListenerTest {
 
   private static final String VERSION_SUBMITTED = "v1.2.3-submitted";
   private static final String VERSION_UPDATED = "v1.2.3-updated";
-
   private static final String TRAINEE_TIS_ID = "47165";
   private static final Instant TIMESTAMP = Instant.now();
   private static final String LTFT_NAME = "My LTFT";
   private static final String FORM_REFERENCE = "ltft_47165_002";
+  private static final String DBC = "1-1RSSPZ7";
+  private static final String LOCAL_OFFICE = "NHSE Education East Midlands";
 
   private LtftListener listener;
   private EmailService emailService;
 
-  private final LtftContent ltftContent = new LtftContent(LTFT_NAME);
+  private final LtftUpdateEvent.LtftContent.ProgrammeMembershipDetails programmeMembershipDetails =
+      new LtftUpdateEvent.LtftContent.ProgrammeMembershipDetails(DBC);
+
+  private final LtftUpdateEvent.LtftContent ltftContent =
+      new LtftUpdateEvent.LtftContent(LTFT_NAME, programmeMembershipDetails);
 
   @BeforeEach
   void setUp() {
@@ -96,17 +99,20 @@ class LtftListenerTest {
 
   @ParameterizedTest
   @ValueSource(strings = {"SUBMITTED"})
-  void shouldUseSubmittedTemplateVersionWhenStatusIsSubmitted(String status) throws MessagingException {
+  void shouldUseSubmittedTemplateVersionWhenStatusIsSubmitted(String status)
+      throws MessagingException {
     LtftUpdateEvent event = buildEvent(status);
 
     listener.handleLtftUpdate(event);
 
-    verify(emailService).sendMessageToExistingUser(any(), any(), eq(VERSION_SUBMITTED), any(), any());
+    verify(emailService).sendMessageToExistingUser(any(), any(), eq(VERSION_SUBMITTED), any(),
+        any());
   }
 
   @ParameterizedTest
   @ValueSource(strings = {"APPROVED"})
-  void shouldUseUpdatedTemplateVersionWhenStatusIsNotSubmitted(String status) throws MessagingException {
+  void shouldUseUpdatedTemplateVersionWhenStatusIsNotSubmitted(String status)
+      throws MessagingException {
     LtftUpdateEvent event = buildEvent(status);
 
     listener.handleLtftUpdate(event);
@@ -155,7 +161,7 @@ class LtftListenerTest {
 
   @ParameterizedTest
   @ValueSource(strings = {"SUBMITTED"})
-  void shouldIncludeLocalOfficeWhenLtftUpdated2(String status) throws MessagingException {
+  void shouldIncludeLocalOfficeWhenLtftUpdated(String status) throws MessagingException {
     LtftUpdateEvent event = buildEvent(status);
 
     listener.handleLtftUpdate(event);
@@ -163,7 +169,10 @@ class LtftListenerTest {
     ArgumentCaptor<Map<String, Object>> captor = ArgumentCaptor.forClass(Map.class);
     verify(emailService).sendMessageToExistingUser(any(), any(), any(), captor.capture(), any());
 
-    assertThat("Unexpected local office.", captor.getValue().get("localOfficeName"), is(FORM_REFERENCE));
+    Map<String, Object> templateVariables = captor.getValue();
+    Map<String, String> localOfficeDetails = (Map<String, String>) templateVariables.get("LocalOfficeDetails");
+
+    assertThat("Unexpected local office.", localOfficeDetails.get("localOffice"), is(LOCAL_OFFICE));
   }
 
   @ParameterizedTest
@@ -176,7 +185,8 @@ class LtftListenerTest {
     ArgumentCaptor<Map<String, Object>> captor = ArgumentCaptor.forClass(Map.class);
     verify(emailService).sendMessageToExistingUser(any(), any(), any(), captor.capture(), any());
 
-    assertThat("Unexpected form updated at.", captor.getValue().get("eventDate"), is(TIMESTAMP));
+    assertThat("Unexpected form updated at.", captor.getValue().get("eventDate"),
+        is(TIMESTAMP));
   }
 
   private LtftUpdateEvent buildEvent(String status) {

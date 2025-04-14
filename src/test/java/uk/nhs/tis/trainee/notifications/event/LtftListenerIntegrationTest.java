@@ -24,6 +24,7 @@ package uk.nhs.tis.trainee.notifications.event;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.LTFT_UPDATED;
@@ -92,7 +93,11 @@ class LtftListenerIntegrationTest {
   private static final String LTFT_NAME = "ltft_name";
   private static final String STATUS = "APPROVED";
   private static final Instant TIMESTAMP = Instant.parse("2025-03-15T10:00:00Z");
+  private static final String DBC = "1-1RSSPZ7";
   private static final String FORM_REF = "ltft_47165_001";
+
+  private final LtftUpdateEvent.LtftContent.ProgrammeMembershipDetails programmeMembershipDetails =
+      new LtftUpdateEvent.LtftContent.ProgrammeMembershipDetails(DBC);
 
   @MockBean
   private JavaMailSender mailSender;
@@ -123,43 +128,27 @@ class LtftListenerIntegrationTest {
 
   @ParameterizedTest
   @NullAndEmptySource
-  void shouldSendDefaultLtftNotificationWhenTemplateVariablesNotAvailable(String missingValue)
-      throws Exception {
+  void shouldThrowExceptionWhenTemplateVersionNotConfigured(String missingValue) {
     LtftStatus status = new LtftStatus(
         new LtftStatus.StatusDetails(missingValue, null)
     );
-    LtftContent ltftContent = new LtftContent(missingValue);
+    LtftContent ltftContent = new LtftContent(missingValue, programmeMembershipDetails);
     LtftUpdateEvent event = new LtftUpdateEvent(TIS_TRAINEE_ID, missingValue, ltftContent, status);
 
     when(userAccountService.getUserDetailsById(USER_ID)).thenReturn(
         new UserDetails(true, EMAIL, TITLE, missingValue, missingValue, GMC));
 
-    listener.handleLtftUpdate(event);
+    IllegalStateException thrown = assertThrows(IllegalStateException.class,
+        () -> listener.handleLtftUpdate(event),
+        "Expected handleLtftUpdate to throw when template version is not configured"
+    );
 
-    ArgumentCaptor<MimeMessage> messageCaptor = ArgumentCaptor.captor();
-    verify(mailSender).send(messageCaptor.capture());
+    if(missingValue != null){
+      assertThat(thrown.getMessage(), is("No template version configured for LTFT state: " + missingValue));
 
-    MimeMessage message = messageCaptor.getValue();
-    Document content = Jsoup.parse((String) message.getContent());
-
-    Elements bodyChildren = content.body().children();
-    assertThat("Unexpected body children count.", bodyChildren.size(), is(8));
-
-    Element logo = bodyChildren.get(0);
-    assertThat("Unexpected element tag.", logo.tagName(), is("div"));
-
-    Element disclaimer = bodyChildren.get(7);
-    assertThat("Unexpected disclaimer.", disclaimer.text(), is(DEFAULT_DISCLAIMER));
-
-    Element greeting = bodyChildren.get(1);
-    assertThat("Unexpected greeting.", greeting.text(), is(DEFAULT_GREETING));
-
-    Element detail = bodyChildren.get(2);
-    assertThat("Unexpected detail.", detail.text(), is(DEFAULT_DETAIL));
-
-    Element applicationRef = bodyChildren.get(5);
-    assertThat("Unexpected application reference.", applicationRef.text(),
-        is(DEFAULT_APP_REF));
+    } else {
+      assertThat(thrown.getMessage(), is("LTFT update state is " + missingValue + " for trainee " + TIS_TRAINEE_ID));
+    }
   }
 
   @Test
@@ -168,7 +157,7 @@ class LtftListenerIntegrationTest {
     LtftStatus status = new LtftStatus(
         new LtftStatus.StatusDetails(STATUS, TIMESTAMP)
     );
-    LtftContent ltftContent = new LtftContent(LTFT_NAME);
+    LtftContent ltftContent = new LtftContent(LTFT_NAME, programmeMembershipDetails);
     LtftUpdateEvent event = new LtftUpdateEvent(TIS_TRAINEE_ID, FORM_REF, ltftContent, status);
     when(userAccountService.getUserDetailsById(USER_ID)).thenReturn(
         new UserDetails(true, EMAIL, TITLE, FAMILY_NAME, GIVEN_NAME, GMC));
@@ -208,7 +197,7 @@ class LtftListenerIntegrationTest {
     LtftStatus status = new LtftStatus(
         new LtftStatus.StatusDetails(STATUS, TIMESTAMP)
     );
-    LtftContent ltftContent = new LtftContent(LTFT_NAME);
+    LtftContent ltftContent = new LtftContent(LTFT_NAME, programmeMembershipDetails);
     LtftUpdateEvent event = new LtftUpdateEvent(TIS_TRAINEE_ID, FORM_REF, ltftContent, status);
     when(userAccountService.getUserDetailsById(USER_ID)).thenReturn(
         new UserDetails(true, EMAIL, TITLE, FAMILY_NAME, GIVEN_NAME, GMC));
@@ -235,7 +224,7 @@ class LtftListenerIntegrationTest {
 
     Map<String, Object> storedVariables = templateInfo.variables();
     assertThat("Unexpected template variable count.", storedVariables.size(),
-        is(8));
+        is(10));
     assertThat("Unexpected template variable.", storedVariables.get("familyName"),
         is(FAMILY_NAME));
     assertThat("Unexpected template variable.", storedVariables.get("givenName"),
