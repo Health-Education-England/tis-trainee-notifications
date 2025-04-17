@@ -30,7 +30,9 @@ import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
+import uk.nhs.tis.trainee.notifications.dto.LtftEvent;
 import uk.nhs.tis.trainee.notifications.dto.LtftUpdateEvent;
+import uk.nhs.tis.trainee.notifications.mapper.LtftMapper;
 import uk.nhs.tis.trainee.notifications.service.EmailService;
 
 /**
@@ -40,7 +42,7 @@ import uk.nhs.tis.trainee.notifications.service.EmailService;
 @Component
 public class LtftListener {
   private final EmailService emailService;
-
+  private LtftMapper ltftMapper;
   private final Map<String, String> templateVersions;
 
   /**
@@ -52,10 +54,12 @@ public class LtftListener {
    */
   public LtftListener(
       EmailService emailService,
+      LtftMapper ltftMapper,
       @Value("${application.template-versions.ltft-submitted.email}")
       String submittedTemplateVersion,
       @Value("${application.template-versions.ltft-updated.email}") String updatedTemplateVersion) {
     this.emailService = emailService;
+    this.ltftMapper = ltftMapper;
     this.templateVersions = Map.of(
         "SUBMITTED", submittedTemplateVersion,
         "UNSUBMITTED", updatedTemplateVersion,
@@ -71,23 +75,29 @@ public class LtftListener {
    * @throws MessagingException If the message could not be sent.
    */
   @SqsListener("${application.queues.ltft-updated}")
-  public void handleLtftUpdate(LtftUpdateEvent event) throws MessagingException {
+  public void handleLtftUpdate(LtftEvent event) throws MessagingException {
     log.info("Handling LTFT update event {}.", event);
 
-    Map<String, Object> templateVariables = new HashMap<>();
-    templateVariables.put("ltftName", event.content().name());
-    templateVariables.put("status", event.status().current().state());
-    templateVariables.put("eventDate", event.status().current().timestamp());
-    templateVariables.put("formRef", event.formRef());
+    if (event.record() == null || event.record().getData() == null) {
+      log.info("Ignoring non LTFT update event: {}", event);
+      return;
+    }
 
-    String dbc = event.content().programmeMembership().designatedBodyCode();
+    LtftUpdateEvent Event = ltftMapper.toEntity(event.record().getData());
+
+    Map<String, Object> templateVariables = new HashMap<>();
+    templateVariables.put("ltftName", Event.content().name());
+    templateVariables.put("status", Event.status().current().state());
+    templateVariables.put("eventDate", Event.status().current().timestamp());
+    templateVariables.put("formRef", Event.formRef());
+
+    String dbc = Event.content().programmeMembership().designatedBodyCode();
     templateVariables.put("dbc", dbc);
 
-    String traineeTisId = event.traineeTisId();
-    String currentState = event.status().current().state();
+    String traineeTisId = Event.traineeTisId();
+    String currentState = Event.status().current().state();
 
     Map<String, String> localOfficeDetails = getLocalOfficeDetailsFromDbc(dbc);
-
     templateVariables.put("LocalOfficeDetails", localOfficeDetails);
 
     if (currentState == null) {
@@ -96,12 +106,15 @@ public class LtftListener {
 
     String templateVersion = templateVersions.get(currentState);
     if (templateVersion == null) {
-      throw new IllegalStateException("No template version configured for LTFT state: " +
-          currentState);
+      throw new IllegalStateException("No template version configured for LTFT state: " + currentState);
     }
 
-    emailService.sendMessageToExistingUser(traineeTisId, LTFT_UPDATED, templateVersion,
-        templateVariables, null);
+    emailService.sendMessageToExistingUser(
+        traineeTisId,
+        LTFT_UPDATED,
+        templateVersion,
+        templateVariables,
+        null);
 
     log.info("LTFT {} notification sent for trainee {}.",
         "SUBMITTED".equalsIgnoreCase(currentState) ? "submitted" : "updated",
