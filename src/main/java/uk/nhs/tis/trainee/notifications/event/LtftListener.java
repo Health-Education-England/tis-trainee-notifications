@@ -30,7 +30,9 @@ import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
+import uk.nhs.tis.trainee.notifications.dto.LtftEvent;
 import uk.nhs.tis.trainee.notifications.dto.LtftUpdateEvent;
+import uk.nhs.tis.trainee.notifications.mapper.LtftMapper;
 import uk.nhs.tis.trainee.notifications.service.EmailService;
 
 /**
@@ -40,17 +42,30 @@ import uk.nhs.tis.trainee.notifications.service.EmailService;
 @Component
 public class LtftListener {
   private final EmailService emailService;
-  private final String templateVersion;
+  private LtftMapper ltftMapper;
+  private final Map<String, String> templateVersions;
 
   /**
    * Construct a listener for LTFT events.
    *
    * @param emailService The service to use for sending emails.
+   * @param submittedTemplateVersion The email template version for submitted status.
+   * @param updatedTemplateVersion The email template version for updated status.
    */
-  public LtftListener(EmailService emailService,
-      @Value("${application.template-versions.ltft-updated.email}") String templateVersion) {
+  public LtftListener(
+      EmailService emailService,
+      LtftMapper ltftMapper,
+      @Value("${application.template-versions.ltft-submitted.email}")
+      String submittedTemplateVersion,
+      @Value("${application.template-versions.ltft-updated.email}") String updatedTemplateVersion) {
     this.emailService = emailService;
-    this.templateVersion = templateVersion;
+    this.ltftMapper = ltftMapper;
+    this.templateVersions = Map.of(
+        "SUBMITTED", submittedTemplateVersion,
+        "UNSUBMITTED", updatedTemplateVersion,
+        "APPROVED", updatedTemplateVersion,
+        "WITHDRAWN", updatedTemplateVersion
+    );
   }
 
   /**
@@ -60,18 +75,138 @@ public class LtftListener {
    * @throws MessagingException If the message could not be sent.
    */
   @SqsListener("${application.queues.ltft-updated}")
-  public void handleLtftUpdate(LtftUpdateEvent event) throws MessagingException {
+  public void handleLtftUpdate(LtftEvent event) throws MessagingException {
     log.info("Handling LTFT update event {}.", event);
 
-    Map<String, Object> templateVariables = new HashMap<>();
-    templateVariables.put("ltftName", event.content().name());
-    templateVariables.put("status", event.status().current().state());
-    templateVariables.put("eventDate", event.status().current().timestamp());
-    templateVariables.put("formRef", event.formRef());
+    if (event.record() == null || event.record().getData() == null) {
+      log.info("Ignoring non LTFT update event: {}", event);
+      return;
+    }
 
-    String traineeTisId = event.traineeTisId();
-    emailService.sendMessageToExistingUser(traineeTisId, LTFT_UPDATED, templateVersion,
-        templateVariables, null);
-    log.info("LTFT updated notification sent for trainee {}.", traineeTisId);
+    LtftUpdateEvent Event = ltftMapper.toEntity(event.record().getData());
+
+    Map<String, Object> templateVariables = new HashMap<>();
+    templateVariables.put("ltftName", Event.content().name());
+    templateVariables.put("status", Event.status().current().state());
+    templateVariables.put("eventDate", Event.status().current().timestamp());
+    templateVariables.put("formRef", Event.formRef());
+
+    String dbc = Event.content().programmeMembership().designatedBodyCode();
+    templateVariables.put("dbc", dbc);
+
+    String traineeTisId = Event.traineeTisId();
+    String currentState = Event.status().current().state();
+
+    Map<String, String> localOfficeDetails = getLocalOfficeDetailsFromDbc(dbc);
+    templateVariables.put("LocalOfficeDetails", localOfficeDetails);
+
+    if (currentState == null) {
+      throw new IllegalStateException("LTFT update state is null for trainee " + traineeTisId);
+    }
+
+    String templateVersion = templateVersions.get(currentState);
+    if (templateVersion == null) {
+      throw new IllegalStateException("No template version configured for LTFT state: " + currentState);
+    }
+
+    emailService.sendMessageToExistingUser(
+        traineeTisId,
+        LTFT_UPDATED,
+        templateVersion,
+        templateVariables,
+        null);
+
+    log.info("LTFT {} notification sent for trainee {}.",
+        "SUBMITTED".equalsIgnoreCase(currentState) ? "submitted" : "updated",
+        traineeTisId);
+  }
+
+  public Map<String, String> getLocalOfficeDetailsFromDbc(String dbc) {
+
+    Map<String, String> details = new HashMap<>();
+
+    switch (dbc) {
+      case "1-1RSSQ05": // East of England
+        details.put("localOffice", "NHSE Education East of England");
+        details.put("localOfficeSupport",
+            "https://heeoe.hee.nhs.uk/faculty-educators/less-full-time-training");
+        break;
+      case "1-1RUZV1D": // Kent, Surrey and Sussex
+        details.put("localOffice", "NHSE Education Kent, Surrey and Sussex");
+        details.put("localOfficeSupport", "https://hee.freshdesk.com/support/solutions/7000006974");
+        break;
+      case "1-1RSSPZ7": // East Midlands
+        details.put("localOffice", "NHSE Education East Midlands");
+        details.put("localOfficeSupport", "https://www.eastmidlandsdeanery.nhs.uk/policies/ltft");
+        break;
+      case "1-1RSSQ6R": // Thames Valley
+        details.put("localOffice", "NHSE Education Thames Valley");
+        details.put("localOfficeSupport",
+            "https://thamesvalley.hee.nhs.uk/resources-information/trainee-information/training-"
+                + "options/less-than-full-time-training-ltftt/");
+        break;
+      case "1-1RUZV6H": // North West London
+        details.put("localOffice", "NHSE Education North West London");
+        details.put("localOfficeSupport", "https://hee.freshdesk.com/support/solutions/7000006974");
+        break;
+      case "1-1RUZV4H": // North Central and East London
+        details.put("localOffice", "NHSE Education North Central and East London");
+        details.put("localOfficeSupport", "https://hee.freshdesk.com/support/solutions/7000006974");
+        break;
+      case "1-1RSSQ5L": // South London
+        details.put("localOffice", "NHSE Education South London");
+        details.put("localOfficeSupport", "https://hee.freshdesk.com/support/solutions/7000006974");
+        break;
+      case "1-1RSSQ1B": // North East
+        details.put("localOffice", "NHSE Education North East");
+        details.put("localOfficeSupport", "https://madeinheene.hee.nhs.uk/PG-Dean/Less-than-"
+            + "full-time-training");
+        break;
+      case "1-1RUZUYF": // West Midlands
+        details.put("localOffice", "NHSE Education West Midlands");
+        details.put("localOfficeSupport", "https://www.westmidlandsdeanery.nhs.uk/support/trainees/"
+            + "less-than-full-time-training");
+        break;
+      case "1-1RSG4X0": // Yorkshire and the Humber
+        details.put("localOffice", "NHSE Education Yorkshire and the Humber");
+        details.put("localOfficeSupport", "https://www.yorksandhumberdeanery.nhs.uk/professional-"
+            + "support/policies/ltftt");
+        break;
+      case "1-1RSSQ2H": // North West
+        details.put("localOffice", "NHSE Education North West");
+        details.put("localOfficeSupport", "");
+        break;
+      case "1-1RUZUSF": // Wessex
+        details.put("localOffice", "NHSE Education Wessex");
+        details.put("localOfficeSupport", "https://wessex.hee.nhs.uk/trainee-information/trainee-"
+            + "journey/less-than-full-time-training/");
+        break;
+      case "1-1RUZUVB": // South West
+        details.put("localOffice", "NHSE Education South West");
+        details.put("localOfficeSupport", "https://www.severndeanery.nhs.uk/about-us/new-starters-"
+            + "information-page/");
+        break;
+      case "1-8W6121": // Scotland
+        details.put("localOffice", "NHS Education for Scotland");
+        details.put("localOfficeSupport", "");
+        break;
+      case "1-36QUOY": // Wales
+        details.put("localOffice", "Health Education and Improvement Wales");
+        details.put("localOfficeSupport", "");
+        break;
+      case "1-2SXJST": // Defence
+        details.put("localOffice", "Defence Postgraduate Medical Deanery");
+        details.put("localOfficeSupport", "");
+        break;
+      case "1-25U-830": // Northern Ireland
+        details.put("localOffice", "Northern Ireland Medical and Dental Training Agency");
+        details.put("localOfficeSupport", "");
+        break;
+      default:
+        details.put("localOffice", "Unknown Local Office");
+        details.put("localOfficeSupport", "https://www.hee.nhs.uk/");
+    }
+
+    return details;
   }
 }

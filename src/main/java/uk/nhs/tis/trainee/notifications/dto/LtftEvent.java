@@ -21,54 +21,14 @@
 
 package uk.nhs.tis.trainee.notifications.dto;
 
-import java.time.Instant;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import java.io.Serializable;
 
 /**
  * A LTFT update event.
  *
  * @param traineeTisId The id of the person who submitted the form.
- * @param formRef      The reference of the LTFT form.
- * @param content      The content of the LTFT form.
- * @param status       The status of the LTFT form.
  */
-public record LtftUpdateEvent(
-    String traineeTisId,
-    String formRef,
-    LtftContent content,
-    LtftStatus status
-) {
-
-  /**
-   * A representation of the LTFT content.
-   *
-   * @param name The LTFT form name.
-   */
-  public record LtftContent(String name, ProgrammeMembershipDetails programmeMembership) {
-    /**
-     * A representation of the ProgrammeMembership attatched to the LTFT.
-     *
-     * @param designatedBodyCode The programmeMemberships DBC.
-     */
-    public record ProgrammeMembershipDetails(String designatedBodyCode) {
-
-    }
-  }
-
-  /**
-   * A representation of the status details of the LTFT.
-   *
-   * @param current The current state of the LTFT with a timestamp.
-   */
-  public record LtftStatus(StatusDetails current) {
-
-    /**
-     * A representation the status details included in an Amazon SES event.
-     *
-     * @param state     The current state of the LTFT.
-     * @param timestamp The timestamp of the status change.
-     */
-    public record StatusDetails(String state, Instant timestamp) {
-
-    }
-  }
+public record LtftEvent(String traineeTisId,
+                        @JsonProperty("record") RecordDto record) implements Serializable {
 }

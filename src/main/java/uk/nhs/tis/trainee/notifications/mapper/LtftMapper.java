@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright 2025 Crown Copyright (Health Education England)
+ * Copyright 2024 Crown Copyright (Health Education England)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
  * associated documentation files (the "Software"), to deal in the Software without restriction,
@@ -19,31 +19,36 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package uk.nhs.tis.trainee.notifications.dto;
+package uk.nhs.tis.trainee.notifications.mapper;
 
 import java.time.Instant;
+import java.util.Map;
+import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
+import org.mapstruct.MappingConstants.ComponentModel;
+import org.mapstruct.ReportingPolicy;
+import uk.nhs.tis.trainee.notifications.dto.LtftUpdateEvent;
 
 /**
- * A LTFT update event.
- *
- * @param traineeTisId The id of the person who submitted the form.
- * @param formRef      The reference of the LTFT form.
- * @param content      The content of the LTFT form.
- * @param status       The status of the LTFT form.
+ * A mapper for LTFT DTO
  */
-public record LtftUpdateEvent(
-    String traineeTisId,
-    String formRef,
-    LtftContent content,
-    LtftStatus status
-) {
+@Mapper(componentModel = ComponentModel.SPRING, unmappedTargetPolicy = ReportingPolicy.IGNORE)
+public interface LtftMapper {
+
+  @Mapping(target = "traineeTisId", source = "traineeTisId")
+  @Mapping(target = "status", source = "status")
+  @Mapping(target = "content", source = "content")
+  @Mapping(target = "formRef", source = "formRef")
+
+  LtftUpdateEvent toEntity(Map<String, String> data);
+
 
   /**
    * A representation of the LTFT content.
    *
    * @param name The LTFT form name.
    */
-  public record LtftContent(String name, ProgrammeMembershipDetails programmeMembership) {
+  public record LtftContent(String name, LtftUpdateEvent.LtftContent.ProgrammeMembershipDetails programmeMembership) {
     /**
      * A representation of the ProgrammeMembership attatched to the LTFT.
      *
@@ -59,7 +64,7 @@ public record LtftUpdateEvent(
    *
    * @param current The current state of the LTFT with a timestamp.
    */
-  public record LtftStatus(StatusDetails current) {
+  public record LtftStatus(LtftUpdateEvent.LtftStatus.StatusDetails current) {
 
     /**
      * A representation the status details included in an Amazon SES event.
@@ -71,4 +76,9 @@ public record LtftUpdateEvent(
 
     }
   }
+
+
 }
+
+
+
