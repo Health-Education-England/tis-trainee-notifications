@@ -90,13 +90,14 @@ class ProgrammeMembershipListenerTest {
     dataMap.put("personId", PERSON_ID);
     RecordDto data = new RecordDto();
     data.setData(dataMap);
-    ProgrammeMembershipEvent event = new ProgrammeMembershipEvent(TIS_ID, data);
 
     ProgrammeMembership expectedProgrammeMembership = new ProgrammeMembership();
     expectedProgrammeMembership.setTisId(TIS_ID);
     expectedProgrammeMembership.setPersonId(PERSON_ID);
 
     when(mapper.toEntity(dataMap)).thenReturn(expectedProgrammeMembership);
+
+    ProgrammeMembershipEvent event = new ProgrammeMembershipEvent(TIS_ID, data);
 
     listener.handleProgrammeMembershipDelete(event);
 

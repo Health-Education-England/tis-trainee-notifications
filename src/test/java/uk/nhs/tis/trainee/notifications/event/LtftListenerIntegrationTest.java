@@ -21,18 +21,27 @@
 
 package uk.nhs.tis.trainee.notifications.event;
 
+import static org.awaitility.Awaitility.await;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.testcontainers.containers.localstack.LocalStackContainer.Service.SQS;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.LTFT_UPDATED;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.json.JsonMapper;
 import io.awspring.cloud.s3.S3Template;
-import jakarta.mail.MessagingException;
+import io.awspring.cloud.sqs.operations.SqsTemplate;
 import jakarta.mail.Session;
 import jakarta.mail.internet.MimeMessage;
+import java.io.IOException;
+import java.time.Duration;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -40,38 +49,42 @@ import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
-import org.springframework.boot.autoconfigure.thymeleaf.ThymeleafAutoConfiguration;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
+import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.query.Criteria;
+import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
+import org.testcontainers.containers.MongoDBContainer;
+import org.testcontainers.containers.localstack.LocalStackContainer;
+import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.junit.jupiter.Testcontainers;
+import uk.nhs.tis.trainee.notifications.DockerImageNames;
 import uk.nhs.tis.trainee.notifications.dto.LtftUpdateEvent;
-import uk.nhs.tis.trainee.notifications.dto.LtftUpdateEvent.LtftContent;
-import uk.nhs.tis.trainee.notifications.dto.LtftUpdateEvent.LtftStatus;
 import uk.nhs.tis.trainee.notifications.dto.UserDetails;
 import uk.nhs.tis.trainee.notifications.model.History;
 import uk.nhs.tis.trainee.notifications.model.History.RecipientInfo;
 import uk.nhs.tis.trainee.notifications.model.History.TemplateInfo;
 import uk.nhs.tis.trainee.notifications.model.MessageType;
 import uk.nhs.tis.trainee.notifications.service.EmailService;
-import uk.nhs.tis.trainee.notifications.service.HistoryService;
-import uk.nhs.tis.trainee.notifications.service.TemplateService;
 import uk.nhs.tis.trainee.notifications.service.UserAccountService;
 
-@SpringBootTest(classes = {LtftListener.class, EmailService.class, TemplateService.class})
+@SpringBootTest
+@Testcontainers
 @ActiveProfiles("test")
-@ImportAutoConfiguration(ThymeleafAutoConfiguration.class)
 class LtftListenerIntegrationTest {
 
-  private static final String TIS_TRAINEE_ID = "123456";
   private static final String USER_ID = UUID.randomUUID().toString();
   private static final String EMAIL = "anthony.gilliam@tis.nhs.uk";
   private static final String TITLE = "Dr";
@@ -94,14 +107,40 @@ class LtftListenerIntegrationTest {
   private static final Instant TIMESTAMP = Instant.parse("2025-03-15T10:00:00Z");
   private static final String FORM_REF = "ltft_47165_001";
 
+  private static final String LTFT_UPDATED_QUEUE = UUID.randomUUID().toString();
+
+  @Container
+  @ServiceConnection
+  private static final MongoDBContainer mongoContainer = new MongoDBContainer(
+      DockerImageNames.MONGO);
+
+  @Container
+  private static final LocalStackContainer localstack = new LocalStackContainer(
+      DockerImageNames.LOCALSTACK)
+      .withServices(SQS);
+
+  @DynamicPropertySource
+  private static void overrideProperties(DynamicPropertyRegistry registry) {
+    registry.add("application.queues.ltft-updated", () -> LTFT_UPDATED_QUEUE);
+
+    registry.add("spring.cloud.aws.region.static", localstack::getRegion);
+    registry.add("spring.cloud.aws.credentials.access-key", localstack::getAccessKey);
+    registry.add("spring.cloud.aws.credentials.secret-key", localstack::getSecretKey);
+    registry.add("spring.cloud.aws.sqs.endpoint",
+        () -> localstack.getEndpointOverride(SQS).toString());
+    registry.add("spring.cloud.aws.sqs.enabled", () -> true);
+  }
+
+  @BeforeAll
+  static void setUpBeforeAll() throws IOException, InterruptedException {
+    localstack.execInContainer("awslocal sqs create-queue --queue-name", LTFT_UPDATED_QUEUE);
+  }
+
   @MockBean
   private JavaMailSender mailSender;
 
   @MockBean
   private UserAccountService userAccountService;
-
-  @MockBean
-  private HistoryService historyService;
 
   @MockBean
   private S3Template s3Template;
@@ -112,32 +151,125 @@ class LtftListenerIntegrationTest {
   @Autowired
   private LtftListener listener;
 
+  @Autowired
+  private SqsTemplate sqsTemplate;
+
+  @Autowired
+  private MongoTemplate mongoTemplate;
+
   @Value("${application.template-versions.ltft-updated.email}")
   private String templateVersion;
+
+  private String traineeId;
 
   @BeforeEach
   void setUp() {
     when(mailSender.createMimeMessage()).thenReturn(new MimeMessage((Session) null));
-    when(userAccountService.getUserAccountIds(TIS_TRAINEE_ID)).thenReturn(Set.of(USER_ID));
+    traineeId = UUID.randomUUID().toString();
+    when(userAccountService.getUserAccountIds(traineeId)).thenReturn(Set.of(USER_ID));
   }
 
-  @ParameterizedTest
-  @NullAndEmptySource
-  void shouldSendDefaultLtftNotificationWhenTemplateVariablesNotAvailable(String missingValue)
+  @AfterEach
+  void cleanUp() {
+    mongoTemplate.findAllAndRemove(new Query(), History.class);
+  }
+
+  @Test
+  void shouldSendDefaultLtftNotificationWhenTemplateVariablesNull()
       throws Exception {
-    LtftStatus status = new LtftStatus(
-        new LtftStatus.StatusDetails(missingValue, null)
-    );
-    LtftContent ltftContent = new LtftContent(missingValue);
-    LtftUpdateEvent event = new LtftUpdateEvent(TIS_TRAINEE_ID, missingValue, ltftContent, status);
-
     when(userAccountService.getUserDetailsById(USER_ID)).thenReturn(
-        new UserDetails(true, EMAIL, TITLE, missingValue, missingValue, GMC));
+        new UserDetails(true, EMAIL, TITLE, null, null, GMC));
 
-    listener.handleLtftUpdate(event);
+    String eventString = """
+        {
+          "traineeTisId": "%s",
+          "formRef": null,
+          "formName": null,
+          "personalDetails": {
+            "surname": null
+          },
+          "status": {
+            "current" : {
+              "state": null,
+              "timestamp": null
+            }
+          }
+        }
+        """.formatted(traineeId);
+
+    JsonNode eventJson = JsonMapper.builder()
+        .build()
+        .readTree(eventString);
+
+    sqsTemplate.send(LTFT_UPDATED_QUEUE, eventJson);
 
     ArgumentCaptor<MimeMessage> messageCaptor = ArgumentCaptor.captor();
-    verify(mailSender).send(messageCaptor.capture());
+
+    await()
+        .pollInterval(Duration.ofSeconds(2))
+        .atMost(Duration.ofSeconds(10))
+        .ignoreExceptions()
+        .untilAsserted(() -> verify(mailSender).send(messageCaptor.capture()));
+
+    MimeMessage message = messageCaptor.getValue();
+    Document content = Jsoup.parse((String) message.getContent());
+
+    Elements bodyChildren = content.body().children();
+    assertThat("Unexpected body children count.", bodyChildren.size(), is(8));
+
+    Element logo = bodyChildren.get(0);
+    assertThat("Unexpected element tag.", logo.tagName(), is("div"));
+
+    Element disclaimer = bodyChildren.get(7);
+    assertThat("Unexpected disclaimer.", disclaimer.text(), is(DEFAULT_DISCLAIMER));
+
+    Element greeting = bodyChildren.get(1);
+    assertThat("Unexpected greeting.", greeting.text(), is(DEFAULT_GREETING));
+
+    Element detail = bodyChildren.get(2);
+    assertThat("Unexpected detail.", detail.text(), is(DEFAULT_DETAIL));
+
+    Element applicationRef = bodyChildren.get(5);
+    assertThat("Unexpected application reference.", applicationRef.text(),
+        is(DEFAULT_APP_REF));
+  }
+
+  @Test
+  void shouldSendDefaultLtftNotificationWhenTemplateVariablesEmpty()
+      throws Exception {
+    when(userAccountService.getUserDetailsById(USER_ID)).thenReturn(
+        new UserDetails(true, EMAIL, TITLE, "", "", GMC));
+
+    String eventString = """
+        {
+          "traineeTisId": "%s",
+          "formRef": "",
+          "formName": "",
+          "personalDetails": {
+            "surname": ""
+          },
+          "status": {
+            "current" : {
+              "state": "",
+              "timestamp": ""
+            }
+          }
+        }
+        """.formatted(traineeId);
+
+    JsonNode eventJson = JsonMapper.builder()
+        .build()
+        .readTree(eventString);
+
+    sqsTemplate.send(LTFT_UPDATED_QUEUE, eventJson);
+
+    ArgumentCaptor<MimeMessage> messageCaptor = ArgumentCaptor.captor();
+
+    await()
+        .pollInterval(Duration.ofSeconds(2))
+        .atMost(Duration.ofSeconds(10))
+        .ignoreExceptions()
+        .untilAsserted(() -> verify(mailSender).send(messageCaptor.capture()));
 
     MimeMessage message = messageCaptor.getValue();
     Document content = Jsoup.parse((String) message.getContent());
@@ -165,18 +297,39 @@ class LtftListenerIntegrationTest {
   @Test
   void shouldSendFullyTailoredLtftUpdatedNotificationWhenAllTemplateVariablesAvailable()
       throws Exception {
-    LtftStatus status = new LtftStatus(
-        new LtftStatus.StatusDetails(STATUS, TIMESTAMP)
-    );
-    LtftContent ltftContent = new LtftContent(LTFT_NAME);
-    LtftUpdateEvent event = new LtftUpdateEvent(TIS_TRAINEE_ID, FORM_REF, ltftContent, status);
     when(userAccountService.getUserDetailsById(USER_ID)).thenReturn(
         new UserDetails(true, EMAIL, TITLE, FAMILY_NAME, GIVEN_NAME, GMC));
 
-    listener.handleLtftUpdate(event);
+    String eventString = """
+        {
+          "traineeTisId": "%s",
+          "formRef": "%s",
+          "formName": "%s",
+          "personalDetails": {
+            "surname": "%s"
+          },
+          "status": {
+            "current" : {
+              "state": "%s",
+              "timestamp": "%s"
+            }
+          }
+        }
+        """.formatted(traineeId, FORM_REF, LTFT_NAME, FAMILY_NAME, STATUS, TIMESTAMP);
+
+    JsonNode eventJson = JsonMapper.builder()
+        .build()
+        .readTree(eventString);
+
+    sqsTemplate.send(LTFT_UPDATED_QUEUE, eventJson);
 
     ArgumentCaptor<MimeMessage> messageCaptor = ArgumentCaptor.captor();
-    verify(mailSender).send(messageCaptor.capture());
+
+    await()
+        .pollInterval(Duration.ofSeconds(2))
+        .atMost(Duration.ofSeconds(10))
+        .ignoreExceptions()
+        .untilAsserted(() -> verify(mailSender).send(messageCaptor.capture()));
 
     MimeMessage message = messageCaptor.getValue();
     Document content = Jsoup.parse((String) message.getContent());
@@ -204,27 +357,54 @@ class LtftListenerIntegrationTest {
   }
 
   @Test
-  void shouldStoreLtftUpdatedNotificationHistoryWhenMessageSent() throws MessagingException {
-    LtftStatus status = new LtftStatus(
-        new LtftStatus.StatusDetails(STATUS, TIMESTAMP)
-    );
-    LtftContent ltftContent = new LtftContent(LTFT_NAME);
-    LtftUpdateEvent event = new LtftUpdateEvent(TIS_TRAINEE_ID, FORM_REF, ltftContent, status);
+  void shouldStoreLtftUpdatedNotificationHistoryWhenMessageSent() throws JsonProcessingException {
     when(userAccountService.getUserDetailsById(USER_ID)).thenReturn(
         new UserDetails(true, EMAIL, TITLE, FAMILY_NAME, GIVEN_NAME, GMC));
 
-    listener.handleLtftUpdate(event);
+    String eventString = """
+        {
+          "traineeTisId": "%s",
+          "formRef": "%s",
+          "formName": "%s",
+          "personalDetails": {
+            "surname": "%s"
+          },
+          "status": {
+            "current" : {
+              "state": "%s",
+              "timestamp": "%s"
+            }
+          }
+        }
+        """.formatted(traineeId, FORM_REF, LTFT_NAME, FAMILY_NAME, STATUS, TIMESTAMP);
 
-    ArgumentCaptor<History> historyCaptor = ArgumentCaptor.captor();
-    verify(historyService).save(historyCaptor.capture());
+    JsonNode eventJson = JsonMapper.builder()
+        .build()
+        .readTree(eventString);
 
-    History history = historyCaptor.getValue();
+    sqsTemplate.send(LTFT_UPDATED_QUEUE, eventJson);
+
+    Criteria criteria = Criteria.where("recipient.id").is(traineeId);
+    Query query = Query.query(criteria);
+    List<History> histories = new ArrayList<>();
+
+    await()
+        .pollInterval(Duration.ofSeconds(2))
+        .atMost(Duration.ofSeconds(10))
+        .ignoreExceptions()
+        .untilAsserted(() -> {
+          List<History> found = mongoTemplate.find(query, History.class);
+          assertThat("Unexpected history count.", found.size(), is(1));
+          histories.addAll(found);
+        });
+
+    History history = histories.get(0);
     assertThat("Unexpected notification id.", history.id(), notNullValue());
     assertThat("Unexpected notification type.", history.type(), is(LTFT_UPDATED));
     assertThat("Unexpected sent at.", history.sentAt(), notNullValue());
 
     RecipientInfo recipient = history.recipient();
-    assertThat("Unexpected recipient id.", recipient.id(), is(TIS_TRAINEE_ID));
+    assertThat("Unexpected recipient id.", recipient.id(), is(traineeId));
     assertThat("Unexpected message type.", recipient.type(), is(MessageType.EMAIL));
     assertThat("Unexpected contact.", recipient.contact(), is(EMAIL));
 
@@ -235,19 +415,17 @@ class LtftListenerIntegrationTest {
 
     Map<String, Object> storedVariables = templateInfo.variables();
     assertThat("Unexpected template variable count.", storedVariables.size(),
-        is(8));
+        is(5));
     assertThat("Unexpected template variable.", storedVariables.get("familyName"),
         is(FAMILY_NAME));
     assertThat("Unexpected template variable.", storedVariables.get("givenName"),
         is(GIVEN_NAME));
-    assertThat("Unexpected template variable.", storedVariables.get("ltftName"),
-        is(LTFT_NAME));
-    assertThat("Unexpected template variable.", storedVariables.get("status"),
-        is(STATUS));
-    assertThat("Unexpected template variable.", storedVariables.get("formRef"),
-        is(FORM_REF));
-    assertThat("Unexpected template variable.", storedVariables.get("eventDate"),
-        is(TIMESTAMP));
+
+    LtftUpdateEvent event = (LtftUpdateEvent) storedVariables.get("var");
+    assertThat("Unexpected trainee ID.", event.getTraineeId(), is(traineeId));
+    assertThat("Unexpected form ref.", event.getFormRef(), is(FORM_REF));
+    assertThat("Unexpected form name.", event.getFormName(), is(LTFT_NAME));
+    assertThat("Unexpected state.", event.getState(), is(STATUS));
+    assertThat("Unexpected timestamp.", event.getTimestamp(), is(TIMESTAMP));
   }
 }
-

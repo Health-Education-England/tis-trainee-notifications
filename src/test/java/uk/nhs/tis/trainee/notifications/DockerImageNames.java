@@ -19,40 +19,15 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package uk.nhs.tis.trainee.notifications.dto;
+package uk.nhs.tis.trainee.notifications;
 
-import com.fasterxml.jackson.annotation.JsonAlias;
-import com.fasterxml.jackson.annotation.JsonProperty;
-import java.time.Instant;
-import java.util.Map;
-import lombok.Builder;
-import lombok.Data;
+import org.testcontainers.utility.DockerImageName;
 
 /**
- * A LTFT update event.
+ * Constants for {@link DockerImageName} values used in tests to ensure consistency.
  */
-@Data
-@Builder
-public class LtftUpdateEvent {
+public class DockerImageNames {
 
-  @JsonAlias("traineeTisId")
-  private String traineeId;
-  private String formRef;
-  private String formName;
-  private String state;
-  private Instant timestamp;
-
-  /**
-   * Unpack the current status to set the state and timestamp.
-   *
-   * @param status The value of the status property.
-   */
-  @JsonProperty("status")
-  private void unpackCurrentStatus(Map<String, Object> status) {
-    Map<String, String> current = (Map<String, String>) status.get("current");
-    state = current.get("state");
-    String timestampString = current.get("timestamp");
-    timestamp = timestampString == null || timestampString.isBlank() ? null
-        : Instant.parse(timestampString);
-  }
+  public static final DockerImageName LOCALSTACK = DockerImageName.parse("localstack/localstack:3");
+  public static final DockerImageName MONGO = DockerImageName.parse("mongo:5");
 }

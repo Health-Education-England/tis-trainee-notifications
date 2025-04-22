@@ -451,9 +451,9 @@ class EmailServiceIntegrationTest {
     Element body = content.body();
 
     String bodyText = body.wholeText();
-    assertThat("Unexpected Horus text.",
-        bodyText.contains("If you are a Foundation doctor, please continue using Horus as previously instructed."),
-        is(true));
+    assertThat("Unexpected Horus text.", bodyText.contains(
+        "If you are a Foundation doctor, please continue using Horus as previously instructed."
+    ), is(true));
   }
 
   @Test
@@ -683,8 +683,8 @@ class EmailServiceIntegrationTest {
   int getGreetingElementIndex(NotificationType notificationType) {
     return switch (notificationType) {
       case PLACEMENT_UPDATED_WEEK_12, PLACEMENT_ROLLOUT_2024_CORRECTION, PROGRAMME_CREATED,
-           PROGRAMME_DAY_ONE, EMAIL_UPDATED_NEW, EMAIL_UPDATED_OLD, COJ_CONFIRMATION,
-           CREDENTIAL_REVOKED, FORM_UPDATED, GMC_UPDATED, GMC_REJECTED_LO,
+          PROGRAMME_DAY_ONE, EMAIL_UPDATED_NEW, EMAIL_UPDATED_OLD, COJ_CONFIRMATION,
+          CREDENTIAL_REVOKED, FORM_UPDATED, GMC_UPDATED, GMC_REJECTED_LO,
           GMC_REJECTED_TRAINEE, LTFT_UPDATED -> 1;
       default -> 0;
     };

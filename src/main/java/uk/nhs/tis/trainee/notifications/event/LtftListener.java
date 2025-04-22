@@ -25,7 +25,6 @@ import static uk.nhs.tis.trainee.notifications.model.NotificationType.LTFT_UPDAT
 
 import io.awspring.cloud.sqs.annotation.SqsListener;
 import jakarta.mail.MessagingException;
-import java.util.HashMap;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -63,15 +62,9 @@ public class LtftListener {
   public void handleLtftUpdate(LtftUpdateEvent event) throws MessagingException {
     log.info("Handling LTFT update event {}.", event);
 
-    Map<String, Object> templateVariables = new HashMap<>();
-    templateVariables.put("ltftName", event.content().name());
-    templateVariables.put("status", event.status().current().state());
-    templateVariables.put("eventDate", event.status().current().timestamp());
-    templateVariables.put("formRef", event.formRef());
-
-    String traineeTisId = event.traineeTisId();
+    String traineeTisId = event.getTraineeId();
     emailService.sendMessageToExistingUser(traineeTisId, LTFT_UPDATED, templateVersion,
-        templateVariables, null);
+        Map.of("var", event), null);
     log.info("LTFT updated notification sent for trainee {}.", traineeTisId);
   }
 }
