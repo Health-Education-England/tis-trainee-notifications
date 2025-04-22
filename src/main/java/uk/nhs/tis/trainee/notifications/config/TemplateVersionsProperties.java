@@ -27,6 +27,7 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.context.properties.bind.ConstructorBinding;
+import org.springframework.stereotype.Component;
 import uk.nhs.tis.trainee.notifications.model.MessageType;
 import uk.nhs.tis.trainee.notifications.model.NotificationType;
 
@@ -34,7 +35,8 @@ import uk.nhs.tis.trainee.notifications.model.NotificationType;
  * Configuration properties for managing template versions associated with different
  * notification types.
  */
-@ConfigurationProperties("application")
+@Component
+@ConfigurationProperties(prefix = "application")
 public final class TemplateVersionsProperties {
 
   private final Map<NotificationType, MessageTypeVersions> templateVersions;

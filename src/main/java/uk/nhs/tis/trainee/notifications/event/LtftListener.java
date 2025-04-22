@@ -21,17 +21,13 @@
 
 package uk.nhs.tis.trainee.notifications.event;
 
-import static uk.nhs.tis.trainee.notifications.model.NotificationType.LTFT_UPDATED;
-
 import io.awspring.cloud.sqs.annotation.SqsListener;
 import jakarta.mail.MessagingException;
-import java.util.HashMap;
-import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import uk.nhs.tis.trainee.notifications.dto.LtftUpdateEvent;
-import uk.nhs.tis.trainee.notifications.service.EmailService;
+import static uk.nhs.tis.trainee.notifications.model.LifecycleState.APPROVED;
+import uk.nhs.tis.trainee.notifications.service.LtftService;
 
 /**
  * A listener for LTFT update events.
@@ -39,18 +35,16 @@ import uk.nhs.tis.trainee.notifications.service.EmailService;
 @Slf4j
 @Component
 public class LtftListener {
-  private final EmailService emailService;
-  private final String templateVersion;
+  private final LtftService ltftService;
 
   /**
    * Construct a listener for LTFT events.
    *
-   * @param emailService The service to use for sending emails.
+   * @param ltftService The service to use for handling Ltft notifications.
    */
-  public LtftListener(EmailService emailService,
-      @Value("${application.template-versions.ltft-updated.email}") String templateVersion) {
-    this.emailService = emailService;
-    this.templateVersion = templateVersion;
+  public LtftListener(LtftService ltftService
+  ) {
+    this.ltftService = ltftService;
   }
 
   /**
@@ -63,15 +57,12 @@ public class LtftListener {
   public void handleLtftUpdate(LtftUpdateEvent event) throws MessagingException {
     log.info("Handling LTFT update event {}.", event);
 
-    Map<String, Object> templateVariables = new HashMap<>();
-    templateVariables.put("ltftName", event.content().name());
-    templateVariables.put("status", event.status().current().state());
-    templateVariables.put("eventDate", event.status().current().timestamp());
-    templateVariables.put("formRef", event.formRef());
+    if (event.status().current().state().equals(APPROVED)) {
+      ltftService.sendLtftApprovedNotification(event);
+    } else {
+      ltftService.sendLtftUpdatedNotification(event);
+    }
 
-    String traineeTisId = event.traineeTisId();
-    emailService.sendMessageToExistingUser(traineeTisId, LTFT_UPDATED, templateVersion,
-        templateVariables, null);
-    log.info("LTFT updated notification sent for trainee {}.", traineeTisId);
+    log.info("LTFT updated notification sent for trainee.");
   }
 }
