@@ -31,13 +31,16 @@ import lombok.Getter;
 @AllArgsConstructor
 public enum LocalOfficeContactType {
 
+  DEFERRAL("Deferral"),
   GMC_UPDATE("GMC Update"),
+  LOCAL_OFFICE_WEBSITE("Local office website"),
   LTFT("Less Than Full Time"),
+  LTFT_Support("LTFT Support"),
+  LTFT_Working_Policy("LTFT Working Policy"),
   ONBOARDING_SUPPORT("Onboarding Support"),
   SPONSORSHIP("Sponsorship"),
-  DEFERRAL("Deferral"),
-  TSS_SUPPORT("TIS Self-Service Support"),
-  LOCAL_OFFICE_WEBSITE("Local office website");
+  SUPPORTED_RETURN_TO_TRAINING("Supported Return to Training"),
+  TSS_SUPPORT("TIS Self-Service Support");
 
   private final String contactTypeName;
 }

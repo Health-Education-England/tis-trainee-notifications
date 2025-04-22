@@ -7,7 +7,7 @@
 <body>
 <h1>Email Message</h1>
 <h2>Subject</h2>
-<th:block th:fragment="subject">Notification of Your Less Than Full Time (LTFT) Application Status (<span th:text="${not #strings.isEmpty(formRef)} ? ${formRef} : 'unknown'"></span>)</th:block>
+<th:block th:fragment="subject">Notification of Your Less Than Full Time (LTFT) Application Status (<span th:text="${not #strings.isEmpty(var.formRef)} ? ${var.formRef} : 'unknown'"></span>)</th:block>
 <h2>Content</h2>
 <th:block th:fragment="content">
   <div th:replace="fragments/retry/v1.0.0 :: body"></div>
@@ -23,11 +23,11 @@
       <th>Agreed New WTE %</th>
     </tr>
     <tr>
-      <td><span th:text="${not #strings.isEmpty(programmeName)} ? ${programmeName} : 'unknown'"></span></td>
-      <td><span th:text="${not #strings.isEmpty(programmeStartDate)} ? ${programmeStartDate} : 'unknown'"></span></td>
-      <td><span th:text="${not #strings.isEmpty(cctEndDate)} ? ${cctEndDate} : 'unknown'"></span></td>
-      <td><span th:text="${not #strings.isEmpty(currentWte)} ? ${currentWte} : 'unknown'"></span></td>
-      <td><span th:text="${not #strings.isEmpty(newWte)} ? ${newWte} : 'unknown'"></span></td>
+      <td><span th:text="${not #strings.isEmpty(var.programmeMembership.name)} ? ${var.programmeMembership.name} : 'unknown'"></span></td>
+      <td><span th:text="${not #strings.isEmpty(var.programmeMembership.startDate)} ? ${var.programmeMembership.startDate} : 'unknown'"></span></td>
+      <td><span th:text="${not #strings.isEmpty(var.change.endDate)} ? ${var.change.endDate} : 'unknown'"></span></td>
+      <td><span th:text="${not #strings.isEmpty(var.programmeMembership.wte)} ? ${var.programmeMembership.wte} : 'unknown'"></span></td>
+      <td><span th:text="${not #strings.isEmpty(var.change.wte)} ? ${var.change.wte} : 'unknown'"></span></td>
     </tr>
   </table>
   <p>Your estimated completion date will be extended as a result of your change in working hours and will be confirmed at your next Annual Review of Competence Progression (ARCP).</p>
@@ -36,20 +36,71 @@
   <p>For more details, please refer to the <a href="https://medical.hee.nhs.uk/medical-training-recruitment/medical-specialty-training/overseas-applicants">Overseas Sponsorship FAQ</a>.</p>
   <p><strong>Additional Support & Resources</strong></p>
   <ul>
-    <li><strong>Frequently Asked Questions: <a href="https://tis-support.hee.nhs.uk/trainees/changes-to-account/">TSS Support FAQs</a></strong></li>
-    <li><strong>Supported Return to Training (SuppoRTT):</strong> If you are returning after a period of absence, resources are available through your local SuppoRTT team. Find more details [Insert link{here} / If missing point to the generic LO 'TIS Self Service Support' page / Else generic text for 'LO support'].</li>
-    <li><strong>LTFT Working Policy: [Insert link{here} / If missing point to the generic LO 'TIS Self Service Support' page / Else generic text for 'LO support'].</strong></li>
+    <li><strong>Frequently Asked Questions: <a href="https://tis-support.hee.nhs.uk/trainees/">TSS Support FAQs</a></strong></li>
+    <li><strong>Supported Return to Training (SuppoRTT):</strong> If you are returning after a period of absence, resources are available through your local SuppoRTT team. Find more details
+      <th:block: th:switch="${localOfficeContactTypeSupportRtt}">
+        <th:block th:case="NON_HREF"
+          >from your <strong>Local Office Support team.</strong>
+          </th:block
+          >
+          <th:block th:case="*"
+          >by clicking on the following link for Supported Return to Training.
+            <a
+              th:href="${localOfficeContactTypeSupportRtt} == 'email' ?
+                       |mailto:${localOfficeContactSupportRtt}?subject=Ltft Approved Supported Return to Training - GMC: ${not #strings.isEmpty(var.personalDetails.gmcNumber) ? var.personalDetails.gmcNumber : 'unknown'}, LTFT Ref No: ${not #strings.isEmpty(var.formRef) ? var.formRef : 'unknown'}|
+                       : ${localOfficeContactSupportRtt}"
+              th:text="${localOfficeContactSupportRtt}"
+              th:target="_blank"
+            ></a
+          ></th:block>
+      </th:block:>
+    </li>
+    <li><strong>LTFT Working Policy: </strong>
+      <th:block: th:switch="${localOfficeContactTypeWorkingPolicy}">
+        <th:block th:case="NON_HREF"
+        > Please contact your <strong>Local Office Support team.</strong>
+        </th:block
+        >
+        <th:block th:case="*"
+        > Please click on the following link for LTFT Working Policy.
+          <a
+            th:href="${localOfficeContactTypeWorkingPolicy} == 'email' ?
+                       |mailto:${localOfficeContactWorkingPolicy}?subject=Ltft Approved Working Policy - GMC: ${not #strings.isEmpty(var.personalDetails.gmcNumber) ? var.personalDetails.gmcNumber : 'unknown'}, LTFT Ref No: ${not #strings.isEmpty(var.formRef) ? var.formRef : 'unknown'}|
+                       : ${localOfficeContactWorkingPolicy}"
+            th:text="${localOfficeContactWorkingPolicy}"
+            th:target="_blank"
+          ></a
+          ></th:block>
+      </th:block:>
+    </li>
   </ul>
   <p><strong>Future Changes to Your Working Hours</strong></p>
   <p>Any future changes to your working arrangements, including an increase or further decrease in hours, must be prospectively approved via the submission of a new application form.</p>
   <p><strong>Your Employer and Pay</strong></p>
   <p>Please note that NHSE is not an employer. Any issues you have with how your pay is calculated as a LTFT Resident Doctor should be submitted to the medical staffing department of your Employing Trust.</p>
-  <p>For any queries, please contact your <strong>Local Office Support team [insert {LO LTFT support}]</strong></p>
+  <p>For any queries,
+    <th:block: th:switch="${localOfficeContactTypeLtft}">
+      <th:block th:case="NON_HREF"
+      >please contact your <strong>Local Office Support team.</strong>
+      </th:block
+      >
+      <th:block th:case="*"
+      >please click on the following link for Local Office Support.
+        <a
+          th:href="${localOfficeContactTypeLtft} == 'email' ?
+                   |mailto:${localOfficeContactLtft}?subject=Ltft Approved Enquires - GMC: ${not #strings.isEmpty(var.personalDetails.gmcNumber) ? var.personalDetails.gmcNumber : 'unknown'}, LTFT Ref No: ${not #strings.isEmpty(var.formRef) ? var.formRef : 'unknown'}|
+                   : ${localOfficeContactLtft}"
+          th:text="${localOfficeContactLtft}"
+          th:target="_blank"
+        ></a
+        ></th:block>
+    </th:block:>
+  </p>
   <p>
     Kind Regards,
   </p>
   <p>
-    <span th:text="${not #strings.isEmpty(localOfficeName)} ? ${localOfficeName} : 'Your Local Office'"></span>
+    <span th:text="${not #strings.isEmpty(var.programmeMembership.managingDeanery)} ? ${var.programmeMembership.managingDeanery} : 'Your Local Office'"></span>
   </p>
   <div th:replace="fragments/disclaimer/v1.0.0 :: body"></div>
 </th:block>

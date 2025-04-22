@@ -26,7 +26,6 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
-import com.mongodb.client.ListSearchIndexesIterable;
 import lombok.Builder;
 import uk.nhs.tis.trainee.notifications.model.CctChangeType;
 import uk.nhs.tis.trainee.notifications.model.LifecycleState;
@@ -112,6 +111,7 @@ public record LtftUpdateEvent(
    * @param id                 The ID of the programme membership.
    * @param name               The name of the programme.
    * @param designatedBodyCode The designated body code for the programme.
+   * @param managingDeanery    The managing deanery for the programme.
    * @param startDate          The start date of the programme.
    * @param endDate            The end date of the programme.
    * @param wte                The whole time equivalent of the programme membership.
@@ -121,6 +121,7 @@ public record LtftUpdateEvent(
       UUID id,
       String name,
       String designatedBodyCode,
+      String managingDeanery,
       LocalDate startDate,
       LocalDate endDate,
       Double wte) {

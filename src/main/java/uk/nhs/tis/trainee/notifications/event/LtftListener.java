@@ -21,12 +21,13 @@
 
 package uk.nhs.tis.trainee.notifications.event;
 
+import static uk.nhs.tis.trainee.notifications.model.LifecycleState.APPROVED;
+
 import io.awspring.cloud.sqs.annotation.SqsListener;
 import jakarta.mail.MessagingException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import uk.nhs.tis.trainee.notifications.dto.LtftUpdateEvent;
-import static uk.nhs.tis.trainee.notifications.model.LifecycleState.APPROVED;
 import uk.nhs.tis.trainee.notifications.service.LtftService;
 
 /**

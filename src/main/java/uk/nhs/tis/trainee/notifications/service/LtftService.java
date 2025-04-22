@@ -26,9 +26,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import uk.nhs.tis.trainee.notifications.dto.LtftUpdateEvent;
-import uk.nhs.tis.trainee.notifications.model.ContactDetails;
-import uk.nhs.tis.trainee.notifications.model.History;
-import uk.nhs.tis.trainee.notifications.model.MessageType;
+import uk.nhs.tis.trainee.notifications.model.LocalOfficeContactType;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.LTFT_APPROVED;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.LTFT_UPDATED;
 
@@ -43,6 +41,7 @@ import java.util.Map;
 @Service
 public class LtftService {
   private final EmailService emailService;
+  private final NotificationService notificationService;
   private final String ltftUpdatedVersion;
   private final String ltftApprovedVersion;
 
@@ -50,13 +49,15 @@ public class LtftService {
    * Construct a service for LTFT events.
    *
    * @param emailService        The service to use for sending emails.
+   * @param notificationService The service to use for handling notifications.
    * @param ltftUpdatedVersion  The ltft-updated template version to use.
    * @param ltftApprovedVersion The ltft-approved template version to use.
    */
-  public LtftService(EmailService emailService,
+  public LtftService(EmailService emailService, NotificationService notificationService,
     @Value("${application.template-versions.ltft-updated.email}") String ltftUpdatedVersion,
     @Value("${application.template-versions.ltft-approved.email}") String ltftApprovedVersion) {
     this.emailService = emailService;
+    this.notificationService = notificationService;
     this.ltftUpdatedVersion = ltftUpdatedVersion;
     this.ltftApprovedVersion = ltftApprovedVersion;
   }
@@ -89,18 +90,34 @@ public class LtftService {
    * @param event The approved Ltft.
    */
   public void sendLtftApprovedNotification(LtftUpdateEvent event) throws MessagingException {
-    Map<String, Object> templateVariables = new HashMap<>();
-    templateVariables.put("forenames", event.personalDetails().forenames());
-    templateVariables.put("surname", event.personalDetails().surname());
-    templateVariables.put("formRef", event.formRef());
-    templateVariables.put("programmeName", event.programmeMembership().name());
-    templateVariables.put("programmeStartDate", event.programmeMembership().startDate());
-    templateVariables.put("cctEndDate", event.change().endDate());
-    templateVariables.put("currentWte", event.programmeMembership().wte());
-    templateVariables.put("newWte", event.change().wte());
-    templateVariables.put("localOfficeName", "");
+    Map<String, Object> templateVariables = new HashMap<>(Map.of("var", event));
 
-    // TODO: set Working Policy Contact Type and SupportRTT Contact Type according to LO
+    String owner = event.programmeMembership().managingDeanery();
+    List<Map<String, String>> contactList = notificationService.getOwnerContactList(owner);
+
+    // LO LTTF Support Contact
+    String localOfficeContactLtft = notificationService.getOwnerContact(contactList,
+        LocalOfficeContactType.LTFT_Support, LocalOfficeContactType.TSS_SUPPORT, "");
+    String localOfficeContactTypeLtft =
+        notificationService.getHrefTypeForContact(localOfficeContactLtft);
+    templateVariables.put("localOfficeContactLtft", localOfficeContactLtft);
+    templateVariables.put("localOfficeContactTypeLtft", localOfficeContactTypeLtft);
+
+    // Supported Return to Training Contact
+    String localOfficeContactSupportRtt = notificationService.getOwnerContact(contactList,
+        LocalOfficeContactType.SUPPORTED_RETURN_TO_TRAINING, LocalOfficeContactType.TSS_SUPPORT, "");
+    String localOfficeContactTypeSupportRtt =
+        notificationService.getHrefTypeForContact(localOfficeContactLtft);
+    templateVariables.put("localOfficeContactSupportRtt", localOfficeContactSupportRtt);
+    templateVariables.put("localOfficeContactTypeSupportRtt", localOfficeContactTypeSupportRtt);
+
+    // LTFT Working Policy Contact
+    String localOfficeContactWorkingPolicy = notificationService.getOwnerContact(contactList,
+        LocalOfficeContactType.LTFT_Working_Policy, LocalOfficeContactType.TSS_SUPPORT, "");
+    String localOfficeContactTypeWorkingPolicy =
+        notificationService.getHrefTypeForContact(localOfficeContactLtft);
+    templateVariables.put("localOfficeContactWorkingPolicy", localOfficeContactWorkingPolicy);
+    templateVariables.put("localOfficeContactTypeWorkingPolicy", localOfficeContactTypeWorkingPolicy);
 
     try {
       String traineeTisId = event.traineeTisId();
