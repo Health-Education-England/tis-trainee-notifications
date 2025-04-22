@@ -25,11 +25,13 @@ import static uk.nhs.tis.trainee.notifications.model.NotificationType.LTFT_UPDAT
 
 import io.awspring.cloud.sqs.annotation.SqsListener;
 import jakarta.mail.MessagingException;
+import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
+import uk.nhs.tis.trainee.notifications.dto.LtftDto;
 import uk.nhs.tis.trainee.notifications.dto.LtftEvent;
 import uk.nhs.tis.trainee.notifications.dto.LtftUpdateEvent;
 import uk.nhs.tis.trainee.notifications.mapper.LtftMapper;
@@ -83,30 +85,49 @@ public class LtftListener {
       return;
     }
 
-    LtftUpdateEvent Event = ltftMapper.toEntity(event.record().getData());
+    Map<String, String> data = event.record().getData();
+
+    LtftDto.LtftContent.ProgrammeMembershipDetails programmeMembership =
+        new LtftDto.LtftContent.ProgrammeMembershipDetails(data.get("managingDeanery"));
+    LtftDto.LtftContent content = new LtftDto.LtftContent(data.get("ltftName"), programmeMembership);
+
+    LtftDto.LtftStatus.StatusDetails statusDetails = new LtftDto.LtftStatus.StatusDetails(
+        data.get("state"),
+        data.get("timestamp") != null ? Instant.parse(data.get("timestamp")) : null
+    );
+    LtftDto.LtftStatus status = new LtftDto.LtftStatus(statusDetails);
+
+    LtftDto dto = new LtftDto(
+        data.get("traineeTisId"),
+        data.get("formRef"),
+        content,
+        status
+    );
+
+    LtftUpdateEvent eventEntity = ltftMapper.toEntity(dto);
 
     Map<String, Object> templateVariables = new HashMap<>();
-    templateVariables.put("ltftName", Event.content().name());
-    templateVariables.put("status", Event.status().current().state());
-    templateVariables.put("eventDate", Event.status().current().timestamp());
-    templateVariables.put("formRef", Event.formRef());
+    templateVariables.put("ltftName", eventEntity.content().name());
+    templateVariables.put("status", eventEntity.status().current().state());
+    templateVariables.put("eventDate", eventEntity.status().current().timestamp());
+    templateVariables.put("formRef", eventEntity.formRef());
+    templateVariables.put("managingDeanery", eventEntity.content().programmeMembership().managingDeanery());
 
-    String dbc = Event.content().programmeMembership().designatedBodyCode();
-    templateVariables.put("dbc", dbc);
+    String traineeTisId = eventEntity.traineeTisId();
+    String currentState = eventEntity.status().current().state();
 
-    String traineeTisId = Event.traineeTisId();
-    String currentState = Event.status().current().state();
-
-    Map<String, String> localOfficeDetails = getLocalOfficeDetailsFromDbc(dbc);
+    String localOfficeDetails = getLocalOfficeSupportFromDeanery(
+        eventEntity.content().programmeMembership().managingDeanery());
     templateVariables.put("LocalOfficeDetails", localOfficeDetails);
 
     if (currentState == null) {
       throw new IllegalStateException("LTFT update state is null for trainee " + traineeTisId);
     }
 
-    String templateVersion = templateVersions.get(currentState);
+    String templateVersion = templateVersions.get(currentState.toUpperCase());
     if (templateVersion == null) {
-      throw new IllegalStateException("No template version configured for LTFT state: " + currentState);
+      throw new IllegalStateException("No template version configured for LTFT state: "
+          + currentState);
     }
 
     emailService.sendMessageToExistingUser(
@@ -121,92 +142,74 @@ public class LtftListener {
         traineeTisId);
   }
 
-  public Map<String, String> getLocalOfficeDetailsFromDbc(String dbc) {
+  public String getLocalOfficeSupportFromDeanery(String managingDeanery) {
 
-    Map<String, String> details = new HashMap<>();
+    String localOfficeSupport;
 
-    switch (dbc) {
-      case "1-1RSSQ05": // East of England
-        details.put("localOffice", "NHSE Education East of England");
-        details.put("localOfficeSupport",
-            "https://heeoe.hee.nhs.uk/faculty-educators/less-full-time-training");
+    switch (managingDeanery) {
+      case "NHSE Education East of England":
+        localOfficeSupport =
+            "https://heeoe.hee.nhs.uk/faculty-educators/less-full-time-training";
         break;
-      case "1-1RUZV1D": // Kent, Surrey and Sussex
-        details.put("localOffice", "NHSE Education Kent, Surrey and Sussex");
-        details.put("localOfficeSupport", "https://hee.freshdesk.com/support/solutions/7000006974");
+      case "NHSE Education Kent, Surrey and Sussex":
+        localOfficeSupport = "https://hee.freshdesk.com/support/solutions/7000006974";
         break;
-      case "1-1RSSPZ7": // East Midlands
-        details.put("localOffice", "NHSE Education East Midlands");
-        details.put("localOfficeSupport", "https://www.eastmidlandsdeanery.nhs.uk/policies/ltft");
+      case "NHSE Education East Midlands":
+        localOfficeSupport = "https://www.eastmidlandsdeanery.nhs.uk/policies/ltft";
         break;
-      case "1-1RSSQ6R": // Thames Valley
-        details.put("localOffice", "NHSE Education Thames Valley");
-        details.put("localOfficeSupport",
+      case "NHSE Education Thames Valley":
+        localOfficeSupport =
             "https://thamesvalley.hee.nhs.uk/resources-information/trainee-information/training-"
-                + "options/less-than-full-time-training-ltftt/");
+                + "options/less-than-full-time-training-ltftt/";
         break;
-      case "1-1RUZV6H": // North West London
-        details.put("localOffice", "NHSE Education North West London");
-        details.put("localOfficeSupport", "https://hee.freshdesk.com/support/solutions/7000006974");
+      case "NHSE Education North West London":
+        localOfficeSupport = "https://hee.freshdesk.com/support/solutions/7000006974";
         break;
-      case "1-1RUZV4H": // North Central and East London
-        details.put("localOffice", "NHSE Education North Central and East London");
-        details.put("localOfficeSupport", "https://hee.freshdesk.com/support/solutions/7000006974");
+      case "NHSE Education North Central and East London":
+        localOfficeSupport = "https://hee.freshdesk.com/support/solutions/7000006974";
         break;
-      case "1-1RSSQ5L": // South London
-        details.put("localOffice", "NHSE Education South London");
-        details.put("localOfficeSupport", "https://hee.freshdesk.com/support/solutions/7000006974");
+      case "NHSE Education South London":
+        localOfficeSupport = "https://hee.freshdesk.com/support/solutions/7000006974";
         break;
-      case "1-1RSSQ1B": // North East
-        details.put("localOffice", "NHSE Education North East");
-        details.put("localOfficeSupport", "https://madeinheene.hee.nhs.uk/PG-Dean/Less-than-"
-            + "full-time-training");
+      case "NHSE Education North East":
+        localOfficeSupport = "https://madeinheene.hee.nhs.uk/PG-Dean/Less-than-"
+            + "full-time-training";
         break;
-      case "1-1RUZUYF": // West Midlands
-        details.put("localOffice", "NHSE Education West Midlands");
-        details.put("localOfficeSupport", "https://www.westmidlandsdeanery.nhs.uk/support/trainees/"
-            + "less-than-full-time-training");
+      case "NHSE Education West Midlands":
+        localOfficeSupport = "https://www.westmidlandsdeanery.nhs.uk/support/trainees/"
+            + "less-than-full-time-training";
         break;
-      case "1-1RSG4X0": // Yorkshire and the Humber
-        details.put("localOffice", "NHSE Education Yorkshire and the Humber");
-        details.put("localOfficeSupport", "https://www.yorksandhumberdeanery.nhs.uk/professional-"
-            + "support/policies/ltftt");
+      case "NHSE Education Yorkshire and the Humber":
+        localOfficeSupport = "https://www.yorksandhumberdeanery.nhs.uk/professional-"
+            + "support/policies/ltftt";
         break;
-      case "1-1RSSQ2H": // North West
-        details.put("localOffice", "NHSE Education North West");
-        details.put("localOfficeSupport", "");
+      case "NHSE Education North West":
+        localOfficeSupport = "";
         break;
-      case "1-1RUZUSF": // Wessex
-        details.put("localOffice", "NHSE Education Wessex");
-        details.put("localOfficeSupport", "https://wessex.hee.nhs.uk/trainee-information/trainee-"
-            + "journey/less-than-full-time-training/");
+      case "NHSE Education Wessex":
+        localOfficeSupport = "https://wessex.hee.nhs.uk/trainee-information/trainee-"
+            + "journey/less-than-full-time-training/";
         break;
-      case "1-1RUZUVB": // South West
-        details.put("localOffice", "NHSE Education South West");
-        details.put("localOfficeSupport", "https://www.severndeanery.nhs.uk/about-us/new-starters-"
-            + "information-page/");
+      case "NHSE Education South West":
+        localOfficeSupport = "https://www.severndeanery.nhs.uk/about-us/new-starters-"
+            + "information-page/";
         break;
-      case "1-8W6121": // Scotland
-        details.put("localOffice", "NHS Education for Scotland");
-        details.put("localOfficeSupport", "");
+      case "NHS Education for Scotland":
+        localOfficeSupport = "";
         break;
-      case "1-36QUOY": // Wales
-        details.put("localOffice", "Health Education and Improvement Wales");
-        details.put("localOfficeSupport", "");
+      case "Health Education and Improvement Wales":
+        localOfficeSupport = "";
         break;
-      case "1-2SXJST": // Defence
-        details.put("localOffice", "Defence Postgraduate Medical Deanery");
-        details.put("localOfficeSupport", "");
+      case "Defence Postgraduate Medical Deanery":
+        localOfficeSupport = "";
         break;
-      case "1-25U-830": // Northern Ireland
-        details.put("localOffice", "Northern Ireland Medical and Dental Training Agency");
-        details.put("localOfficeSupport", "");
+      case "Northern Ireland Medical and Dental Training Agency":
+        localOfficeSupport = "";
         break;
       default:
-        details.put("localOffice", "Unknown Local Office");
-        details.put("localOfficeSupport", "https://www.hee.nhs.uk/");
+        localOfficeSupport = "https://www.hee.nhs.uk/";
     }
 
-    return details;
+    return localOfficeSupport;
   }
 }

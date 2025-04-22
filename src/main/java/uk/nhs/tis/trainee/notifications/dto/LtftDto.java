@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright 2024 Crown Copyright (Health Education England)
+ * Copyright 2025 Crown Copyright (Health Education England)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
  * associated documentation files (the "Software"), to deal in the Software without restriction,
@@ -19,21 +19,33 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package uk.nhs.tis.trainee.notifications.mapper;
+package uk.nhs.tis.trainee.notifications.dto;
 
-import org.mapstruct.Mapper;
-import org.mapstruct.MappingConstants.ComponentModel;
-import org.mapstruct.ReportingPolicy;
-import uk.nhs.tis.trainee.notifications.dto.LtftDto;
-import uk.nhs.tis.trainee.notifications.dto.LtftUpdateEvent;
+import java.time.Instant;
 
 /**
- * A mapper for LTFT DTO
+ * A DTO for historical notification data.
+ *
+ * @param traineeTisId The id of the person who submitted the form.
+ * @param formRef      The reference of the LTFT form.
+ * @param content      The content of the LTFT form.
+ * @param status       The status of the LTFT form.
+ * @param status       The managingDeanery of the LTFT form.
+ * @param status       The LocalOfficeDetails of the LTFT form.
  */
-@Mapper(componentModel = ComponentModel.SPRING, unmappedTargetPolicy = ReportingPolicy.IGNORE)
-public interface LtftMapper {
-  LtftUpdateEvent toEntity(LtftDto dto);
+public record LtftDto(
+    String traineeTisId,
+    String formRef,
+    LtftContent content,
+    LtftStatus status
+) {
+  public record LtftContent(String name, ProgrammeMembershipDetails programmeMembership) {
+    public record ProgrammeMembershipDetails(String managingDeanery) {
+    }
+  }
+
+  public record LtftStatus(StatusDetails current) {
+    public record StatusDetails(String state, Instant timestamp) {
+    }
+  }
 }
-
-
-

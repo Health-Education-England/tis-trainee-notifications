@@ -35,7 +35,9 @@ public record LtftUpdateEvent(
     String traineeTisId,
     String formRef,
     LtftContent content,
-    LtftStatus status
+    LtftStatus status,
+    String managingDeanery,
+    String LocalOfficeDetails
 ) {
 
   /**
@@ -45,11 +47,11 @@ public record LtftUpdateEvent(
    */
   public record LtftContent(String name, ProgrammeMembershipDetails programmeMembership) {
     /**
-     * A representation of the ProgrammeMembership attatched to the LTFT.
+     * A representation of the managingDeanery attatched to the LTFT.
      *
-     * @param designatedBodyCode The programmeMemberships DBC.
+     * @param managingDeanery The LTFTs managingDeanery.
      */
-    public record ProgrammeMembershipDetails(String designatedBodyCode) {
+    public record ProgrammeMembershipDetails(String managingDeanery) {
 
     }
   }
