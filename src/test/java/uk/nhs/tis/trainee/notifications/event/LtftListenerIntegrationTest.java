@@ -288,8 +288,8 @@ class LtftListenerIntegrationTest {
 
   @ParameterizedTest
   @CsvSource(delimiter = '|', textBlock = """
-      APPROVED     | LTFT_APPROVED
-      SUBMITTED    | LTFT_SUBMITTED
+      APPROVED  | LTFT_APPROVED
+      SUBMITTED | LTFT_SUBMITTED
       """)
   void shouldSendFullyTailoredNotificationsWhenAllTemplateVariablesAvailableAndUrlContacts(
       String state, NotificationType type) throws Exception {
@@ -360,8 +360,8 @@ class LtftListenerIntegrationTest {
 
   @ParameterizedTest
   @CsvSource(delimiter = '|', textBlock = """
-      APPROVED     | LTFT_APPROVED
-      SUBMITTED    | LTFT_SUBMITTED
+      APPROVED  | LTFT_APPROVED
+      SUBMITTED | LTFT_SUBMITTED
       """)
   void shouldSendFullyTailoredNotificationsWhenAllTemplateVariablesAvailableAndEmailContacts(
       String state, NotificationType type) throws Exception {
