@@ -24,6 +24,7 @@ package uk.nhs.tis.trainee.notifications.dto;
 import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.Map;
 import lombok.Builder;
 import lombok.Data;
@@ -39,8 +40,30 @@ public class LtftUpdateEvent {
   private String traineeId;
   private String formRef;
   private String formName;
+  private PersonalDetails personalDetails;
+  private ProgrammeMembershipDto programmeMembership;
+  private ChangeDto change;
   private String state;
   private Instant timestamp;
+
+  /**
+   * A trainee's personal details.
+   *
+   * @param gmcNumber The trainee's GMC registration number.
+   */
+  public record PersonalDetails(String gmcNumber) {
+
+  }
+
+  /**
+   * An LTFT change.
+   *
+   * @param endDate The end date of the LTFT change.
+   * @param wte     The whole time equivalent being requested.
+   */
+  public record ChangeDto(LocalDate endDate, Double wte) {
+
+  }
 
   /**
    * Unpack the current status to set the state and timestamp.

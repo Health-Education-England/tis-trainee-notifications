@@ -21,16 +21,29 @@
 
 package uk.nhs.tis.trainee.notifications.event;
 
+import static uk.nhs.tis.trainee.notifications.model.LocalOfficeContactType.LTFT;
+import static uk.nhs.tis.trainee.notifications.model.LocalOfficeContactType.LTFT_SUPPORT;
+import static uk.nhs.tis.trainee.notifications.model.LocalOfficeContactType.SUPPORTED_RETURN_TO_TRAINING;
+import static uk.nhs.tis.trainee.notifications.model.LocalOfficeContactType.TSS_SUPPORT;
+import static uk.nhs.tis.trainee.notifications.model.MessageType.EMAIL;
+import static uk.nhs.tis.trainee.notifications.model.NotificationType.LTFT_APPROVED;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.LTFT_UPDATED;
 
 import io.awspring.cloud.sqs.annotation.SqsListener;
 import jakarta.mail.MessagingException;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
+import uk.nhs.tis.trainee.notifications.config.TemplateVersionsProperties;
 import uk.nhs.tis.trainee.notifications.dto.LtftUpdateEvent;
+import uk.nhs.tis.trainee.notifications.model.HrefType;
+import uk.nhs.tis.trainee.notifications.model.LocalOfficeContactType;
+import uk.nhs.tis.trainee.notifications.model.NotificationType;
 import uk.nhs.tis.trainee.notifications.service.EmailService;
+import uk.nhs.tis.trainee.notifications.service.NotificationService;
 
 /**
  * A listener for LTFT update events.
@@ -38,18 +51,26 @@ import uk.nhs.tis.trainee.notifications.service.EmailService;
 @Slf4j
 @Component
 public class LtftListener {
+
+  private static final Set<LocalOfficeContactType> TEMPLATE_CONTACTS = Set.of(LTFT, LTFT_SUPPORT,
+      SUPPORTED_RETURN_TO_TRAINING, TSS_SUPPORT);
+
+  private final NotificationService notificationService;
   private final EmailService emailService;
-  private final String templateVersion;
+  private final TemplateVersionsProperties templateVersions;
 
   /**
    * Construct a listener for LTFT events.
    *
-   * @param emailService The service to use for sending emails.
+   * @param notificationService The service for getting contact lists.
+   * @param emailService        The service to use for sending emails.
+   * @param templateVersions    The configured versions of each template.
    */
-  public LtftListener(EmailService emailService,
-      @Value("${application.template-versions.ltft-updated.email}") String templateVersion) {
+  public LtftListener(NotificationService notificationService, EmailService emailService,
+      TemplateVersionsProperties templateVersions) {
+    this.notificationService = notificationService;
     this.emailService = emailService;
-    this.templateVersion = templateVersion;
+    this.templateVersions = templateVersions;
   }
 
   /**
@@ -62,9 +83,54 @@ public class LtftListener {
   public void handleLtftUpdate(LtftUpdateEvent event) throws MessagingException {
     log.info("Handling LTFT update event {}.", event);
 
+    NotificationType notificationType = switch (event.getState()) {
+      case "APPROVED" -> LTFT_APPROVED;
+      default -> LTFT_UPDATED;
+    };
+
+    String templateVersion = templateVersions.getTemplateVersion(notificationType, EMAIL)
+        .orElseThrow(() -> new IllegalArgumentException(
+            "No email template available for notification type '%s'".formatted(notificationType)));
+
     String traineeTisId = event.getTraineeId();
-    emailService.sendMessageToExistingUser(traineeTisId, LTFT_UPDATED, templateVersion,
-        Map.of("var", event), null);
+    String managingDeanery = event.getProgrammeMembership() == null ? null
+        : event.getProgrammeMembership().managingDeanery();
+    Map<String, Object> templateVariables = Map.of(
+        "var", event,
+        "contacts", getContacts(managingDeanery)
+    );
+    emailService.sendMessageToExistingUser(traineeTisId, notificationType, templateVersion,
+        templateVariables, null);
     log.info("LTFT updated notification sent for trainee {}.", traineeTisId);
+  }
+
+  /**
+   * Get the contacts for the given managing deanery.
+   *
+   * @param managingDeanery The local office to get the contacts for.
+   * @return A map where the key is the contact type and the value is the {@link Contact} details.
+   */
+  private Map<String, Contact> getContacts(String managingDeanery) {
+    List<Map<String, String>> ownerContactList = notificationService.getOwnerContactList(
+        managingDeanery);
+
+    return TEMPLATE_CONTACTS.stream()
+        .collect(Collectors.toMap(Enum::name, ct -> {
+          String contact = notificationService.getOwnerContact(ownerContactList, ct, TSS_SUPPORT,
+              "");
+          String type = notificationService.getHrefTypeForContact(contact);
+          return new Contact(contact, type);
+        }));
+  }
+
+  /**
+   * A representation of a contact.
+   *
+   * @param contact The contact link.
+   * @param type    The {@link HrefType} of the contact, see
+   *                {@link NotificationService#getHrefTypeForContact(String)}
+   */
+  record Contact(String contact, String type) {
+
   }
 }

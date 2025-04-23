@@ -24,22 +24,38 @@ package uk.nhs.tis.trainee.notifications.event;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.sameInstance;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.hasSize;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
-import static uk.nhs.tis.trainee.notifications.model.NotificationType.LTFT_UPDATED;
+import static org.mockito.Mockito.when;
+import static uk.nhs.tis.trainee.notifications.model.LocalOfficeContactType.LTFT;
+import static uk.nhs.tis.trainee.notifications.model.LocalOfficeContactType.LTFT_SUPPORT;
+import static uk.nhs.tis.trainee.notifications.model.LocalOfficeContactType.SUPPORTED_RETURN_TO_TRAINING;
+import static uk.nhs.tis.trainee.notifications.model.LocalOfficeContactType.TSS_SUPPORT;
 
 import jakarta.mail.MessagingException;
 import java.time.Instant;
 import java.util.Map;
+import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
+import uk.nhs.tis.trainee.notifications.config.TemplateVersionsProperties;
+import uk.nhs.tis.trainee.notifications.config.TemplateVersionsProperties.MessageTypeVersions;
 import uk.nhs.tis.trainee.notifications.dto.LtftUpdateEvent;
+import uk.nhs.tis.trainee.notifications.dto.ProgrammeMembershipDto;
+import uk.nhs.tis.trainee.notifications.event.LtftListener.Contact;
+import uk.nhs.tis.trainee.notifications.model.LocalOfficeContactType;
+import uk.nhs.tis.trainee.notifications.model.NotificationType;
 import uk.nhs.tis.trainee.notifications.service.EmailService;
+import uk.nhs.tis.trainee.notifications.service.NotificationService;
 
 class LtftListenerTest {
 
@@ -52,20 +68,43 @@ class LtftListenerTest {
   private static final String LTFT_STATUS = "SUBMITTED";
 
   private LtftListener listener;
+  private NotificationService notificationService;
   private EmailService emailService;
 
   @BeforeEach
   void setUp() {
+    notificationService = mock(NotificationService.class);
     emailService = mock(EmailService.class);
-    listener = new LtftListener(emailService, VERSION);
+    TemplateVersionsProperties templateVersions = new TemplateVersionsProperties(Map.of(
+        "ltft-approved", new MessageTypeVersions(VERSION, null),
+        "ltft-updated", new MessageTypeVersions(VERSION, null)
+    ));
+    listener = new LtftListener(notificationService, emailService, templateVersions);
   }
 
-  @Test
-  void shouldThrowExceptionWhenLtftUpdatedAndSendingFails() throws MessagingException {
+  @ParameterizedTest
+  @CsvSource(delimiter = '|', textBlock = """
+      APPROVED     | LTFT_APPROVED
+      Other-Status | LTFT_UPDATED
+      """)
+  void shouldThrowExceptionWhenNoEmailTemplateAvailable(String state, NotificationType type) {
+    LtftUpdateEvent event = LtftUpdateEvent.builder().state(state).build();
+
+    TemplateVersionsProperties templateVersions = new TemplateVersionsProperties(Map.of(
+        type.getTemplateName(), new MessageTypeVersions(null, VERSION)
+    ));
+    listener = new LtftListener(notificationService, emailService, templateVersions);
+
+    assertThrows(IllegalArgumentException.class, () -> listener.handleLtftUpdate(event));
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"APPROVED", "Other-Status"})
+  void shouldThrowExceptionWhenLtftUpdatedAndSendingFails(String state) throws MessagingException {
     doThrow(MessagingException.class).when(emailService)
         .sendMessageToExistingUser(any(), any(), any(), any(), any());
 
-    LtftUpdateEvent event = LtftUpdateEvent.builder().build();
+    LtftUpdateEvent event = LtftUpdateEvent.builder().state(state).build();
 
     assertThrows(MessagingException.class, () -> listener.handleLtftUpdate(event));
   }
@@ -74,6 +113,7 @@ class LtftListenerTest {
   void shouldSetTraineeIdWhenLtftUpdated() throws MessagingException {
     LtftUpdateEvent event = LtftUpdateEvent.builder()
         .traineeId(TRAINEE_ID)
+        .state("")
         .build();
 
     listener.handleLtftUpdate(event);
@@ -81,27 +121,90 @@ class LtftListenerTest {
     verify(emailService).sendMessageToExistingUser(eq(TRAINEE_ID), any(), any(), any(), any());
   }
 
-  @Test
-  void shouldSetNotificationTypeWhenLtftUpdated() throws MessagingException {
-    LtftUpdateEvent event = LtftUpdateEvent.builder().build();
+  @ParameterizedTest
+  @CsvSource(delimiter = '|', textBlock = """
+      APPROVED     | LTFT_APPROVED
+      Other-Status | LTFT_UPDATED
+      """)
+  void shouldSetNotificationTypeWhenLtftUpdated(String state, NotificationType type)
+      throws MessagingException {
+    LtftUpdateEvent event = LtftUpdateEvent.builder()
+        .state(state)
+        .build();
 
     listener.handleLtftUpdate(event);
 
-    verify(emailService).sendMessageToExistingUser(any(), eq(LTFT_UPDATED), any(), any(), any());
+    verify(emailService).sendMessageToExistingUser(any(), eq(type), any(), any(), any());
   }
 
-  @Test
-  void shouldSetTemplateVersionWhenLtftUpdated() throws MessagingException {
-    LtftUpdateEvent event = LtftUpdateEvent.builder().build();
+  @ParameterizedTest
+  @CsvSource(delimiter = '|', textBlock = """
+      APPROVED     | LTFT_APPROVED | v1.2.3
+      Other-Status | LTFT_UPDATED  | v2.3.4
+      """)
+  void shouldSetTemplateVersionWhenLtftUpdated(String state, NotificationType type, String version)
+      throws MessagingException {
+    LtftUpdateEvent event = LtftUpdateEvent.builder()
+        .state(state)
+        .build();
+
+    TemplateVersionsProperties templateVersions = new TemplateVersionsProperties(Map.of(
+        type.getTemplateName(), new MessageTypeVersions(version, null)
+    ));
+    listener = new LtftListener(notificationService, emailService, templateVersions);
 
     listener.handleLtftUpdate(event);
 
-    verify(emailService).sendMessageToExistingUser(any(), any(), eq(VERSION), any(), any());
+    verify(emailService).sendMessageToExistingUser(any(), any(), eq(version), any(), any());
   }
 
-  @Test
-  void shouldPopulateTemplateVariablesWithEventWhenLtftUpdated() throws MessagingException {
-    LtftUpdateEvent event = LtftUpdateEvent.builder().build();
+  @ParameterizedTest
+  @ValueSource(strings = {"APPROVED", "Other-Status"})
+  void shouldPopulateTemplateVariablesWithContactsWhenLtftUpdated(String state)
+      throws MessagingException {
+    Set<LocalOfficeContactType> expectedContacts = Set.of(
+        LTFT, LTFT_SUPPORT, SUPPORTED_RETURN_TO_TRAINING, TSS_SUPPORT);
+    when(notificationService.getOwnerContactList("Test Deanery")).thenReturn(
+        expectedContacts.stream()
+            .map(ct -> Map.of(
+                "contact", "https://test/" + ct,
+                "contactTypeName", ct.getContactTypeName()
+            ))
+            .toList());
+    when(notificationService.getOwnerContact(any(), any(), eq(TSS_SUPPORT),
+        eq(""))).thenCallRealMethod();
+    when(notificationService.getHrefTypeForContact(any())).thenCallRealMethod();
+
+    LtftUpdateEvent event = LtftUpdateEvent.builder()
+        .programmeMembership(ProgrammeMembershipDto.builder()
+            .managingDeanery("Test Deanery")
+            .build())
+        .state(state)
+        .build();
+
+    listener.handleLtftUpdate(event);
+
+    ArgumentCaptor<Map<String, Object>> templateVarsCaptor = ArgumentCaptor.captor();
+    verify(emailService).sendMessageToExistingUser(any(), any(), any(),
+        templateVarsCaptor.capture(), any());
+
+    Map<String, Object> templateVariables = templateVarsCaptor.getValue();
+    Map<String, Contact> contacts = (Map<String, Contact>) templateVariables.get("contacts");
+
+    assertThat("Unexpected contact count.", contacts.keySet(), hasSize(4));
+
+    expectedContacts.forEach(ct -> {
+      Contact contact = contacts.get(ct.name());
+      assertThat("Unexpected contact link.", contact.contact(), is("https://test/" + ct));
+      assertThat("Unexpected contact HREF type.", contact.type(), is("url"));
+    });
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"APPROVED", "Other-Status"})
+  void shouldPopulateTemplateVariablesWithEventWhenLtftUpdated(String state)
+      throws MessagingException {
+    LtftUpdateEvent event = LtftUpdateEvent.builder().state(state).build();
 
     listener.handleLtftUpdate(event);
 
