@@ -58,10 +58,11 @@ public class LtftUpdateEvent {
   /**
    * An LTFT change.
    *
-   * @param endDate The end date of the LTFT change.
-   * @param wte     The whole time equivalent being requested.
+   * @param startDate The start date of the LTFT change.
+   * @param wte       The whole time equivalent being requested.
+   * @param cctDate   The CCT/end of programme date..
    */
-  public record ChangeDto(LocalDate endDate, Double wte) {
+  public record ChangeDto(LocalDate startDate, Double wte, LocalDate cctDate) {
 
   }
 

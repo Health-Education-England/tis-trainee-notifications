@@ -21,7 +21,6 @@
 
 package uk.nhs.tis.trainee.notifications.dto;
 
-import java.time.LocalDate;
 import lombok.Builder;
 
 /**
@@ -29,14 +28,12 @@ import lombok.Builder;
  *
  * @param name            The name of the programme.
  * @param managingDeanery The managing deanery for the programme.
- * @param startDate       The start date of the programme.
  * @param wte             The whole time equivalent of the programme membership.
  */
 @Builder
 public record ProgrammeMembershipDto(
     String name,
     String managingDeanery,
-    LocalDate startDate,
     Double wte) {
 
 }

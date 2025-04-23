@@ -8,7 +8,7 @@
 <h1>Email Message</h1>
 <h2>Subject</h2>
 <th:block th:fragment="subject">
-  NHS England - <th:block th:text="${not #strings.isEmpty(var?.programmeMembership?.managingDeanery)} ? |NHS England - ${var.programmeMembership.managingDeanery}| : 'Your Local Office'"></th:block> - Confirmation of Submitted Application for Change in Hours (LTFT) - <th:block th:text="${not #strings.isEmpty(var?.formRef)} ? ${var.formRef} : 'unknown form reference'"></th:block>
+  NHS England - <th:block th:text="${not #strings.isEmpty(var?.programmeMembership?.managingDeanery)} ? | - ${var.programmeMembership.managingDeanery}| : _"></th:block> - Confirmation of Submitted Application for Change in Hours (LTFT) - <th:block th:text="${not #strings.isEmpty(var?.formRef)} ? ${var.formRef} : 'unknown form reference'"></th:block>
 </th:block><h2>Content</h2>
 <th:block th:fragment="content" th:with="subjectRefs = |GMC: ${not #strings.isEmpty(var?.personalDetails?.gmcNumber) ? var.personalDetails.gmcNumber : 'unknown'}, LTFT Ref No: ${not #strings.isEmpty(var?.formRef) ? var.formRef : 'unknown'}|">
   <div th:replace="fragments/retry/v1.0.0 :: retry(${originallySentOn})"></div>
@@ -38,7 +38,7 @@
   </p>
   <ul>
     <li><strong>To Edit:</strong> Select <strong>"Unsubmit"</strong> to update your application and then re-submit it.</li>
-    <li><strong>To Withdraw:</strong> Select <strong>"Withdraw"</strong> to delete your application.</li>
+    <li><strong>To Withdraw:</strong> Select <strong>"Withdraw"</strong> to permanently withdraw your application.</li>
   </ul>
 
   <h3>Resolving Any Issues</h3>

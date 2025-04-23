@@ -13,7 +13,7 @@
   <div th:replace="fragments/retry/v1.0.0 :: retry(${originallySentOn})"></div>
   <div style="text-align:right"><img style="margin-right:25px; height:100px" src='https://trainee.tis.nhs.uk/nhse-logo.png' alt="NHS England logo"/></div>
   <p th:replace="~{fragments/greeting/v1.0.0 :: greeting(${familyName})}"></p>
-  <p>We are pleased to inform you that your application for Less Than Full Time (LTFT) training has been approved. Your TPD has been notified. Below are the details of your updated working arrangements:</p>
+  <p>We are pleased to inform you that your application for Less Than Full Time (LTFT) training has been approved. Below are the details of your updated working arrangements:</p>
   <table style="width:100%" border="1">
     <tr>
       <th>Programme</th>
@@ -24,8 +24,8 @@
     </tr>
     <tr>
       <td><th:block th:text="${not #strings.isEmpty(var?.programmeMembership?.name)} ? ${var.programmeMembership.name} : 'unknown'"></th:block></td>
-      <td><th:block th:text="${not #strings.isEmpty(var?.programmeMembership?.startDate)} ? ${var.programmeMembership.startDate} : 'unknown'"></th:block></td>
-      <td><th:block th:text="${not #strings.isEmpty(var?.change?.endDate)} ? ${var.change.endDate} : 'unknown'"></th:block></td>
+      <td><th:block th:text="${not #strings.isEmpty(var?.change?.startDate)} ? ${var.change.startDate} : 'unknown'"></th:block></td>
+      <td><th:block th:text="${not #strings.isEmpty(var?.change?.cctDate)} ? ${var.change.cctDate} : 'unknown'"></th:block></td>
       <td><th:block th:text="${not #strings.isEmpty(var?.programmeMembership?.wte)} ? ${var.programmeMembership.wte} : 'unknown'"></th:block></td>
       <td><th:block th:text="${not #strings.isEmpty(var?.change?.wte)} ? ${var.change.wte} : 'unknown'"></th:block></td>
     </tr>
