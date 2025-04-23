@@ -22,6 +22,7 @@
 package uk.nhs.tis.trainee.notifications.event;
 
 import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.CoreMatchers.sameInstance;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
@@ -38,14 +39,13 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import uk.nhs.tis.trainee.notifications.dto.LtftUpdateEvent;
-import uk.nhs.tis.trainee.notifications.dto.LtftUpdateEvent.LtftContent;
 import uk.nhs.tis.trainee.notifications.service.EmailService;
 
 class LtftListenerTest {
 
   private static final String VERSION = "v1.2.3";
 
-  private static final String TRAINEE_TIS_ID = "47165";
+  private static final String TRAINEE_ID = "47165";
   private static final Instant TIMESTAMP = Instant.now();
   private static final String LTFT_NAME = "My LTFT";
   private static final String FORM_REFERENCE = "ltft_47165_002";
@@ -53,12 +53,6 @@ class LtftListenerTest {
 
   private LtftListener listener;
   private EmailService emailService;
-
-  private final LtftUpdateEvent.LtftStatus.StatusDetails statusDetails =
-      new LtftUpdateEvent.LtftStatus.StatusDetails(LTFT_STATUS, TIMESTAMP);
-  private final LtftUpdateEvent.LtftStatus ltftStatus
-      = new LtftUpdateEvent.LtftStatus(statusDetails);
-  private final LtftContent ltftContent = new LtftContent(LTFT_NAME);
 
   @BeforeEach
   void setUp() {
@@ -71,26 +65,25 @@ class LtftListenerTest {
     doThrow(MessagingException.class).when(emailService)
         .sendMessageToExistingUser(any(), any(), any(), any(), any());
 
-    LtftUpdateEvent event
-        = new LtftUpdateEvent(TRAINEE_TIS_ID, FORM_REFERENCE, ltftContent, ltftStatus);
+    LtftUpdateEvent event = LtftUpdateEvent.builder().build();
 
     assertThrows(MessagingException.class, () -> listener.handleLtftUpdate(event));
   }
 
   @Test
   void shouldSetTraineeIdWhenLtftUpdated() throws MessagingException {
-    LtftUpdateEvent event
-        = new LtftUpdateEvent(TRAINEE_TIS_ID, FORM_REFERENCE, ltftContent, ltftStatus);
+    LtftUpdateEvent event = LtftUpdateEvent.builder()
+        .traineeId(TRAINEE_ID)
+        .build();
 
     listener.handleLtftUpdate(event);
 
-    verify(emailService).sendMessageToExistingUser(eq(TRAINEE_TIS_ID), any(), any(), any(), any());
+    verify(emailService).sendMessageToExistingUser(eq(TRAINEE_ID), any(), any(), any(), any());
   }
 
   @Test
   void shouldSetNotificationTypeWhenLtftUpdated() throws MessagingException {
-    LtftUpdateEvent event
-        = new LtftUpdateEvent(TRAINEE_TIS_ID, FORM_REFERENCE, ltftContent, ltftStatus);
+    LtftUpdateEvent event = LtftUpdateEvent.builder().build();
 
     listener.handleLtftUpdate(event);
 
@@ -99,8 +92,7 @@ class LtftListenerTest {
 
   @Test
   void shouldSetTemplateVersionWhenLtftUpdated() throws MessagingException {
-    LtftUpdateEvent event
-        = new LtftUpdateEvent(TRAINEE_TIS_ID, FORM_REFERENCE, ltftContent, ltftStatus);
+    LtftUpdateEvent event = LtftUpdateEvent.builder().build();
 
     listener.handleLtftUpdate(event);
 
@@ -108,9 +100,8 @@ class LtftListenerTest {
   }
 
   @Test
-  void shouldIncludeFormNameWhenLtftUpdated() throws MessagingException {
-    LtftUpdateEvent event
-        = new LtftUpdateEvent(TRAINEE_TIS_ID, FORM_REFERENCE, ltftContent, ltftStatus);
+  void shouldPopulateTemplateVariablesWithEventWhenLtftUpdated() throws MessagingException {
+    LtftUpdateEvent event = LtftUpdateEvent.builder().build();
 
     listener.handleLtftUpdate(event);
 
@@ -119,13 +110,18 @@ class LtftListenerTest {
         templateVarsCaptor.capture(), any());
 
     Map<String, Object> templateVariables = templateVarsCaptor.getValue();
-    assertThat("Unexpected LTFT name.", templateVariables.get("ltftName"), is(LTFT_NAME));
+    assertThat("Unexpected event.", templateVariables.get("var"), sameInstance(event));
   }
 
   @Test
-  void shouldIncludeLifecycleStateWhenLtftUpdated() throws MessagingException {
-    LtftUpdateEvent event
-        = new LtftUpdateEvent(TRAINEE_TIS_ID, FORM_REFERENCE, ltftContent, ltftStatus);
+  void shouldIncludeEventPropertiesWhenLtftUpdated() throws MessagingException {
+    LtftUpdateEvent event = LtftUpdateEvent.builder()
+        .traineeId(TRAINEE_ID)
+        .formRef(FORM_REFERENCE)
+        .formName(LTFT_NAME)
+        .state(LTFT_STATUS)
+        .timestamp(TIMESTAMP)
+        .build();
 
     listener.handleLtftUpdate(event);
 
@@ -134,38 +130,11 @@ class LtftListenerTest {
         templateVarsCaptor.capture(), any());
 
     Map<String, Object> templateVariables = templateVarsCaptor.getValue();
-    assertThat("Unexpected LTFT status.", templateVariables.get("status"),
-        is(LTFT_STATUS));
-  }
-
-  @Test
-  void shouldIncludeFormTypeWhenLtftUpdated() throws MessagingException {
-    LtftUpdateEvent event
-        = new LtftUpdateEvent(TRAINEE_TIS_ID, FORM_REFERENCE, ltftContent, ltftStatus);
-
-    listener.handleLtftUpdate(event);
-
-    ArgumentCaptor<Map<String, Object>> templateVarsCaptor = ArgumentCaptor.captor();
-    verify(emailService).sendMessageToExistingUser(any(), any(), any(),
-        templateVarsCaptor.capture(), any());
-
-    Map<String, Object> templateVariables = templateVarsCaptor.getValue();
-    assertThat("Unexpected form ref.", templateVariables.get("formRef"), is(FORM_REFERENCE));
-  }
-
-  @Test
-  void shouldIncludeUpdateDateWhenLtftUpdated() throws MessagingException {
-    LtftUpdateEvent event
-        = new LtftUpdateEvent(TRAINEE_TIS_ID, FORM_REFERENCE, ltftContent, ltftStatus);
-
-    listener.handleLtftUpdate(event);
-
-    ArgumentCaptor<Map<String, Object>> templateVarsCaptor = ArgumentCaptor.captor();
-    verify(emailService).sendMessageToExistingUser(any(), any(), any(),
-        templateVarsCaptor.capture(), any());
-
-    Map<String, Object> templateVariables = templateVarsCaptor.getValue();
-    assertThat("Unexpected form updated at.", templateVariables.get("eventDate"),
-        is(TIMESTAMP));
+    LtftUpdateEvent templateEvent = (LtftUpdateEvent) templateVariables.get("var");
+    assertThat("Unexpected trainee ID.", templateEvent.getTraineeId(), is(TRAINEE_ID));
+    assertThat("Unexpected form ref.", templateEvent.getFormRef(), is(FORM_REFERENCE));
+    assertThat("Unexpected LTFT name.", templateEvent.getFormName(), is(LTFT_NAME));
+    assertThat("Unexpected status.", templateEvent.getState(), is(LTFT_STATUS));
+    assertThat("Unexpected event timestamp.", templateEvent.getTimestamp(), is(TIMESTAMP));
   }
 }

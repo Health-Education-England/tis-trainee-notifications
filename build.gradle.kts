@@ -10,7 +10,7 @@ plugins {
 }
 
 group = "uk.nhs.tis.trainee"
-version = "2.2.0"
+version = "2.2.1"
 
 configurations {
   compileOnly {
@@ -71,9 +71,11 @@ dependencies {
   testImplementation("com.h2database:h2")
 
   testImplementation("org.springframework.boot:spring-boot-testcontainers")
+  testImplementation("org.testcontainers:junit-jupiter")
+  testImplementation("org.testcontainers:localstack")
   testImplementation("org.testcontainers:mongodb")
   testImplementation("org.testcontainers:mysql")
-  testImplementation("org.testcontainers:junit-jupiter")
+  testImplementation("org.awaitility:awaitility")
 
   testImplementation(libs.jsoup)
 }

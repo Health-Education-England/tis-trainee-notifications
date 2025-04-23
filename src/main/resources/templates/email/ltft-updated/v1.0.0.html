@@ -10,19 +10,19 @@
 <th:block th:fragment="subject">Your LTFT Application Status Update</th:block>
 <h2>Content</h2>
 <th:block th:fragment="content">
-  <div th:replace="fragments/retry/v1.0.0 :: body"></div>
+  <div th:replace="fragments/retry/v1.0.0 :: retry(${originallySentOn})"></div>
   <div style="text-align:right"><img style="margin-right:25px; height:100px" src='https://trainee.tis.nhs.uk/nhse-logo.png' alt="NHS England logo"/></div>
-  <p th:replace="~{fragments/greeting/v1.0.0 :: p}"></p>
+  <p th:replace="~{fragments/greeting/v1.0.0 :: greeting(${familyName})}"></p>
   <p>
     The status of your LTFT application<span
-      th:text="${not #strings.isEmpty(formRef)}? | (ref: ${formRef})| : _"></span> has changed<span
-      th:text="${not #strings.isEmpty(status)}? | to ${status}| : _"></span><span
-      th:text="${eventDate}? | on ${#temporals.format(eventDate, 'dd MMMM yyyy')}| : _"></span>.
+      th:text="${not #strings.isEmpty(var?.formRef)}? | (ref: ${var.formRef})| : _"></span> has changed<span
+      th:text="${not #strings.isEmpty(var?.state)}? | to ${var.state}| : _"></span><span
+      th:text="${var?.timestamp}? | on ${#temporals.format(var.timestamp, 'dd MMMM yyyy')}| : _"></span>.
   </p>
   <p>Kind Regards,</p>
   <p>TIS Self-Service</p>
   <p><strong>Application Reference:</strong> <span
-      th:text="${not #strings.isEmpty(ltftName)}? |${ltftName}| : _">(not set)</span></p>
+      th:text="${not #strings.isEmpty(var?.formName)}? |${var.formName}| : _">(not set)</span></p>
   <div th:replace="fragments/disclaimer/v1.0.0 :: body"></div>
 </th:block>
 </body>
