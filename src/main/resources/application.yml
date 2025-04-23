@@ -62,6 +62,8 @@ application:
       email: v1.0.0
     ltft-updated:
       email: v1.0.0
+    ltft-submitted:
+      email: v1.0.0
     indemnity-insurance:
       in-app: v1.0.0
     less-than-full-time:

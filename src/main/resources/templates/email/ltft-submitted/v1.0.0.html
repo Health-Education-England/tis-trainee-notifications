@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+  <title>LTFT Approved</title>
+</head>
+<body>
+<h1>Email Message</h1>
+<h2>Subject</h2>
+<th:block th:fragment="subject">
+  NHS England - <span th:text="${not #strings.isEmpty(var?.programmeMembership?.managingDeanery)} ? |NHS England - ${var.programmeMembership.managingDeanery}| : 'Your Local Office'"></span> - Confirmation of Submitted Application for Change in Hours (LTFT) - <span th:text="${not #strings.isEmpty(var?.formRef)} ? ${var.formRef} : 'unknown form reference'"></span>
+</th:block><h2>Content</h2>
+<th:block th:fragment="content" th:with="subjectRefs = |GMC: ${not #strings.isEmpty(var?.personalDetails?.gmcNumber) ? var.personalDetails.gmcNumber : 'unknown'}, LTFT Ref No: ${not #strings.isEmpty(var?.formRef) ? var.formRef : 'unknown'}|">
+  <div th:replace="fragments/retry/v1.0.0 :: retry(${originallySentOn})"></div>
+  <div style="text-align:right"><img style="margin-right:25px; height:100px" src='https://trainee.tis.nhs.uk/nhse-logo.png' alt="NHS England logo"/></div>
+  <p th:replace="~{fragments/greeting/v1.0.0 :: greeting(${familyName})}"></p>
+  </div>
+  <p>
+    Thank you for submitting your Less Than Full Time (LTFT) application on
+    <span th:text="${not #strings.isEmpty(var?.timestamp)} ? ${var.timestamp} : 'unknown'"></span>.
+    Your reference number is
+    <span th:text="${not #strings.isEmpty(var?.formRef)} ? ${var.formRef} : 'unknown'"></span>.
+  </p>
+
+  <h3>What Happens Next?</h3>
+  <p>
+    Your application has been sent to your Local Office
+    <span th:text="${not #strings.isEmpty(var?.programmeMembership?.managingDeanery)} ? |NHS England - ${var.programmeMembership.managingDeanery}| : 'Your Local Office'"></span> for review. You will receive an update on the progress of your application within the next <strong>two weeks</strong>.
+  </p>
+  <p>
+    Please allow at least <strong>two weeks</strong> before contacting your Local Office regarding the status of your application.
+  </p>
+
+  <h3>Making Changes to Your Application</h3>
+  <p>
+    If you wish to edit or withdraw your submitted application, you can do so via the
+    <a href="https://trainee.tis.nhs.uk/home" target="_blank">TIS Self-Service</a>.
+    Please go to the Changing hours (LTFT) tab.
+  </p>
+  <ul>
+    <li><strong>To Edit:</strong> Select <STRONG>‘Unsubmit’</STRONG> to update your application and then re-submit it.</li>
+    <li><strong>To Withdraw:</strong> Select <STRONG>‘Withdraw’</STRONG> to delete your application.</li>
+  </ul>
+
+  <h3>Resolving Any Issues</h3>
+  <p>
+    If your Local Office is unable to process your application, you will receive an email explaining the reason. This may include your application being reverted to an <Strong>unsubmitted</STRONG> state, allowing you to make necessary changes and re-submit.
+  </p>
+
+  <p>
+    For any further queries, please contact your Local Office Support Team:
+    <span th:with="contact = ${contacts?.get('LTFT_SUPPORT')}"></span>
+  </p>
+
+  <p>Kind Regards,</p>
+  <p><span th:text="${not #strings.isEmpty(var?.programmeMembership?.managingDeanery)} ? |NHS England - ${var.programmeMembership.managingDeanery}| : 'Your Local Office'"></span></p>
+
+  <p><em>(Please note: Health Education England is now part of NHS England, and our systems will be updated accordingly.)</em></p>
+
+  <p><strong>Workforce, Training and Education</strong><br/>NHS England</p>
+  <div th:replace="fragments/disclaimer/v1.0.0 :: body"></div>
+</th:block>
+</body>
+</html>
