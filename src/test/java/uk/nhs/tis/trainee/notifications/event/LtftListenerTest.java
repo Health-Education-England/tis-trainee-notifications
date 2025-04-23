@@ -60,7 +60,6 @@ import uk.nhs.tis.trainee.notifications.service.NotificationService;
 class LtftListenerTest {
 
   private static final String VERSION = "v1.2.3";
-
   private static final String TRAINEE_ID = "47165";
   private static final Instant TIMESTAMP = Instant.now();
   private static final String LTFT_NAME = "My LTFT";
@@ -77,7 +76,8 @@ class LtftListenerTest {
     emailService = mock(EmailService.class);
     TemplateVersionsProperties templateVersions = new TemplateVersionsProperties(Map.of(
         "ltft-approved", new MessageTypeVersions(VERSION, null),
-        "ltft-updated", new MessageTypeVersions(VERSION, null)
+        "ltft-updated", new MessageTypeVersions(VERSION, null),
+        "ltft-submitted", new MessageTypeVersions(VERSION, null)
     ));
     listener = new LtftListener(notificationService, emailService, templateVersions);
   }
@@ -85,6 +85,7 @@ class LtftListenerTest {
   @ParameterizedTest
   @CsvSource(delimiter = '|', textBlock = """
       APPROVED     | LTFT_APPROVED
+      SUBMITTED    | LTFT_SUBMITTED
       Other-Status | LTFT_UPDATED
       """)
   void shouldThrowExceptionWhenNoEmailTemplateAvailable(String state, NotificationType type) {
@@ -99,7 +100,7 @@ class LtftListenerTest {
   }
 
   @ParameterizedTest
-  @ValueSource(strings = {"APPROVED", "Other-Status"})
+  @ValueSource(strings = {"APPROVED", "SUBMITTED", "Other-Status"})
   void shouldThrowExceptionWhenLtftUpdatedAndSendingFails(String state) throws MessagingException {
     doThrow(MessagingException.class).when(emailService)
         .sendMessageToExistingUser(any(), any(), any(), any(), any());
@@ -124,6 +125,7 @@ class LtftListenerTest {
   @ParameterizedTest
   @CsvSource(delimiter = '|', textBlock = """
       APPROVED     | LTFT_APPROVED
+      SUBMITTED    | LTFT_SUBMITTED
       Other-Status | LTFT_UPDATED
       """)
   void shouldSetNotificationTypeWhenLtftUpdated(String state, NotificationType type)
@@ -139,8 +141,9 @@ class LtftListenerTest {
 
   @ParameterizedTest
   @CsvSource(delimiter = '|', textBlock = """
-      APPROVED     | LTFT_APPROVED | v1.2.3
-      Other-Status | LTFT_UPDATED  | v2.3.4
+      APPROVED     | LTFT_APPROVED  | v1.2.3
+      Other-Status | LTFT_UPDATED   | v2.3.4
+      SUBMITTED    | LTFT_SUBMITTED | v3.4.5
       """)
   void shouldSetTemplateVersionWhenLtftUpdated(String state, NotificationType type, String version)
       throws MessagingException {
@@ -159,7 +162,7 @@ class LtftListenerTest {
   }
 
   @ParameterizedTest
-  @ValueSource(strings = {"APPROVED", "Other-Status"})
+  @ValueSource(strings = {"APPROVED", "SUBMITTED", "Other-Status"})
   void shouldPopulateTemplateVariablesWithContactsWhenLtftUpdated(String state)
       throws MessagingException {
     Set<LocalOfficeContactType> expectedContacts = Set.of(
@@ -201,7 +204,7 @@ class LtftListenerTest {
   }
 
   @ParameterizedTest
-  @ValueSource(strings = {"APPROVED", "Other-Status"})
+  @ValueSource(strings = {"APPROVED", "SUBMITTED", "Other-Status"})
   void shouldPopulateTemplateVariablesWithEventWhenLtftUpdated(String state)
       throws MessagingException {
     LtftUpdateEvent event = LtftUpdateEvent.builder().state(state).build();

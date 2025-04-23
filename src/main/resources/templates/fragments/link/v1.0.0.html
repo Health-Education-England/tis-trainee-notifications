@@ -8,7 +8,7 @@
     <th:block th:fragment="link(link, type, prefixText, linkText, suffixText, fallbackText, emailSubject)">
       <th:block th:if="${#strings.isEmpty(type)} or ${type} eq 'NON_HREF'" th:utext="${fallbackText}"/>
       <th:block th:unless="${#strings.isEmpty(type)} or ${type} eq 'NON_HREF'">
-        <th:block th:utext="${prefixText}"/><a th:href="${type} == 'email' ? |mailto:${link}?subject=${emailSubject}| : ${link}" th:text="${#strings.isEmpty(linkText) ? link : linkText}" th:target="_blank"></a><th:block th:utext="${suffixTest}"/>
+        <th:block th:utext="${prefixText}"/><a th:href="${type} == 'email' ? |mailto:${link}?subject=${emailSubject}| : ${link}" th:text="${#strings.isEmpty(linkText) ? link : linkText}" th:target="_blank"></a><th:block th:utext="${suffixText}"/>
       </th:block>
     </th:block>
   </body>
