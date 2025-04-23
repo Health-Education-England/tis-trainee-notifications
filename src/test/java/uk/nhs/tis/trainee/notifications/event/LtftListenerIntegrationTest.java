@@ -318,12 +318,12 @@ class LtftListenerIntegrationTest {
           "programmeMembership": {
             "name": "General Practice",
             "managingDeanery": "%s",
-            "startDate": "2025-04-03",
             "wte": 1.0
           },
           "change": {
-            "endDate": "2027-06-05",
-            "wte": 0.5
+            "startDate": "2025-04-03",
+            "wte": 0.5,
+            "cctDate": "2027-06-05"
           },
           "status": {
             "current" : {
@@ -390,12 +390,12 @@ class LtftListenerIntegrationTest {
           "programmeMembership": {
             "name": "General Practice",
             "managingDeanery": "%s",
-            "startDate": "2025-04-03",
             "wte": 1.0
           },
           "change": {
-            "endDate": "2027-06-05",
-            "wte": 0.5
+            "startDate": "2025-04-03",
+            "wte": 0.5,
+            "cctDate": "2027-06-05"
           },
           "status": {
             "current" : {
