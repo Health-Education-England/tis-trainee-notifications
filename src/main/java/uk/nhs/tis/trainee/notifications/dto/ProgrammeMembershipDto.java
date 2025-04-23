@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright 2024 Crown Copyright (Health Education England)
+ * Copyright 2025 Crown Copyright (Health Education England)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
  * associated documentation files (the "Software"), to deal in the Software without restriction,
@@ -16,30 +16,27 @@
  * NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
  * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
  * DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- *  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package uk.nhs.tis.trainee.notifications.model;
+package uk.nhs.tis.trainee.notifications.dto;
 
-import lombok.AllArgsConstructor;
-import lombok.Getter;
+import java.time.LocalDate;
+import lombok.Builder;
 
 /**
- * An enumeration of possible local office contact types.
+ * Programme membership data.
+ *
+ * @param name            The name of the programme.
+ * @param managingDeanery The managing deanery for the programme.
+ * @param startDate       The start date of the programme.
+ * @param wte             The whole time equivalent of the programme membership.
  */
-@Getter
-@AllArgsConstructor
-public enum LocalOfficeContactType {
+@Builder
+public record ProgrammeMembershipDto(
+    String name,
+    String managingDeanery,
+    LocalDate startDate,
+    Double wte) {
 
-  GMC_UPDATE("GMC Update"),
-  LTFT("Less Than Full Time"),
-  LTFT_SUPPORT("LTFT Support"),
-  ONBOARDING_SUPPORT("Onboarding Support"),
-  SPONSORSHIP("Sponsorship"),
-  SUPPORTED_RETURN_TO_TRAINING("Supported Return to Training"),
-  DEFERRAL("Deferral"),
-  TSS_SUPPORT("TIS Self-Service Support"),
-  LOCAL_OFFICE_WEBSITE("Local office website");
-
-  private final String contactTypeName;
 }

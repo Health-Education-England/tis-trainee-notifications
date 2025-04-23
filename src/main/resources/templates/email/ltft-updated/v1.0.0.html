@@ -14,15 +14,15 @@
   <div style="text-align:right"><img style="margin-right:25px; height:100px" src='https://trainee.tis.nhs.uk/nhse-logo.png' alt="NHS England logo"/></div>
   <p th:replace="~{fragments/greeting/v1.0.0 :: greeting(${familyName})}"></p>
   <p>
-    The status of your LTFT application<span
-      th:text="${not #strings.isEmpty(var?.formRef)}? | (ref: ${var.formRef})| : _"></span> has changed<span
-      th:text="${not #strings.isEmpty(var?.state)}? | to ${var.state}| : _"></span><span
-      th:text="${var?.timestamp}? | on ${#temporals.format(var.timestamp, 'dd MMMM yyyy')}| : _"></span>.
+    The status of your LTFT application<th:block
+      th:text="${not #strings.isEmpty(var?.formRef)}? | (ref: ${var.formRef})| : _"></th:block> has changed<th:block
+      th:text="${not #strings.isEmpty(var?.state)}? | to ${var.state}| : _"></th:block><th:block
+      th:text="${var?.timestamp}? | on ${#temporals.format(var.timestamp, 'dd MMMM yyyy')}| : _"></th:block>.
   </p>
   <p>Kind Regards,</p>
   <p>TIS Self-Service</p>
-  <p><strong>Application Reference:</strong> <span
-      th:text="${not #strings.isEmpty(var?.formName)}? |${var.formName}| : _">(not set)</span></p>
+  <p><strong>Application Reference:</strong> <th:block
+      th:text="${not #strings.isEmpty(var?.formName)}? |${var.formName}| : _">(not set)</th:block></p>
   <div th:replace="fragments/disclaimer/v1.0.0 :: body"></div>
 </th:block>
 </body>
