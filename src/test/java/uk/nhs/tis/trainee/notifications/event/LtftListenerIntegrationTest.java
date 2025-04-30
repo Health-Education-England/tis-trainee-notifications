@@ -28,9 +28,11 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.hasSize;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.testcontainers.containers.localstack.LocalStackContainer.Service.SQS;
+import static uk.nhs.tis.trainee.notifications.event.LtftListener.LTFT_UPDATE_EXPLICIT_NOTIFICATION_TYPES;
 import static uk.nhs.tis.trainee.notifications.model.LocalOfficeContactType.LTFT;
 import static uk.nhs.tis.trainee.notifications.model.LocalOfficeContactType.LTFT_SUPPORT;
 import static uk.nhs.tis.trainee.notifications.model.LocalOfficeContactType.SUPPORTED_RETURN_TO_TRAINING;
@@ -183,7 +185,7 @@ class LtftListenerIntegrationTest {
   @ParameterizedTest
   @CsvSource(delimiter = '|', textBlock = """
       APPROVED     | LTFT_APPROVED
-      SUBMITTED    | LTFT_SUBMITTED
+      SUBMITTED    | LTFT_SUBMITTED_TRAINEE
       Other-Status | LTFT_UPDATED
       """)
   void shouldSendDefaultNotificationsWhenTemplateVariablesNull(String state, NotificationType type)
@@ -214,7 +216,8 @@ class LtftListenerIntegrationTest {
         .pollInterval(Duration.ofSeconds(2))
         .atMost(Duration.ofSeconds(10))
         .ignoreExceptions()
-        .untilAsserted(() -> verify(mailSender).send(messageCaptor.capture()));
+        .untilAsserted(() -> verify(mailSender, times(expectedNotificationEmailCount(state)))
+            .send(messageCaptor.capture()));
 
     MimeMessage message = messageCaptor.getValue();
     Document content = Jsoup.parse((String) message.getContent());
@@ -228,7 +231,7 @@ class LtftListenerIntegrationTest {
   @ParameterizedTest
   @CsvSource(delimiter = '|', textBlock = """
       APPROVED     | LTFT_APPROVED
-      SUBMITTED    | LTFT_SUBMITTED
+      SUBMITTED    | LTFT_SUBMITTED_TRAINEE
       Other-Status | LTFT_UPDATED
       """)
   void shouldSendDefaultNotificationsWhenTemplateVariablesEmpty(String state, NotificationType type)
@@ -275,7 +278,8 @@ class LtftListenerIntegrationTest {
         .pollInterval(Duration.ofSeconds(2))
         .atMost(Duration.ofSeconds(10))
         .ignoreExceptions()
-        .untilAsserted(() -> verify(mailSender).send(messageCaptor.capture()));
+        .untilAsserted(() -> verify(mailSender, times(expectedNotificationEmailCount(state)))
+            .send(messageCaptor.capture()));
 
     MimeMessage message = messageCaptor.getValue();
     Document content = Jsoup.parse((String) message.getContent());
@@ -289,7 +293,7 @@ class LtftListenerIntegrationTest {
   @ParameterizedTest
   @CsvSource(delimiter = '|', textBlock = """
       APPROVED  | LTFT_APPROVED
-      SUBMITTED | LTFT_SUBMITTED
+      SUBMITTED | LTFT_SUBMITTED_TRAINEE
       """)
   void shouldSendFullyTailoredNotificationsWhenAllTemplateVariablesAvailableAndUrlContacts(
       String state, NotificationType type) throws Exception {
@@ -346,7 +350,8 @@ class LtftListenerIntegrationTest {
         .pollInterval(Duration.ofSeconds(2))
         .atMost(Duration.ofSeconds(10))
         .ignoreExceptions()
-        .untilAsserted(() -> verify(mailSender).send(messageCaptor.capture()));
+        .untilAsserted(() -> verify(mailSender, times(expectedNotificationEmailCount(state)))
+            .send(messageCaptor.capture()));
 
     MimeMessage message = messageCaptor.getValue();
     Document content = Jsoup.parse((String) message.getContent());
@@ -361,7 +366,7 @@ class LtftListenerIntegrationTest {
   @ParameterizedTest
   @CsvSource(delimiter = '|', textBlock = """
       APPROVED  | LTFT_APPROVED
-      SUBMITTED | LTFT_SUBMITTED
+      SUBMITTED | LTFT_SUBMITTED_TRAINEE
       """)
   void shouldSendFullyTailoredNotificationsWhenAllTemplateVariablesAvailableAndEmailContacts(
       String state, NotificationType type) throws Exception {
@@ -418,7 +423,8 @@ class LtftListenerIntegrationTest {
         .pollInterval(Duration.ofSeconds(2))
         .atMost(Duration.ofSeconds(10))
         .ignoreExceptions()
-        .untilAsserted(() -> verify(mailSender).send(messageCaptor.capture()));
+        .untilAsserted(() -> verify(mailSender, times(expectedNotificationEmailCount(state)))
+            .send(messageCaptor.capture()));
 
     MimeMessage message = messageCaptor.getValue();
     Document content = Jsoup.parse((String) message.getContent());
@@ -492,7 +498,7 @@ class LtftListenerIntegrationTest {
   @ParameterizedTest
   @CsvSource(delimiter = '|', textBlock = """
       APPROVED     | LTFT_APPROVED
-      SUBMITTED    | LTFT_SUBMITTED
+      SUBMITTED    | LTFT_SUBMITTED_TRAINEE
       Other-Status | LTFT_UPDATED
       """)
   void shouldStoreNotificationHistoryWhenMessageSent(String state, NotificationType type)
@@ -581,5 +587,19 @@ class LtftListenerIntegrationTest {
       assertThat("Unexpected contact link.", contact.contact(), is("https://test/" + ct));
       assertThat("Unexpected contact HREF type.", contact.type(), is("url"));
     });
+  }
+
+  /**
+   * Get the expected number of notification emails to be sent for a given LTFT update state.
+   *
+   * @param state The LTFT update state.
+   * @return The expected number of notification emails.
+   */
+  int expectedNotificationEmailCount(String state) {
+    if (LTFT_UPDATE_EXPLICIT_NOTIFICATION_TYPES.containsKey(state)) {
+      return LTFT_UPDATE_EXPLICIT_NOTIFICATION_TYPES.get(state).size();
+    } else {
+      return 1;
+    }
   }
 }

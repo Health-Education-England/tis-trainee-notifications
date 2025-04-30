@@ -30,8 +30,10 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static uk.nhs.tis.trainee.notifications.event.LtftListener.LTFT_UPDATE_EXPLICIT_NOTIFICATION_TYPES;
 import static uk.nhs.tis.trainee.notifications.model.LocalOfficeContactType.LTFT;
 import static uk.nhs.tis.trainee.notifications.model.LocalOfficeContactType.LTFT_SUPPORT;
 import static uk.nhs.tis.trainee.notifications.model.LocalOfficeContactType.SUPPORTED_RETURN_TO_TRAINING;
@@ -39,6 +41,7 @@ import static uk.nhs.tis.trainee.notifications.model.LocalOfficeContactType.TSS_
 
 import jakarta.mail.MessagingException;
 import java.time.Instant;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
@@ -77,7 +80,8 @@ class LtftListenerTest {
     TemplateVersionsProperties templateVersions = new TemplateVersionsProperties(Map.of(
         "ltft-approved", new MessageTypeVersions(VERSION, null),
         "ltft-updated", new MessageTypeVersions(VERSION, null),
-        "ltft-submitted", new MessageTypeVersions(VERSION, null)
+        "ltft-submitted-tpd", new MessageTypeVersions(VERSION, null),
+        "ltft-submitted-trainee", new MessageTypeVersions(VERSION, null)
     ));
     listener = new LtftListener(notificationService, emailService, templateVersions);
   }
@@ -85,16 +89,25 @@ class LtftListenerTest {
   @ParameterizedTest
   @CsvSource(delimiter = '|', textBlock = """
       APPROVED     | LTFT_APPROVED
-      SUBMITTED    | LTFT_SUBMITTED
+      SUBMITTED    | LTFT_SUBMITTED_TPD
+      SUBMITTED    | LTFT_SUBMITTED_TRAINEE
       Other-Status | LTFT_UPDATED
       """)
   void shouldThrowExceptionWhenNoEmailTemplateAvailable(String state, NotificationType type) {
     LtftUpdateEvent event = LtftUpdateEvent.builder().state(state).build();
 
-    TemplateVersionsProperties templateVersions = new TemplateVersionsProperties(Map.of(
-        type.getTemplateName(), new MessageTypeVersions(null, VERSION)
-    ));
-    listener = new LtftListener(notificationService, emailService, templateVersions);
+    Map<String, MessageTypeVersions> templatesAndVersions = new HashMap<>();
+    if (LTFT_UPDATE_EXPLICIT_NOTIFICATION_TYPES.containsKey(state)) {
+      for (NotificationType notificationType : LTFT_UPDATE_EXPLICIT_NOTIFICATION_TYPES.get(state)) {
+        templatesAndVersions.put(notificationType.getTemplateName(),
+            new MessageTypeVersions(null, VERSION));
+      }
+    } else {
+      templatesAndVersions.put(type.getTemplateName(), new MessageTypeVersions(null, VERSION));
+    }
+    TemplateVersionsProperties templateVersionProps
+        = new TemplateVersionsProperties(templatesAndVersions);
+    listener = new LtftListener(notificationService, emailService, templateVersionProps);
 
     assertThrows(IllegalArgumentException.class, () -> listener.handleLtftUpdate(event));
   }
@@ -125,7 +138,8 @@ class LtftListenerTest {
   @ParameterizedTest
   @CsvSource(delimiter = '|', textBlock = """
       APPROVED     | LTFT_APPROVED
-      SUBMITTED    | LTFT_SUBMITTED
+      SUBMITTED    | LTFT_SUBMITTED_TPD
+      SUBMITTED    | LTFT_SUBMITTED_TRAINEE
       Other-Status | LTFT_UPDATED
       """)
   void shouldSetNotificationTypeWhenLtftUpdated(String state, NotificationType type)
@@ -141,9 +155,10 @@ class LtftListenerTest {
 
   @ParameterizedTest
   @CsvSource(delimiter = '|', textBlock = """
-      APPROVED     | LTFT_APPROVED  | v1.2.3
-      Other-Status | LTFT_UPDATED   | v2.3.4
-      SUBMITTED    | LTFT_SUBMITTED | v3.4.5
+      APPROVED     | LTFT_APPROVED          | v1.2.3
+      Other-Status | LTFT_UPDATED           | v2.3.4
+      SUBMITTED    | LTFT_SUBMITTED_TPD     | v3.4.5
+      SUBMITTED    | LTFT_SUBMITTED_TRAINEE | v4.5.6
       """)
   void shouldSetTemplateVersionWhenLtftUpdated(String state, NotificationType type, String version)
       throws MessagingException {
@@ -151,14 +166,24 @@ class LtftListenerTest {
         .state(state)
         .build();
 
-    TemplateVersionsProperties templateVersions = new TemplateVersionsProperties(Map.of(
-        type.getTemplateName(), new MessageTypeVersions(version, null)
-    ));
-    listener = new LtftListener(notificationService, emailService, templateVersions);
+    Map<String, MessageTypeVersions> templatesAndVersions = new HashMap<>();
+    if (LTFT_UPDATE_EXPLICIT_NOTIFICATION_TYPES.containsKey(state)) {
+      for (NotificationType notificationType : LTFT_UPDATE_EXPLICIT_NOTIFICATION_TYPES.get(state)) {
+        templatesAndVersions.put(notificationType.getTemplateName(),
+            new MessageTypeVersions(version, null));
+      }
+    } else {
+      templatesAndVersions.put(type.getTemplateName(), new MessageTypeVersions(version, null));
+    }
+
+    TemplateVersionsProperties templateVersionProps
+        = new TemplateVersionsProperties(templatesAndVersions);
+    listener = new LtftListener(notificationService, emailService, templateVersionProps);
 
     listener.handleLtftUpdate(event);
 
-    verify(emailService).sendMessageToExistingUser(any(), any(), eq(version), any(), any());
+    verify(emailService, times(expectedNotificationEmailCount(state)))
+        .sendMessageToExistingUser(any(), any(), eq(version), any(), any());
   }
 
   @ParameterizedTest
@@ -188,8 +213,8 @@ class LtftListenerTest {
     listener.handleLtftUpdate(event);
 
     ArgumentCaptor<Map<String, Object>> templateVarsCaptor = ArgumentCaptor.captor();
-    verify(emailService).sendMessageToExistingUser(any(), any(), any(),
-        templateVarsCaptor.capture(), any());
+    verify(emailService, times(expectedNotificationEmailCount(state)))
+        .sendMessageToExistingUser(any(), any(), any(), templateVarsCaptor.capture(), any());
 
     Map<String, Object> templateVariables = templateVarsCaptor.getValue();
     Map<String, Contact> contacts = (Map<String, Contact>) templateVariables.get("contacts");
@@ -212,8 +237,8 @@ class LtftListenerTest {
     listener.handleLtftUpdate(event);
 
     ArgumentCaptor<Map<String, Object>> templateVarsCaptor = ArgumentCaptor.captor();
-    verify(emailService).sendMessageToExistingUser(any(), any(), any(),
-        templateVarsCaptor.capture(), any());
+    verify(emailService, times(expectedNotificationEmailCount(state)))
+        .sendMessageToExistingUser(any(), any(), any(), templateVarsCaptor.capture(), any());
 
     Map<String, Object> templateVariables = templateVarsCaptor.getValue();
     assertThat("Unexpected event.", templateVariables.get("var"), sameInstance(event));
@@ -232,8 +257,8 @@ class LtftListenerTest {
     listener.handleLtftUpdate(event);
 
     ArgumentCaptor<Map<String, Object>> templateVarsCaptor = ArgumentCaptor.captor();
-    verify(emailService).sendMessageToExistingUser(any(), any(), any(),
-        templateVarsCaptor.capture(), any());
+    verify(emailService, times(expectedNotificationEmailCount(LTFT_STATUS)))
+        .sendMessageToExistingUser(any(), any(), any(), templateVarsCaptor.capture(), any());
 
     Map<String, Object> templateVariables = templateVarsCaptor.getValue();
     LtftUpdateEvent templateEvent = (LtftUpdateEvent) templateVariables.get("var");
@@ -242,5 +267,19 @@ class LtftListenerTest {
     assertThat("Unexpected LTFT name.", templateEvent.getFormName(), is(LTFT_NAME));
     assertThat("Unexpected status.", templateEvent.getState(), is(LTFT_STATUS));
     assertThat("Unexpected event timestamp.", templateEvent.getTimestamp(), is(TIMESTAMP));
+  }
+
+  /**
+   * Get the expected number of notification emails to be sent for a given LTFT update state.
+   *
+   * @param state The LTFT update state.
+   * @return The expected number of notification emails.
+   */
+  int expectedNotificationEmailCount(String state) {
+    if (LTFT_UPDATE_EXPLICIT_NOTIFICATION_TYPES.containsKey(state)) {
+      return LTFT_UPDATE_EXPLICIT_NOTIFICATION_TYPES.get(state).size();
+    } else {
+      return 1;
+    }
   }
 }

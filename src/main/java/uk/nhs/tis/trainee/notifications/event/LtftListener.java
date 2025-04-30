@@ -27,7 +27,8 @@ import static uk.nhs.tis.trainee.notifications.model.LocalOfficeContactType.SUPP
 import static uk.nhs.tis.trainee.notifications.model.LocalOfficeContactType.TSS_SUPPORT;
 import static uk.nhs.tis.trainee.notifications.model.MessageType.EMAIL;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.LTFT_APPROVED;
-import static uk.nhs.tis.trainee.notifications.model.NotificationType.LTFT_SUBMITTED;
+import static uk.nhs.tis.trainee.notifications.model.NotificationType.LTFT_SUBMITTED_TPD;
+import static uk.nhs.tis.trainee.notifications.model.NotificationType.LTFT_SUBMITTED_TRAINEE;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.LTFT_UPDATED;
 
 import io.awspring.cloud.sqs.annotation.SqsListener;
@@ -52,6 +53,12 @@ import uk.nhs.tis.trainee.notifications.service.NotificationService;
 @Slf4j
 @Component
 public class LtftListener {
+
+  public static final Map<String, Set<NotificationType>> LTFT_UPDATE_EXPLICIT_NOTIFICATION_TYPES
+      = Map.of(
+      "APPROVED", Set.of(LTFT_APPROVED),
+      "SUBMITTED", Set.of(LTFT_SUBMITTED_TRAINEE) //LTFT_SUBMITTED_TPD,
+  );
 
   private static final Set<LocalOfficeContactType> TEMPLATE_CONTACTS = Set.of(LTFT, LTFT_SUPPORT,
       SUPPORTED_RETURN_TO_TRAINING, TSS_SUPPORT);
@@ -84,26 +91,28 @@ public class LtftListener {
   public void handleLtftUpdate(LtftUpdateEvent event) throws MessagingException {
     log.info("Handling LTFT update event {}.", event);
 
-    NotificationType notificationType = switch (event.getState()) {
-      case "APPROVED" -> LTFT_APPROVED;
-      case "SUBMITTED" -> LTFT_SUBMITTED;
-      default -> LTFT_UPDATED;
-    };
+    Set<NotificationType> notificationTypeSet =
+        LTFT_UPDATE_EXPLICIT_NOTIFICATION_TYPES.containsKey(event.getState())
+            ? LTFT_UPDATE_EXPLICIT_NOTIFICATION_TYPES.get(event.getState())
+            : Set.of(LTFT_UPDATED);
 
-    String templateVersion = templateVersions.getTemplateVersion(notificationType, EMAIL)
-        .orElseThrow(() -> new IllegalArgumentException(
-            "No email template available for notification type '%s'".formatted(notificationType)));
+    for (NotificationType notificationType : notificationTypeSet) {
+      String templateVersion = templateVersions.getTemplateVersion(notificationType, EMAIL)
+          .orElseThrow(() -> new IllegalArgumentException(
+              "No email template available for notification type '%s'".formatted(
+                  notificationType)));
 
-    String traineeTisId = event.getTraineeId();
-    String managingDeanery = event.getProgrammeMembership() == null ? null
-        : event.getProgrammeMembership().managingDeanery();
-    Map<String, Object> templateVariables = Map.of(
-        "var", event,
-        "contacts", getContacts(managingDeanery)
-    );
-    emailService.sendMessageToExistingUser(traineeTisId, notificationType, templateVersion,
-        templateVariables, null);
-    log.info("LTFT updated notification sent for trainee {}.", traineeTisId);
+      String traineeTisId = event.getTraineeId();
+      String managingDeanery = event.getProgrammeMembership() == null ? null
+          : event.getProgrammeMembership().managingDeanery();
+      Map<String, Object> templateVariables = Map.of(
+          "var", event,
+          "contacts", getContacts(managingDeanery)
+      );
+      emailService.sendMessageToExistingUser(traineeTisId, notificationType, templateVersion,
+          templateVariables, null);
+      log.info("LTFT updated notification sent for trainee {}.", traineeTisId);
+    }
   }
 
   /**
