@@ -109,6 +109,10 @@ class LtftListenerIntegrationTest {
   private static final Instant TIMESTAMP = Instant.parse("2025-03-15T10:00:00Z");
   private static final String FORM_REF = "ltft_47165_001";
   private static final String MANAGING_DEANERY = "North West";
+  private static final String TPD_NAME = "TPD name";
+  private static final String PM_NAME = "General Practice";
+  private static final String START_DATE = "2025-05-01";
+  private static final String WTE_CURRENT = "1.0";
 
   private static final String LTFT_UPDATED_QUEUE = UUID.randomUUID().toString();
   private static final Set<LocalOfficeContactType> EXPECTED_CONTACTS = Set.of(LTFT, LTFT_SUPPORT,
@@ -185,6 +189,7 @@ class LtftListenerIntegrationTest {
   @ParameterizedTest
   @CsvSource(delimiter = '|', textBlock = """
       APPROVED     | LTFT_APPROVED
+      SUBMITTED    | LTFT_SUBMITTED_TPD
       SUBMITTED    | LTFT_SUBMITTED_TRAINEE
       Other-Status | LTFT_UPDATED
       """)
@@ -219,18 +224,25 @@ class LtftListenerIntegrationTest {
         .untilAsserted(() -> verify(mailSender, times(expectedNotificationEmailCount(state)))
             .send(messageCaptor.capture()));
 
-    MimeMessage message = messageCaptor.getValue();
-    Document content = Jsoup.parse((String) message.getContent());
-
-    URL resource = getClass().getResource("/email/" + type.getTemplateName() + "-minimal.html");
+    URL resource = getClass().getResource(
+        "/email/" + type.getTemplateName() + "-minimal.html");
     assert resource != null;
     Document expectedContent = Jsoup.parse(Paths.get(resource.toURI()).toFile());
-    assertThat("Unexpected content.", content.html(), is(expectedContent.html()));
+    int matchedContentCount = 0;
+    List<MimeMessage> messages = messageCaptor.getAllValues();
+    for (MimeMessage message : messages) {
+      Document content = Jsoup.parse((String) message.getContent());
+      if (expectedContent.html().equals(content.html())) {
+        matchedContentCount++;
+      }
+    }
+    assertThat("Unexpected content.", matchedContentCount, is(1));
   }
 
   @ParameterizedTest
   @CsvSource(delimiter = '|', textBlock = """
       APPROVED     | LTFT_APPROVED
+      SUBMITTED    | LTFT_SUBMITTED_TPD
       SUBMITTED    | LTFT_SUBMITTED_TRAINEE
       Other-Status | LTFT_UPDATED
       """)
@@ -281,18 +293,30 @@ class LtftListenerIntegrationTest {
         .untilAsserted(() -> verify(mailSender, times(expectedNotificationEmailCount(state)))
             .send(messageCaptor.capture()));
 
-    MimeMessage message = messageCaptor.getValue();
-    Document content = Jsoup.parse((String) message.getContent());
-
-    URL resource = getClass().getResource("/email/" + type.getTemplateName() + "-minimal.html");
+    URL resource = getClass().getResource(
+        "/email/" + type.getTemplateName() + "-minimal.html");
     assert resource != null;
     Document expectedContent = Jsoup.parse(Paths.get(resource.toURI()).toFile());
-    assertThat("Unexpected content.", content.html(), is(expectedContent.html()));
+    int matchedContentCount = 0;
+    List<MimeMessage> messages = messageCaptor.getAllValues();
+    for (MimeMessage message : messages) {
+      Document content = Jsoup.parse((String) message.getContent());
+      if (expectedContent.html().equals(content.html())) {
+        matchedContentCount++;
+      }
+    }
+    assertThat("Unexpected content.", matchedContentCount, is(1));
   }
 
+  /*
+  APPROVED  | LTFT_APPROVED
+      SUBMITTED | LTFT_SUBMITTED_TPD
+      SUBMITTED | LTFT_SUBMITTED_TRAINEE
+   */
   @ParameterizedTest
   @CsvSource(delimiter = '|', textBlock = """
       APPROVED  | LTFT_APPROVED
+      SUBMITTED | LTFT_SUBMITTED_TPD
       SUBMITTED | LTFT_SUBMITTED_TRAINEE
       """)
   void shouldSendFullyTailoredNotificationsWhenAllTemplateVariablesAvailableAndUrlContacts(
@@ -321,6 +345,7 @@ class LtftListenerIntegrationTest {
           },
           "programmeMembership": {
             "name": "General Practice",
+            "startDate": "2025-01-03",
             "managingDeanery": "%s",
             "wte": 1.0
           },
@@ -334,6 +359,9 @@ class LtftListenerIntegrationTest {
               "state": "%s",
               "timestamp": "2026-05-04T01:02:03.004Z"
             }
+          },
+          "discussions": {
+            "tpdName": "Mr TPD"
           }
         }
         """.formatted(traineeId, MANAGING_DEANERY, state);
@@ -353,19 +381,25 @@ class LtftListenerIntegrationTest {
         .untilAsserted(() -> verify(mailSender, times(expectedNotificationEmailCount(state)))
             .send(messageCaptor.capture()));
 
-    MimeMessage message = messageCaptor.getValue();
-    Document content = Jsoup.parse((String) message.getContent());
-
     URL resource = getClass().getResource(
         "/email/" + type.getTemplateName() + "-full-url-contacts.html");
     assert resource != null;
     Document expectedContent = Jsoup.parse(Paths.get(resource.toURI()).toFile());
-    assertThat("Unexpected content.", content.html(), is(expectedContent.html()));
+    int matchedContentCount = 0;
+    List<MimeMessage> messages = messageCaptor.getAllValues();
+    for (MimeMessage message : messages) {
+      Document content = Jsoup.parse((String) message.getContent());
+      if (expectedContent.html().equals(content.html())) {
+        matchedContentCount++;
+      }
+    }
+    assertThat("Unexpected content.", matchedContentCount, is(1));
   }
 
   @ParameterizedTest
   @CsvSource(delimiter = '|', textBlock = """
       APPROVED  | LTFT_APPROVED
+      SUBMITTED | LTFT_SUBMITTED_TPD
       SUBMITTED | LTFT_SUBMITTED_TRAINEE
       """)
   void shouldSendFullyTailoredNotificationsWhenAllTemplateVariablesAvailableAndEmailContacts(
@@ -395,6 +429,7 @@ class LtftListenerIntegrationTest {
           "programmeMembership": {
             "name": "General Practice",
             "managingDeanery": "%s",
+            "startDate": "2025-01-03",
             "wte": 1.0
           },
           "change": {
@@ -407,6 +442,9 @@ class LtftListenerIntegrationTest {
               "state": "%s",
               "timestamp": "2026-05-04T01:02:03.004Z"
             }
+          },
+          "discussions": {
+            "tpdName": "Mr TPD"
           }
         }
         """.formatted(traineeId, MANAGING_DEANERY, state);
@@ -426,14 +464,19 @@ class LtftListenerIntegrationTest {
         .untilAsserted(() -> verify(mailSender, times(expectedNotificationEmailCount(state)))
             .send(messageCaptor.capture()));
 
-    MimeMessage message = messageCaptor.getValue();
-    Document content = Jsoup.parse((String) message.getContent());
-
     URL resource = getClass().getResource(
         "/email/" + type.getTemplateName() + "-full-email-contacts.html");
     assert resource != null;
     Document expectedContent = Jsoup.parse(Paths.get(resource.toURI()).toFile());
-    assertThat("Unexpected content.", content.html(), is(expectedContent.html()));
+    int matchedContentCount = 0;
+    List<MimeMessage> messages = messageCaptor.getAllValues();
+    for (MimeMessage message : messages) {
+      Document content = Jsoup.parse((String) message.getContent());
+      if (expectedContent.html().equals(content.html())) {
+        matchedContentCount++;
+      }
+    }
+    assertThat("Unexpected content.", matchedContentCount, is(1));
   }
 
   @ParameterizedTest
@@ -498,6 +541,7 @@ class LtftListenerIntegrationTest {
   @ParameterizedTest
   @CsvSource(delimiter = '|', textBlock = """
       APPROVED     | LTFT_APPROVED
+      SUBMITTED    | LTFT_SUBMITTED_TPD
       SUBMITTED    | LTFT_SUBMITTED_TRAINEE
       Other-Status | LTFT_UPDATED
       """)
@@ -523,7 +567,10 @@ class LtftListenerIntegrationTest {
           "formRef": "%s",
           "formName": "%s",
           "programmeMembership": {
-            "managingDeanery": "%s"
+            "managingDeanery": "%s",
+            "name": "%s",
+            "startDate": "%s",
+            "wte": "%s"
           },
           "status": {
             "current" : {
@@ -532,7 +579,8 @@ class LtftListenerIntegrationTest {
             }
           }
         }
-        """.formatted(traineeId, FORM_REF, LTFT_NAME, MANAGING_DEANERY, state, TIMESTAMP);
+        """.formatted(traineeId, FORM_REF, LTFT_NAME, MANAGING_DEANERY, PM_NAME,
+        START_DATE, WTE_CURRENT, state, TIMESTAMP, TPD_NAME);
 
     JsonNode eventJson = JsonMapper.builder()
         .build()
@@ -550,13 +598,27 @@ class LtftListenerIntegrationTest {
         .ignoreExceptions()
         .untilAsserted(() -> {
           List<History> found = mongoTemplate.find(query, History.class);
-          assertThat("Unexpected history count.", found.size(), is(1));
+          assertThat("Unexpected history count.", found.size(),
+              is(expectedNotificationEmailCount(state)));
           histories.addAll(found);
         });
 
-    History history = histories.get(0);
+    //check that histories contain all the expected types
+    if (LTFT_UPDATE_EXPLICIT_NOTIFICATION_TYPES.containsKey(state)) {
+      assertThat("Unexpected history type found.", histories.stream()
+              .filter(h -> !LTFT_UPDATE_EXPLICIT_NOTIFICATION_TYPES.get(state).contains(h.type()))
+              .count(),
+          is(0L));
+    }
+
+    // Find the history entry matching the expected type
+    History history = histories.stream()
+        .filter(h -> h.type() == type)
+        .findFirst()
+        .orElseThrow(() -> new AssertionError(
+            "No history entry found with type " + type));
+
     assertThat("Unexpected notification id.", history.id(), notNullValue());
-    assertThat("Unexpected notification type.", history.type(), is(type));
     assertThat("Unexpected sent at.", history.sentAt(), notNullValue());
 
     RecipientInfo recipient = history.recipient();
@@ -570,7 +632,8 @@ class LtftListenerIntegrationTest {
 
     Map<String, Object> storedVariables = templateInfo.variables();
     assertThat("Unexpected template variable count.", storedVariables.size(), is(6));
-    assertThat("Unexpected template variable.", storedVariables.get("familyName"), is(FAMILY_NAME));
+    assertThat("Unexpected template variable.", storedVariables.get("familyName"),
+        is(FAMILY_NAME));
     assertThat("Unexpected template variable.", storedVariables.get("givenName"), is(GIVEN_NAME));
 
     LtftUpdateEvent event = (LtftUpdateEvent) storedVariables.get("var");
@@ -579,9 +642,15 @@ class LtftListenerIntegrationTest {
     assertThat("Unexpected form name.", event.getFormName(), is(LTFT_NAME));
     assertThat("Unexpected state.", event.getState(), is(state));
     assertThat("Unexpected timestamp.", event.getTimestamp(), is(TIMESTAMP));
+    assertThat("Unexpected programme name.", event.getProgrammeMembership().name(),
+        is(PM_NAME));
+    assertThat("Unexpected programme start date.",
+        event.getProgrammeMembership().startDate().toString(), is(START_DATE));
+    assertThat("Unexpected current WTE.", event.getProgrammeMembership().wte().toString(),
+        is(WTE_CURRENT));
 
     Map<String, Contact> contacts = (Map<String, Contact>) storedVariables.get("contacts");
-    assertThat("Unexepected contact count.", contacts.keySet(), hasSize(4));
+    assertThat("Unexpected contact count.", contacts.keySet(), hasSize(4));
     EXPECTED_CONTACTS.forEach(ct -> {
       Contact contact = contacts.get(ct.name());
       assertThat("Unexpected contact link.", contact.contact(), is("https://test/" + ct));

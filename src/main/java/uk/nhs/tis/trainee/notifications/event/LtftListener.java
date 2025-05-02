@@ -57,7 +57,7 @@ public class LtftListener {
   public static final Map<String, Set<NotificationType>> LTFT_UPDATE_EXPLICIT_NOTIFICATION_TYPES
       = Map.of(
       "APPROVED", Set.of(LTFT_APPROVED),
-      "SUBMITTED", Set.of(LTFT_SUBMITTED_TRAINEE) //LTFT_SUBMITTED_TPD,
+      "SUBMITTED", Set.of(LTFT_SUBMITTED_TPD, LTFT_SUBMITTED_TRAINEE)
   );
 
   private static final Set<LocalOfficeContactType> TEMPLATE_CONTACTS = Set.of(LTFT, LTFT_SUPPORT,

@@ -42,6 +42,7 @@ public class LtftUpdateEvent {
   private String formName;
   private PersonalDetails personalDetails;
   private ProgrammeMembershipDto programmeMembership;
+  private DiscussionsDto discussions;
   private ChangeDto change;
   private String state;
   private Instant timestamp;
@@ -52,6 +53,18 @@ public class LtftUpdateEvent {
    * @param gmcNumber The trainee's GMC registration number.
    */
   public record PersonalDetails(String gmcNumber) {
+
+  }
+
+  /**
+   * Discussions that the trainee has had about their LTFT needs.
+   *
+   * @param tpdName  The name of their TPD.
+   * @param tpdEmail The contact email for their TPD.
+   */
+  public record DiscussionsDto(
+      String tpdName,
+      String tpdEmail) {
 
   }
 
