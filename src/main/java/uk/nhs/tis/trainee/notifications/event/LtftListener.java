@@ -54,7 +54,7 @@ import uk.nhs.tis.trainee.notifications.service.NotificationService;
 @Component
 public class LtftListener {
 
-  public static final Map<String, Set<NotificationType>> LTFT_UPDATE_EXPLICIT_NOTIFICATION_TYPES
+  private static final Map<String, Set<NotificationType>> LTFT_UPDATE_EXPLICIT_NOTIFICATION_TYPES
       = Map.of(
       "APPROVED", Set.of(LTFT_APPROVED),
       "SUBMITTED", Set.of(LTFT_SUBMITTED_TPD, LTFT_SUBMITTED_TRAINEE)
@@ -91,10 +91,8 @@ public class LtftListener {
   public void handleLtftUpdate(LtftUpdateEvent event) throws MessagingException {
     log.info("Handling LTFT update event {}.", event);
 
-    Set<NotificationType> notificationTypeSet =
-        LTFT_UPDATE_EXPLICIT_NOTIFICATION_TYPES.containsKey(event.getState())
-            ? LTFT_UPDATE_EXPLICIT_NOTIFICATION_TYPES.get(event.getState())
-            : Set.of(LTFT_UPDATED);
+    Set<NotificationType> notificationTypeSet
+        = getLtftUpdateNotificationTypes(event.getState());
 
     for (NotificationType notificationType : notificationTypeSet) {
       String templateVersion = templateVersions.getTemplateVersion(notificationType, EMAIL)
@@ -102,6 +100,8 @@ public class LtftListener {
               "No email template available for notification type '%s'".formatted(
                   notificationType)));
 
+      log.info("Sending email for notification type {} with template version {}", notificationType,
+          templateVersion);
       String traineeTisId = event.getTraineeId();
       String managingDeanery = event.getProgrammeMembership() == null ? null
           : event.getProgrammeMembership().managingDeanery();
@@ -143,5 +143,17 @@ public class LtftListener {
    */
   record Contact(String contact, String type) {
 
+  }
+
+  /**
+   * Get the notification types for the given state.
+   *
+   * @param state The state of the LTFT form.
+   * @return The set of notification types to send for the given state.
+   */
+  public Set<NotificationType> getLtftUpdateNotificationTypes(String state) {
+    return LTFT_UPDATE_EXPLICIT_NOTIFICATION_TYPES.containsKey(state)
+        ? LTFT_UPDATE_EXPLICIT_NOTIFICATION_TYPES.get(state)
+        : Set.of(LTFT_UPDATED);
   }
 }

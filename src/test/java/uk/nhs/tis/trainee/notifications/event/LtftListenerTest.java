@@ -33,7 +33,6 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-import static uk.nhs.tis.trainee.notifications.event.LtftListener.LTFT_UPDATE_EXPLICIT_NOTIFICATION_TYPES;
 import static uk.nhs.tis.trainee.notifications.model.LocalOfficeContactType.LTFT;
 import static uk.nhs.tis.trainee.notifications.model.LocalOfficeContactType.LTFT_SUPPORT;
 import static uk.nhs.tis.trainee.notifications.model.LocalOfficeContactType.SUPPORTED_RETURN_TO_TRAINING;
@@ -97,13 +96,9 @@ class LtftListenerTest {
     LtftUpdateEvent event = LtftUpdateEvent.builder().state(state).build();
 
     Map<String, MessageTypeVersions> templatesAndVersions = new HashMap<>();
-    if (LTFT_UPDATE_EXPLICIT_NOTIFICATION_TYPES.containsKey(state)) {
-      for (NotificationType notificationType : LTFT_UPDATE_EXPLICIT_NOTIFICATION_TYPES.get(state)) {
-        templatesAndVersions.put(notificationType.getTemplateName(),
-            new MessageTypeVersions(null, VERSION));
-      }
-    } else {
-      templatesAndVersions.put(type.getTemplateName(), new MessageTypeVersions(null, VERSION));
+    for (NotificationType notificationType : listener.getLtftUpdateNotificationTypes(state)) {
+      templatesAndVersions.put(notificationType.getTemplateName(),
+          new MessageTypeVersions(null, VERSION));
     }
     TemplateVersionsProperties templateVersionProps
         = new TemplateVersionsProperties(templatesAndVersions);
@@ -167,13 +162,9 @@ class LtftListenerTest {
         .build();
 
     Map<String, MessageTypeVersions> templatesAndVersions = new HashMap<>();
-    if (LTFT_UPDATE_EXPLICIT_NOTIFICATION_TYPES.containsKey(state)) {
-      for (NotificationType notificationType : LTFT_UPDATE_EXPLICIT_NOTIFICATION_TYPES.get(state)) {
-        templatesAndVersions.put(notificationType.getTemplateName(),
-            new MessageTypeVersions(version, null));
-      }
-    } else {
-      templatesAndVersions.put(type.getTemplateName(), new MessageTypeVersions(version, null));
+    for (NotificationType notificationType : listener.getLtftUpdateNotificationTypes(state)) {
+      templatesAndVersions.put(notificationType.getTemplateName(),
+          new MessageTypeVersions(version, null));
     }
 
     TemplateVersionsProperties templateVersionProps
@@ -182,7 +173,7 @@ class LtftListenerTest {
 
     listener.handleLtftUpdate(event);
 
-    verify(emailService, times(expectedNotificationEmailCount(state)))
+    verify(emailService, times(listener.getLtftUpdateNotificationTypes(state).size()))
         .sendMessageToExistingUser(any(), any(), eq(version), any(), any());
   }
 
@@ -213,7 +204,7 @@ class LtftListenerTest {
     listener.handleLtftUpdate(event);
 
     ArgumentCaptor<Map<String, Object>> templateVarsCaptor = ArgumentCaptor.captor();
-    verify(emailService, times(expectedNotificationEmailCount(state)))
+    verify(emailService, times(listener.getLtftUpdateNotificationTypes(state).size()))
         .sendMessageToExistingUser(any(), any(), any(), templateVarsCaptor.capture(), any());
 
     Map<String, Object> templateVariables = templateVarsCaptor.getValue();
@@ -237,7 +228,7 @@ class LtftListenerTest {
     listener.handleLtftUpdate(event);
 
     ArgumentCaptor<Map<String, Object>> templateVarsCaptor = ArgumentCaptor.captor();
-    verify(emailService, times(expectedNotificationEmailCount(state)))
+    verify(emailService, times(listener.getLtftUpdateNotificationTypes(state).size()))
         .sendMessageToExistingUser(any(), any(), any(), templateVarsCaptor.capture(), any());
 
     Map<String, Object> templateVariables = templateVarsCaptor.getValue();
@@ -257,7 +248,7 @@ class LtftListenerTest {
     listener.handleLtftUpdate(event);
 
     ArgumentCaptor<Map<String, Object>> templateVarsCaptor = ArgumentCaptor.captor();
-    verify(emailService, times(expectedNotificationEmailCount(LTFT_STATUS)))
+    verify(emailService, times(listener.getLtftUpdateNotificationTypes(LTFT_STATUS).size()))
         .sendMessageToExistingUser(any(), any(), any(), templateVarsCaptor.capture(), any());
 
     Map<String, Object> templateVariables = templateVarsCaptor.getValue();
@@ -267,19 +258,5 @@ class LtftListenerTest {
     assertThat("Unexpected LTFT name.", templateEvent.getFormName(), is(LTFT_NAME));
     assertThat("Unexpected status.", templateEvent.getState(), is(LTFT_STATUS));
     assertThat("Unexpected event timestamp.", templateEvent.getTimestamp(), is(TIMESTAMP));
-  }
-
-  /**
-   * Get the expected number of notification emails to be sent for a given LTFT update state.
-   *
-   * @param state The LTFT update state.
-   * @return The expected number of notification emails.
-   */
-  int expectedNotificationEmailCount(String state) {
-    if (LTFT_UPDATE_EXPLICIT_NOTIFICATION_TYPES.containsKey(state)) {
-      return LTFT_UPDATE_EXPLICIT_NOTIFICATION_TYPES.get(state).size();
-    } else {
-      return 1;
-    }
   }
 }
