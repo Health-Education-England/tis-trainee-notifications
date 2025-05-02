@@ -111,7 +111,8 @@ public class LtftListener {
       );
       emailService.sendMessageToExistingUser(traineeTisId, notificationType, templateVersion,
           templateVariables, null);
-      log.info("LTFT updated notification sent for trainee {}.", traineeTisId);
+      log.info("{} notification sent for trainee {}.", notificationType.getTemplateName(),
+          traineeTisId);
     }
   }
 

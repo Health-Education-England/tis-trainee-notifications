@@ -25,6 +25,7 @@ import static org.awaitility.Awaitility.await;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.hasSize;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -56,11 +57,12 @@ import java.util.Set;
 import java.util.UUID;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ValueSource;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -174,7 +176,7 @@ class LtftListenerIntegrationTest {
 
   @BeforeEach
   void setUp() {
-    when(mailSender.createMimeMessage()).thenReturn(new MimeMessage((Session) null));
+    when(mailSender.createMimeMessage()).thenAnswer(inv -> new MimeMessage((Session) null));
     traineeId = UUID.randomUUID().toString();
     when(userAccountService.getUserAccountIds(traineeId)).thenReturn(Set.of(USER_ID));
   }
@@ -185,8 +187,12 @@ class LtftListenerIntegrationTest {
   }
 
   @ParameterizedTest
-  @ValueSource(strings = {"APPROVED", "SUBMITTED", "Other-Status"})
-  void shouldSendDefaultNotificationsWhenTemplateVariablesNull(String state)
+  @CsvSource(delimiter = '|', textBlock = """
+      APPROVED     | 1
+      SUBMITTED    | 2
+      Other-Status | 1
+      """)
+  void shouldSendDefaultNotificationsWhenTemplateVariablesNull(String state, int mailCount)
       throws Exception {
     when(userAccountService.getUserDetailsById(USER_ID)).thenReturn(
         new UserDetails(true, EMAIL, TITLE, null, null, GMC));
@@ -215,33 +221,40 @@ class LtftListenerIntegrationTest {
         .atMost(Duration.ofSeconds(10))
         .ignoreExceptions()
         .untilAsserted(() -> verify(mailSender,
-            times(listener.getLtftUpdateNotificationTypes(state).size()))
+            times(mailCount))
             .send(messageCaptor.capture()));
 
     List<MimeMessage> messages = messageCaptor.getAllValues();
+    assertThat("Unexpected message count.", messages, hasSize(mailCount));
+
+    List<String> messageHtmls = messages.stream()
+        .map(message -> {
+          try {
+            return Jsoup.parse((String) message.getContent());
+          } catch (Exception e) {
+            throw new RuntimeException(e);
+          }
+        })
+        .map(Element::html)
+        .toList();
+
     for (NotificationType expectedType : listener.getLtftUpdateNotificationTypes(state)) {
       URL resource = getClass().getResource(
           "/email/" + expectedType.getTemplateName() + "-minimal.html");
       assert resource != null;
       Document expectedContent = Jsoup.parse(Paths.get(resource.toURI()).toFile());
-
-      boolean matched = messages.stream()
-          .map(message -> {
-            try {
-              return Jsoup.parse((String) message.getContent());
-            } catch (Exception e) {
-              throw new RuntimeException(e);
-            }
-          })
-          .anyMatch(content -> expectedContent.html().equals(content.html()));
-
-      assertThat("Expected content not found for type: " + expectedType, matched, is(true));
+      assertThat("Expected content not found for type: " + expectedType, messageHtmls,
+          hasItem(expectedContent.html()));
     }
   }
 
   @ParameterizedTest
-  @ValueSource(strings = {"APPROVED", "SUBMITTED", "Other-Status"})
-  void shouldSendDefaultNotificationsWhenTemplateVariablesEmpty(String state)
+  @CsvSource(delimiter = '|', textBlock = """
+      APPROVED     | 1
+      SUBMITTED    | 2
+      Other-Status | 1
+      """)
+  void shouldSendDefaultNotificationsWhenTemplateVariablesEmpty(String state, int mailCount)
       throws Exception {
     when(userAccountService.getUserDetailsById(USER_ID)).thenReturn(
         new UserDetails(true, EMAIL, TITLE, "", "", GMC));
@@ -285,35 +298,39 @@ class LtftListenerIntegrationTest {
         .pollInterval(Duration.ofSeconds(2))
         .atMost(Duration.ofSeconds(10))
         .ignoreExceptions()
-        .untilAsserted(() -> verify(mailSender,
-            times(listener.getLtftUpdateNotificationTypes(state).size()))
-            .send(messageCaptor.capture()));
+        .untilAsserted(() -> verify(mailSender, times(mailCount)).send(messageCaptor.capture()));
 
     List<MimeMessage> messages = messageCaptor.getAllValues();
+    assertThat("Unexpected message count.", messages, hasSize(mailCount));
+
+    List<String> messageHtmls = messages.stream()
+        .map(message -> {
+          try {
+            return Jsoup.parse((String) message.getContent());
+          } catch (Exception e) {
+            throw new RuntimeException(e);
+          }
+        })
+        .map(Element::html)
+        .toList();
+
     for (NotificationType expectedType : listener.getLtftUpdateNotificationTypes(state)) {
       URL resource = getClass().getResource(
           "/email/" + expectedType.getTemplateName() + "-minimal.html");
       assert resource != null;
       Document expectedContent = Jsoup.parse(Paths.get(resource.toURI()).toFile());
-
-      boolean matched = messages.stream()
-          .map(message -> {
-            try {
-              return Jsoup.parse((String) message.getContent());
-            } catch (Exception e) {
-              throw new RuntimeException(e);
-            }
-          })
-          .anyMatch(content -> expectedContent.html().equals(content.html()));
-
-      assertThat("Expected content not found for type: " + expectedType, matched, is(true));
+      assertThat("Expected content not found for type: " + expectedType, messageHtmls,
+          hasItem(expectedContent.html()));
     }
   }
 
   @ParameterizedTest
-  @ValueSource(strings = {"APPROVED", "SUBMITTED"})
+  @CsvSource(delimiter = '|', textBlock = """
+      APPROVED     | 1
+      SUBMITTED    | 2
+      """)
   void shouldSendFullyTailoredNotificationsWhenAllTemplateVariablesAvailableAndUrlContacts(
-      String state) throws Exception {
+      String state, int mailCount) throws Exception {
     when(userAccountService.getUserDetailsById(USER_ID)).thenReturn(
         new UserDetails(true, EMAIL, TITLE, FAMILY_NAME, GIVEN_NAME, GMC));
 
@@ -371,35 +388,39 @@ class LtftListenerIntegrationTest {
         .pollInterval(Duration.ofSeconds(2))
         .atMost(Duration.ofSeconds(10))
         .ignoreExceptions()
-        .untilAsserted(() -> verify(mailSender,
-            times(listener.getLtftUpdateNotificationTypes(state).size()))
-            .send(messageCaptor.capture()));
+        .untilAsserted(() -> verify(mailSender, times(mailCount)).send(messageCaptor.capture()));
 
     List<MimeMessage> messages = messageCaptor.getAllValues();
+    assertThat("Unexpected message count.", messages, hasSize(mailCount));
+
+    List<String> messageHtmls = messages.stream()
+        .map(message -> {
+          try {
+            return Jsoup.parse((String) message.getContent());
+          } catch (Exception e) {
+            throw new RuntimeException(e);
+          }
+        })
+        .map(Element::html)
+        .toList();
+
     for (NotificationType expectedType : listener.getLtftUpdateNotificationTypes(state)) {
       URL resource = getClass().getResource(
           "/email/" + expectedType.getTemplateName() + "-full-url-contacts.html");
       assert resource != null;
       Document expectedContent = Jsoup.parse(Paths.get(resource.toURI()).toFile());
-
-      boolean matched = messages.stream()
-          .map(message -> {
-            try {
-              return Jsoup.parse((String) message.getContent());
-            } catch (Exception e) {
-              throw new RuntimeException(e);
-            }
-          })
-          .anyMatch(content -> expectedContent.html().equals(content.html()));
-
-      assertThat("Expected content not found for type: " + expectedType, matched, is(true));
+      assertThat("Expected content not found for type: " + expectedType, messageHtmls,
+          hasItem(expectedContent.html()));
     }
   }
 
   @ParameterizedTest
-  @ValueSource(strings = {"APPROVED", "SUBMITTED"})
+  @CsvSource(delimiter = '|', textBlock = """
+      APPROVED     | 1
+      SUBMITTED    | 2
+      """)
   void shouldSendFullyTailoredNotificationsWhenAllTemplateVariablesAvailableAndEmailContacts(
-      String state) throws Exception {
+      String state, int mailCount) throws Exception {
     when(userAccountService.getUserDetailsById(USER_ID)).thenReturn(
         new UserDetails(true, EMAIL, TITLE, FAMILY_NAME, GIVEN_NAME, GMC));
 
@@ -457,35 +478,38 @@ class LtftListenerIntegrationTest {
         .pollInterval(Duration.ofSeconds(2))
         .atMost(Duration.ofSeconds(10))
         .ignoreExceptions()
-        .untilAsserted(() -> verify(mailSender,
-            times(listener.getLtftUpdateNotificationTypes(state).size()))
-            .send(messageCaptor.capture()));
+        .untilAsserted(() -> verify(mailSender, times(mailCount)).send(messageCaptor.capture()));
 
     List<MimeMessage> messages = messageCaptor.getAllValues();
+    assertThat("Unexpected message count.", messages, hasSize(mailCount));
+
+    List<String> messageHtmls = messages.stream()
+        .map(message -> {
+          try {
+            return Jsoup.parse((String) message.getContent());
+          } catch (Exception e) {
+            throw new RuntimeException(e);
+          }
+        })
+        .map(Element::html)
+        .toList();
+
     for (NotificationType expectedType : listener.getLtftUpdateNotificationTypes(state)) {
       URL resource = getClass().getResource(
           "/email/" + expectedType.getTemplateName() + "-full-email-contacts.html");
       assert resource != null;
       Document expectedContent = Jsoup.parse(Paths.get(resource.toURI()).toFile());
-
-      boolean matched = messages.stream()
-          .map(message -> {
-            try {
-              return Jsoup.parse((String) message.getContent());
-            } catch (Exception e) {
-              throw new RuntimeException(e);
-            }
-          })
-          .anyMatch(content -> expectedContent.html().equals(content.html()));
-
-      assertThat("Expected content not found for type: " + expectedType, matched, is(true));
+      assertThat("Expected content not found for type: " + expectedType, messageHtmls,
+          hasItem(expectedContent.html()));
     }
   }
 
   @ParameterizedTest
-  @ValueSource(strings = {"Other-Status"})
+  @CsvSource(delimiter = '|', textBlock = """
+      Other-Status | 1
+      """)
   void shouldSendFullyTailoredDefaultNotificationsWhenAllTemplateVariablesAvailableAndNoContacts(
-      String state) throws Exception {
+      String state, int mailCount) throws Exception {
     when(userAccountService.getUserDetailsById(USER_ID)).thenReturn(
         new UserDetails(true, EMAIL, TITLE, FAMILY_NAME, GIVEN_NAME, GMC));
 
@@ -529,33 +553,40 @@ class LtftListenerIntegrationTest {
         .atMost(Duration.ofSeconds(10))
         .ignoreExceptions()
         .untilAsserted(() -> verify(mailSender,
-            times(listener.getLtftUpdateNotificationTypes(state).size()))
+            times(mailCount))
             .send(messageCaptor.capture()));
 
     List<MimeMessage> messages = messageCaptor.getAllValues();
+    assertThat("Unexpected message count.", messages, hasSize(mailCount));
+
+    List<String> messageHtmls = messages.stream()
+        .map(message -> {
+          try {
+            return Jsoup.parse((String) message.getContent());
+          } catch (Exception e) {
+            throw new RuntimeException(e);
+          }
+        })
+        .map(Element::html)
+        .toList();
+
     for (NotificationType expectedType : listener.getLtftUpdateNotificationTypes(state)) {
       URL resource = getClass().getResource(
           "/email/" + expectedType.getTemplateName() + "-full.html");
       assert resource != null;
       Document expectedContent = Jsoup.parse(Paths.get(resource.toURI()).toFile());
-
-      boolean matched = messages.stream()
-          .map(message -> {
-            try {
-              return Jsoup.parse((String) message.getContent());
-            } catch (Exception e) {
-              throw new RuntimeException(e);
-            }
-          })
-          .anyMatch(content -> expectedContent.html().equals(content.html()));
-
-      assertThat("Expected content not found for type: " + expectedType, matched, is(true));
+      assertThat("Expected content not found for type: " + expectedType, messageHtmls,
+          hasItem(expectedContent.html()));
     }
   }
 
   @ParameterizedTest
-  @ValueSource(strings = {"APPROVED", "SUBMITTED", "Other-Status"})
-  void shouldStoreNotificationHistoryWhenMessageSent(String state)
+  @CsvSource(delimiter = '|', textBlock = """
+      APPROVED     | 1
+      SUBMITTED    | 2
+      Other-Status | 1
+      """)
+  void shouldStoreNotificationHistoryWhenMessageSent(String state, int historyCount)
       throws JsonProcessingException {
     when(userAccountService.getUserDetailsById(USER_ID)).thenReturn(
         new UserDetails(true, EMAIL, TITLE, FAMILY_NAME, GIVEN_NAME, GMC));
@@ -608,8 +639,7 @@ class LtftListenerIntegrationTest {
         .ignoreExceptions()
         .untilAsserted(() -> {
           List<History> found = mongoTemplate.find(query, History.class);
-          assertThat("Unexpected history count.", found.size(),
-              is(listener.getLtftUpdateNotificationTypes(state).size()));
+          assertThat("Unexpected history count.", found.size(), is(historyCount));
           histories.addAll(found);
         });
 
