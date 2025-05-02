@@ -60,7 +60,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -108,7 +108,6 @@ class LtftListenerIntegrationTest {
   private static final Instant TIMESTAMP = Instant.parse("2025-03-15T10:00:00Z");
   private static final String FORM_REF = "ltft_47165_001";
   private static final String MANAGING_DEANERY = "North West";
-  private static final String TPD_NAME = "TPD name";
   private static final String PM_NAME = "General Practice";
   private static final String START_DATE = "2025-05-01";
   private static final String WTE_CURRENT = "1.0";
@@ -185,17 +184,9 @@ class LtftListenerIntegrationTest {
     mongoTemplate.findAllAndRemove(new Query(), History.class);
   }
 
-  /*
-  APPROVED     | LTFT_APPROVED
-      SUBMITTED    | LTFT_SUBMITTED_TPD
-      SUBMITTED    | LTFT_SUBMITTED_TRAINEE
-      Other-Status | LTFT_UPDATED
-   */
   @ParameterizedTest
-  @CsvSource(delimiter = '|', textBlock = """
-      SUBMITTED    | LTFT_SUBMITTED_TPD
-      """)
-  void shouldSendDefaultNotificationsWhenTemplateVariablesNull(String state, NotificationType type)
+  @ValueSource(strings = {"APPROVED", "SUBMITTED", "Other-Status"})
+  void shouldSendDefaultNotificationsWhenTemplateVariablesNull(String state)
       throws Exception {
     when(userAccountService.getUserDetailsById(USER_ID)).thenReturn(
         new UserDetails(true, EMAIL, TITLE, null, null, GMC));
@@ -249,13 +240,8 @@ class LtftListenerIntegrationTest {
   }
 
   @ParameterizedTest
-  @CsvSource(delimiter = '|', textBlock = """
-      APPROVED     | LTFT_APPROVED
-      SUBMITTED    | LTFT_SUBMITTED_TPD
-      SUBMITTED    | LTFT_SUBMITTED_TRAINEE
-      Other-Status | LTFT_UPDATED
-      """)
-  void shouldSendDefaultNotificationsWhenTemplateVariablesEmpty(String state, NotificationType type)
+  @ValueSource(strings = {"APPROVED", "SUBMITTED", "Other-Status"})
+  void shouldSendDefaultNotificationsWhenTemplateVariablesEmpty(String state)
       throws Exception {
     when(userAccountService.getUserDetailsById(USER_ID)).thenReturn(
         new UserDetails(true, EMAIL, TITLE, "", "", GMC));
@@ -325,13 +311,9 @@ class LtftListenerIntegrationTest {
   }
 
   @ParameterizedTest
-  @CsvSource(delimiter = '|', textBlock = """
-      APPROVED  | LTFT_APPROVED
-      SUBMITTED | LTFT_SUBMITTED_TPD
-      SUBMITTED | LTFT_SUBMITTED_TRAINEE
-      """)
+  @ValueSource(strings = {"APPROVED", "SUBMITTED"})
   void shouldSendFullyTailoredNotificationsWhenAllTemplateVariablesAvailableAndUrlContacts(
-      String state, NotificationType type) throws Exception {
+      String state) throws Exception {
     when(userAccountService.getUserDetailsById(USER_ID)).thenReturn(
         new UserDetails(true, EMAIL, TITLE, FAMILY_NAME, GIVEN_NAME, GMC));
 
@@ -415,13 +397,9 @@ class LtftListenerIntegrationTest {
   }
 
   @ParameterizedTest
-  @CsvSource(delimiter = '|', textBlock = """
-      APPROVED  | LTFT_APPROVED
-      SUBMITTED | LTFT_SUBMITTED_TPD
-      SUBMITTED | LTFT_SUBMITTED_TRAINEE
-      """)
+  @ValueSource(strings = {"APPROVED", "SUBMITTED"})
   void shouldSendFullyTailoredNotificationsWhenAllTemplateVariablesAvailableAndEmailContacts(
-      String state, NotificationType type) throws Exception {
+      String state) throws Exception {
     when(userAccountService.getUserDetailsById(USER_ID)).thenReturn(
         new UserDetails(true, EMAIL, TITLE, FAMILY_NAME, GIVEN_NAME, GMC));
 
@@ -505,11 +483,9 @@ class LtftListenerIntegrationTest {
   }
 
   @ParameterizedTest
-  @CsvSource(delimiter = '|', textBlock = """
-      Other-Status | LTFT_UPDATED
-      """)
-  void shouldSendFullyTailoredNotificationsWhenAllTemplateVariablesAvailableAndNoContacts(
-      String state, NotificationType type) throws Exception {
+  @ValueSource(strings = {"Other-Status"})
+  void shouldSendFullyTailoredDefaultNotificationsWhenAllTemplateVariablesAvailableAndNoContacts(
+      String state) throws Exception {
     when(userAccountService.getUserDetailsById(USER_ID)).thenReturn(
         new UserDetails(true, EMAIL, TITLE, FAMILY_NAME, GIVEN_NAME, GMC));
 
@@ -552,25 +528,34 @@ class LtftListenerIntegrationTest {
         .pollInterval(Duration.ofSeconds(2))
         .atMost(Duration.ofSeconds(10))
         .ignoreExceptions()
-        .untilAsserted(() -> verify(mailSender).send(messageCaptor.capture()));
+        .untilAsserted(() -> verify(mailSender,
+            times(listener.getLtftUpdateNotificationTypes(state).size()))
+            .send(messageCaptor.capture()));
 
-    MimeMessage message = messageCaptor.getValue();
-    Document content = Jsoup.parse((String) message.getContent());
+    List<MimeMessage> messages = messageCaptor.getAllValues();
+    for (NotificationType expectedType : listener.getLtftUpdateNotificationTypes(state)) {
+      URL resource = getClass().getResource(
+          "/email/" + expectedType.getTemplateName() + "-full.html");
+      assert resource != null;
+      Document expectedContent = Jsoup.parse(Paths.get(resource.toURI()).toFile());
 
-    URL resource = getClass().getResource("/email/" + type.getTemplateName() + "-full.html");
-    assert resource != null;
-    Document expectedContent = Jsoup.parse(Paths.get(resource.toURI()).toFile());
-    assertThat("Unexpected content.", content.html(), is(expectedContent.html()));
+      boolean matched = messages.stream()
+          .map(message -> {
+            try {
+              return Jsoup.parse((String) message.getContent());
+            } catch (Exception e) {
+              throw new RuntimeException(e);
+            }
+          })
+          .anyMatch(content -> expectedContent.html().equals(content.html()));
+
+      assertThat("Expected content not found for type: " + expectedType, matched, is(true));
+    }
   }
 
   @ParameterizedTest
-  @CsvSource(delimiter = '|', textBlock = """
-      APPROVED     | LTFT_APPROVED
-      SUBMITTED    | LTFT_SUBMITTED_TPD
-      SUBMITTED    | LTFT_SUBMITTED_TRAINEE
-      Other-Status | LTFT_UPDATED
-      """)
-  void shouldStoreNotificationHistoryWhenMessageSent(String state, NotificationType type)
+  @ValueSource(strings = {"APPROVED", "SUBMITTED", "Other-Status"})
+  void shouldStoreNotificationHistoryWhenMessageSent(String state)
       throws JsonProcessingException {
     when(userAccountService.getUserDetailsById(USER_ID)).thenReturn(
         new UserDetails(true, EMAIL, TITLE, FAMILY_NAME, GIVEN_NAME, GMC));
@@ -605,7 +590,7 @@ class LtftListenerIntegrationTest {
           }
         }
         """.formatted(traineeId, FORM_REF, LTFT_NAME, MANAGING_DEANERY, PM_NAME,
-        START_DATE, WTE_CURRENT, state, TIMESTAMP, TPD_NAME);
+        START_DATE, WTE_CURRENT, state, TIMESTAMP);
 
     JsonNode eventJson = JsonMapper.builder()
         .build()
@@ -634,50 +619,53 @@ class LtftListenerIntegrationTest {
             .count(),
         is(0L));
 
-    // Find the history entry matching the expected type
-    History history = histories.stream()
-        .filter(h -> h.type() == type)
-        .findFirst()
-        .orElseThrow(() -> new AssertionError(
-            "No history entry found with type " + type));
+    for (NotificationType expectedType : listener.getLtftUpdateNotificationTypes(state)) {
+      // Find the history entry matching the expected type
+      History history = histories.stream()
+          .filter(h -> h.type() == expectedType)
+          .findFirst()
+          .orElseThrow(() -> new AssertionError(
+              "No history entry found with type " + expectedType));
 
-    assertThat("Unexpected notification id.", history.id(), notNullValue());
-    assertThat("Unexpected sent at.", history.sentAt(), notNullValue());
+      assertThat("Unexpected notification id.", history.id(), notNullValue());
+      assertThat("Unexpected sent at.", history.sentAt(), notNullValue());
 
-    RecipientInfo recipient = history.recipient();
-    assertThat("Unexpected recipient id.", recipient.id(), is(traineeId));
-    assertThat("Unexpected message type.", recipient.type(), is(MessageType.EMAIL));
-    assertThat("Unexpected contact.", recipient.contact(), is(EMAIL));
+      RecipientInfo recipient = history.recipient();
+      assertThat("Unexpected recipient id.", recipient.id(), is(traineeId));
+      assertThat("Unexpected message type.", recipient.type(), is(MessageType.EMAIL));
+      assertThat("Unexpected contact.", recipient.contact(), is(EMAIL));
 
-    TemplateInfo templateInfo = history.template();
-    assertThat("Unexpected template name.", templateInfo.name(), is(type.getTemplateName()));
-    assertThat("Unexpected template version.", templateInfo.version(), is(templateVersion));
+      TemplateInfo templateInfo = history.template();
+      assertThat("Unexpected template name.", templateInfo.name(),
+          is(expectedType.getTemplateName()));
+      assertThat("Unexpected template version.", templateInfo.version(), is(templateVersion));
 
-    Map<String, Object> storedVariables = templateInfo.variables();
-    assertThat("Unexpected template variable count.", storedVariables.size(), is(6));
-    assertThat("Unexpected template variable.", storedVariables.get("familyName"),
-        is(FAMILY_NAME));
-    assertThat("Unexpected template variable.", storedVariables.get("givenName"), is(GIVEN_NAME));
+      Map<String, Object> storedVariables = templateInfo.variables();
+      assertThat("Unexpected template variable count.", storedVariables.size(), is(6));
+      assertThat("Unexpected template variable.", storedVariables.get("familyName"),
+          is(FAMILY_NAME));
+      assertThat("Unexpected template variable.", storedVariables.get("givenName"), is(GIVEN_NAME));
 
-    LtftUpdateEvent event = (LtftUpdateEvent) storedVariables.get("var");
-    assertThat("Unexpected trainee ID.", event.getTraineeId(), is(traineeId));
-    assertThat("Unexpected form ref.", event.getFormRef(), is(FORM_REF));
-    assertThat("Unexpected form name.", event.getFormName(), is(LTFT_NAME));
-    assertThat("Unexpected state.", event.getState(), is(state));
-    assertThat("Unexpected timestamp.", event.getTimestamp(), is(TIMESTAMP));
-    assertThat("Unexpected programme name.", event.getProgrammeMembership().name(),
-        is(PM_NAME));
-    assertThat("Unexpected programme start date.",
-        event.getProgrammeMembership().startDate().toString(), is(START_DATE));
-    assertThat("Unexpected current WTE.", event.getProgrammeMembership().wte().toString(),
-        is(WTE_CURRENT));
+      LtftUpdateEvent event = (LtftUpdateEvent) storedVariables.get("var");
+      assertThat("Unexpected trainee ID.", event.getTraineeId(), is(traineeId));
+      assertThat("Unexpected form ref.", event.getFormRef(), is(FORM_REF));
+      assertThat("Unexpected form name.", event.getFormName(), is(LTFT_NAME));
+      assertThat("Unexpected state.", event.getState(), is(state));
+      assertThat("Unexpected timestamp.", event.getTimestamp(), is(TIMESTAMP));
+      assertThat("Unexpected programme name.", event.getProgrammeMembership().name(),
+          is(PM_NAME));
+      assertThat("Unexpected programme start date.",
+          event.getProgrammeMembership().startDate().toString(), is(START_DATE));
+      assertThat("Unexpected current WTE.", event.getProgrammeMembership().wte().toString(),
+          is(WTE_CURRENT));
 
-    Map<String, Contact> contacts = (Map<String, Contact>) storedVariables.get("contacts");
-    assertThat("Unexpected contact count.", contacts.keySet(), hasSize(4));
-    EXPECTED_CONTACTS.forEach(ct -> {
-      Contact contact = contacts.get(ct.name());
-      assertThat("Unexpected contact link.", contact.contact(), is("https://test/" + ct));
-      assertThat("Unexpected contact HREF type.", contact.type(), is("url"));
-    });
+      Map<String, Contact> contacts = (Map<String, Contact>) storedVariables.get("contacts");
+      assertThat("Unexpected contact count.", contacts.keySet(), hasSize(4));
+      EXPECTED_CONTACTS.forEach(ct -> {
+        Contact contact = contacts.get(ct.name());
+        assertThat("Unexpected contact link.", contact.contact(), is("https://test/" + ct));
+        assertThat("Unexpected contact HREF type.", contact.type(), is("url"));
+      });
+    }
   }
 }

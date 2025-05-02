@@ -32,6 +32,7 @@ import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 import static uk.nhs.tis.trainee.notifications.model.LocalOfficeContactType.LTFT;
 import static uk.nhs.tis.trainee.notifications.model.LocalOfficeContactType.LTFT_SUPPORT;
@@ -46,7 +47,6 @@ import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import uk.nhs.tis.trainee.notifications.config.TemplateVersionsProperties;
@@ -86,13 +86,8 @@ class LtftListenerTest {
   }
 
   @ParameterizedTest
-  @CsvSource(delimiter = '|', textBlock = """
-      APPROVED     | LTFT_APPROVED
-      SUBMITTED    | LTFT_SUBMITTED_TPD
-      SUBMITTED    | LTFT_SUBMITTED_TRAINEE
-      Other-Status | LTFT_UPDATED
-      """)
-  void shouldThrowExceptionWhenNoEmailTemplateAvailable(String state, NotificationType type) {
+  @ValueSource(strings = {"APPROVED", "SUBMITTED", "Other-Status"})
+  void shouldThrowExceptionWhenNoEmailTemplateAvailable(String state) {
     LtftUpdateEvent event = LtftUpdateEvent.builder().state(state).build();
 
     Map<String, MessageTypeVersions> templatesAndVersions = new HashMap<>();
@@ -131,31 +126,23 @@ class LtftListenerTest {
   }
 
   @ParameterizedTest
-  @CsvSource(delimiter = '|', textBlock = """
-      APPROVED     | LTFT_APPROVED
-      SUBMITTED    | LTFT_SUBMITTED_TPD
-      SUBMITTED    | LTFT_SUBMITTED_TRAINEE
-      Other-Status | LTFT_UPDATED
-      """)
-  void shouldSetNotificationTypeWhenLtftUpdated(String state, NotificationType type)
-      throws MessagingException {
+  @ValueSource(strings = {"APPROVED", "SUBMITTED", "Other-Status"})
+  void shouldSetNotificationTypeWhenLtftUpdated(String state) throws MessagingException {
     LtftUpdateEvent event = LtftUpdateEvent.builder()
         .state(state)
         .build();
 
     listener.handleLtftUpdate(event);
 
-    verify(emailService).sendMessageToExistingUser(any(), eq(type), any(), any(), any());
+    for (NotificationType notificationType : listener.getLtftUpdateNotificationTypes(state)) {
+      verify(emailService)
+          .sendMessageToExistingUser(any(), eq(notificationType), any(), any(), any());
+    }
   }
 
   @ParameterizedTest
-  @CsvSource(delimiter = '|', textBlock = """
-      APPROVED     | LTFT_APPROVED          | v1.2.3
-      Other-Status | LTFT_UPDATED           | v2.3.4
-      SUBMITTED    | LTFT_SUBMITTED_TPD     | v3.4.5
-      SUBMITTED    | LTFT_SUBMITTED_TRAINEE | v4.5.6
-      """)
-  void shouldSetTemplateVersionWhenLtftUpdated(String state, NotificationType type, String version)
+  @ValueSource(strings = {"APPROVED", "SUBMITTED", "Other-Status"})
+  void shouldSetTemplateVersionWhenLtftUpdated(String state)
       throws MessagingException {
     LtftUpdateEvent event = LtftUpdateEvent.builder()
         .state(state)
@@ -164,7 +151,7 @@ class LtftListenerTest {
     Map<String, MessageTypeVersions> templatesAndVersions = new HashMap<>();
     for (NotificationType notificationType : listener.getLtftUpdateNotificationTypes(state)) {
       templatesAndVersions.put(notificationType.getTemplateName(),
-          new MessageTypeVersions(version, null));
+          new MessageTypeVersions("1.2.3", null));
     }
 
     TemplateVersionsProperties templateVersionProps
@@ -173,8 +160,11 @@ class LtftListenerTest {
 
     listener.handleLtftUpdate(event);
 
-    verify(emailService, times(listener.getLtftUpdateNotificationTypes(state).size()))
-        .sendMessageToExistingUser(any(), any(), eq(version), any(), any());
+    for (NotificationType notificationType : listener.getLtftUpdateNotificationTypes(state)) {
+      verify(emailService)
+          .sendMessageToExistingUser(any(), eq(notificationType), eq("1.2.3"), any(), any());
+    }
+    verifyNoMoreInteractions(emailService);
   }
 
   @ParameterizedTest
