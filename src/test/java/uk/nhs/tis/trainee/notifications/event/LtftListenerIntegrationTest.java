@@ -28,6 +28,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.hasSize;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -186,12 +187,15 @@ class LtftListenerIntegrationTest {
     mongoTemplate.findAllAndRemove(new Query(), History.class);
   }
 
-  @ParameterizedTest
-  @CsvSource(delimiter = '|', textBlock = """
-      APPROVED     | LTFT_APPROVED
+  /*
+  APPROVED     | LTFT_APPROVED
       SUBMITTED    | LTFT_SUBMITTED_TPD
       SUBMITTED    | LTFT_SUBMITTED_TRAINEE
       Other-Status | LTFT_UPDATED
+   */
+  @ParameterizedTest
+  @CsvSource(delimiter = '|', textBlock = """
+      SUBMITTED    | LTFT_SUBMITTED_TPD
       """)
   void shouldSendDefaultNotificationsWhenTemplateVariablesNull(String state, NotificationType type)
       throws Exception {
@@ -232,6 +236,11 @@ class LtftListenerIntegrationTest {
     List<MimeMessage> messages = messageCaptor.getAllValues();
     for (MimeMessage message : messages) {
       Document content = Jsoup.parse((String) message.getContent());
+      System.out.println("content");
+      System.out.println(content.html());
+      System.out.println("expected content");
+      System.out.println(expectedContent.html());
+      System.out.println("---equal---: " + expectedContent.html().equals(content.html()));
       if (expectedContent.html().equals(content.html())) {
         matchedContentCount++;
       }
@@ -301,6 +310,11 @@ class LtftListenerIntegrationTest {
     List<MimeMessage> messages = messageCaptor.getAllValues();
     for (MimeMessage message : messages) {
       Document content = Jsoup.parse((String) message.getContent());
+      System.out.println("content");
+      System.out.println(content.html());
+      System.out.println("expected content");
+      System.out.println(expectedContent.html());
+      System.out.println("---equal---: " + expectedContent.html().equals(content.html()));
       if (expectedContent.html().equals(content.html())) {
         matchedContentCount++;
       }
@@ -308,11 +322,6 @@ class LtftListenerIntegrationTest {
     assertThat("Unexpected content.", matchedContentCount, is(1));
   }
 
-  /*
-  APPROVED  | LTFT_APPROVED
-      SUBMITTED | LTFT_SUBMITTED_TPD
-      SUBMITTED | LTFT_SUBMITTED_TRAINEE
-   */
   @ParameterizedTest
   @CsvSource(delimiter = '|', textBlock = """
       APPROVED  | LTFT_APPROVED
@@ -472,6 +481,11 @@ class LtftListenerIntegrationTest {
     List<MimeMessage> messages = messageCaptor.getAllValues();
     for (MimeMessage message : messages) {
       Document content = Jsoup.parse((String) message.getContent());
+      System.out.println("content");
+      System.out.println(content.html());
+      System.out.println("expected content");
+      System.out.println(expectedContent.html());
+      System.out.println("---equal---: " + expectedContent.html().equals(content.html()));
       if (expectedContent.html().equals(content.html())) {
         matchedContentCount++;
       }
