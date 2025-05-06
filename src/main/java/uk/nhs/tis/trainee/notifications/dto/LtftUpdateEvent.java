@@ -73,9 +73,8 @@ public class LtftUpdateEvent {
    * @param tpdName  The name of their TPD.
    * @param tpdEmail The contact email for their TPD.
    */
-  public record DiscussionsDto(
-      String tpdName,
-      String tpdEmail) {
+  @Builder
+  public record DiscussionsDto(String tpdName, String tpdEmail) {
 
   }
 

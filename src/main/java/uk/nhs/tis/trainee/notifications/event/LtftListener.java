@@ -38,6 +38,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import uk.nhs.tis.trainee.notifications.config.TemplateVersionsProperties;
 import uk.nhs.tis.trainee.notifications.dto.LtftUpdateEvent;
@@ -60,19 +61,23 @@ public class LtftListener {
   private final NotificationService notificationService;
   private final EmailService emailService;
   private final TemplateVersionsProperties templateVersions;
+  private final boolean emailNotificationsEnabled;
 
   /**
    * Construct a listener for LTFT events.
    *
-   * @param notificationService The service for getting contact lists.
-   * @param emailService        The service to use for sending emails.
-   * @param templateVersions    The configured versions of each template.
+   * @param notificationService       The service for getting contact lists.
+   * @param emailService              The service to use for sending emails.
+   * @param templateVersions          The configured versions of each template.
+   * @param emailNotificationsEnabled Whether email notifications are enabled.
    */
   public LtftListener(NotificationService notificationService, EmailService emailService,
-      TemplateVersionsProperties templateVersions) {
+      TemplateVersionsProperties templateVersions,
+      @Value("${application.email.enabled}") boolean emailNotificationsEnabled) {
     this.notificationService = notificationService;
     this.emailService = emailService;
     this.templateVersions = templateVersions;
+    this.emailNotificationsEnabled = emailNotificationsEnabled;
   }
 
   /**
@@ -132,10 +137,13 @@ public class LtftListener {
           "var", event,
           "contacts", getContacts(managingDeanery)
       );
-      //TODO: send to TPD
-      emailService.sendMessageToExistingUser(traineeTisId, notificationType, templateVersion,
-          templateVariables, null);
-      log.info("LTFT updated TPD notification sent for trainee {}.", traineeTisId);
+      String tpdEmail = event.getDiscussions() == null ? null : event.getDiscussions().tpdEmail();
+      emailService.sendMessage(traineeTisId, tpdEmail, notificationType,
+          templateVersion, templateVariables, null, !emailNotificationsEnabled);
+      log.info("LTFT submitted notification sent to TPD at email '{}' for trainee {}.",
+          tpdEmail, traineeTisId);
+    } else {
+      log.info("LTFT update TPD event is not a submission, ignoring.");
     }
   }
 
