@@ -109,6 +109,7 @@ class LtftListenerIntegrationTest {
   private static final String MANAGING_DEANERY = "North West";
 
   private static final String LTFT_UPDATED_QUEUE = UUID.randomUUID().toString();
+  private static final String LTFT_UPDATED_TPD_QUEUE = UUID.randomUUID().toString();
   private static final Set<LocalOfficeContactType> EXPECTED_CONTACTS = Set.of(LTFT, LTFT_SUPPORT,
       SUPPORTED_RETURN_TO_TRAINING, TSS_SUPPORT);
 
@@ -125,6 +126,7 @@ class LtftListenerIntegrationTest {
   @DynamicPropertySource
   private static void overrideProperties(DynamicPropertyRegistry registry) {
     registry.add("application.queues.ltft-updated", () -> LTFT_UPDATED_QUEUE);
+    registry.add("application.queues.ltft-updated-tpd", () -> LTFT_UPDATED_TPD_QUEUE);
 
     registry.add("spring.cloud.aws.region.static", localstack::getRegion);
     registry.add("spring.cloud.aws.credentials.access-key", localstack::getAccessKey);
@@ -137,6 +139,7 @@ class LtftListenerIntegrationTest {
   @BeforeAll
   static void setUpBeforeAll() throws IOException, InterruptedException {
     localstack.execInContainer("awslocal sqs create-queue --queue-name", LTFT_UPDATED_QUEUE);
+    localstack.execInContainer("awslocal sqs create-queue --queue-name", LTFT_UPDATED_TPD_QUEUE);
   }
 
   @MockBean
@@ -183,7 +186,7 @@ class LtftListenerIntegrationTest {
   @ParameterizedTest
   @CsvSource(delimiter = '|', textBlock = """
       APPROVED     | LTFT_APPROVED
-      SUBMITTED    | LTFT_SUBMITTED
+      SUBMITTED    | LTFT_SUBMITTED_TRAINEE
       Other-Status | LTFT_UPDATED
       """)
   void shouldSendDefaultNotificationsWhenTemplateVariablesNull(String state, NotificationType type)
@@ -228,7 +231,7 @@ class LtftListenerIntegrationTest {
   @ParameterizedTest
   @CsvSource(delimiter = '|', textBlock = """
       APPROVED     | LTFT_APPROVED
-      SUBMITTED    | LTFT_SUBMITTED
+      SUBMITTED    | LTFT_SUBMITTED_TRAINEE
       Other-Status | LTFT_UPDATED
       """)
   void shouldSendDefaultNotificationsWhenTemplateVariablesEmpty(String state, NotificationType type)
@@ -289,7 +292,7 @@ class LtftListenerIntegrationTest {
   @ParameterizedTest
   @CsvSource(delimiter = '|', textBlock = """
       APPROVED  | LTFT_APPROVED
-      SUBMITTED | LTFT_SUBMITTED
+      SUBMITTED | LTFT_SUBMITTED_TRAINEE
       """)
   void shouldSendFullyTailoredNotificationsWhenAllTemplateVariablesAvailableAndUrlContacts(
       String state, NotificationType type) throws Exception {
@@ -361,7 +364,7 @@ class LtftListenerIntegrationTest {
   @ParameterizedTest
   @CsvSource(delimiter = '|', textBlock = """
       APPROVED  | LTFT_APPROVED
-      SUBMITTED | LTFT_SUBMITTED
+      SUBMITTED | LTFT_SUBMITTED_TRAINEE
       """)
   void shouldSendFullyTailoredNotificationsWhenAllTemplateVariablesAvailableAndEmailContacts(
       String state, NotificationType type) throws Exception {
@@ -492,7 +495,7 @@ class LtftListenerIntegrationTest {
   @ParameterizedTest
   @CsvSource(delimiter = '|', textBlock = """
       APPROVED     | LTFT_APPROVED
-      SUBMITTED    | LTFT_SUBMITTED
+      SUBMITTED    | LTFT_SUBMITTED_TRAINEE
       Other-Status | LTFT_UPDATED
       """)
   void shouldStoreNotificationHistoryWhenMessageSent(String state, NotificationType type)

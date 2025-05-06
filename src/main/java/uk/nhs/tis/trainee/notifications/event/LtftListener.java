@@ -27,7 +27,8 @@ import static uk.nhs.tis.trainee.notifications.model.LocalOfficeContactType.SUPP
 import static uk.nhs.tis.trainee.notifications.model.LocalOfficeContactType.TSS_SUPPORT;
 import static uk.nhs.tis.trainee.notifications.model.MessageType.EMAIL;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.LTFT_APPROVED;
-import static uk.nhs.tis.trainee.notifications.model.NotificationType.LTFT_SUBMITTED;
+import static uk.nhs.tis.trainee.notifications.model.NotificationType.LTFT_SUBMITTED_TPD;
+import static uk.nhs.tis.trainee.notifications.model.NotificationType.LTFT_SUBMITTED_TRAINEE;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.LTFT_UPDATED;
 
 import io.awspring.cloud.sqs.annotation.SqsListener;
@@ -86,7 +87,7 @@ public class LtftListener {
 
     NotificationType notificationType = switch (event.getState()) {
       case "APPROVED" -> LTFT_APPROVED;
-      case "SUBMITTED" -> LTFT_SUBMITTED;
+      case "SUBMITTED" -> LTFT_SUBMITTED_TRAINEE;
       default -> LTFT_UPDATED;
     };
 
@@ -104,6 +105,38 @@ public class LtftListener {
     emailService.sendMessageToExistingUser(traineeTisId, notificationType, templateVersion,
         templateVariables, null);
     log.info("LTFT updated notification sent for trainee {}.", traineeTisId);
+  }
+
+  /**
+   * Handle LTFT update events for the TPD.
+   *
+   * @param event The LTFT update event message.
+   * @throws MessagingException If the message could not be sent.
+   */
+  @SqsListener("${application.queues.ltft-updated-tpd}")
+  public void handleLtftUpdateTpd(LtftUpdateEvent event) throws MessagingException {
+    log.info("Handling LTFT update TPD event {}.", event);
+
+    if (event.getState().equals("SUBMITTED")) {
+      NotificationType notificationType = LTFT_SUBMITTED_TPD;
+
+      String templateVersion = templateVersions.getTemplateVersion(notificationType, EMAIL)
+          .orElseThrow(() -> new IllegalArgumentException(
+              "No email template available for notification type '%s'".formatted(
+                  notificationType)));
+
+      String traineeTisId = event.getTraineeId();
+      String managingDeanery = event.getProgrammeMembership() == null ? null
+          : event.getProgrammeMembership().managingDeanery();
+      Map<String, Object> templateVariables = Map.of(
+          "var", event,
+          "contacts", getContacts(managingDeanery)
+      );
+      //TODO: send to TPD
+      emailService.sendMessageToExistingUser(traineeTisId, notificationType, templateVersion,
+          templateVariables, null);
+      log.info("LTFT updated TPD notification sent for trainee {}.", traineeTisId);
+    }
   }
 
   /**

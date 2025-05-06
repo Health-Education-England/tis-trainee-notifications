@@ -34,6 +34,7 @@ import static uk.nhs.tis.trainee.notifications.event.GmcListener.TRAINEE_ID_FIEL
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.GMC_REJECTED_LO;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.GMC_REJECTED_TRAINEE;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.GMC_UPDATED;
+import static uk.nhs.tis.trainee.notifications.model.NotificationType.LTFT_SUBMITTED_TPD;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PLACEMENT_ROLLOUT_2024_CORRECTION;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PLACEMENT_UPDATED_WEEK_12;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_CREATED;
@@ -47,6 +48,7 @@ import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipServic
 import io.awspring.cloud.s3.S3Template;
 import jakarta.mail.Session;
 import jakarta.mail.internet.MimeMessage;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
@@ -164,6 +166,10 @@ class EmailServiceIntegrationTest {
       Element greeting = body.children().get(getGreetingElementIndex(notificationType));
       assertThat("Unexpected element tag.", greeting.tagName(), is("p"));
       assertThat("Unexpected greeting.", greeting.text(), is("Dear Local Office,"));
+    } else if (notificationType.equals(LTFT_SUBMITTED_TPD)) {
+      Element greeting = body.children().get(getGreetingElementIndex(notificationType));
+      assertThat("Unexpected element tag.", greeting.tagName(), is("p"));
+      assertThat("Unexpected greeting.", greeting.text(), is("Dear Training Programme Director,"));
     } else {
       Element greeting = body.children().get(getGreetingElementIndex(notificationType));
       assertThat("Unexpected element tag.", greeting.tagName(), is("p"));
@@ -198,6 +204,10 @@ class EmailServiceIntegrationTest {
       Element greeting = body.children().get(getGreetingElementIndex(notificationType));
       assertThat("Unexpected element tag.", greeting.tagName(), is("p"));
       assertThat("Unexpected greeting.", greeting.text(), is("Dear Local Office,"));
+    } else if (notificationType.equals(LTFT_SUBMITTED_TPD)) {
+      Element greeting = body.children().get(getGreetingElementIndex(notificationType));
+      assertThat("Unexpected element tag.", greeting.tagName(), is("p"));
+      assertThat("Unexpected greeting.", greeting.text(), is("Dear Training Programme Director,"));
     } else {
       Element greeting = body.children().get(getGreetingElementIndex(notificationType));
       assertThat("Unexpected element tag.", greeting.tagName(), is("p"));
@@ -213,8 +223,19 @@ class EmailServiceIntegrationTest {
     when(userAccountService.getUserDetailsById(USER_ID)).thenReturn(
         new UserDetails(true, RECIPIENT, null, "Gilliam", "Anthony", null));
 
+    Instant timestamp = Instant.now();
+    Map<String, Object> variables = Map.of("formRef", "form ref",
+        "state", "some state",
+        "timestamp", timestamp,
+        "formName", "form name",
+        "discussions", Map.of("tpdName", "TPD name"),
+        "programmeMembership", Map.of("startDate", "2024-01-01",
+            "name", "PM name", "wte", 1.0, "managingDeanery", "MD name"),
+        "personalDetails", Map.of("gmcNumber", "1234567"),
+        "change", Map.of("startDate", "2024-01-01", "wte", 0.5, "cctDate", "2024-01-01"));
+
     service.sendMessageToExistingUser(PERSON_ID, notificationType, templateVersion,
-        Map.of("familyName", "Maillig"), null);
+        Map.of("familyName", "Maillig", "var", variables), null);
 
     ArgumentCaptor<MimeMessage> messageCaptor = ArgumentCaptor.captor();
     verify(mailSender).send(messageCaptor.capture());
@@ -233,6 +254,10 @@ class EmailServiceIntegrationTest {
       Element greeting = body.children().get(getGreetingElementIndex(notificationType));
       assertThat("Unexpected element tag.", greeting.tagName(), is("p"));
       assertThat("Unexpected greeting.", greeting.text(), is("Dear Local Office,"));
+    } else if (notificationType.equals(LTFT_SUBMITTED_TPD)) {
+      Element greeting = body.children().get(getGreetingElementIndex(notificationType));
+      assertThat("Unexpected element tag.", greeting.tagName(), is("p"));
+      assertThat("Unexpected greeting.", greeting.text(), is("Dear TPD name,"));
     } else {
       Element greeting = body.children().get(getGreetingElementIndex(notificationType));
       assertThat("Unexpected element tag.", greeting.tagName(), is("p"));
@@ -685,7 +710,8 @@ class EmailServiceIntegrationTest {
       case PLACEMENT_UPDATED_WEEK_12, PLACEMENT_ROLLOUT_2024_CORRECTION, PROGRAMME_CREATED,
           PROGRAMME_DAY_ONE, EMAIL_UPDATED_NEW, EMAIL_UPDATED_OLD, COJ_CONFIRMATION,
           CREDENTIAL_REVOKED, FORM_UPDATED, GMC_UPDATED, GMC_REJECTED_LO,
-          GMC_REJECTED_TRAINEE, LTFT_APPROVED, LTFT_UPDATED, LTFT_SUBMITTED -> 1;
+           GMC_REJECTED_TRAINEE, LTFT_APPROVED, LTFT_UPDATED, LTFT_SUBMITTED_TPD,
+           LTFT_SUBMITTED_TRAINEE -> 1;
       default -> 0;
     };
   }

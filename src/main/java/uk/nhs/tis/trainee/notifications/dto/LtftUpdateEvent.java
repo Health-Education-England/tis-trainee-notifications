@@ -42,6 +42,7 @@ public class LtftUpdateEvent {
   private String formName;
   private PersonalDetails personalDetails;
   private ProgrammeMembershipDto programmeMembership;
+  private DiscussionsDto discussions;
   private ChangeDto change;
   private String state;
   private Instant timestamp;
@@ -63,6 +64,18 @@ public class LtftUpdateEvent {
    * @param cctDate   The CCT/end of programme date..
    */
   public record ChangeDto(LocalDate startDate, Double wte, LocalDate cctDate) {
+
+  }
+
+  /**
+   * Discussions that the trainee has had about their LTFT needs.
+   *
+   * @param tpdName  The name of their TPD.
+   * @param tpdEmail The contact email for their TPD.
+   */
+  public record DiscussionsDto(
+      String tpdName,
+      String tpdEmail) {
 
   }
 
