@@ -77,7 +77,7 @@ class LtftListenerTest {
     notificationService = mock(NotificationService.class);
     emailService = mock(EmailService.class);
     TemplateVersionsProperties templateVersions = new TemplateVersionsProperties(Map.of(
-        "ltft-approved", new MessageTypeVersions(VERSION, null),
+        "ltft-approved-trainee", new MessageTypeVersions(VERSION, null),
         "ltft-updated", new MessageTypeVersions(VERSION, null),
         "ltft-submitted-tpd", new MessageTypeVersions(VERSION, null),
         "ltft-submitted-trainee", new MessageTypeVersions(VERSION, null)

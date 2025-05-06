@@ -45,7 +45,7 @@ public enum NotificationType {
   GMC_REJECTED_LO("gmc-rejected-lo"),
   GMC_REJECTED_TRAINEE("gmc-rejected-trainee"),
   GMC_UPDATED("gmc-updated"),
-  LTFT_APPROVED("ltft-approved"),
+  LTFT_APPROVED_TRAINEE("ltft-approved-trainee"),
   LTFT_UPDATED("ltft-updated"),
   LTFT_SUBMITTED_TPD("ltft-submitted-tpd"),
   LTFT_SUBMITTED_TRAINEE("ltft-submitted-trainee"),
