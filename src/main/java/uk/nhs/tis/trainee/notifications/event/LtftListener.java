@@ -128,14 +128,15 @@ public class LtftListener {
     if (event.getState().equals("SUBMITTED")) {
       NotificationType notificationType = LTFT_SUBMITTED_TPD;
 
+      String traineeTisId = event.getTraineeId();
+      UserDetails userDetails = emailService.getRecipientAccount(traineeTisId);
+
       String templateVersion = templateVersions.getTemplateVersion(notificationType, EMAIL)
           .orElseThrow(() -> new IllegalArgumentException(
               "No email template available for notification type '%s'".formatted(
                   notificationType)));
 
-      String traineeTisId = event.getTraineeId();
       Map<String, Object> templateVariables = new HashMap<>(); //this needs to be modifiable
-      UserDetails userDetails = emailService.getRecipientAccount(traineeTisId);
       templateVariables.putIfAbsent("familyName", userDetails.familyName());
       templateVariables.putIfAbsent("givenName", userDetails.givenName());
       templateVariables.put("var", event);

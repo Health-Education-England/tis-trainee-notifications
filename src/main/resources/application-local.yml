@@ -12,6 +12,7 @@ application:
     email-failure: ${local.sqs-path}/tis-trainee-notifications-local-email-failure
     email-event: ${local.sqs-path}/tis-trainee-notifications-local-email-failure
     ltft-updated: ${local.sqs-path}/tis-trainee-notifications-local-ltft-updated
+    ltft-updated-tpd: ${local.sqs-path}/tis-trainee-notifications-local-ltft-updated-tpd
     form-updated: ${local.sqs-path}/tis-trainee-notifications-local-form-updated
     gmc-updated: ${local.sqs-path}/tis-trainee-notifications-local-gmc-updated
     placement-deleted: ${local.sqs-path}/tis-trainee-notifications-local-placement-deleted
