@@ -26,9 +26,10 @@ import static uk.nhs.tis.trainee.notifications.model.LocalOfficeContactType.LTFT
 import static uk.nhs.tis.trainee.notifications.model.LocalOfficeContactType.SUPPORTED_RETURN_TO_TRAINING;
 import static uk.nhs.tis.trainee.notifications.model.LocalOfficeContactType.TSS_SUPPORT;
 import static uk.nhs.tis.trainee.notifications.model.MessageType.EMAIL;
-import static uk.nhs.tis.trainee.notifications.model.NotificationType.LTFT_APPROVED;
-import static uk.nhs.tis.trainee.notifications.model.NotificationType.LTFT_SUBMITTED;
+import static uk.nhs.tis.trainee.notifications.model.NotificationType.LTFT_APPROVED_TPD;
+import static uk.nhs.tis.trainee.notifications.model.NotificationType.LTFT_APPROVED_TRAINEE;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.LTFT_SUBMITTED_TPD;
+import static uk.nhs.tis.trainee.notifications.model.NotificationType.LTFT_SUBMITTED_TRAINEE;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.LTFT_UPDATED;
 
 import io.awspring.cloud.sqs.annotation.SqsListener;
@@ -93,8 +94,8 @@ public class LtftListener {
     log.info("Handling LTFT update event {}.", event);
 
     NotificationType notificationType = switch (event.getState()) {
-      case "APPROVED" -> LTFT_APPROVED;
-      case "SUBMITTED" -> LTFT_SUBMITTED;
+      case "APPROVED" -> LTFT_APPROVED_TRAINEE;
+      case "SUBMITTED" -> LTFT_SUBMITTED_TRAINEE;
       default -> LTFT_UPDATED;
     };
 
@@ -125,12 +126,13 @@ public class LtftListener {
   public void handleLtftUpdateTpd(LtftUpdateEvent event) throws MessagingException {
     log.info("Handling LTFT update TPD event {}.", event);
 
-    if (event.getState().equals("SUBMITTED")) {
-      NotificationType notificationType = LTFT_SUBMITTED_TPD;
+    NotificationType notificationType = switch (event.getState()) {
+      case "APPROVED" -> LTFT_APPROVED_TPD;
+      case "SUBMITTED" -> LTFT_SUBMITTED_TPD;
+      default -> null;
+    };
 
-      String traineeTisId = event.getTraineeId();
-      UserDetails userDetails = emailService.getRecipientAccount(traineeTisId);
-
+    if (notificationType != null) {
       String templateVersion = templateVersions.getTemplateVersion(notificationType, EMAIL)
           .orElseThrow(() -> new IllegalArgumentException(
               "No email template available for notification type '%s'".formatted(
@@ -147,7 +149,7 @@ public class LtftListener {
       String tpdEmail = event.getDiscussions() == null ? null : event.getDiscussions().tpdEmail();
       emailService.sendMessage(traineeTisId, tpdEmail, notificationType,
           templateVersion, templateVariables, null, !emailNotificationsEnabled);
-      log.info("LTFT submitted notification sent to TPD at email '{}' for trainee {}.",
+      log.info("LTFT {} notification sent to TPD at email '{}' for trainee {}.", event.getState(),
           tpdEmail, traineeTisId);
     } else {
       log.info("LTFT update TPD event is not a submission, ignoring.");

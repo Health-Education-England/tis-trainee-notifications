@@ -59,7 +59,9 @@ application:
       email: v1.0.0
     gmc-updated:
       email: v1.0.0
-    ltft-approved:
+    ltft-approved-tpd:
+      email: v1.0.0
+    ltft-approved-trainee:
       email: v1.0.0
     ltft-updated:
       email: v1.0.0
