@@ -44,6 +44,7 @@ import io.awspring.cloud.sqs.operations.SqsTemplate;
 import jakarta.mail.Session;
 import jakarta.mail.internet.MimeMessage;
 import java.io.IOException;
+import java.net.URI;
 import java.net.URL;
 import java.nio.file.Paths;
 import java.time.Duration;
@@ -107,6 +108,8 @@ class LtftListenerIntegrationTest {
   private static final Instant TIMESTAMP = Instant.parse("2025-03-15T10:00:00Z");
   private static final String FORM_REF = "ltft_47165_001";
   private static final String MANAGING_DEANERY = "North West";
+  private static final String TPD_NAME = "Mr TPD";
+  private static final String TPD_EMAIL = "tpd@email.nhs";
 
   private static final String LTFT_UPDATED_QUEUE = UUID.randomUUID().toString();
   private static final String LTFT_UPDATED_TPD_QUEUE = UUID.randomUUID().toString();
@@ -127,6 +130,8 @@ class LtftListenerIntegrationTest {
   private static void overrideProperties(DynamicPropertyRegistry registry) {
     registry.add("application.queues.ltft-updated", () -> LTFT_UPDATED_QUEUE);
     registry.add("application.queues.ltft-updated-tpd", () -> LTFT_UPDATED_TPD_QUEUE);
+    registry.add("application.email.enabled", () -> true);
+    registry.add("application.domain", () -> URI.create("https://test.test.test"));
 
     registry.add("spring.cloud.aws.region.static", localstack::getRegion);
     registry.add("spring.cloud.aws.credentials.access-key", localstack::getAccessKey);
@@ -578,7 +583,255 @@ class LtftListenerIntegrationTest {
     assertThat("Unexpected timestamp.", event.getTimestamp(), is(TIMESTAMP));
 
     Map<String, Contact> contacts = (Map<String, Contact>) storedVariables.get("contacts");
-    assertThat("Unexepected contact count.", contacts.keySet(), hasSize(4));
+    assertThat("Unexpected contact count.", contacts.keySet(), hasSize(4));
+    EXPECTED_CONTACTS.forEach(ct -> {
+      Contact contact = contacts.get(ct.name());
+      assertThat("Unexpected contact link.", contact.contact(), is("https://test/" + ct));
+      assertThat("Unexpected contact HREF type.", contact.type(), is("url"));
+    });
+  }
+
+  @ParameterizedTest
+  @CsvSource(delimiter = '|', textBlock = """
+      SUBMITTED | LTFT_SUBMITTED_TPD
+      """)
+  void shouldSendFullyTailoredTpdNotificationWhenAllTemplateVariablesAvailableAndUrlContacts(
+      String state, NotificationType type) throws Exception {
+    when(userAccountService.getUserDetailsById(USER_ID)).thenReturn(
+        new UserDetails(true, EMAIL, TITLE, FAMILY_NAME, GIVEN_NAME, GMC));
+
+    when(notificationService.getOwnerContactList(MANAGING_DEANERY)).thenReturn(
+        EXPECTED_CONTACTS.stream()
+            .map(ct -> Map.of(
+                "contact", "https://test/" + ct,
+                "contactTypeName", ct.getContactTypeName()
+            ))
+            .toList());
+    when(notificationService.getOwnerContact(any(), any(), eq(TSS_SUPPORT),
+        eq(""))).thenCallRealMethod();
+    when(notificationService.getHrefTypeForContact(any())).thenCallRealMethod();
+
+    String eventString = """
+        {
+          "traineeTisId": "%s",
+          "formRef": "ltft_47165_001",
+          "formName": "form_name",
+          "personalDetails": {
+            "gmcNumber": "1234567"
+          },
+          "programmeMembership": {
+            "name": "General Practice",
+            "startDate": "2025-01-03",
+            "managingDeanery": "%s",
+            "wte": 1.0
+          },
+          "change": {
+            "startDate": "2025-04-03",
+            "wte": 0.5,
+            "cctDate": "2027-06-05"
+          },
+          "status": {
+            "current" : {
+              "state": "%s",
+              "timestamp": "2026-05-04T01:02:03.004Z"
+            }
+          },
+          "discussions": {
+            "tpdName": "%s",
+            "tpdEmail": "%s"
+          }
+        }
+        """.formatted(traineeId, MANAGING_DEANERY, state, TPD_NAME, TPD_EMAIL);
+
+    JsonNode eventJson = JsonMapper.builder()
+        .build()
+        .readTree(eventString);
+
+    sqsTemplate.send(LTFT_UPDATED_TPD_QUEUE, eventJson);
+
+    ArgumentCaptor<MimeMessage> messageCaptor = ArgumentCaptor.captor();
+
+    await()
+        .pollInterval(Duration.ofSeconds(2))
+        .atMost(Duration.ofSeconds(10))
+        .ignoreExceptions()
+        .untilAsserted(() -> verify(mailSender).send(messageCaptor.capture()));
+
+    MimeMessage message = messageCaptor.getValue();
+    Document content = Jsoup.parse((String) message.getContent());
+
+    URL resource = getClass().getResource(
+        "/email/" + type.getTemplateName() + "-full-url-contacts.html");
+    assert resource != null;
+    Document expectedContent = Jsoup.parse(Paths.get(resource.toURI()).toFile());
+    assertThat("Unexpected content.", content.html(), is(expectedContent.html()));
+  }
+
+  @ParameterizedTest
+  @CsvSource(delimiter = '|', textBlock = """
+      SUBMITTED | LTFT_SUBMITTED_TPD
+      """)
+  void shouldSendFullyTailoredTpdNotificationWhenAllTemplateVariablesAvailableAndEmailContacts(
+      String state, NotificationType type) throws Exception {
+    when(userAccountService.getUserDetailsById(USER_ID)).thenReturn(
+        new UserDetails(true, EMAIL, TITLE, FAMILY_NAME, GIVEN_NAME, GMC));
+
+    when(notificationService.getOwnerContactList(MANAGING_DEANERY)).thenReturn(
+        EXPECTED_CONTACTS.stream()
+            .map(ct -> Map.of(
+                "contact", ct + "@example.com",
+                "contactTypeName", ct.getContactTypeName()
+            ))
+            .toList());
+    when(notificationService.getOwnerContact(any(), any(), eq(TSS_SUPPORT),
+        eq(""))).thenCallRealMethod();
+    when(notificationService.getHrefTypeForContact(any())).thenCallRealMethod();
+
+    String eventString = """
+        {
+          "traineeTisId": "%s",
+          "formRef": "ltft_47165_001",
+          "formName": "form_name",
+          "personalDetails": {
+            "gmcNumber": "1234567"
+          },
+          "programmeMembership": {
+            "name": "General Practice",
+            "startDate": "2025-01-03",
+            "managingDeanery": "%s",
+            "wte": 1.0
+          },
+          "change": {
+            "startDate": "2025-04-03",
+            "wte": 0.5,
+            "cctDate": "2027-06-05"
+          },
+          "status": {
+            "current" : {
+              "state": "%s",
+              "timestamp": "2026-05-04T01:02:03.004Z"
+            }
+          },
+          "discussions": {
+            "tpdName": "%s",
+            "tpdEmail": "%s"
+          }
+        }
+        """.formatted(traineeId, MANAGING_DEANERY, state, TPD_NAME, TPD_EMAIL);
+
+    JsonNode eventJson = JsonMapper.builder()
+        .build()
+        .readTree(eventString);
+
+    sqsTemplate.send(LTFT_UPDATED_TPD_QUEUE, eventJson);
+
+    ArgumentCaptor<MimeMessage> messageCaptor = ArgumentCaptor.captor();
+
+    await()
+        .pollInterval(Duration.ofSeconds(2))
+        .atMost(Duration.ofSeconds(10))
+        .ignoreExceptions()
+        .untilAsserted(() -> verify(mailSender).send(messageCaptor.capture()));
+
+    MimeMessage message = messageCaptor.getValue();
+    Document content = Jsoup.parse((String) message.getContent());
+
+    URL resource = getClass().getResource(
+        "/email/" + type.getTemplateName() + "-full-email-contacts.html");
+    assert resource != null;
+    Document expectedContent = Jsoup.parse(Paths.get(resource.toURI()).toFile());
+    assertThat("Unexpected content.", content.html(), is(expectedContent.html()));
+  }
+
+  @ParameterizedTest
+  @CsvSource(delimiter = '|', textBlock = """
+      SUBMITTED    | LTFT_SUBMITTED_TPD
+      """)
+  void shouldStoreTpdNotificationHistoryWhenMessageSent(String state, NotificationType type)
+      throws JsonProcessingException {
+    when(userAccountService.getUserDetailsById(USER_ID)).thenReturn(
+        new UserDetails(true, EMAIL, TITLE, FAMILY_NAME, GIVEN_NAME, GMC));
+
+    when(notificationService.getOwnerContactList(MANAGING_DEANERY)).thenReturn(
+        EXPECTED_CONTACTS.stream()
+            .map(ct -> Map.of(
+                "contact", "https://test/" + ct,
+                "contactTypeName", ct.getContactTypeName()
+            ))
+            .toList());
+    when(notificationService.getOwnerContact(any(), any(), eq(TSS_SUPPORT),
+        eq(""))).thenCallRealMethod();
+    when(notificationService.getHrefTypeForContact(any())).thenCallRealMethod();
+
+    String eventString = """
+        {
+          "traineeTisId": "%s",
+          "formRef": "%s",
+          "formName": "%s",
+          "programmeMembership": {
+            "managingDeanery": "%s"
+          },
+          "discussions": {
+            "tpdEmail": "%s"
+          },
+          "status": {
+            "current" : {
+              "state": "%s",
+              "timestamp": "%s"
+            }
+          }
+        }
+        """.formatted(traineeId, FORM_REF, LTFT_NAME, MANAGING_DEANERY, TPD_EMAIL, state,
+        TIMESTAMP);
+
+    JsonNode eventJson = JsonMapper.builder()
+        .build()
+        .readTree(eventString);
+
+    sqsTemplate.send(LTFT_UPDATED_TPD_QUEUE, eventJson);
+
+    Criteria criteria = Criteria.where("recipient.id").is(traineeId);
+    Query query = Query.query(criteria);
+    List<History> histories = new ArrayList<>();
+
+    await()
+        .pollInterval(Duration.ofSeconds(2))
+        .atMost(Duration.ofSeconds(10))
+        .ignoreExceptions()
+        .untilAsserted(() -> {
+          List<History> found = mongoTemplate.find(query, History.class);
+          assertThat("Unexpected history count.", found.size(), is(1));
+          histories.addAll(found);
+        });
+
+    History history = histories.get(0);
+    assertThat("Unexpected notification id.", history.id(), notNullValue());
+    assertThat("Unexpected notification type.", history.type(), is(type));
+    assertThat("Unexpected sent at.", history.sentAt(), notNullValue());
+
+    RecipientInfo recipient = history.recipient();
+    assertThat("Unexpected recipient id.", recipient.id(), is(traineeId));
+    assertThat("Unexpected message type.", recipient.type(), is(MessageType.EMAIL));
+    assertThat("Unexpected contact.", recipient.contact(), is(TPD_EMAIL));
+
+    TemplateInfo templateInfo = history.template();
+    assertThat("Unexpected template name.", templateInfo.name(), is(type.getTemplateName()));
+    assertThat("Unexpected template version.", templateInfo.version(), is(templateVersion));
+
+    Map<String, Object> storedVariables = templateInfo.variables();
+    assertThat("Unexpected template variable count.", storedVariables.size(), is(6));
+    assertThat("Unexpected template variable.", storedVariables.get("familyName"), is(FAMILY_NAME));
+    assertThat("Unexpected template variable.", storedVariables.get("givenName"), is(GIVEN_NAME));
+
+    LtftUpdateEvent event = (LtftUpdateEvent) storedVariables.get("var");
+    assertThat("Unexpected trainee ID.", event.getTraineeId(), is(traineeId));
+    assertThat("Unexpected form ref.", event.getFormRef(), is(FORM_REF));
+    assertThat("Unexpected form name.", event.getFormName(), is(LTFT_NAME));
+    assertThat("Unexpected state.", event.getState(), is(state));
+    assertThat("Unexpected timestamp.", event.getTimestamp(), is(TIMESTAMP));
+
+    Map<String, Contact> contacts = (Map<String, Contact>) storedVariables.get("contacts");
+    assertThat("Unexpected contact count.", contacts.keySet(), hasSize(4));
     EXPECTED_CONTACTS.forEach(ct -> {
       Contact contact = contacts.get(ct.name());
       assertThat("Unexpected contact link.", contact.contact(), is("https://test/" + ct));

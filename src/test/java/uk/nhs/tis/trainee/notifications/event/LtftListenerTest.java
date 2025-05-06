@@ -56,6 +56,7 @@ import uk.nhs.tis.trainee.notifications.config.TemplateVersionsProperties.Messag
 import uk.nhs.tis.trainee.notifications.dto.LtftUpdateEvent;
 import uk.nhs.tis.trainee.notifications.dto.LtftUpdateEvent.DiscussionsDto;
 import uk.nhs.tis.trainee.notifications.dto.ProgrammeMembershipDto;
+import uk.nhs.tis.trainee.notifications.dto.UserDetails;
 import uk.nhs.tis.trainee.notifications.event.LtftListener.Contact;
 import uk.nhs.tis.trainee.notifications.model.LocalOfficeContactType;
 import uk.nhs.tis.trainee.notifications.model.NotificationType;
@@ -76,6 +77,8 @@ class LtftListenerTest {
   private static final String PROGRAMME_DEANERY = "Test Deanery";
   private static final double PROGRAMME_WTE = 1.0;
   private static final LocalDate PROGRAMME_START_DATE = LocalDate.of(2024, 1, 1);
+  private static final UserDetails USER_DETAILS = new UserDetails(
+      true, "trainee@email.nhs", "Dr", "Gilliam", "Bob", "1234567");
 
   private LtftListener listener;
   private NotificationService notificationService;
@@ -287,6 +290,8 @@ class LtftListenerTest {
     doThrow(MessagingException.class).when(emailService)
         .sendMessage(any(), any(), any(), any(), any(), any(), anyBoolean());
 
+    when(emailService.getRecipientAccount(any())).thenReturn(USER_DETAILS);
+
     LtftUpdateEvent event = LtftUpdateEvent.builder().state(state).build();
 
     assertThrows(MessagingException.class, () -> listener.handleLtftUpdateTpd(event));
@@ -298,6 +303,8 @@ class LtftListenerTest {
         .traineeId(TRAINEE_ID)
         .state("SUBMITTED")
         .build();
+
+    when(emailService.getRecipientAccount(TRAINEE_ID)).thenReturn(USER_DETAILS);
 
     listener.handleLtftUpdateTpd(event);
 
@@ -315,6 +322,8 @@ class LtftListenerTest {
             .tpdEmail(TPD_EMAIL)
             .build())
         .build();
+
+    when(emailService.getRecipientAccount(TRAINEE_ID)).thenReturn(USER_DETAILS);
 
     listener.handleLtftUpdateTpd(event);
 
@@ -337,6 +346,8 @@ class LtftListenerTest {
     listener = new LtftListener(notificationService, emailService, templateVersions,
         emailNotificationsEnabled);
 
+    when(emailService.getRecipientAccount(TRAINEE_ID)).thenReturn(USER_DETAILS);
+
     listener.handleLtftUpdateTpd(event);
 
     verify(emailService)
@@ -352,6 +363,8 @@ class LtftListenerTest {
     LtftUpdateEvent event = LtftUpdateEvent.builder()
         .state(state)
         .build();
+
+    when(emailService.getRecipientAccount(any())).thenReturn(USER_DETAILS);
 
     listener.handleLtftUpdateTpd(event);
 
@@ -373,6 +386,8 @@ class LtftListenerTest {
         type.getTemplateName(), new MessageTypeVersions(version, null)
     ));
     listener = new LtftListener(notificationService, emailService, templateVersions, true);
+
+    when(emailService.getRecipientAccount(any())).thenReturn(USER_DETAILS);
 
     listener.handleLtftUpdateTpd(event);
 
@@ -404,6 +419,8 @@ class LtftListenerTest {
         .state(state)
         .build();
 
+    when(emailService.getRecipientAccount(any())).thenReturn(USER_DETAILS);
+
     listener.handleLtftUpdateTpd(event);
 
     ArgumentCaptor<Map<String, Object>> templateVarsCaptor = ArgumentCaptor.captor();
@@ -427,6 +444,8 @@ class LtftListenerTest {
   void shouldPopulateTemplateVariablesWithEventWhenLtftUpdatedForTpd(String state)
       throws MessagingException {
     LtftUpdateEvent event = LtftUpdateEvent.builder().state(state).build();
+
+    when(emailService.getRecipientAccount(any())).thenReturn(USER_DETAILS);
 
     listener.handleLtftUpdateTpd(event);
 
@@ -457,6 +476,8 @@ class LtftListenerTest {
             .build())
         .timestamp(TIMESTAMP)
         .build();
+
+    when(emailService.getRecipientAccount(TRAINEE_ID)).thenReturn(USER_DETAILS);
 
     listener.handleLtftUpdateTpd(event);
 

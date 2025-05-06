@@ -33,6 +33,7 @@ import static uk.nhs.tis.trainee.notifications.model.NotificationType.LTFT_UPDAT
 
 import io.awspring.cloud.sqs.annotation.SqsListener;
 import jakarta.mail.MessagingException;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -42,6 +43,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import uk.nhs.tis.trainee.notifications.config.TemplateVersionsProperties;
 import uk.nhs.tis.trainee.notifications.dto.LtftUpdateEvent;
+import uk.nhs.tis.trainee.notifications.dto.UserDetails;
 import uk.nhs.tis.trainee.notifications.model.HrefType;
 import uk.nhs.tis.trainee.notifications.model.LocalOfficeContactType;
 import uk.nhs.tis.trainee.notifications.model.NotificationType;
@@ -103,6 +105,7 @@ public class LtftListener {
     String traineeTisId = event.getTraineeId();
     String managingDeanery = event.getProgrammeMembership() == null ? null
         : event.getProgrammeMembership().managingDeanery();
+
     Map<String, Object> templateVariables = Map.of(
         "var", event,
         "contacts", getContacts(managingDeanery)
@@ -131,12 +134,15 @@ public class LtftListener {
                   notificationType)));
 
       String traineeTisId = event.getTraineeId();
+      Map<String, Object> templateVariables = new HashMap<>(); //this needs to be modifiable
+      UserDetails userDetails = emailService.getRecipientAccount(traineeTisId);
+      templateVariables.putIfAbsent("familyName", userDetails.familyName());
+      templateVariables.putIfAbsent("givenName", userDetails.givenName());
+      templateVariables.put("var", event);
       String managingDeanery = event.getProgrammeMembership() == null ? null
           : event.getProgrammeMembership().managingDeanery();
-      Map<String, Object> templateVariables = Map.of(
-          "var", event,
-          "contacts", getContacts(managingDeanery)
-      );
+      templateVariables.put("contacts", getContacts(managingDeanery));
+
       String tpdEmail = event.getDiscussions() == null ? null : event.getDiscussions().tpdEmail();
       emailService.sendMessage(traineeTisId, tpdEmail, notificationType,
           templateVersion, templateVariables, null, !emailNotificationsEnabled);
