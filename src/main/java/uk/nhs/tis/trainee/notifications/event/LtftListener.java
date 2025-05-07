@@ -133,6 +133,9 @@ public class LtftListener {
     };
 
     if (notificationType != null) {
+      String traineeTisId = event.getTraineeId();
+      UserDetails userDetails = emailService.getRecipientAccount(traineeTisId);
+
       String templateVersion = templateVersions.getTemplateVersion(notificationType, EMAIL)
           .orElseThrow(() -> new IllegalArgumentException(
               "No email template available for notification type '%s'".formatted(

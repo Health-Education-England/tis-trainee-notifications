@@ -38,6 +38,7 @@ import static uk.nhs.tis.trainee.notifications.model.LocalOfficeContactType.LTFT
 import static uk.nhs.tis.trainee.notifications.model.LocalOfficeContactType.LTFT_SUPPORT;
 import static uk.nhs.tis.trainee.notifications.model.LocalOfficeContactType.SUPPORTED_RETURN_TO_TRAINING;
 import static uk.nhs.tis.trainee.notifications.model.LocalOfficeContactType.TSS_SUPPORT;
+import static uk.nhs.tis.trainee.notifications.model.NotificationType.LTFT_APPROVED_TPD;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.LTFT_SUBMITTED_TPD;
 
 import jakarta.mail.MessagingException;
@@ -261,7 +262,7 @@ class LtftListenerTest {
   }
 
   @ParameterizedTest
-  @ValueSource(strings = {"DRAFT", "Other-status"})
+  @ValueSource(strings = {"", "Other-status"})
   void shouldIgnoreNonMatchedNotificationTypesWhenLtftUpdatedForTpd(String state)
       throws MessagingException {
     LtftUpdateEvent event = LtftUpdateEvent.builder().state(state).build();
@@ -271,7 +272,8 @@ class LtftListenerTest {
 
   @ParameterizedTest
   @CsvSource(delimiter = '|', textBlock = """
-      SUBMITTED    | LTFT_SUBMITTED_TPD
+      APPROVED  | LTFT_APPROVED_TPD
+      SUBMITTED | LTFT_SUBMITTED_TPD
       """)
   void shouldThrowExceptionWhenNoTpdEmailTemplateAvailable(String state, NotificationType type) {
     LtftUpdateEvent event = LtftUpdateEvent.builder().state(state).build();
@@ -285,7 +287,7 @@ class LtftListenerTest {
   }
 
   @ParameterizedTest
-  @ValueSource(strings = {"SUBMITTED"})
+  @ValueSource(strings = {"APPROVED", "SUBMITTED"})
   void shouldThrowExceptionWhenLtftUpdatedAndSendingTpdFails(String state)
       throws MessagingException {
     doThrow(MessagingException.class).when(emailService)
@@ -298,11 +300,12 @@ class LtftListenerTest {
     assertThrows(MessagingException.class, () -> listener.handleLtftUpdateTpd(event));
   }
 
-  @Test
-  void shouldSetTraineeIdWhenLtftUpdatedForTpd() throws MessagingException {
+  @ParameterizedTest
+  @ValueSource(strings = {"APPROVED", "SUBMITTED"})
+  void shouldSetTraineeIdWhenLtftUpdatedForTpd(String state) throws MessagingException {
     LtftUpdateEvent event = LtftUpdateEvent.builder()
         .traineeId(TRAINEE_ID)
-        .state("SUBMITTED")
+        .state(state)
         .build();
 
     when(emailService.getRecipientAccount(TRAINEE_ID)).thenReturn(USER_DETAILS);
@@ -313,11 +316,12 @@ class LtftListenerTest {
         .sendMessage(eq(TRAINEE_ID), any(), any(), any(), any(), any(), anyBoolean());
   }
 
-  @Test
-  void shouldSetTpdEmailWhenLtftUpdatedForTpd() throws MessagingException {
+  @ParameterizedTest
+  @ValueSource(strings = {"APPROVED", "SUBMITTED"})
+  void shouldSetTpdEmailWhenLtftUpdatedForTpd(String state) throws MessagingException {
     LtftUpdateEvent event = LtftUpdateEvent.builder()
         .traineeId(TRAINEE_ID)
-        .state("SUBMITTED")
+        .state(state)
         .discussions(DiscussionsDto.builder()
             .tpdName(TPD_NAME)
             .tpdEmail(TPD_EMAIL)
@@ -334,7 +338,30 @@ class LtftListenerTest {
 
   @ParameterizedTest
   @ValueSource(booleans = {true, false})
-  void shouldSetSendOrLogFlagWhenLtftUpdatedForTpd(boolean emailNotificationsEnabled)
+  void shouldSetSendOrLogFlagWhenLtftApprovedForTpd(boolean emailNotificationsEnabled)
+      throws MessagingException {
+    LtftUpdateEvent event = LtftUpdateEvent.builder()
+        .traineeId(TRAINEE_ID)
+        .state("APPROVED")
+        .build();
+
+    TemplateVersionsProperties templateVersions = new TemplateVersionsProperties(Map.of(
+        LTFT_APPROVED_TPD.getTemplateName(), new MessageTypeVersions(VERSION, null)
+    ));
+    listener = new LtftListener(notificationService, emailService, templateVersions,
+        emailNotificationsEnabled);
+
+    when(emailService.getRecipientAccount(TRAINEE_ID)).thenReturn(USER_DETAILS);
+
+    listener.handleLtftUpdateTpd(event);
+
+    verify(emailService)
+        .sendMessage(any(), any(), any(), any(), any(), any(), eq(!emailNotificationsEnabled));
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {true, false})
+  void shouldSetSendOrLogFlagWhenLtftSubmittedForTpd(boolean emailNotificationsEnabled)
       throws MessagingException {
     LtftUpdateEvent event = LtftUpdateEvent.builder()
         .traineeId(TRAINEE_ID)
@@ -357,6 +384,7 @@ class LtftListenerTest {
 
   @ParameterizedTest
   @CsvSource(delimiter = '|', textBlock = """
+      APPROVED    | LTFT_APPROVED_TPD
       SUBMITTED    | LTFT_SUBMITTED_TPD
       """)
   void shouldSetNotificationTypeWhenLtftUpdatedForTpd(String state, NotificationType type)
@@ -375,6 +403,7 @@ class LtftListenerTest {
 
   @ParameterizedTest
   @CsvSource(delimiter = '|', textBlock = """
+      APPROVED    | LTFT_APPROVED_TPD | v2.3.4
       SUBMITTED    | LTFT_SUBMITTED_TPD | v3.4.5
       """)
   void shouldSetTemplateVersionWhenLtftUpdatedForTpd(String state, NotificationType type,
@@ -397,7 +426,7 @@ class LtftListenerTest {
   }
 
   @ParameterizedTest
-  @ValueSource(strings = {"SUBMITTED"})
+  @ValueSource(strings = {"APPROVED", "SUBMITTED"})
   void shouldPopulateTemplateVariablesWithContactsWhenLtftUpdatedForTpd(String state)
       throws MessagingException {
     Set<LocalOfficeContactType> expectedContacts = Set.of(
@@ -441,7 +470,7 @@ class LtftListenerTest {
   }
 
   @ParameterizedTest
-  @ValueSource(strings = {"SUBMITTED"})
+  @ValueSource(strings = {"APPROVED", "SUBMITTED"})
   void shouldPopulateTemplateVariablesWithEventWhenLtftUpdatedForTpd(String state)
       throws MessagingException {
     LtftUpdateEvent event = LtftUpdateEvent.builder().state(state).build();
