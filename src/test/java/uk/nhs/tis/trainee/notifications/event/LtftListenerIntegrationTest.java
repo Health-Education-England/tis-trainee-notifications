@@ -593,6 +593,7 @@ class LtftListenerIntegrationTest {
 
   @ParameterizedTest
   @CsvSource(delimiter = '|', textBlock = """
+      APPROVED | LTFT_APPROVED_TPD
       SUBMITTED | LTFT_SUBMITTED_TPD
       """)
   void shouldSendFullyTailoredTpdNotificationWhenAllTemplateVariablesAvailableAndUrlContacts(
@@ -669,6 +670,7 @@ class LtftListenerIntegrationTest {
 
   @ParameterizedTest
   @CsvSource(delimiter = '|', textBlock = """
+      APPROVED  | LTFT_APPROVED_TPD
       SUBMITTED | LTFT_SUBMITTED_TPD
       """)
   void shouldSendFullyTailoredTpdNotificationWhenAllTemplateVariablesAvailableAndEmailContacts(
@@ -745,7 +747,8 @@ class LtftListenerIntegrationTest {
 
   @ParameterizedTest
   @CsvSource(delimiter = '|', textBlock = """
-      SUBMITTED    | LTFT_SUBMITTED_TPD
+      APPROVED  | LTFT_APPROVED_TPD
+      SUBMITTED | LTFT_SUBMITTED_TPD
       """)
   void shouldStoreTpdNotificationHistoryWhenMessageSent(String state, NotificationType type)
       throws JsonProcessingException {
