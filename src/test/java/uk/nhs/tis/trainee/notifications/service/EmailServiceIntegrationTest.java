@@ -34,6 +34,7 @@ import static uk.nhs.tis.trainee.notifications.event.GmcListener.TRAINEE_ID_FIEL
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.GMC_REJECTED_LO;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.GMC_REJECTED_TRAINEE;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.GMC_UPDATED;
+import static uk.nhs.tis.trainee.notifications.model.NotificationType.LTFT_APPROVED_TPD;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.LTFT_SUBMITTED_TPD;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PLACEMENT_ROLLOUT_2024_CORRECTION;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PLACEMENT_UPDATED_WEEK_12;
@@ -166,7 +167,7 @@ class EmailServiceIntegrationTest {
       Element greeting = body.children().get(getGreetingElementIndex(notificationType));
       assertThat("Unexpected element tag.", greeting.tagName(), is("p"));
       assertThat("Unexpected greeting.", greeting.text(), is("Dear Local Office,"));
-    } else if (notificationType.equals(LTFT_SUBMITTED_TPD)) {
+    } else if (notificationType.equals(LTFT_SUBMITTED_TPD) || notificationType.equals(LTFT_APPROVED_TPD)) {
       Element greeting = body.children().get(getGreetingElementIndex(notificationType));
       assertThat("Unexpected element tag.", greeting.tagName(), is("p"));
       assertThat("Unexpected greeting.", greeting.text(), is("Dear Training Programme Director,"));
@@ -204,7 +205,7 @@ class EmailServiceIntegrationTest {
       Element greeting = body.children().get(getGreetingElementIndex(notificationType));
       assertThat("Unexpected element tag.", greeting.tagName(), is("p"));
       assertThat("Unexpected greeting.", greeting.text(), is("Dear Local Office,"));
-    } else if (notificationType.equals(LTFT_SUBMITTED_TPD)) {
+    } else if (notificationType.equals(LTFT_SUBMITTED_TPD) || notificationType.equals(LTFT_APPROVED_TPD)) {
       Element greeting = body.children().get(getGreetingElementIndex(notificationType));
       assertThat("Unexpected element tag.", greeting.tagName(), is("p"));
       assertThat("Unexpected greeting.", greeting.text(), is("Dear Training Programme Director,"));
@@ -254,7 +255,7 @@ class EmailServiceIntegrationTest {
       Element greeting = body.children().get(getGreetingElementIndex(notificationType));
       assertThat("Unexpected element tag.", greeting.tagName(), is("p"));
       assertThat("Unexpected greeting.", greeting.text(), is("Dear Local Office,"));
-    } else if (notificationType.equals(LTFT_SUBMITTED_TPD)) {
+    } else if (notificationType.equals(LTFT_SUBMITTED_TPD) || notificationType.equals(LTFT_APPROVED_TPD)) {
       Element greeting = body.children().get(getGreetingElementIndex(notificationType));
       assertThat("Unexpected element tag.", greeting.tagName(), is("p"));
       assertThat("Unexpected greeting.", greeting.text(), is("Dear TPD name,"));
@@ -710,7 +711,7 @@ class EmailServiceIntegrationTest {
       case PLACEMENT_UPDATED_WEEK_12, PLACEMENT_ROLLOUT_2024_CORRECTION, PROGRAMME_CREATED,
           PROGRAMME_DAY_ONE, EMAIL_UPDATED_NEW, EMAIL_UPDATED_OLD, COJ_CONFIRMATION,
           CREDENTIAL_REVOKED, FORM_UPDATED, GMC_UPDATED, GMC_REJECTED_LO,
-           GMC_REJECTED_TRAINEE, LTFT_APPROVED_TRAINEE, LTFT_UPDATED, LTFT_SUBMITTED_TPD,
+           GMC_REJECTED_TRAINEE, LTFT_APPROVED_TPD, LTFT_APPROVED_TRAINEE, LTFT_UPDATED, LTFT_SUBMITTED_TPD,
            LTFT_SUBMITTED_TRAINEE -> 1;
       default -> 0;
     };
