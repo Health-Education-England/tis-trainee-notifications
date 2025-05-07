@@ -27,19 +27,23 @@ import static uk.nhs.tis.trainee.notifications.model.LocalOfficeContactType.SUPP
 import static uk.nhs.tis.trainee.notifications.model.LocalOfficeContactType.TSS_SUPPORT;
 import static uk.nhs.tis.trainee.notifications.model.MessageType.EMAIL;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.LTFT_APPROVED;
-import static uk.nhs.tis.trainee.notifications.model.NotificationType.LTFT_SUBMITTED;
+import static uk.nhs.tis.trainee.notifications.model.NotificationType.LTFT_SUBMITTED_TPD;
+import static uk.nhs.tis.trainee.notifications.model.NotificationType.LTFT_SUBMITTED_TRAINEE;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.LTFT_UPDATED;
 
 import io.awspring.cloud.sqs.annotation.SqsListener;
 import jakarta.mail.MessagingException;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import uk.nhs.tis.trainee.notifications.config.TemplateVersionsProperties;
 import uk.nhs.tis.trainee.notifications.dto.LtftUpdateEvent;
+import uk.nhs.tis.trainee.notifications.dto.UserDetails;
 import uk.nhs.tis.trainee.notifications.model.HrefType;
 import uk.nhs.tis.trainee.notifications.model.LocalOfficeContactType;
 import uk.nhs.tis.trainee.notifications.model.NotificationType;
@@ -59,19 +63,23 @@ public class LtftListener {
   private final NotificationService notificationService;
   private final EmailService emailService;
   private final TemplateVersionsProperties templateVersions;
+  private final boolean emailNotificationsEnabled;
 
   /**
    * Construct a listener for LTFT events.
    *
-   * @param notificationService The service for getting contact lists.
-   * @param emailService        The service to use for sending emails.
-   * @param templateVersions    The configured versions of each template.
+   * @param notificationService       The service for getting contact lists.
+   * @param emailService              The service to use for sending emails.
+   * @param templateVersions          The configured versions of each template.
+   * @param emailNotificationsEnabled Whether email notifications are enabled.
    */
   public LtftListener(NotificationService notificationService, EmailService emailService,
-      TemplateVersionsProperties templateVersions) {
+      TemplateVersionsProperties templateVersions,
+      @Value("${application.email.enabled}") boolean emailNotificationsEnabled) {
     this.notificationService = notificationService;
     this.emailService = emailService;
     this.templateVersions = templateVersions;
+    this.emailNotificationsEnabled = emailNotificationsEnabled;
   }
 
   /**
@@ -86,7 +94,7 @@ public class LtftListener {
 
     NotificationType notificationType = switch (event.getState()) {
       case "APPROVED" -> LTFT_APPROVED;
-      case "SUBMITTED" -> LTFT_SUBMITTED;
+      case "SUBMITTED" -> LTFT_SUBMITTED_TRAINEE;
       default -> LTFT_UPDATED;
     };
 
@@ -97,6 +105,7 @@ public class LtftListener {
     String traineeTisId = event.getTraineeId();
     String managingDeanery = event.getProgrammeMembership() == null ? null
         : event.getProgrammeMembership().managingDeanery();
+
     Map<String, Object> templateVariables = Map.of(
         "var", event,
         "contacts", getContacts(managingDeanery)
@@ -104,6 +113,45 @@ public class LtftListener {
     emailService.sendMessageToExistingUser(traineeTisId, notificationType, templateVersion,
         templateVariables, null);
     log.info("LTFT updated notification sent for trainee {}.", traineeTisId);
+  }
+
+  /**
+   * Handle LTFT update events for the TPD.
+   *
+   * @param event The LTFT update event message.
+   * @throws MessagingException If the message could not be sent.
+   */
+  @SqsListener("${application.queues.ltft-updated-tpd}")
+  public void handleLtftUpdateTpd(LtftUpdateEvent event) throws MessagingException {
+    log.info("Handling LTFT update TPD event {}.", event);
+
+    if (event.getState().equals("SUBMITTED")) {
+      NotificationType notificationType = LTFT_SUBMITTED_TPD;
+
+      String traineeTisId = event.getTraineeId();
+      UserDetails userDetails = emailService.getRecipientAccount(traineeTisId);
+
+      String templateVersion = templateVersions.getTemplateVersion(notificationType, EMAIL)
+          .orElseThrow(() -> new IllegalArgumentException(
+              "No email template available for notification type '%s'".formatted(
+                  notificationType)));
+
+      Map<String, Object> templateVariables = new HashMap<>(); //this needs to be modifiable
+      templateVariables.putIfAbsent("familyName", userDetails.familyName());
+      templateVariables.putIfAbsent("givenName", userDetails.givenName());
+      templateVariables.put("var", event);
+      String managingDeanery = event.getProgrammeMembership() == null ? null
+          : event.getProgrammeMembership().managingDeanery();
+      templateVariables.put("contacts", getContacts(managingDeanery));
+
+      String tpdEmail = event.getDiscussions() == null ? null : event.getDiscussions().tpdEmail();
+      emailService.sendMessage(traineeTisId, tpdEmail, notificationType,
+          templateVersion, templateVariables, null, !emailNotificationsEnabled);
+      log.info("LTFT submitted notification sent to TPD at email '{}' for trainee {}.",
+          tpdEmail, traineeTisId);
+    } else {
+      log.info("LTFT update TPD event is not a submission, ignoring.");
+    }
   }
 
   /**

@@ -27,18 +27,22 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.hasSize;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static uk.nhs.tis.trainee.notifications.model.LocalOfficeContactType.LTFT;
 import static uk.nhs.tis.trainee.notifications.model.LocalOfficeContactType.LTFT_SUPPORT;
 import static uk.nhs.tis.trainee.notifications.model.LocalOfficeContactType.SUPPORTED_RETURN_TO_TRAINING;
 import static uk.nhs.tis.trainee.notifications.model.LocalOfficeContactType.TSS_SUPPORT;
+import static uk.nhs.tis.trainee.notifications.model.NotificationType.LTFT_SUBMITTED_TPD;
 
 import jakarta.mail.MessagingException;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.Map;
 import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
@@ -50,7 +54,9 @@ import org.mockito.ArgumentCaptor;
 import uk.nhs.tis.trainee.notifications.config.TemplateVersionsProperties;
 import uk.nhs.tis.trainee.notifications.config.TemplateVersionsProperties.MessageTypeVersions;
 import uk.nhs.tis.trainee.notifications.dto.LtftUpdateEvent;
+import uk.nhs.tis.trainee.notifications.dto.LtftUpdateEvent.DiscussionsDto;
 import uk.nhs.tis.trainee.notifications.dto.ProgrammeMembershipDto;
+import uk.nhs.tis.trainee.notifications.dto.UserDetails;
 import uk.nhs.tis.trainee.notifications.event.LtftListener.Contact;
 import uk.nhs.tis.trainee.notifications.model.LocalOfficeContactType;
 import uk.nhs.tis.trainee.notifications.model.NotificationType;
@@ -65,6 +71,14 @@ class LtftListenerTest {
   private static final String LTFT_NAME = "My LTFT";
   private static final String FORM_REFERENCE = "ltft_47165_002";
   private static final String LTFT_STATUS = "SUBMITTED";
+  private static final String TPD_NAME = "TPD name";
+  private static final String TPD_EMAIL = "tpd@email";
+  private static final String PROGRAMME_NAME = "My Programme";
+  private static final String PROGRAMME_DEANERY = "Test Deanery";
+  private static final double PROGRAMME_WTE = 1.0;
+  private static final LocalDate PROGRAMME_START_DATE = LocalDate.of(2024, 1, 1);
+  private static final UserDetails USER_DETAILS = new UserDetails(
+      true, "trainee@email.nhs", "Dr", "Gilliam", "Bob", "1234567");
 
   private LtftListener listener;
   private NotificationService notificationService;
@@ -77,15 +91,16 @@ class LtftListenerTest {
     TemplateVersionsProperties templateVersions = new TemplateVersionsProperties(Map.of(
         "ltft-approved", new MessageTypeVersions(VERSION, null),
         "ltft-updated", new MessageTypeVersions(VERSION, null),
-        "ltft-submitted", new MessageTypeVersions(VERSION, null)
+        "ltft-submitted-tpd", new MessageTypeVersions(VERSION, null),
+        "ltft-submitted-trainee", new MessageTypeVersions(VERSION, null)
     ));
-    listener = new LtftListener(notificationService, emailService, templateVersions);
+    listener = new LtftListener(notificationService, emailService, templateVersions, true);
   }
 
   @ParameterizedTest
   @CsvSource(delimiter = '|', textBlock = """
       APPROVED     | LTFT_APPROVED
-      SUBMITTED    | LTFT_SUBMITTED
+      SUBMITTED    | LTFT_SUBMITTED_TRAINEE
       Other-Status | LTFT_UPDATED
       """)
   void shouldThrowExceptionWhenNoEmailTemplateAvailable(String state, NotificationType type) {
@@ -94,7 +109,7 @@ class LtftListenerTest {
     TemplateVersionsProperties templateVersions = new TemplateVersionsProperties(Map.of(
         type.getTemplateName(), new MessageTypeVersions(null, VERSION)
     ));
-    listener = new LtftListener(notificationService, emailService, templateVersions);
+    listener = new LtftListener(notificationService, emailService, templateVersions, true);
 
     assertThrows(IllegalArgumentException.class, () -> listener.handleLtftUpdate(event));
   }
@@ -125,7 +140,7 @@ class LtftListenerTest {
   @ParameterizedTest
   @CsvSource(delimiter = '|', textBlock = """
       APPROVED     | LTFT_APPROVED
-      SUBMITTED    | LTFT_SUBMITTED
+      SUBMITTED    | LTFT_SUBMITTED_TRAINEE
       Other-Status | LTFT_UPDATED
       """)
   void shouldSetNotificationTypeWhenLtftUpdated(String state, NotificationType type)
@@ -141,9 +156,9 @@ class LtftListenerTest {
 
   @ParameterizedTest
   @CsvSource(delimiter = '|', textBlock = """
-      APPROVED     | LTFT_APPROVED  | v1.2.3
-      Other-Status | LTFT_UPDATED   | v2.3.4
-      SUBMITTED    | LTFT_SUBMITTED | v3.4.5
+      APPROVED     | LTFT_APPROVED          | v1.2.3
+      Other-Status | LTFT_UPDATED           | v2.3.4
+      SUBMITTED    | LTFT_SUBMITTED_TRAINEE | v3.4.5
       """)
   void shouldSetTemplateVersionWhenLtftUpdated(String state, NotificationType type, String version)
       throws MessagingException {
@@ -154,7 +169,7 @@ class LtftListenerTest {
     TemplateVersionsProperties templateVersions = new TemplateVersionsProperties(Map.of(
         type.getTemplateName(), new MessageTypeVersions(version, null)
     ));
-    listener = new LtftListener(notificationService, emailService, templateVersions);
+    listener = new LtftListener(notificationService, emailService, templateVersions, true);
 
     listener.handleLtftUpdate(event);
 
@@ -241,6 +256,251 @@ class LtftListenerTest {
     assertThat("Unexpected form ref.", templateEvent.getFormRef(), is(FORM_REFERENCE));
     assertThat("Unexpected LTFT name.", templateEvent.getFormName(), is(LTFT_NAME));
     assertThat("Unexpected status.", templateEvent.getState(), is(LTFT_STATUS));
+    assertThat("Unexpected event timestamp.", templateEvent.getTimestamp(), is(TIMESTAMP));
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"APPROVED", "Other-status"})
+  void shouldIgnoreNonSubmittedEventsWhenLtftUpdatedForTpd(String state)
+      throws MessagingException {
+    LtftUpdateEvent event = LtftUpdateEvent.builder().state(state).build();
+    listener.handleLtftUpdateTpd(event);
+    verifyNoInteractions(emailService);
+  }
+
+  @ParameterizedTest
+  @CsvSource(delimiter = '|', textBlock = """
+      SUBMITTED    | LTFT_SUBMITTED_TPD
+      """)
+  void shouldThrowExceptionWhenNoTpdEmailTemplateAvailable(String state, NotificationType type) {
+    LtftUpdateEvent event = LtftUpdateEvent.builder().state(state).build();
+
+    TemplateVersionsProperties templateVersions = new TemplateVersionsProperties(Map.of(
+        type.getTemplateName(), new MessageTypeVersions(null, VERSION)
+    ));
+    listener = new LtftListener(notificationService, emailService, templateVersions, true);
+
+    assertThrows(IllegalArgumentException.class, () -> listener.handleLtftUpdateTpd(event));
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"SUBMITTED"})
+  void shouldThrowExceptionWhenLtftUpdatedAndSendingTpdFails(String state)
+      throws MessagingException {
+    doThrow(MessagingException.class).when(emailService)
+        .sendMessage(any(), any(), any(), any(), any(), any(), anyBoolean());
+
+    when(emailService.getRecipientAccount(any())).thenReturn(USER_DETAILS);
+
+    LtftUpdateEvent event = LtftUpdateEvent.builder().state(state).build();
+
+    assertThrows(MessagingException.class, () -> listener.handleLtftUpdateTpd(event));
+  }
+
+  @Test
+  void shouldSetTraineeIdWhenLtftUpdatedForTpd() throws MessagingException {
+    LtftUpdateEvent event = LtftUpdateEvent.builder()
+        .traineeId(TRAINEE_ID)
+        .state("SUBMITTED")
+        .build();
+
+    when(emailService.getRecipientAccount(TRAINEE_ID)).thenReturn(USER_DETAILS);
+
+    listener.handleLtftUpdateTpd(event);
+
+    verify(emailService)
+        .sendMessage(eq(TRAINEE_ID), any(), any(), any(), any(), any(), anyBoolean());
+  }
+
+  @Test
+  void shouldSetTpdEmailWhenLtftUpdatedForTpd() throws MessagingException {
+    LtftUpdateEvent event = LtftUpdateEvent.builder()
+        .traineeId(TRAINEE_ID)
+        .state("SUBMITTED")
+        .discussions(DiscussionsDto.builder()
+            .tpdName(TPD_NAME)
+            .tpdEmail(TPD_EMAIL)
+            .build())
+        .build();
+
+    when(emailService.getRecipientAccount(TRAINEE_ID)).thenReturn(USER_DETAILS);
+
+    listener.handleLtftUpdateTpd(event);
+
+    verify(emailService)
+        .sendMessage(any(), eq(TPD_EMAIL), any(), any(), any(), any(), anyBoolean());
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {true, false})
+  void shouldSetSendOrLogFlagWhenLtftUpdatedForTpd(boolean emailNotificationsEnabled)
+      throws MessagingException {
+    LtftUpdateEvent event = LtftUpdateEvent.builder()
+        .traineeId(TRAINEE_ID)
+        .state("SUBMITTED")
+        .build();
+
+    TemplateVersionsProperties templateVersions = new TemplateVersionsProperties(Map.of(
+        LTFT_SUBMITTED_TPD.getTemplateName(), new MessageTypeVersions(VERSION, null)
+    ));
+    listener = new LtftListener(notificationService, emailService, templateVersions,
+        emailNotificationsEnabled);
+
+    when(emailService.getRecipientAccount(TRAINEE_ID)).thenReturn(USER_DETAILS);
+
+    listener.handleLtftUpdateTpd(event);
+
+    verify(emailService)
+        .sendMessage(any(), any(), any(), any(), any(), any(), eq(!emailNotificationsEnabled));
+  }
+
+  @ParameterizedTest
+  @CsvSource(delimiter = '|', textBlock = """
+      SUBMITTED    | LTFT_SUBMITTED_TPD
+      """)
+  void shouldSetNotificationTypeWhenLtftUpdatedForTpd(String state, NotificationType type)
+      throws MessagingException {
+    LtftUpdateEvent event = LtftUpdateEvent.builder()
+        .state(state)
+        .build();
+
+    when(emailService.getRecipientAccount(any())).thenReturn(USER_DETAILS);
+
+    listener.handleLtftUpdateTpd(event);
+
+    verify(emailService)
+        .sendMessage(any(), any(), eq(type), any(), any(), any(), anyBoolean());
+  }
+
+  @ParameterizedTest
+  @CsvSource(delimiter = '|', textBlock = """
+      SUBMITTED    | LTFT_SUBMITTED_TPD | v3.4.5
+      """)
+  void shouldSetTemplateVersionWhenLtftUpdatedForTpd(String state, NotificationType type,
+      String version) throws MessagingException {
+    LtftUpdateEvent event = LtftUpdateEvent.builder()
+        .state(state)
+        .build();
+
+    TemplateVersionsProperties templateVersions = new TemplateVersionsProperties(Map.of(
+        type.getTemplateName(), new MessageTypeVersions(version, null)
+    ));
+    listener = new LtftListener(notificationService, emailService, templateVersions, true);
+
+    when(emailService.getRecipientAccount(any())).thenReturn(USER_DETAILS);
+
+    listener.handleLtftUpdateTpd(event);
+
+    verify(emailService)
+        .sendMessage(any(), any(), any(), eq(version), any(), any(), anyBoolean());
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"SUBMITTED"})
+  void shouldPopulateTemplateVariablesWithContactsWhenLtftUpdatedForTpd(String state)
+      throws MessagingException {
+    Set<LocalOfficeContactType> expectedContacts = Set.of(
+        LTFT, LTFT_SUPPORT, SUPPORTED_RETURN_TO_TRAINING, TSS_SUPPORT);
+    when(notificationService.getOwnerContactList("Test Deanery")).thenReturn(
+        expectedContacts.stream()
+            .map(ct -> Map.of(
+                "contact", "https://test/" + ct,
+                "contactTypeName", ct.getContactTypeName()
+            ))
+            .toList());
+    when(notificationService.getOwnerContact(any(), any(), eq(TSS_SUPPORT),
+        eq(""))).thenCallRealMethod();
+    when(notificationService.getHrefTypeForContact(any())).thenCallRealMethod();
+
+    LtftUpdateEvent event = LtftUpdateEvent.builder()
+        .programmeMembership(ProgrammeMembershipDto.builder()
+            .managingDeanery("Test Deanery")
+            .build())
+        .state(state)
+        .build();
+
+    when(emailService.getRecipientAccount(any())).thenReturn(USER_DETAILS);
+
+    listener.handleLtftUpdateTpd(event);
+
+    ArgumentCaptor<Map<String, Object>> templateVarsCaptor = ArgumentCaptor.captor();
+    verify(emailService)
+        .sendMessage(any(), any(), any(), any(), templateVarsCaptor.capture(), any(), anyBoolean());
+
+    Map<String, Object> templateVariables = templateVarsCaptor.getValue();
+    Map<String, Contact> contacts = (Map<String, Contact>) templateVariables.get("contacts");
+
+    assertThat("Unexpected contact count.", contacts.keySet(), hasSize(4));
+
+    expectedContacts.forEach(ct -> {
+      Contact contact = contacts.get(ct.name());
+      assertThat("Unexpected contact link.", contact.contact(), is("https://test/" + ct));
+      assertThat("Unexpected contact HREF type.", contact.type(), is("url"));
+    });
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"SUBMITTED"})
+  void shouldPopulateTemplateVariablesWithEventWhenLtftUpdatedForTpd(String state)
+      throws MessagingException {
+    LtftUpdateEvent event = LtftUpdateEvent.builder().state(state).build();
+
+    when(emailService.getRecipientAccount(any())).thenReturn(USER_DETAILS);
+
+    listener.handleLtftUpdateTpd(event);
+
+    ArgumentCaptor<Map<String, Object>> templateVarsCaptor = ArgumentCaptor.captor();
+    verify(emailService)
+        .sendMessage(any(), any(), any(), any(), templateVarsCaptor.capture(), any(), anyBoolean());
+
+    Map<String, Object> templateVariables = templateVarsCaptor.getValue();
+    assertThat("Unexpected event.", templateVariables.get("var"), sameInstance(event));
+  }
+
+  @Test
+  void shouldIncludeEventPropertiesWhenLtftUpdatedForTpd() throws MessagingException {
+    LtftUpdateEvent event = LtftUpdateEvent.builder()
+        .traineeId(TRAINEE_ID)
+        .formRef(FORM_REFERENCE)
+        .formName(LTFT_NAME)
+        .state(LTFT_STATUS)
+        .discussions(DiscussionsDto.builder()
+            .tpdName(TPD_NAME)
+            .tpdEmail(TPD_EMAIL)
+            .build())
+        .programmeMembership(ProgrammeMembershipDto.builder()
+            .name(PROGRAMME_NAME)
+            .managingDeanery(PROGRAMME_DEANERY)
+            .wte(PROGRAMME_WTE)
+            .startDate(PROGRAMME_START_DATE)
+            .build())
+        .timestamp(TIMESTAMP)
+        .build();
+
+    when(emailService.getRecipientAccount(TRAINEE_ID)).thenReturn(USER_DETAILS);
+
+    listener.handleLtftUpdateTpd(event);
+
+    ArgumentCaptor<Map<String, Object>> templateVarsCaptor = ArgumentCaptor.captor();
+    verify(emailService)
+        .sendMessage(any(), any(), any(), any(), templateVarsCaptor.capture(), any(), anyBoolean());
+
+    Map<String, Object> templateVariables = templateVarsCaptor.getValue();
+    LtftUpdateEvent templateEvent = (LtftUpdateEvent) templateVariables.get("var");
+    assertThat("Unexpected trainee ID.", templateEvent.getTraineeId(), is(TRAINEE_ID));
+    assertThat("Unexpected form ref.", templateEvent.getFormRef(), is(FORM_REFERENCE));
+    assertThat("Unexpected LTFT name.", templateEvent.getFormName(), is(LTFT_NAME));
+    assertThat("Unexpected status.", templateEvent.getState(), is(LTFT_STATUS));
+    DiscussionsDto discussions = templateEvent.getDiscussions();
+    assertThat("Unexpected TPD name.", discussions.tpdName(), is(TPD_NAME));
+    assertThat("Unexpected TPD email.", discussions.tpdEmail(), is(TPD_EMAIL));
+    ProgrammeMembershipDto programmeMembership = templateEvent.getProgrammeMembership();
+    assertThat("Unexpected programme name.", programmeMembership.name(), is(PROGRAMME_NAME));
+    assertThat("Unexpected programme deanery.", programmeMembership.managingDeanery(),
+        is(PROGRAMME_DEANERY));
+    assertThat("Unexpected programme WTE.", programmeMembership.wte(), is(PROGRAMME_WTE));
+    assertThat("Unexpected programme start date.", programmeMembership.startDate(),
+        is(PROGRAMME_START_DATE));
     assertThat("Unexpected event timestamp.", templateEvent.getTimestamp(), is(TIMESTAMP));
   }
 }
