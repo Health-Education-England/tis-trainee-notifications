@@ -37,7 +37,7 @@ import org.springframework.data.mongodb.core.query.Update;
 import uk.nhs.tis.trainee.notifications.model.History;
 
 /**
- * Broadcast existing LTFT_SUBMITTED_TRAINEE notification history records.
+ * Reset existing LTFT_SUBMITTED_TRAINEE notification history records.
  */
 @Slf4j
 @ChangeUnit(id = "resetLtftSubmittedTraineeHistory", order = "8")
