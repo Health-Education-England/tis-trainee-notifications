@@ -47,6 +47,7 @@ public enum NotificationType {
   GMC_UPDATED("gmc-updated"),
   LTFT_APPROVED("ltft-approved"),
   LTFT_UPDATED("ltft-updated"),
+  LTFT_SUBMITTED("ltft-submitted"),
   LTFT_SUBMITTED_TPD("ltft-submitted-tpd"),
   LTFT_SUBMITTED_TRAINEE("ltft-submitted-trainee"),
   INDEMNITY_INSURANCE("indemnity-insurance"),

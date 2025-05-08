@@ -63,9 +63,9 @@ application:
       email: v1.0.0
     ltft-updated:
       email: v1.0.0
-    ltft-submitted-tpd:
+    ltft-submitted:
       email: v1.0.0
-    ltft-submitted-trainee:
+    ltft-submitted-tpd:
       email: v1.0.0
     indemnity-insurance:
       in-app: v1.0.0
