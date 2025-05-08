@@ -24,13 +24,17 @@ package uk.nhs.tis.trainee.notifications.migration;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
 import static uk.nhs.tis.trainee.notifications.TestContainerConfiguration.MONGODB;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.LTFT_SUBMITTED;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.LTFT_SUBMITTED_TRAINEE;
 
+import com.mongodb.MongoException;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -105,7 +109,8 @@ class ResetLtftSubmittedTraineeHistoryTest {
     ArgumentCaptor<Query> queryCaptor = ArgumentCaptor.captor();
     ArgumentCaptor<Update> updateCaptor = ArgumentCaptor.captor();
 
-    verify(mongoTemplate).updateMulti(queryCaptor.capture(), updateCaptor.capture(), eq(History.class));
+    verify(mongoTemplate).updateMulti(queryCaptor.capture(), updateCaptor.capture(),
+        eq(History.class));
 
     Query expectedQuery = Query.query(Criteria.where("type").is(LTFT_SUBMITTED_TRAINEE));
     Update expectedUpdate = Update.update("type", LTFT_SUBMITTED);
@@ -114,6 +119,16 @@ class ResetLtftSubmittedTraineeHistoryTest {
         is(expectedQuery.getQueryObject()));
     assertThat("Unexpected update.", updateCaptor.getValue().getUpdateObject(),
         is(expectedUpdate.getUpdateObject()));
+  }
+
+  @Test
+  void shouldCatchMongoExceptionNotThrowIt() {
+    Query expectedQuery = Query.query(Criteria.where("type").is(LTFT_SUBMITTED_TRAINEE));
+    Update expectedUpdate = Update.update("type", LTFT_SUBMITTED);
+
+    when(mongoTemplate.updateMulti(expectedQuery, expectedUpdate, History.class))
+        .thenThrow(new MongoException("exception"));
+    Assertions.assertDoesNotThrow(() -> migrator.migrate());
   }
 
   @Test
