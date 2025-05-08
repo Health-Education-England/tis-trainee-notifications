@@ -26,10 +26,10 @@ import static uk.nhs.tis.trainee.notifications.model.LocalOfficeContactType.LTFT
 import static uk.nhs.tis.trainee.notifications.model.LocalOfficeContactType.SUPPORTED_RETURN_TO_TRAINING;
 import static uk.nhs.tis.trainee.notifications.model.LocalOfficeContactType.TSS_SUPPORT;
 import static uk.nhs.tis.trainee.notifications.model.MessageType.EMAIL;
+import static uk.nhs.tis.trainee.notifications.model.NotificationType.LTFT_APPROVED;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.LTFT_APPROVED_TPD;
-import static uk.nhs.tis.trainee.notifications.model.NotificationType.LTFT_APPROVED_TRAINEE;
+import static uk.nhs.tis.trainee.notifications.model.NotificationType.LTFT_SUBMITTED;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.LTFT_SUBMITTED_TPD;
-import static uk.nhs.tis.trainee.notifications.model.NotificationType.LTFT_SUBMITTED_TRAINEE;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.LTFT_UPDATED;
 
 import io.awspring.cloud.sqs.annotation.SqsListener;
@@ -94,8 +94,8 @@ public class LtftListener {
     log.info("Handling LTFT update event {}.", event);
 
     NotificationType notificationType = switch (event.getState()) {
-      case "APPROVED" -> LTFT_APPROVED_TRAINEE;
-      case "SUBMITTED" -> LTFT_SUBMITTED_TRAINEE;
+      case "APPROVED" -> LTFT_APPROVED;
+      case "SUBMITTED" -> LTFT_SUBMITTED;
       default -> LTFT_UPDATED;
     };
 
