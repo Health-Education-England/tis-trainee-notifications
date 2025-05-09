@@ -24,14 +24,12 @@ package uk.nhs.tis.trainee.notifications.migration;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static uk.nhs.tis.trainee.notifications.TestContainerConfiguration.MONGODB;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.LTFT_SUBMITTED;
-import static uk.nhs.tis.trainee.notifications.model.NotificationType.LTFT_SUBMITTED_TRAINEE;
 
 import com.mongodb.MongoException;
 import org.junit.jupiter.api.Assertions;
@@ -74,17 +72,13 @@ class ResetLtftSubmittedTraineeHistoryTest {
 
   @Test
   void shouldResetHistoryWithLtftTraineeSubmittedType() {
-    History history = History.builder()
-        .type(LTFT_SUBMITTED_TRAINEE)
-        .build();
-    history = mongoTemplate.save(history);
+    mongoTemplate.save("{ \"type\": \"LTFT_SUBMITTED_TRAINEE\" }", "History");
 
     migrator.migrate();
 
-    History migratedHistory = mongoTemplate.findById(history.id(), History.class);
-
-    assertThat("Unexpected missing history.", migratedHistory, notNullValue());
-    assertThat("Unexpected type.", migratedHistory.type(), is(LTFT_SUBMITTED));
+    Query query = Query.query(Criteria.where("type").is("LTFT_SUBMITTED_TRAINEE"));
+    assertThat("Unexpected unmigrated history.",
+        mongoTemplate.findAllAndRemove(query, "History").isEmpty(), is(true));
   }
 
   @Test
@@ -112,7 +106,7 @@ class ResetLtftSubmittedTraineeHistoryTest {
     verify(mongoTemplate).updateMulti(queryCaptor.capture(), updateCaptor.capture(),
         eq(History.class));
 
-    Query expectedQuery = Query.query(Criteria.where("type").is(LTFT_SUBMITTED_TRAINEE));
+    Query expectedQuery = Query.query(Criteria.where("type").is("LTFT_SUBMITTED_TRAINEE"));
     Update expectedUpdate = Update.update("type", LTFT_SUBMITTED);
 
     assertThat("Unexpected query.", queryCaptor.getValue().getQueryObject(),
@@ -123,7 +117,7 @@ class ResetLtftSubmittedTraineeHistoryTest {
 
   @Test
   void shouldCatchMongoExceptionNotThrowIt() {
-    Query expectedQuery = Query.query(Criteria.where("type").is(LTFT_SUBMITTED_TRAINEE));
+    Query expectedQuery = Query.query(Criteria.where("type").is("LTFT_SUBMITTED_TRAINEE"));
     Update expectedUpdate = Update.update("type", LTFT_SUBMITTED);
 
     when(mongoTemplate.updateMulti(expectedQuery, expectedUpdate, History.class))

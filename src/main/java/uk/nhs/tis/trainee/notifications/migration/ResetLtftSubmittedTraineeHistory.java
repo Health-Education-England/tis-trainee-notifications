@@ -22,7 +22,6 @@
 package uk.nhs.tis.trainee.notifications.migration;
 
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.LTFT_SUBMITTED;
-import static uk.nhs.tis.trainee.notifications.model.NotificationType.LTFT_SUBMITTED_TRAINEE;
 
 import com.mongodb.MongoException;
 import com.mongodb.client.result.UpdateResult;
@@ -54,7 +53,7 @@ public class ResetLtftSubmittedTraineeHistory {
    */
   @Execution
   public void migrate() {
-    Query query = Query.query(Criteria.where("type").is(LTFT_SUBMITTED_TRAINEE));
+    Query query = Query.query(Criteria.where("type").is("LTFT_SUBMITTED_TRAINEE"));
     Update update = Update.update("type", LTFT_SUBMITTED);
     try {
       UpdateResult result = mongoTemplate.updateMulti(query, update, History.class);
