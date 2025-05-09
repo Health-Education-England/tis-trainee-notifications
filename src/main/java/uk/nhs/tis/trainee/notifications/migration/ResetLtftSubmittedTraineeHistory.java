@@ -21,10 +21,19 @@
 
 package uk.nhs.tis.trainee.notifications.migration;
 
+import static uk.nhs.tis.trainee.notifications.model.NotificationType.LTFT_SUBMITTED;
+
+import com.mongodb.MongoException;
+import com.mongodb.client.result.UpdateResult;
 import io.mongock.api.annotations.ChangeUnit;
 import io.mongock.api.annotations.Execution;
 import io.mongock.api.annotations.RollbackExecution;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.query.Criteria;
+import org.springframework.data.mongodb.core.query.Query;
+import org.springframework.data.mongodb.core.query.Update;
+import uk.nhs.tis.trainee.notifications.model.History;
 
 /**
  * Reset existing LTFT_SUBMITTED_TRAINEE notification history records.
@@ -33,12 +42,25 @@ import lombok.extern.slf4j.Slf4j;
 @ChangeUnit(id = "resetLtftSubmittedTraineeHistory", order = "8")
 public class ResetLtftSubmittedTraineeHistory {
 
+  private final MongoTemplate mongoTemplate;
+
+  public ResetLtftSubmittedTraineeHistory(MongoTemplate mongoTemplate) {
+    this.mongoTemplate = mongoTemplate;
+  }
+
   /**
    * Reset notification History items to use LTFT_SUBMITTED.
    */
   @Execution
   public void migrate() {
-    //Stub: This migration was already applied. Logic removed due to removed enum.
+    Query query = Query.query(Criteria.where("type").is("LTFT_SUBMITTED_TRAINEE"));
+    Update update = Update.update("type", LTFT_SUBMITTED);
+    try {
+      UpdateResult result = mongoTemplate.updateMulti(query, update, History.class);
+      log.info("LTFT_UPDATED type set on {} historic notifications.", result.getModifiedCount());
+    } catch (MongoException e) {
+      log.error("Unable to populate historic types due to an error: {} ", e.toString());
+    }
   }
 
   /**
