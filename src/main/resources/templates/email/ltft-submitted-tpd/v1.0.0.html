@@ -31,7 +31,7 @@
     <li>WTE change <th:block th:text="${not #strings.isEmpty(var?.change?.wte)} ? ${var.change.wte} : 'unknown'"></th:block></li>
   </ul>
   <p>If you have any queries regarding this application, <th:block th:with="contact = ${contacts?.get('LTFT_SUPPORT')}">
-      <th:block th:replace="~{fragments/link/v1.0.0 :: link(${contact?.contact}, ${contact?.type}, 'please click on the following link for Local Office Support. ', ${contact?.contact}, '', 'please contact your <strong>Local Office Support team.</strong>', |Ltft Approved - Enquiries - ${subjectRefs}|)}"></th:block>
+      <th:block th:replace="~{fragments/link/v1.0.0 :: link(${contact?.contact}, ${contact?.type}, 'please click on the following link for Local Office Support. ', ${contact?.contact}, '', 'please contact your <strong>Local Office Support team.</strong>', |Ltft Submitted - Enquiries - ${subjectRefs}|)}"></th:block>
     </th:block>
   </p>
   <p>

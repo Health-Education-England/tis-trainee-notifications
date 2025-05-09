@@ -61,6 +61,8 @@ application:
       email: v1.0.0
     ltft-approved:
       email: v1.0.0
+    ltft-approved-tpd:
+      email: v1.0.0
     ltft-updated:
       email: v1.0.0
     ltft-submitted:
