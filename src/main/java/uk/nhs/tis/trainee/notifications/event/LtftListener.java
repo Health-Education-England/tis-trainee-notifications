@@ -155,7 +155,8 @@ public class LtftListener {
       log.info("LTFT {} notification sent to TPD at email '{}' for trainee {}.", event.getState(),
           tpdEmail, traineeTisId);
     } else {
-      log.info("LTFT update TPD event is not a submission, ignoring.");
+      log.info("No action required for the LTFT update TPD event with notification type '{}', " +
+              "ignoring.", event.getState());
     }
   }
 
