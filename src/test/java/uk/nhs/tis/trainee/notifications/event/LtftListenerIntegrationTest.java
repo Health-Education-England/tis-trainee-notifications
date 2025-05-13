@@ -108,6 +108,8 @@ class LtftListenerIntegrationTest {
   private static final Instant TIMESTAMP = Instant.parse("2025-03-15T10:00:00Z");
   private static final String FORM_REF = "ltft_47165_001";
   private static final String MANAGING_DEANERY = "North West";
+  private static final String REASON = "Proposed WTE";
+  private static final String MODIFIED_BY_NAME = "Anne Other";
   private static final String TPD_NAME = "Mr TPD";
   private static final String TPD_EMAIL = "tpd@email.nhs";
 
@@ -192,6 +194,7 @@ class LtftListenerIntegrationTest {
   @CsvSource(delimiter = '|', textBlock = """
       APPROVED     | LTFT_APPROVED
       SUBMITTED    | LTFT_SUBMITTED
+      WITHDRAWN    | LTFT_WITHDRAWN
       Other-Status | LTFT_UPDATED
       """)
   void shouldSendDefaultNotificationsWhenTemplateVariablesNull(String state, NotificationType type)
@@ -237,6 +240,7 @@ class LtftListenerIntegrationTest {
   @CsvSource(delimiter = '|', textBlock = """
       APPROVED     | LTFT_APPROVED
       SUBMITTED    | LTFT_SUBMITTED
+      WITHDRAWN    | LTFT_WITHDRAWN
       Other-Status | LTFT_UPDATED
       """)
   void shouldSendDefaultNotificationsWhenTemplateVariablesEmpty(String state, NotificationType type)
@@ -298,6 +302,7 @@ class LtftListenerIntegrationTest {
   @CsvSource(delimiter = '|', textBlock = """
       APPROVED  | LTFT_APPROVED
       SUBMITTED | LTFT_SUBMITTED
+      WITHDRAWN | LTFT_WITHDRAWN
       """)
   void shouldSendFullyTailoredNotificationsWhenAllTemplateVariablesAvailableAndUrlContacts(
       String state, NotificationType type) throws Exception {
@@ -336,6 +341,12 @@ class LtftListenerIntegrationTest {
           "status": {
             "current" : {
               "state": "%s",
+              "detail" : {
+                "reason": "Proposed WTE"
+              },
+              "modifiedBy": {
+                "name": "Anne Other"
+              },
               "timestamp": "2026-05-04T01:02:03.004Z"
             }
           }
@@ -370,6 +381,7 @@ class LtftListenerIntegrationTest {
   @CsvSource(delimiter = '|', textBlock = """
       APPROVED  | LTFT_APPROVED
       SUBMITTED | LTFT_SUBMITTED
+      WITHDRAWN | LTFT_WITHDRAWN
       """)
   void shouldSendFullyTailoredNotificationsWhenAllTemplateVariablesAvailableAndEmailContacts(
       String state, NotificationType type) throws Exception {
@@ -408,6 +420,12 @@ class LtftListenerIntegrationTest {
           "status": {
             "current" : {
               "state": "%s",
+              "detail" : {
+                "reason": "Proposed WTE"
+              },
+              "modifiedBy": {
+                "name": "Anne Other"
+              },
               "timestamp": "2026-05-04T01:02:03.004Z"
             }
           }
@@ -501,6 +519,7 @@ class LtftListenerIntegrationTest {
   @CsvSource(delimiter = '|', textBlock = """
       APPROVED     | LTFT_APPROVED
       SUBMITTED    | LTFT_SUBMITTED
+      WITHDRAWN    | LTFT_WITHDRAWN
       Other-Status | LTFT_UPDATED
       """)
   void shouldStoreNotificationHistoryWhenMessageSent(String state, NotificationType type)
@@ -530,11 +549,18 @@ class LtftListenerIntegrationTest {
           "status": {
             "current" : {
               "state": "%s",
-              "timestamp": "%s"
+              "timestamp": "%s",
+              "detail" : {
+                "reason": "%s"
+              },
+              "modifiedBy": {
+                "name": "%s"
+              }
             }
           }
         }
-        """.formatted(traineeId, FORM_REF, LTFT_NAME, MANAGING_DEANERY, state, TIMESTAMP);
+        """.formatted(traineeId, FORM_REF, LTFT_NAME, MANAGING_DEANERY, state, TIMESTAMP,
+        REASON, MODIFIED_BY_NAME);
 
     JsonNode eventJson = JsonMapper.builder()
         .build()
@@ -581,6 +607,9 @@ class LtftListenerIntegrationTest {
     assertThat("Unexpected form name.", event.getFormName(), is(LTFT_NAME));
     assertThat("Unexpected state.", event.getState(), is(state));
     assertThat("Unexpected timestamp.", event.getTimestamp(), is(TIMESTAMP));
+    assertThat("Unexpected reason.", event.getReason(), is(REASON));
+    assertThat("Unexpected modified by name.", event.getModifiedByName(),
+        is(MODIFIED_BY_NAME));
 
     Map<String, Contact> contacts = (Map<String, Contact>) storedVariables.get("contacts");
     assertThat("Unexpected contact count.", contacts.keySet(), hasSize(4));
