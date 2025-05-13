@@ -46,6 +46,8 @@ public class LtftUpdateEvent {
   private ChangeDto change;
   private String state;
   private Instant timestamp;
+  private String reason;
+  private String modifiedByname;
 
   /**
    * A trainee's personal details.
@@ -85,10 +87,17 @@ public class LtftUpdateEvent {
    */
   @JsonProperty("status")
   private void unpackCurrentStatus(Map<String, Object> status) {
-    Map<String, String> current = (Map<String, String>) status.get("current");
-    state = current.get("state");
-    String timestampString = current.get("timestamp");
-    timestamp = timestampString == null || timestampString.isBlank() ? null
-        : Instant.parse(timestampString);
+    Map<String, Object> current = (Map<String, Object>) status.get("current");
+    state = current.get("state").toString();
+
+    Object timestampString = current.get("timestamp");
+    timestamp = timestampString == null || timestampString.equals("") ? null
+        : Instant.parse(timestampString.toString());
+
+    Map<String, String> detail = (Map<String, String>) current.get("detail");
+    reason = detail == null ? null : detail.get("reason");
+
+    Map<String, String> modifiedBy = (Map<String, String>) current.get("modifiedBy");
+    modifiedByname = modifiedBy == null ? null : modifiedBy.get("name");
   }
 }
