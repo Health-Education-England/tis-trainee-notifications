@@ -63,6 +63,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
@@ -107,6 +108,8 @@ class LtftListenerIntegrationTest {
   private static final Instant TIMESTAMP = Instant.parse("2025-03-15T10:00:00Z");
   private static final String FORM_REF = "ltft_47165_001";
   private static final String MANAGING_DEANERY = "North West";
+  private static final String REASON = "Proposed WTE";
+  private static final String MODIFIED_BY_NAME = "Anne Other";
   private static final String TPD_NAME = "Mr TPD";
   private static final String TPD_EMAIL = "tpd@email.nhs";
   private static final String STATUS_REASON = "changePercentage";
@@ -172,6 +175,9 @@ class LtftListenerIntegrationTest {
   @Autowired
   private MongoTemplate mongoTemplate;
 
+  @Value("${application.template-versions.ltft-updated.email}")
+  private String templateVersion;
+
   private String traineeId;
 
   @BeforeEach
@@ -191,6 +197,7 @@ class LtftListenerIntegrationTest {
       APPROVED     | LTFT_APPROVED
       SUBMITTED    | LTFT_SUBMITTED
       UNSUBMITTED  | LTFT_UNSUBMITTED
+      WITHDRAWN    | LTFT_WITHDRAWN
       Other-Status | LTFT_UPDATED
       """)
   void shouldSendDefaultNotificationsWhenTemplateVariablesNull(String state, NotificationType type)
@@ -239,6 +246,7 @@ class LtftListenerIntegrationTest {
       APPROVED     | LTFT_APPROVED
       SUBMITTED    | LTFT_SUBMITTED
       UNSUBMITTED  | LTFT_UNSUBMITTED
+      WITHDRAWN    | LTFT_WITHDRAWN
       Other-Status | LTFT_UPDATED
       """)
   void shouldSendDefaultNotificationsWhenTemplateVariablesEmpty(String state, NotificationType type)
@@ -305,6 +313,7 @@ class LtftListenerIntegrationTest {
       APPROVED    | LTFT_APPROVED
       SUBMITTED   | LTFT_SUBMITTED
       UNSUBMITTED | LTFT_UNSUBMITTED
+      WITHDRAWN   | LTFT_WITHDRAWN
       """)
   void shouldSendFullyTailoredNotificationsWhenAllTemplateVariablesAvailableAndUrlContacts(
       String state, NotificationType type) throws Exception {
@@ -347,6 +356,9 @@ class LtftListenerIntegrationTest {
               "detail" : {
                 "reason": "%s",
                 "detail": "some detail"
+              },
+              "modifiedBy": {
+                "name": "Anne Other"
               }
             }
           }
@@ -382,6 +394,7 @@ class LtftListenerIntegrationTest {
       APPROVED    | LTFT_APPROVED
       SUBMITTED   | LTFT_SUBMITTED
       UNSUBMITTED | LTFT_UNSUBMITTED
+      WITHDRAWN   | LTFT_WITHDRAWN
       """)
   void shouldSendFullyTailoredNotificationsWhenAllTemplateVariablesAvailableAndEmailContacts(
       String state, NotificationType type) throws Exception {
@@ -424,6 +437,9 @@ class LtftListenerIntegrationTest {
               "detail" : {
                 "reason": "%s",
                 "detail": "some detail"
+              },
+              "modifiedBy": {
+                "name": "Anne Other"
               }
             }
           }
@@ -522,6 +538,7 @@ class LtftListenerIntegrationTest {
       APPROVED     | LTFT_APPROVED    | v1.0.1
       SUBMITTED    | LTFT_SUBMITTED   | v1.0.0
       UNSUBMITTED  | LTFT_UNSUBMITTED | v1.0.0
+      WITHDRAWN    | LTFT_WITHDRAWN   | v1.0.0
       Other-Status | LTFT_UPDATED     | v1.0.0
       """)
   void shouldStoreNotificationHistoryWhenMessageSent(String state, NotificationType type,
@@ -556,12 +573,15 @@ class LtftListenerIntegrationTest {
               "detail" : {
                 "reason": "%s",
                 "detail": "some detail"
+              },
+              "modifiedBy": {
+                "name": "%s"
               }
             }
           }
         }
         """.formatted(traineeId, FORM_REF, LTFT_NAME, MANAGING_DEANERY, state, TIMESTAMP,
-        STATUS_REASON);
+        STATUS_REASON, MODIFIED_BY_NAME);
 
     JsonNode eventJson = JsonMapper.builder()
         .build()
@@ -610,6 +630,8 @@ class LtftListenerIntegrationTest {
     assertThat("Unexpected timestamp.", event.getTimestamp(), is(TIMESTAMP));
     assertThat("Unexpected status reason.", event.getStateDetail().reason(),
         is(STATUS_REASON_TEXT));
+    assertThat("Unexpected modified by name.", event.getModifiedByName(),
+        is(MODIFIED_BY_NAME));
 
     Map<String, Contact> contacts = (Map<String, Contact>) storedVariables.get("contacts");
     assertThat("Unexpected contact count.", contacts.keySet(), hasSize(4));

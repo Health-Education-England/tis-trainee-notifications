@@ -232,6 +232,7 @@ class EmailServiceIntegrationTest {
     Map<String, Object> variables = Map.of("formRef", "form ref",
         "state", "some state",
         "timestamp", timestamp,
+        "modifiedByName", "modified by name",
         "formName", "form name",
         "discussions", Map.of("tpdName", "TPD name"),
         "programmeMembership", Map.of("startDate", "2024-01-01",
@@ -719,7 +720,7 @@ class EmailServiceIntegrationTest {
           PROGRAMME_DAY_ONE, EMAIL_UPDATED_NEW, EMAIL_UPDATED_OLD, COJ_CONFIRMATION,
           CREDENTIAL_REVOKED, FORM_UPDATED, GMC_UPDATED, GMC_REJECTED_LO,
            GMC_REJECTED_TRAINEE, LTFT_APPROVED, LTFT_APPROVED_TPD, LTFT_UPDATED,
-           LTFT_SUBMITTED, LTFT_SUBMITTED_TPD, LTFT_UNSUBMITTED -> 1;
+           LTFT_SUBMITTED, LTFT_SUBMITTED_TPD, LTFT_UNSUBMITTED, LTFT_WITHDRAWN -> 1;
       default -> 0;
     };
   }
