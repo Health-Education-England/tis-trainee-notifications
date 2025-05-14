@@ -237,7 +237,8 @@ class EmailServiceIntegrationTest {
         "programmeMembership", Map.of("startDate", "2024-01-01",
             "name", "PM name", "wte", 1.0, "managingDeanery", "MD name"),
         "personalDetails", Map.of("gmcNumber", "1234567"),
-        "change", Map.of("startDate", "2024-01-01", "wte", 0.5, "cctDate", "2024-01-01"));
+        "change", Map.of("startDate", "2024-01-01", "wte", 0.5, "cctDate", "2024-01-01"),
+        "stateDetail", Map.of("reason", "some reason", "details", "some details"));
 
     service.sendMessageToExistingUser(PERSON_ID, notificationType, templateVersion,
         Map.of("familyName", "Maillig", "var", variables), null);
@@ -718,7 +719,7 @@ class EmailServiceIntegrationTest {
           PROGRAMME_DAY_ONE, EMAIL_UPDATED_NEW, EMAIL_UPDATED_OLD, COJ_CONFIRMATION,
           CREDENTIAL_REVOKED, FORM_UPDATED, GMC_UPDATED, GMC_REJECTED_LO,
            GMC_REJECTED_TRAINEE, LTFT_APPROVED, LTFT_APPROVED_TPD, LTFT_UPDATED,
-           LTFT_SUBMITTED, LTFT_SUBMITTED_TPD -> 1;
+           LTFT_SUBMITTED, LTFT_SUBMITTED_TPD, LTFT_UNSUBMITTED -> 1;
       default -> 0;
     };
   }
