@@ -30,6 +30,7 @@ import static uk.nhs.tis.trainee.notifications.model.NotificationType.LTFT_APPRO
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.LTFT_APPROVED_TPD;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.LTFT_SUBMITTED;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.LTFT_SUBMITTED_TPD;
+import static uk.nhs.tis.trainee.notifications.model.NotificationType.LTFT_UNSUBMITTED;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.LTFT_UPDATED;
 
 import io.awspring.cloud.sqs.annotation.SqsListener;
@@ -96,6 +97,7 @@ public class LtftListener {
     NotificationType notificationType = switch (event.getState()) {
       case "APPROVED" -> LTFT_APPROVED;
       case "SUBMITTED" -> LTFT_SUBMITTED;
+      case "UNSUBMITTED" -> LTFT_UNSUBMITTED;
       default -> LTFT_UPDATED;
     };
 

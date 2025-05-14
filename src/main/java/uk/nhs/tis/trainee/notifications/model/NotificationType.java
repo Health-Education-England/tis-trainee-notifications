@@ -50,6 +50,7 @@ public enum NotificationType {
   LTFT_UPDATED("ltft-updated"),
   LTFT_SUBMITTED("ltft-submitted"),
   LTFT_SUBMITTED_TPD("ltft-submitted-tpd"),
+  LTFT_UNSUBMITTED("ltft-unsubmitted"),
   INDEMNITY_INSURANCE("indemnity-insurance"),
   LTFT("less-than-full-time"),
   NON_EMPLOYMENT("non-employment"),

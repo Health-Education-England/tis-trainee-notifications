@@ -110,6 +110,7 @@ class LtftListenerIntegrationTest {
   private static final String MANAGING_DEANERY = "North West";
   private static final String TPD_NAME = "Mr TPD";
   private static final String TPD_EMAIL = "tpd@email.nhs";
+  private static final String STATUS_REASON = "some reason";
 
   private static final String LTFT_UPDATED_QUEUE = UUID.randomUUID().toString();
   private static final String LTFT_UPDATED_TPD_QUEUE = UUID.randomUUID().toString();
@@ -192,6 +193,7 @@ class LtftListenerIntegrationTest {
   @CsvSource(delimiter = '|', textBlock = """
       APPROVED     | LTFT_APPROVED
       SUBMITTED    | LTFT_SUBMITTED
+      UNSUBMITTED  | LTFT_UNSUBMITTED
       Other-Status | LTFT_UPDATED
       """)
   void shouldSendDefaultNotificationsWhenTemplateVariablesNull(String state, NotificationType type)
@@ -204,7 +206,9 @@ class LtftListenerIntegrationTest {
           "traineeTisId": "%s",
           "status": {
             "current" : {
-              "state": "%s"
+              "state": "%s",
+              "detail" : {
+              }
             }
           }
         }
@@ -237,6 +241,7 @@ class LtftListenerIntegrationTest {
   @CsvSource(delimiter = '|', textBlock = """
       APPROVED     | LTFT_APPROVED
       SUBMITTED    | LTFT_SUBMITTED
+      UNSUBMITTED  | LTFT_UNSUBMITTED
       Other-Status | LTFT_UPDATED
       """)
   void shouldSendDefaultNotificationsWhenTemplateVariablesEmpty(String state, NotificationType type)
@@ -265,7 +270,11 @@ class LtftListenerIntegrationTest {
           "status": {
             "current" : {
               "state": "%s",
-              "timestamp": ""
+              "timestamp": "",
+              "detail" : {
+                "reason": "",
+                "detail": ""
+              }
             }
           }
         }
@@ -296,8 +305,9 @@ class LtftListenerIntegrationTest {
 
   @ParameterizedTest
   @CsvSource(delimiter = '|', textBlock = """
-      APPROVED  | LTFT_APPROVED
-      SUBMITTED | LTFT_SUBMITTED
+      APPROVED    | LTFT_APPROVED
+      SUBMITTED   | LTFT_SUBMITTED
+      UNSUBMITTED | LTFT_UNSUBMITTED
       """)
   void shouldSendFullyTailoredNotificationsWhenAllTemplateVariablesAvailableAndUrlContacts(
       String state, NotificationType type) throws Exception {
@@ -336,11 +346,15 @@ class LtftListenerIntegrationTest {
           "status": {
             "current" : {
               "state": "%s",
-              "timestamp": "2026-05-04T01:02:03.004Z"
+              "timestamp": "2026-05-04T01:02:03.004Z",
+              "detail" : {
+                "reason": "%s",
+                "detail": "some detail"
+              }
             }
           }
         }
-        """.formatted(traineeId, MANAGING_DEANERY, state);
+        """.formatted(traineeId, MANAGING_DEANERY, state, STATUS_REASON);
 
     JsonNode eventJson = JsonMapper.builder()
         .build()
@@ -368,8 +382,9 @@ class LtftListenerIntegrationTest {
 
   @ParameterizedTest
   @CsvSource(delimiter = '|', textBlock = """
-      APPROVED  | LTFT_APPROVED
-      SUBMITTED | LTFT_SUBMITTED
+      APPROVED    | LTFT_APPROVED
+      SUBMITTED   | LTFT_SUBMITTED
+      UNSUBMITTED | LTFT_UNSUBMITTED
       """)
   void shouldSendFullyTailoredNotificationsWhenAllTemplateVariablesAvailableAndEmailContacts(
       String state, NotificationType type) throws Exception {
@@ -408,11 +423,15 @@ class LtftListenerIntegrationTest {
           "status": {
             "current" : {
               "state": "%s",
-              "timestamp": "2026-05-04T01:02:03.004Z"
+              "timestamp": "2026-05-04T01:02:03.004Z",
+              "detail" : {
+                "reason": "%s",
+                "detail": "some detail"
+              }
             }
           }
         }
-        """.formatted(traineeId, MANAGING_DEANERY, state);
+        """.formatted(traineeId, MANAGING_DEANERY, state, STATUS_REASON);
 
     JsonNode eventJson = JsonMapper.builder()
         .build()
@@ -468,11 +487,15 @@ class LtftListenerIntegrationTest {
           "status": {
             "current" : {
               "state": "%s",
-              "timestamp": "2026-05-04T01:02:03.004Z"
+              "timestamp": "2026-05-04T01:02:03.004Z",
+              "detail" : {
+                "reason": "%s",
+                "detail": "some detail"
+              }
             }
           }
         }
-        """.formatted(traineeId, MANAGING_DEANERY, state);
+        """.formatted(traineeId, MANAGING_DEANERY, state, STATUS_REASON);
 
     JsonNode eventJson = JsonMapper.builder()
         .build()
@@ -501,6 +524,7 @@ class LtftListenerIntegrationTest {
   @CsvSource(delimiter = '|', textBlock = """
       APPROVED     | LTFT_APPROVED
       SUBMITTED    | LTFT_SUBMITTED
+      UNSUBMITTED  | LTFT_UNSUBMITTED
       Other-Status | LTFT_UPDATED
       """)
   void shouldStoreNotificationHistoryWhenMessageSent(String state, NotificationType type)
@@ -530,11 +554,16 @@ class LtftListenerIntegrationTest {
           "status": {
             "current" : {
               "state": "%s",
-              "timestamp": "%s"
+              "timestamp": "%s",
+              "detail" : {
+                "reason": "%s",
+                "detail": "some detail"
+              }
             }
           }
         }
-        """.formatted(traineeId, FORM_REF, LTFT_NAME, MANAGING_DEANERY, state, TIMESTAMP);
+        """.formatted(traineeId, FORM_REF, LTFT_NAME, MANAGING_DEANERY, state, TIMESTAMP,
+        STATUS_REASON);
 
     JsonNode eventJson = JsonMapper.builder()
         .build()
@@ -581,6 +610,8 @@ class LtftListenerIntegrationTest {
     assertThat("Unexpected form name.", event.getFormName(), is(LTFT_NAME));
     assertThat("Unexpected state.", event.getState(), is(state));
     assertThat("Unexpected timestamp.", event.getTimestamp(), is(TIMESTAMP));
+    assertThat("Unexpected status reason.", event.getStateDetail().reason(),
+        is(STATUS_REASON));
 
     Map<String, Contact> contacts = (Map<String, Contact>) storedVariables.get("contacts");
     assertThat("Unexpected contact count.", contacts.keySet(), hasSize(4));
@@ -593,7 +624,7 @@ class LtftListenerIntegrationTest {
 
   @ParameterizedTest
   @CsvSource(delimiter = '|', textBlock = """
-      APPROVED | LTFT_APPROVED_TPD
+      APPROVED  | LTFT_APPROVED_TPD
       SUBMITTED | LTFT_SUBMITTED_TPD
       """)
   void shouldSendFullyTailoredTpdNotificationWhenAllTemplateVariablesAvailableAndUrlContacts(
