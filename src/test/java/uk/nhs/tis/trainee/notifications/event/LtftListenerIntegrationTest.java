@@ -63,7 +63,6 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
@@ -170,9 +169,6 @@ class LtftListenerIntegrationTest {
 
   @Autowired
   private MongoTemplate mongoTemplate;
-
-  @Value("${application.template-versions.ltft-updated.email}")
-  private String templateVersion;
 
   private String traineeId;
 
@@ -499,11 +495,12 @@ class LtftListenerIntegrationTest {
 
   @ParameterizedTest
   @CsvSource(delimiter = '|', textBlock = """
-      APPROVED     | LTFT_APPROVED
-      SUBMITTED    | LTFT_SUBMITTED
-      Other-Status | LTFT_UPDATED
+      APPROVED     | LTFT_APPROVED  | v1.0.1
+      SUBMITTED    | LTFT_SUBMITTED | v1.0.0
+      Other-Status | LTFT_UPDATED   | v1.0.0
       """)
-  void shouldStoreNotificationHistoryWhenMessageSent(String state, NotificationType type)
+  void shouldStoreNotificationHistoryWhenMessageSent(String state, NotificationType type,
+      String expectedVersion)
       throws JsonProcessingException {
     when(userAccountService.getUserDetailsById(USER_ID)).thenReturn(
         new UserDetails(true, EMAIL, TITLE, FAMILY_NAME, GIVEN_NAME, GMC));
@@ -568,7 +565,7 @@ class LtftListenerIntegrationTest {
 
     TemplateInfo templateInfo = history.template();
     assertThat("Unexpected template name.", templateInfo.name(), is(type.getTemplateName()));
-    assertThat("Unexpected template version.", templateInfo.version(), is(templateVersion));
+    assertThat("Unexpected template version.", templateInfo.version(), is(expectedVersion));
 
     Map<String, Object> storedVariables = templateInfo.variables();
     assertThat("Unexpected template variable count.", storedVariables.size(), is(6));
@@ -747,10 +744,11 @@ class LtftListenerIntegrationTest {
 
   @ParameterizedTest
   @CsvSource(delimiter = '|', textBlock = """
-      APPROVED  | LTFT_APPROVED_TPD
-      SUBMITTED | LTFT_SUBMITTED_TPD
+      APPROVED  | LTFT_APPROVED_TPD  | v1.0.1
+      SUBMITTED | LTFT_SUBMITTED_TPD | v1.0.1
       """)
-  void shouldStoreTpdNotificationHistoryWhenMessageSent(String state, NotificationType type)
+  void shouldStoreTpdNotificationHistoryWhenMessageSent(String state, NotificationType type,
+      String expectedVersion)
       throws JsonProcessingException {
     when(userAccountService.getUserDetailsById(USER_ID)).thenReturn(
         new UserDetails(true, EMAIL, TITLE, FAMILY_NAME, GIVEN_NAME, GMC));
@@ -819,7 +817,7 @@ class LtftListenerIntegrationTest {
 
     TemplateInfo templateInfo = history.template();
     assertThat("Unexpected template name.", templateInfo.name(), is(type.getTemplateName()));
-    assertThat("Unexpected template version.", templateInfo.version(), is(templateVersion));
+    assertThat("Unexpected template version.", templateInfo.version(), is(expectedVersion));
 
     Map<String, Object> storedVariables = templateInfo.variables();
     assertThat("Unexpected template variable count.", storedVariables.size(), is(6));

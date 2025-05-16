@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+  <title>LTFT summary</title>
+</head>
+<body>
+<table style="width:100%" border="1" th:fragment="ltftSummary(programme, startDate, cctDate, currentWte, newWte)">
+  <tr>
+    <th>Programme</th>
+    <td><th:block th:text="${not #strings.isEmpty(programme)} ? ${programme} : 'unknown'"></th:block></td>
+  </tr>
+  <tr>
+    <th>Start Date</th>
+    <td><th:block th:text="${not #strings.isEmpty(startDate)} ? ${startDate} : 'unknown'"></th:block></td>
+  </tr>
+  <tr>
+    <th>Anticipated End Date</th>
+    <td><th:block th:text="${not #strings.isEmpty(cctDate)} ? ${cctDate} : 'unknown'"></th:block></td>
+  </tr>
+  <tr>
+    <th>Current WTE %</th>
+    <td><th:block th:text="${not #strings.isEmpty(currentWte)} ? ${currentWte} : 'unknown'"></th:block></td>
+  </tr>
+  <tr>
+    <th>New WTE %</th>
+    <td><th:block th:text="${not #strings.isEmpty(newWte)} ? ${newWte} : 'unknown'"></th:block></td>
+  </tr>
+</table>
+</body>
+</html>

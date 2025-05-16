@@ -60,15 +60,15 @@ application:
     gmc-updated:
       email: v1.0.0
     ltft-approved:
-      email: v1.0.0
+      email: v1.0.1
     ltft-approved-tpd:
-      email: v1.0.0
+      email: v1.0.1
     ltft-updated:
       email: v1.0.0
     ltft-submitted:
       email: v1.0.0
     ltft-submitted-tpd:
-      email: v1.0.0
+      email: v1.0.1
     indemnity-insurance:
       in-app: v1.0.0
     less-than-full-time:
