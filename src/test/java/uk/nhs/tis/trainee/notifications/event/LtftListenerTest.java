@@ -59,6 +59,7 @@ import uk.nhs.tis.trainee.notifications.dto.LtftUpdateEvent.DiscussionsDto;
 import uk.nhs.tis.trainee.notifications.dto.ProgrammeMembershipDto;
 import uk.nhs.tis.trainee.notifications.dto.UserDetails;
 import uk.nhs.tis.trainee.notifications.event.LtftListener.Contact;
+import uk.nhs.tis.trainee.notifications.mapper.LtftEventMapper;
 import uk.nhs.tis.trainee.notifications.model.LocalOfficeContactType;
 import uk.nhs.tis.trainee.notifications.model.NotificationType;
 import uk.nhs.tis.trainee.notifications.service.EmailService;
@@ -84,25 +85,31 @@ class LtftListenerTest {
   private LtftListener listener;
   private NotificationService notificationService;
   private EmailService emailService;
+  private LtftEventMapper ltftEventMapper;
 
   @BeforeEach
   void setUp() {
     notificationService = mock(NotificationService.class);
     emailService = mock(EmailService.class);
+    ltftEventMapper = mock(LtftEventMapper.class);
+    when(ltftEventMapper.map(any())).thenAnswer(i -> i.getArguments()[0]);
     TemplateVersionsProperties templateVersions = new TemplateVersionsProperties(Map.of(
         "ltft-approved-tpd", new MessageTypeVersions(VERSION, null),
         "ltft-approved", new MessageTypeVersions(VERSION, null),
         "ltft-updated", new MessageTypeVersions(VERSION, null),
         "ltft-submitted-tpd", new MessageTypeVersions(VERSION, null),
-        "ltft-submitted", new MessageTypeVersions(VERSION, null)
+        "ltft-submitted", new MessageTypeVersions(VERSION, null),
+        "ltft-unsubmitted", new MessageTypeVersions(VERSION, null)
     ));
-    listener = new LtftListener(notificationService, emailService, templateVersions, true);
+    listener = new LtftListener(notificationService, emailService, templateVersions,
+        ltftEventMapper, true);
   }
 
   @ParameterizedTest
   @CsvSource(delimiter = '|', textBlock = """
       APPROVED     | LTFT_APPROVED
       SUBMITTED    | LTFT_SUBMITTED
+      UNSUBMITTED  | LTFT_UNSUBMITTED
       Other-Status | LTFT_UPDATED
       """)
   void shouldThrowExceptionWhenNoEmailTemplateAvailable(String state, NotificationType type) {
@@ -111,13 +118,14 @@ class LtftListenerTest {
     TemplateVersionsProperties templateVersions = new TemplateVersionsProperties(Map.of(
         type.getTemplateName(), new MessageTypeVersions(null, VERSION)
     ));
-    listener = new LtftListener(notificationService, emailService, templateVersions, true);
+    listener = new LtftListener(notificationService, emailService, templateVersions,
+        ltftEventMapper, true);
 
     assertThrows(IllegalArgumentException.class, () -> listener.handleLtftUpdate(event));
   }
 
   @ParameterizedTest
-  @ValueSource(strings = {"APPROVED", "SUBMITTED", "Other-Status"})
+  @ValueSource(strings = {"APPROVED", "SUBMITTED", "UNSUBMITTED", "Other-Status"})
   void shouldThrowExceptionWhenLtftUpdatedAndSendingFails(String state) throws MessagingException {
     doThrow(MessagingException.class).when(emailService)
         .sendMessageToExistingUser(any(), any(), any(), any(), any());
@@ -143,6 +151,7 @@ class LtftListenerTest {
   @CsvSource(delimiter = '|', textBlock = """
       APPROVED     | LTFT_APPROVED
       SUBMITTED    | LTFT_SUBMITTED
+      UNSUBMITTED  | LTFT_UNSUBMITTED
       Other-Status | LTFT_UPDATED
       """)
   void shouldSetNotificationTypeWhenLtftUpdated(String state, NotificationType type)
@@ -158,9 +167,10 @@ class LtftListenerTest {
 
   @ParameterizedTest
   @CsvSource(delimiter = '|', textBlock = """
-      APPROVED     | LTFT_APPROVED  | v1.2.3
-      Other-Status | LTFT_UPDATED   | v2.3.4
-      SUBMITTED    | LTFT_SUBMITTED | v3.4.5
+      APPROVED     | LTFT_APPROVED    | v1.2.3
+      Other-Status | LTFT_UPDATED     | v2.3.4
+      SUBMITTED    | LTFT_SUBMITTED   | v3.4.5
+      UNSUBMITTED  | LTFT_UNSUBMITTED | v4.5.6
       """)
   void shouldSetTemplateVersionWhenLtftUpdated(String state, NotificationType type, String version)
       throws MessagingException {
@@ -171,7 +181,8 @@ class LtftListenerTest {
     TemplateVersionsProperties templateVersions = new TemplateVersionsProperties(Map.of(
         type.getTemplateName(), new MessageTypeVersions(version, null)
     ));
-    listener = new LtftListener(notificationService, emailService, templateVersions, true);
+    listener = new LtftListener(notificationService, emailService, templateVersions,
+        ltftEventMapper, true);
 
     listener.handleLtftUpdate(event);
 
@@ -179,7 +190,7 @@ class LtftListenerTest {
   }
 
   @ParameterizedTest
-  @ValueSource(strings = {"APPROVED", "SUBMITTED", "Other-Status"})
+  @ValueSource(strings = {"APPROVED", "SUBMITTED", "UNSUBMITTED", "Other-Status"})
   void shouldPopulateTemplateVariablesWithContactsWhenLtftUpdated(String state)
       throws MessagingException {
     Set<LocalOfficeContactType> expectedContacts = Set.of(
@@ -221,7 +232,7 @@ class LtftListenerTest {
   }
 
   @ParameterizedTest
-  @ValueSource(strings = {"APPROVED", "SUBMITTED", "Other-Status"})
+  @ValueSource(strings = {"APPROVED", "SUBMITTED", "UNSUBMITTED", "Other-Status"})
   void shouldPopulateTemplateVariablesWithEventWhenLtftUpdated(String state)
       throws MessagingException {
     LtftUpdateEvent event = LtftUpdateEvent.builder().state(state).build();
@@ -281,7 +292,8 @@ class LtftListenerTest {
     TemplateVersionsProperties templateVersions = new TemplateVersionsProperties(Map.of(
         type.getTemplateName(), new MessageTypeVersions(null, VERSION)
     ));
-    listener = new LtftListener(notificationService, emailService, templateVersions, true);
+    listener = new LtftListener(notificationService, emailService, templateVersions,
+        ltftEventMapper, true);
 
     assertThrows(IllegalArgumentException.class, () -> listener.handleLtftUpdateTpd(event));
   }
@@ -349,7 +361,7 @@ class LtftListenerTest {
         LTFT_APPROVED_TPD.getTemplateName(), new MessageTypeVersions(VERSION, null)
     ));
     listener = new LtftListener(notificationService, emailService, templateVersions,
-        emailNotificationsEnabled);
+        ltftEventMapper, emailNotificationsEnabled);
 
     when(emailService.getRecipientAccount(TRAINEE_ID)).thenReturn(USER_DETAILS);
 
@@ -372,7 +384,7 @@ class LtftListenerTest {
         LTFT_SUBMITTED_TPD.getTemplateName(), new MessageTypeVersions(VERSION, null)
     ));
     listener = new LtftListener(notificationService, emailService, templateVersions,
-        emailNotificationsEnabled);
+        ltftEventMapper, emailNotificationsEnabled);
 
     when(emailService.getRecipientAccount(TRAINEE_ID)).thenReturn(USER_DETAILS);
 
@@ -385,7 +397,7 @@ class LtftListenerTest {
   @ParameterizedTest
   @CsvSource(delimiter = '|', textBlock = """
       APPROVED    | LTFT_APPROVED_TPD
-      SUBMITTED    | LTFT_SUBMITTED_TPD
+      SUBMITTED   | LTFT_SUBMITTED_TPD
       """)
   void shouldSetNotificationTypeWhenLtftUpdatedForTpd(String state, NotificationType type)
       throws MessagingException {
@@ -404,7 +416,7 @@ class LtftListenerTest {
   @ParameterizedTest
   @CsvSource(delimiter = '|', textBlock = """
       APPROVED    | LTFT_APPROVED_TPD | v2.3.4
-      SUBMITTED    | LTFT_SUBMITTED_TPD | v3.4.5
+      SUBMITTED   | LTFT_SUBMITTED_TPD | v3.4.5
       """)
   void shouldSetTemplateVersionWhenLtftUpdatedForTpd(String state, NotificationType type,
       String version) throws MessagingException {
@@ -415,7 +427,8 @@ class LtftListenerTest {
     TemplateVersionsProperties templateVersions = new TemplateVersionsProperties(Map.of(
         type.getTemplateName(), new MessageTypeVersions(version, null)
     ));
-    listener = new LtftListener(notificationService, emailService, templateVersions, true);
+    listener = new LtftListener(notificationService, emailService, templateVersions,
+        ltftEventMapper, true);
 
     when(emailService.getRecipientAccount(any())).thenReturn(USER_DETAILS);
 
