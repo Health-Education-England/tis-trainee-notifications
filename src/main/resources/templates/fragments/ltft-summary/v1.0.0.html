@@ -7,23 +7,23 @@
 <body>
 <table style="width:100%" border="1" th:fragment="ltftSummary(programme, startDate, cctDate, currentWte, newWte)">
   <tr>
-    <td>Programme</td>
+    <th>Programme</th>
     <td><th:block th:text="${not #strings.isEmpty(programme)} ? ${programme} : 'unknown'"></th:block></td>
   </tr>
   <tr>
-    <td>Start Date</td>
+    <th>Start Date</th>
     <td><th:block th:text="${not #strings.isEmpty(startDate)} ? ${startDate} : 'unknown'"></th:block></td>
   </tr>
   <tr>
-    <td>Anticipated End Date</td>
+    <th>Anticipated End Date</th>
     <td><th:block th:text="${not #strings.isEmpty(cctDate)} ? ${cctDate} : 'unknown'"></th:block></td>
   </tr>
   <tr>
-    <td>Current WTE %</td>
+    <th>Current WTE %</th>
     <td><th:block th:text="${not #strings.isEmpty(currentWte)} ? ${currentWte} : 'unknown'"></th:block></td>
   </tr>
   <tr>
-    <td>New WTE %</td>
+    <th>New WTE %</th>
     <td><th:block th:text="${not #strings.isEmpty(newWte)} ? ${newWte} : 'unknown'"></th:block></td>
   </tr>
 </table>
