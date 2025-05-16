@@ -24,8 +24,10 @@ package uk.nhs.tis.trainee.notifications.mapper;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.not;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.nullValue;
 
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -38,6 +40,16 @@ class LtftEventMapperTest {
   @BeforeEach
   void setUp() {
     mapper = new LtftEventMapperImpl();
+  }
+
+  @Test
+  void shouldUseNullWhenStateDetailNull() {
+    LtftUpdateEvent event = LtftUpdateEvent.builder().build();
+
+    LtftUpdateEvent eventMapped = mapper.map(event);
+
+    assertThat("Unexpected state detail.", eventMapped.getStateDetail(),
+        is(nullValue()));
   }
 
   @ParameterizedTest
