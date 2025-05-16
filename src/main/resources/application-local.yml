@@ -14,6 +14,7 @@ application:
     ltft-updated: ${local.sqs-path}/tis-trainee-notifications-local-ltft-updated
     ltft-updated-tpd: ${local.sqs-path}/tis-trainee-notifications-local-ltft-updated-tpd
     form-updated: ${local.sqs-path}/tis-trainee-notifications-local-form-updated
+    gmc-rejected: ${local.sqs-path}/tis-trainee-notifications-local-gmc-rejected
     gmc-updated: ${local.sqs-path}/tis-trainee-notifications-local-gmc-updated
     placement-deleted: ${local.sqs-path}/tis-trainee-notifications-local-placement-deleted
     placement-updated: ${local.sqs-path}/tis-trainee-notifications-local-placement-updated

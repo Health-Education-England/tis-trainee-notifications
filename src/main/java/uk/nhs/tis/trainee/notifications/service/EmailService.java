@@ -352,10 +352,12 @@ public class EmailService {
     Set<String> userAccountIds = userAccountService.getUserAccountIds(traineeId);
 
     return switch (userAccountIds.size()) {
-      case 0 -> throw new IllegalArgumentException("No user account found for the given ID.");
+      case 0 -> throw new IllegalArgumentException(
+          "No account found for trainee %s.".formatted(traineeId));
       case 1 -> userAccountService.getUserDetailsById(userAccountIds.iterator().next());
-      default ->
-          throw new IllegalArgumentException("Multiple user accounts found for the given ID.");
+      default -> throw new IllegalArgumentException(
+          "%s accounts found for trainee %s. Found: [%s]".formatted(userAccountIds.size(),
+              traineeId, String.join(", ", userAccountIds)));
     };
   }
 
