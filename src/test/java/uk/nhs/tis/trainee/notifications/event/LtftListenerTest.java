@@ -59,6 +59,7 @@ import uk.nhs.tis.trainee.notifications.dto.LtftUpdateEvent.DiscussionsDto;
 import uk.nhs.tis.trainee.notifications.dto.ProgrammeMembershipDto;
 import uk.nhs.tis.trainee.notifications.dto.UserDetails;
 import uk.nhs.tis.trainee.notifications.event.LtftListener.Contact;
+import uk.nhs.tis.trainee.notifications.mapper.LtftEventMapper;
 import uk.nhs.tis.trainee.notifications.model.LocalOfficeContactType;
 import uk.nhs.tis.trainee.notifications.model.NotificationType;
 import uk.nhs.tis.trainee.notifications.service.EmailService;
@@ -84,11 +85,14 @@ class LtftListenerTest {
   private LtftListener listener;
   private NotificationService notificationService;
   private EmailService emailService;
+  private LtftEventMapper ltftEventMapper;
 
   @BeforeEach
   void setUp() {
     notificationService = mock(NotificationService.class);
     emailService = mock(EmailService.class);
+    ltftEventMapper = mock(LtftEventMapper.class);
+    when(ltftEventMapper.map(any())).thenAnswer(i -> i.getArguments()[0]);
     TemplateVersionsProperties templateVersions = new TemplateVersionsProperties(Map.of(
         "ltft-approved-tpd", new MessageTypeVersions(VERSION, null),
         "ltft-approved", new MessageTypeVersions(VERSION, null),
@@ -97,7 +101,8 @@ class LtftListenerTest {
         "ltft-submitted", new MessageTypeVersions(VERSION, null),
         "ltft-unsubmitted", new MessageTypeVersions(VERSION, null)
     ));
-    listener = new LtftListener(notificationService, emailService, templateVersions, true);
+    listener = new LtftListener(notificationService, emailService, templateVersions,
+        ltftEventMapper, true);
   }
 
   @ParameterizedTest
@@ -113,7 +118,8 @@ class LtftListenerTest {
     TemplateVersionsProperties templateVersions = new TemplateVersionsProperties(Map.of(
         type.getTemplateName(), new MessageTypeVersions(null, VERSION)
     ));
-    listener = new LtftListener(notificationService, emailService, templateVersions, true);
+    listener = new LtftListener(notificationService, emailService, templateVersions,
+        ltftEventMapper, true);
 
     assertThrows(IllegalArgumentException.class, () -> listener.handleLtftUpdate(event));
   }
@@ -175,7 +181,8 @@ class LtftListenerTest {
     TemplateVersionsProperties templateVersions = new TemplateVersionsProperties(Map.of(
         type.getTemplateName(), new MessageTypeVersions(version, null)
     ));
-    listener = new LtftListener(notificationService, emailService, templateVersions, true);
+    listener = new LtftListener(notificationService, emailService, templateVersions,
+        ltftEventMapper, true);
 
     listener.handleLtftUpdate(event);
 
@@ -285,7 +292,8 @@ class LtftListenerTest {
     TemplateVersionsProperties templateVersions = new TemplateVersionsProperties(Map.of(
         type.getTemplateName(), new MessageTypeVersions(null, VERSION)
     ));
-    listener = new LtftListener(notificationService, emailService, templateVersions, true);
+    listener = new LtftListener(notificationService, emailService, templateVersions,
+        ltftEventMapper, true);
 
     assertThrows(IllegalArgumentException.class, () -> listener.handleLtftUpdateTpd(event));
   }
@@ -353,7 +361,7 @@ class LtftListenerTest {
         LTFT_APPROVED_TPD.getTemplateName(), new MessageTypeVersions(VERSION, null)
     ));
     listener = new LtftListener(notificationService, emailService, templateVersions,
-        emailNotificationsEnabled);
+        ltftEventMapper, emailNotificationsEnabled);
 
     when(emailService.getRecipientAccount(TRAINEE_ID)).thenReturn(USER_DETAILS);
 
@@ -376,7 +384,7 @@ class LtftListenerTest {
         LTFT_SUBMITTED_TPD.getTemplateName(), new MessageTypeVersions(VERSION, null)
     ));
     listener = new LtftListener(notificationService, emailService, templateVersions,
-        emailNotificationsEnabled);
+        ltftEventMapper, emailNotificationsEnabled);
 
     when(emailService.getRecipientAccount(TRAINEE_ID)).thenReturn(USER_DETAILS);
 
@@ -419,7 +427,8 @@ class LtftListenerTest {
     TemplateVersionsProperties templateVersions = new TemplateVersionsProperties(Map.of(
         type.getTemplateName(), new MessageTypeVersions(version, null)
     ));
-    listener = new LtftListener(notificationService, emailService, templateVersions, true);
+    listener = new LtftListener(notificationService, emailService, templateVersions,
+        ltftEventMapper, true);
 
     when(emailService.getRecipientAccount(any())).thenReturn(USER_DETAILS);
 
