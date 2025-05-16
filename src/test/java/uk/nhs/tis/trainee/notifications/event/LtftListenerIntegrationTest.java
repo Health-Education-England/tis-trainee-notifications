@@ -109,7 +109,8 @@ class LtftListenerIntegrationTest {
   private static final String MANAGING_DEANERY = "North West";
   private static final String TPD_NAME = "Mr TPD";
   private static final String TPD_EMAIL = "tpd@email.nhs";
-  private static final String STATUS_REASON = "some reason";
+  private static final String STATUS_REASON = "changePercentage";
+  private static final String STATUS_REASON_TEXT = "Change WTE percentage";
 
   private static final String LTFT_UPDATED_QUEUE = UUID.randomUUID().toString();
   private static final String LTFT_UPDATED_TPD_QUEUE = UUID.randomUUID().toString();
@@ -608,7 +609,7 @@ class LtftListenerIntegrationTest {
     assertThat("Unexpected state.", event.getState(), is(state));
     assertThat("Unexpected timestamp.", event.getTimestamp(), is(TIMESTAMP));
     assertThat("Unexpected status reason.", event.getStateDetail().reason(),
-        is(STATUS_REASON));
+        is(STATUS_REASON_TEXT));
 
     Map<String, Contact> contacts = (Map<String, Contact>) storedVariables.get("contacts");
     assertThat("Unexpected contact count.", contacts.keySet(), hasSize(4));

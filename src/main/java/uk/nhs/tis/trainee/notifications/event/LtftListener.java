@@ -46,6 +46,7 @@ import org.springframework.stereotype.Component;
 import uk.nhs.tis.trainee.notifications.config.TemplateVersionsProperties;
 import uk.nhs.tis.trainee.notifications.dto.LtftUpdateEvent;
 import uk.nhs.tis.trainee.notifications.dto.UserDetails;
+import uk.nhs.tis.trainee.notifications.mapper.LtftEventMapper;
 import uk.nhs.tis.trainee.notifications.model.HrefType;
 import uk.nhs.tis.trainee.notifications.model.LocalOfficeContactType;
 import uk.nhs.tis.trainee.notifications.model.NotificationType;
@@ -66,6 +67,7 @@ public class LtftListener {
   private final EmailService emailService;
   private final TemplateVersionsProperties templateVersions;
   private final boolean emailNotificationsEnabled;
+  private final LtftEventMapper ltftEventMapper;
 
   /**
    * Construct a listener for LTFT events.
@@ -76,12 +78,13 @@ public class LtftListener {
    * @param emailNotificationsEnabled Whether email notifications are enabled.
    */
   public LtftListener(NotificationService notificationService, EmailService emailService,
-      TemplateVersionsProperties templateVersions,
+      TemplateVersionsProperties templateVersions, LtftEventMapper ltftEventMapper,
       @Value("${application.email.enabled}") boolean emailNotificationsEnabled) {
     this.notificationService = notificationService;
     this.emailService = emailService;
     this.templateVersions = templateVersions;
     this.emailNotificationsEnabled = emailNotificationsEnabled;
+    this.ltftEventMapper = ltftEventMapper;
   }
 
   /**
@@ -93,6 +96,7 @@ public class LtftListener {
   @SqsListener("${application.queues.ltft-updated}")
   public void handleLtftUpdate(LtftUpdateEvent event) throws MessagingException {
     log.info("Handling LTFT update event {}.", event);
+    event = ltftEventMapper.map(event);
 
     NotificationType notificationType = switch (event.getState()) {
       case "APPROVED" -> LTFT_APPROVED;

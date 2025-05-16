@@ -109,4 +109,23 @@ public class LtftUpdateEvent {
             .message(detail.get("detail"))
             .build();
   }
+
+  /**
+   * Get the reason text for the LTFT update.
+   *
+   * @param reason The reason for the LTFT update.
+   * @return The reason text, or the reason if no mapping exists.
+   */
+  public static String getReasonText(String reason) {
+    if (reason == null) {
+      return null;
+    }
+    return switch (reason) {
+      case "other" -> "other reason";
+      case "changePercentage" -> "Change WTE percentage";
+      case "changeStartDate" -> "Change start date";
+      case "changeOfCircs" -> "Change of circumstances";
+      default -> reason;
+    };
+  }
 }
