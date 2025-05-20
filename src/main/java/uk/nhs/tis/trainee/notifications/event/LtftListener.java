@@ -32,6 +32,7 @@ import static uk.nhs.tis.trainee.notifications.model.NotificationType.LTFT_SUBMI
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.LTFT_SUBMITTED_TPD;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.LTFT_UNSUBMITTED;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.LTFT_UPDATED;
+import static uk.nhs.tis.trainee.notifications.model.NotificationType.LTFT_WITHDRAWN;
 
 import io.awspring.cloud.sqs.annotation.SqsListener;
 import jakarta.mail.MessagingException;
@@ -102,6 +103,7 @@ public class LtftListener {
       case "APPROVED" -> LTFT_APPROVED;
       case "SUBMITTED" -> LTFT_SUBMITTED;
       case "UNSUBMITTED" -> LTFT_UNSUBMITTED;
+      case "WITHDRAWN" -> LTFT_WITHDRAWN;
       default -> LTFT_UPDATED;
     };
 

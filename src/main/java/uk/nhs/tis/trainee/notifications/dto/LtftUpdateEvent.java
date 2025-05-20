@@ -47,6 +47,7 @@ public class LtftUpdateEvent {
   private String state;
   private Instant timestamp;
   private LftfStatusInfoDetailDto stateDetail;
+  private String modifiedByName;
 
   /**
    * A trainee's personal details.
@@ -108,6 +109,8 @@ public class LtftUpdateEvent {
             .reason(detail.get("reason"))
             .message(detail.get("detail"))
             .build();
+    Map<String, String> modifiedBy = (Map<String, String>) current.get("modifiedBy");
+    modifiedByName = modifiedBy == null ? null : modifiedBy.get("name");
   }
 
   /**
