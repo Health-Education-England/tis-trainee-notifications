@@ -108,7 +108,6 @@ class LtftListenerIntegrationTest {
   private static final Instant TIMESTAMP = Instant.parse("2025-03-15T10:00:00Z");
   private static final String FORM_REF = "ltft_47165_001";
   private static final String MANAGING_DEANERY = "North West";
-  private static final String REASON = "Proposed WTE";
   private static final String MODIFIED_BY_NAME = "Anne Other";
   private static final String TPD_NAME = "Mr TPD";
   private static final String TPD_EMAIL = "tpd@email.nhs";

@@ -239,7 +239,7 @@ class EmailServiceIntegrationTest {
             "name", "PM name", "wte", 1.0, "managingDeanery", "MD name"),
         "personalDetails", Map.of("gmcNumber", "1234567"),
         "change", Map.of("startDate", "2024-01-01", "wte", 0.5, "cctDate", "2024-01-01"),
-        "stateDetail", Map.of("reason", "some reason", "details", "some details"));
+        "stateDetail", Map.of("reason", "some reason", "detail", "some details"));
 
     service.sendMessageToExistingUser(PERSON_ID, notificationType, templateVersion,
         Map.of("familyName", "Maillig", "var", variables), null);
