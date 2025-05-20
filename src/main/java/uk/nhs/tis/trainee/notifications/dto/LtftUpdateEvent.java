@@ -46,6 +46,7 @@ public class LtftUpdateEvent {
   private ChangeDto change;
   private String state;
   private Instant timestamp;
+  private LftfStatusInfoDetailDto stateDetail;
 
   /**
    * A trainee's personal details.
@@ -79,16 +80,52 @@ public class LtftUpdateEvent {
   }
 
   /**
-   * Unpack the current status to set the state and timestamp.
+   * A DTO for state change details.
+   *
+   * @param reason  The reason for the state change.
+   * @param message A message associated with the state change.
+   */
+  @Builder
+  public record LftfStatusInfoDetailDto(String reason, String message) {
+
+  }
+
+  /**
+   * Unpack the current status to set the state, timestamp and detail.
    *
    * @param status The value of the status property.
    */
   @JsonProperty("status")
   private void unpackCurrentStatus(Map<String, Object> status) {
-    Map<String, String> current = (Map<String, String>) status.get("current");
-    state = current.get("state");
-    String timestampString = current.get("timestamp");
+    Map<String, Object> current = (Map<String, Object>) status.get("current");
+    state = (String) current.get("state");
+    String timestampString = (String) current.get("timestamp");
     timestamp = timestampString == null || timestampString.isBlank() ? null
         : Instant.parse(timestampString);
+    Map<String, String> detail = (Map<String, String>) current.get("detail");
+    stateDetail = detail == null ? null
+        : LftfStatusInfoDetailDto.builder()
+            .reason(detail.get("reason"))
+            .message(detail.get("detail"))
+            .build();
+  }
+
+  /**
+   * Get the reason text for the LTFT update.
+   *
+   * @param reason The reason for the LTFT update.
+   * @return The reason text, or the reason if no mapping exists.
+   */
+  public static String getReasonText(String reason) {
+    if (reason == null) {
+      return null;
+    }
+    return switch (reason) {
+      case "other" -> "other reason";
+      case "changePercentage" -> "Change WTE percentage";
+      case "changeStartDate" -> "Change start date";
+      case "changeOfCircs" -> "Change of circumstances";
+      default -> reason;
+    };
   }
 }

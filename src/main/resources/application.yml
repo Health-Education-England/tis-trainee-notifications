@@ -69,6 +69,8 @@ application:
       email: v1.0.0
     ltft-submitted-tpd:
       email: v1.0.1
+    ltft-unsubmitted:
+      email: v1.0.0
     indemnity-insurance:
       in-app: v1.0.0
     less-than-full-time:
