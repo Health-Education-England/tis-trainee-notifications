@@ -28,6 +28,7 @@ application:
     gmc-rejected: ${GMC_REJECTED_QUEUE}
     gmc-updated: ${GMC_UPDATED_QUEUE}
     ltft-updated: ${LTFT_UPDATED_QUEUE}
+    ltft-updated-tpd: ${LTFT_UPDATED_TPD_QUEUE}
     placement-updated: ${PLACEMENT_UPDATED_QUEUE}
     placement-deleted: ${PLACEMENT_DELETED_QUEUE}
     programme-membership-updated: ${PROGRAMME_MEMBERSHIP_UPDATED_QUEUE}
@@ -58,7 +59,17 @@ application:
       email: v1.0.0
     gmc-updated:
       email: v1.0.0
+    ltft-approved:
+      email: v1.0.1
+    ltft-approved-tpd:
+      email: v1.0.1
     ltft-updated:
+      email: v1.0.0
+    ltft-submitted:
+      email: v1.0.0
+    ltft-submitted-tpd:
+      email: v1.0.1
+    ltft-unsubmitted:
       email: v1.0.0
     indemnity-insurance:
       in-app: v1.0.0
@@ -75,7 +86,7 @@ application:
     placement-useful-information:
       in-app: v1.0.0
     programme-created:
-      email: v1.2.0
+      email: v1.3.0
     programme-day-one:
       email: v1.1.0
     programme-updated-week-0:

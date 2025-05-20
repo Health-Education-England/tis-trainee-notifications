@@ -21,47 +21,111 @@
 
 package uk.nhs.tis.trainee.notifications.dto;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.util.Map;
+import lombok.Builder;
+import lombok.Data;
 
 /**
  * A LTFT update event.
- *
- * @param traineeTisId The id of the person who submitted the form.
- * @param formRef      The reference of the LTFT form.
- * @param content      The content of the LTFT form.
- * @param status       The status of the LTFT form.
  */
-public record LtftUpdateEvent(
-    String traineeTisId,
-    String formRef,
-    LtftContent content,
-    LtftStatus status
-) {
+@Data
+@Builder
+public class LtftUpdateEvent {
+
+  @JsonAlias("traineeTisId")
+  private String traineeId;
+  private String formRef;
+  private String formName;
+  private PersonalDetails personalDetails;
+  private ProgrammeMembershipDto programmeMembership;
+  private DiscussionsDto discussions;
+  private ChangeDto change;
+  private String state;
+  private Instant timestamp;
+  private LftfStatusInfoDetailDto stateDetail;
 
   /**
-   * A representation of the LTFT content.
+   * A trainee's personal details.
    *
-   * @param name The LTFT form name.
+   * @param gmcNumber The trainee's GMC registration number.
    */
-  public record LtftContent(String name) {
+  public record PersonalDetails(String gmcNumber) {
 
   }
 
   /**
-   * A representation of the status details of the LTFT.
+   * An LTFT change.
    *
-   * @param current The current state of the LTFT with a timestamp.
+   * @param startDate The start date of the LTFT change.
+   * @param wte       The whole time equivalent being requested.
+   * @param cctDate   The CCT/end of programme date..
    */
-  public record LtftStatus(StatusDetails current) {
+  public record ChangeDto(LocalDate startDate, Double wte, LocalDate cctDate) {
 
-    /**
-     * A representation the status details included in an Amazon SES event.
-     *
-     * @param state     The current state of the LTFT.
-     * @param timestamp The timestamp of the status change.
-     */
-    public record StatusDetails(String state, Instant timestamp) {
+  }
 
+  /**
+   * Discussions that the trainee has had about their LTFT needs.
+   *
+   * @param tpdName  The name of their TPD.
+   * @param tpdEmail The contact email for their TPD.
+   */
+  @Builder
+  public record DiscussionsDto(String tpdName, String tpdEmail) {
+
+  }
+
+  /**
+   * A DTO for state change details.
+   *
+   * @param reason  The reason for the state change.
+   * @param message A message associated with the state change.
+   */
+  @Builder
+  public record LftfStatusInfoDetailDto(String reason, String message) {
+
+  }
+
+  /**
+   * Unpack the current status to set the state, timestamp and detail.
+   *
+   * @param status The value of the status property.
+   */
+  @JsonProperty("status")
+  private void unpackCurrentStatus(Map<String, Object> status) {
+    Map<String, Object> current = (Map<String, Object>) status.get("current");
+    state = (String) current.get("state");
+    String timestampString = (String) current.get("timestamp");
+    timestamp = timestampString == null || timestampString.isBlank() ? null
+        : Instant.parse(timestampString);
+    Map<String, String> detail = (Map<String, String>) current.get("detail");
+    stateDetail = detail == null ? null
+        : LftfStatusInfoDetailDto.builder()
+            .reason(detail.get("reason"))
+            .message(detail.get("detail"))
+            .build();
+  }
+
+  /**
+   * Get the reason text for the LTFT update.
+   *
+   * @param reason The reason for the LTFT update.
+   * @return The reason text, or the reason if no mapping exists.
+   */
+  public static String getReasonText(String reason) {
+    if (reason == null) {
+      return null;
     }
+    return switch (reason) {
+      case "other" -> "other reason";
+      case "changePercentage" -> "Change WTE percentage";
+      case "changeStartDate" -> "Change start date";
+      case "changeOfCircs" -> "Change of circumstances";
+      default -> reason;
+    };
   }
 }

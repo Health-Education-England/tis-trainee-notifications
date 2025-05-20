@@ -11,9 +11,9 @@
 > - Onboarding to your Training Programme</th:block>
 <h2>Content</h2>
 <th:block th:fragment="content">
-  <div th:replace="fragments/retry/v1.0.0 :: body"></div>
+  <div th:replace="fragments/retry/v1.0.0 :: retry(${originallySentOn})"></div>
   <div style="text-align:right"><img style="margin-right:25px; height:100px" src='https://trainee.tis.nhs.uk/nhse-logo.png' alt="NHS England logo"/></div>
-  <div th:replace="fragments/greeting/v1.0.0 :: body"></div>
+  <div th:replace="fragments/greeting/v1.0.0 :: greeting(${familyName})"></div>
   <p>Congratulations on your appointment to the <span
       th:text="${not #strings.isEmpty(programmeName)} ? ${programmeName} : 'programme'"></span> Programme in <span
       th:text="${not #strings.isEmpty(localOfficeName)} ? ${localOfficeName} : 'your local office'"></span

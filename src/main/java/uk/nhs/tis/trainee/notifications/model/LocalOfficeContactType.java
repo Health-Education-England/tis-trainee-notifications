@@ -33,8 +33,10 @@ public enum LocalOfficeContactType {
 
   GMC_UPDATE("GMC Update"),
   LTFT("Less Than Full Time"),
+  LTFT_SUPPORT("LTFT Support"),
   ONBOARDING_SUPPORT("Onboarding Support"),
   SPONSORSHIP("Sponsorship"),
+  SUPPORTED_RETURN_TO_TRAINING("Supported Return to Training"),
   DEFERRAL("Deferral"),
   TSS_SUPPORT("TIS Self-Service Support"),
   LOCAL_OFFICE_WEBSITE("Local office website");
