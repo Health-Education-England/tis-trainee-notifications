@@ -93,6 +93,7 @@ public class LtftUpdateEvent {
 
   /**
    * A DTO for the person who modified the LTFT status.
+   *
    * @param name The name of the person who modified the status.
    * @param role The role of the person who modified the status.
    */
@@ -119,11 +120,11 @@ public class LtftUpdateEvent {
             .reason(detail.get("reason"))
             .message(detail.get("message"))
             .build();
-    Map<String, String> modifiedBy = (Map<String, String>) current.get("modifiedBy");
-    this.modifiedBy = modifiedBy == null ? null
+    Map<String, String> modifiedByMap = (Map<String, String>) current.get("modifiedBy");
+    modifiedBy = modifiedByMap == null ? null
         : LtftStatusModifiedByDto.builder()
-            .name(modifiedBy.get("name"))
-            .role(modifiedBy.get("role"))
+            .name(modifiedByMap.get("name"))
+            .role(modifiedByMap.get("role"))
             .build();
   }
 
