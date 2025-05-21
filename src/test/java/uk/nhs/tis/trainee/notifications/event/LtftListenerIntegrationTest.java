@@ -35,6 +35,7 @@ import static uk.nhs.tis.trainee.notifications.model.LocalOfficeContactType.LTFT
 import static uk.nhs.tis.trainee.notifications.model.LocalOfficeContactType.LTFT_SUPPORT;
 import static uk.nhs.tis.trainee.notifications.model.LocalOfficeContactType.SUPPORTED_RETURN_TO_TRAINING;
 import static uk.nhs.tis.trainee.notifications.model.LocalOfficeContactType.TSS_SUPPORT;
+import static uk.nhs.tis.trainee.notifications.model.NotificationType.LTFT_ADMIN_UNSUBMITTED;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -201,7 +202,7 @@ class LtftListenerIntegrationTest {
     when(userAccountService.getUserDetailsById(USER_ID)).thenReturn(
         new UserDetails(true, EMAIL, TITLE, null, null, GMC));
 
-    String modifiedByRole = state.equals("LTFT_ADMIN_UNSUBMITTED") ? "ADMIN" : "TRAINEE";
+    String modifiedByRole = type == LTFT_ADMIN_UNSUBMITTED ? "ADMIN" : "TRAINEE";
     String eventString = """
         {
           "traineeTisId": "%s",
@@ -211,7 +212,6 @@ class LtftListenerIntegrationTest {
               "detail" : {
               },
               "modifiedBy": {
-                "name": "Test user",
                 "role": "%s"
               }
             }
@@ -256,7 +256,7 @@ class LtftListenerIntegrationTest {
     when(userAccountService.getUserDetailsById(USER_ID)).thenReturn(
         new UserDetails(true, EMAIL, TITLE, "", "", GMC));
 
-    String modifiedByRole = state.equals("LTFT_ADMIN_UNSUBMITTED") ? "ADMIN" : "TRAINEE";
+    String modifiedByRole = type == LTFT_ADMIN_UNSUBMITTED ? "ADMIN" : "TRAINEE";
     String eventString = """
         {
           "traineeTisId": "%s",
@@ -281,10 +281,10 @@ class LtftListenerIntegrationTest {
               "timestamp": "",
               "detail" : {
                 "reason": "",
-                "detail": ""
+                "message": ""
               },
                "modifiedBy": {
-                "name": "Test user",
+                "name": "",
                 "role": "%s"
               }
             }
@@ -339,7 +339,7 @@ class LtftListenerIntegrationTest {
         eq(""))).thenCallRealMethod();
     when(notificationService.getHrefTypeForContact(any())).thenCallRealMethod();
 
-    String modifiedByRole = state.equals("LTFT_ADMIN_UNSUBMITTED") ? "ADMIN" : "TRAINEE";
+    String modifiedByRole = type == LTFT_ADMIN_UNSUBMITTED ? "ADMIN" : "TRAINEE";
     String eventString = """
         {
           "traineeTisId": "%s",
@@ -364,7 +364,7 @@ class LtftListenerIntegrationTest {
               "timestamp": "2026-05-04T01:02:03.004Z",
               "detail" : {
                 "reason": "%s",
-                "detail": "some detail"
+                "message": "some detail"
               },
               "modifiedBy": {
                 "name": "Anne Other",
@@ -423,7 +423,7 @@ class LtftListenerIntegrationTest {
         eq(""))).thenCallRealMethod();
     when(notificationService.getHrefTypeForContact(any())).thenCallRealMethod();
 
-    String modifiedByRole = state.equals("LTFT_ADMIN_UNSUBMITTED") ? "ADMIN" : "TRAINEE";
+    String modifiedByRole = type == LTFT_ADMIN_UNSUBMITTED ? "ADMIN" : "TRAINEE";
     String eventString = """
         {
           "traineeTisId": "%s",
@@ -448,7 +448,7 @@ class LtftListenerIntegrationTest {
               "timestamp": "2026-05-04T01:02:03.004Z",
               "detail" : {
                 "reason": "%s",
-                "detail": "some detail"
+                "message": "some detail"
               },
               "modifiedBy": {
                 "name": "Anne Other",
@@ -516,7 +516,7 @@ class LtftListenerIntegrationTest {
               "timestamp": "2026-05-04T01:02:03.004Z",
               "detail" : {
                 "reason": "%s",
-                "detail": "some detail"
+                "message": "some detail"
               }
             }
           }
@@ -572,7 +572,7 @@ class LtftListenerIntegrationTest {
         eq(""))).thenCallRealMethod();
     when(notificationService.getHrefTypeForContact(any())).thenCallRealMethod();
 
-    String modifiedByRole = state.equals("LTFT_ADMIN_UNSUBMITTED") ? "ADMIN" : "TRAINEE";
+    String modifiedByRole = type == LTFT_ADMIN_UNSUBMITTED ? "ADMIN" : "TRAINEE";
     String eventString = """
         {
           "traineeTisId": "%s",
@@ -587,7 +587,7 @@ class LtftListenerIntegrationTest {
               "timestamp": "%s",
               "detail" : {
                 "reason": "%s",
-                "detail": "some detail"
+                "message": "some detail"
               },
               "modifiedBy": {
                 "name": "%s",

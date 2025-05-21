@@ -117,7 +117,7 @@ public class LtftUpdateEvent {
     stateDetail = detail == null ? null
         : LftfStatusInfoDetailDto.builder()
             .reason(detail.get("reason"))
-            .message(detail.get("detail"))
+            .message(detail.get("message"))
             .build();
     Map<String, String> modifiedBy = (Map<String, String>) current.get("modifiedBy");
     this.modifiedBy = modifiedBy == null ? null

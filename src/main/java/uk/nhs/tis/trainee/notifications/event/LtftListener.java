@@ -62,7 +62,6 @@ import uk.nhs.tis.trainee.notifications.service.NotificationService;
 @Component
 public class LtftListener {
 
-  public static final String LTFT_ROLE_TRAINEE = "TRAINEE";
   public static final String LTFT_ROLE_ADMIN = "ADMIN";
 
   private static final Set<LocalOfficeContactType> TEMPLATE_CONTACTS = Set.of(LTFT, LTFT_SUPPORT,

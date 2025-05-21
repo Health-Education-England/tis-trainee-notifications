@@ -15,16 +15,16 @@
   <div style="text-align:right"><img style="margin-right:25px; height:100px" src='https://trainee.tis.nhs.uk/nhse-logo.png' alt="NHS England logo"/></div>
   <p th:replace="~{fragments/greeting/v1.0.0 :: greeting(${familyName})}"></p>
   </div>
-  <p>Your Less Than Full Time (LTFT) application (ref: <th:block th:text="${not #strings.isEmpty(var?.formRef)} ? ${var.formRef} : 'unknown'"></th:block>) has been unsubmitted by your Local Office <th:block
-    th:text="${not #strings.isEmpty(var?.programmeMembership?.managingDeanery)} ? ${var.programmeMembership.managingDeanery} : _"></th:block>.
+  <p>Your Less Than Full Time (LTFT) application (ref: <th:block th:text="${not #strings.isEmpty(var?.formRef)} ? ${var.formRef} : 'unknown'"></th:block>) has been unsubmitted by your Local Office<th:block
+    th:text="${not #strings.isEmpty(var?.programmeMembership?.managingDeanery)} ? | ${var.programmeMembership.managingDeanery}| : _"></th:block>.
   </p>
   <h3>Reason for Unsubmission:</h3>
-  <p><th:block th:text="${not #strings.isEmpty(var?.stateDetail?.reason)} ? ${var.stateDetail.reason} : 'unknown'"></th:block></p>
+  <p><th:block th:text="${not #strings.isEmpty(var?.stateDetail?.reason)} ? ${var.stateDetail.reason} : 'Unknown'"></th:block></p>
   <h3>Message from <th:block
-      th:text="${not #strings.isEmpty(var?.programmeMembership?.managingDeanery)} ? ${var.programmeMembership.managingDeanery} : 'your Local Office'"></th:block></h3>
-  <p><th:block th:text="${not #strings.isEmpty(var?.stateDetail?.message)} ? ${var.stateDetail.message} : 'unknown'"></th:block></p>
+      th:text="${not #strings.isEmpty(var?.programmeMembership?.managingDeanery)} ? ${var.programmeMembership.managingDeanery} : 'your Local Office'"></th:block>:</h3>
+  <p><th:block th:text="${not #strings.isEmpty(var?.stateDetail?.message)} ? ${var.stateDetail.message} : 'None'"></th:block></p>
   <p>
-    If any action is required from you, please review your application on the <a
+    If any action is required from you, please review your application on <a
       href="https://trainee.tis.nhs.uk/ltft" target="_blank">TIS Self-Service</a> and make the necessary updates before re-submitting.
   </p>
   <p>

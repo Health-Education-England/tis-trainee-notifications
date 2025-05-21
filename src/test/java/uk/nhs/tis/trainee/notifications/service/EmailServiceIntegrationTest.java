@@ -229,17 +229,20 @@ class EmailServiceIntegrationTest {
         new UserDetails(true, RECIPIENT, null, "Gilliam", "Anthony", null));
 
     Instant timestamp = Instant.now();
-    Map<String, Object> variables = Map.of("formRef", "form ref",
-        "state", "some state",
-        "timestamp", timestamp,
-        "modifiedByName", "modified by name",
-        "formName", "form name",
-        "discussions", Map.of("tpdName", "TPD name"),
-        "programmeMembership", Map.of("startDate", "2024-01-01",
-            "name", "PM name", "wte", 1.0, "managingDeanery", "MD name"),
-        "personalDetails", Map.of("gmcNumber", "1234567"),
-        "change", Map.of("startDate", "2024-01-01", "wte", 0.5, "cctDate", "2024-01-01"),
-        "stateDetail", Map.of("reason", "some reason", "detail", "some details"));
+    Map<String, Object> variables = new HashMap<>();
+    variables.put("formRef", "form ref");
+    variables.put("state", "some state");
+    variables.put("timestamp", timestamp);
+    variables.put("modifiedByName", "modified by name");
+    variables.put("formName", "form name");
+    variables.put("discussions", Map.of("tpdName", "TPD name"));
+    variables.put("programmeMembership", Map.of("startDate", "2024-01-01",
+            "name", "PM name", "wte", 1.0, "managingDeanery", "MD name"));
+    variables.put("personalDetails", Map.of("gmcNumber", "1234567"));
+    variables.put("change", Map.of("startDate", "2024-01-01", "wte", 0.5,
+        "cctDate", "2024-01-01"));
+    variables.put("stateDetail", Map.of("reason", "some reason", "message", "some message"));
+    variables.put("modifiedBy", Map.of("name", "modified by name", "role", "modified by role"));
 
     service.sendMessageToExistingUser(PERSON_ID, notificationType, templateVersion,
         Map.of("familyName", "Maillig", "var", variables), null);
