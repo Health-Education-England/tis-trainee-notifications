@@ -59,6 +59,8 @@ application:
       email: v1.0.0
     gmc-updated:
       email: v1.0.0
+    ltft-admin-unsubmitted:
+      email: v1.0.0
     ltft-approved:
       email: v1.0.1
     ltft-approved-tpd:
@@ -72,8 +74,6 @@ application:
     ltft-unsubmitted:
       email: v1.0.0
     ltft-withdrawn:
-      email: v1.0.0
-    ltft-unsubmitted-lo:
       email: v1.0.0
     indemnity-insurance:
       in-app: v1.0.0

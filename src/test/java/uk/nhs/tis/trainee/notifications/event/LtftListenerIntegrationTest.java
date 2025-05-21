@@ -63,7 +63,6 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
@@ -174,9 +173,6 @@ class LtftListenerIntegrationTest {
   @Autowired
   private MongoTemplate mongoTemplate;
 
-  @Value("${application.template-versions.ltft-updated.email}")
-  private String templateVersion;
-
   private String traineeId;
 
   @BeforeEach
@@ -196,6 +192,7 @@ class LtftListenerIntegrationTest {
       APPROVED     | LTFT_APPROVED
       SUBMITTED    | LTFT_SUBMITTED
       UNSUBMITTED  | LTFT_UNSUBMITTED
+      UNSUBMITTED  | LTFT_ADMIN_UNSUBMITTED
       WITHDRAWN    | LTFT_WITHDRAWN
       Other-Status | LTFT_UPDATED
       """)
@@ -204,6 +201,7 @@ class LtftListenerIntegrationTest {
     when(userAccountService.getUserDetailsById(USER_ID)).thenReturn(
         new UserDetails(true, EMAIL, TITLE, null, null, GMC));
 
+    String modifiedByRole = state.equals("LTFT_ADMIN_UNSUBMITTED") ? "ADMIN" : "TRAINEE";
     String eventString = """
         {
           "traineeTisId": "%s",
@@ -211,11 +209,15 @@ class LtftListenerIntegrationTest {
             "current" : {
               "state": "%s",
               "detail" : {
+              },
+              "modifiedBy": {
+                "name": "Test user",
+                "role": "%s"
               }
             }
           }
         }
-        """.formatted(traineeId, state);
+        """.formatted(traineeId, state, modifiedByRole);
 
     JsonNode eventJson = JsonMapper.builder()
         .build()
@@ -245,6 +247,7 @@ class LtftListenerIntegrationTest {
       APPROVED     | LTFT_APPROVED
       SUBMITTED    | LTFT_SUBMITTED
       UNSUBMITTED  | LTFT_UNSUBMITTED
+      UNSUBMITTED  | LTFT_ADMIN_UNSUBMITTED
       WITHDRAWN    | LTFT_WITHDRAWN
       Other-Status | LTFT_UPDATED
       """)
@@ -253,6 +256,7 @@ class LtftListenerIntegrationTest {
     when(userAccountService.getUserDetailsById(USER_ID)).thenReturn(
         new UserDetails(true, EMAIL, TITLE, "", "", GMC));
 
+    String modifiedByRole = state.equals("LTFT_ADMIN_UNSUBMITTED") ? "ADMIN" : "TRAINEE";
     String eventString = """
         {
           "traineeTisId": "%s",
@@ -278,11 +282,15 @@ class LtftListenerIntegrationTest {
               "detail" : {
                 "reason": "",
                 "detail": ""
+              },
+               "modifiedBy": {
+                "name": "Test user",
+                "role": "%s"
               }
             }
           }
         }
-        """.formatted(traineeId, state);
+        """.formatted(traineeId, state, modifiedByRole);
 
     JsonNode eventJson = JsonMapper.builder()
         .build()
@@ -312,6 +320,7 @@ class LtftListenerIntegrationTest {
       APPROVED    | LTFT_APPROVED
       SUBMITTED   | LTFT_SUBMITTED
       UNSUBMITTED | LTFT_UNSUBMITTED
+      UNSUBMITTED | LTFT_ADMIN_UNSUBMITTED
       WITHDRAWN   | LTFT_WITHDRAWN
       """)
   void shouldSendFullyTailoredNotificationsWhenAllTemplateVariablesAvailableAndUrlContacts(
@@ -330,6 +339,7 @@ class LtftListenerIntegrationTest {
         eq(""))).thenCallRealMethod();
     when(notificationService.getHrefTypeForContact(any())).thenCallRealMethod();
 
+    String modifiedByRole = state.equals("LTFT_ADMIN_UNSUBMITTED") ? "ADMIN" : "TRAINEE";
     String eventString = """
         {
           "traineeTisId": "%s",
@@ -357,12 +367,13 @@ class LtftListenerIntegrationTest {
                 "detail": "some detail"
               },
               "modifiedBy": {
-                "name": "Anne Other"
+                "name": "Anne Other",
+                "role": "%s"
               }
             }
           }
         }
-        """.formatted(traineeId, MANAGING_DEANERY, state, STATUS_REASON);
+        """.formatted(traineeId, MANAGING_DEANERY, state, STATUS_REASON, modifiedByRole);
 
     JsonNode eventJson = JsonMapper.builder()
         .build()
@@ -393,6 +404,7 @@ class LtftListenerIntegrationTest {
       APPROVED    | LTFT_APPROVED
       SUBMITTED   | LTFT_SUBMITTED
       UNSUBMITTED | LTFT_UNSUBMITTED
+      UNSUBMITTED | LTFT_ADMIN_UNSUBMITTED
       WITHDRAWN   | LTFT_WITHDRAWN
       """)
   void shouldSendFullyTailoredNotificationsWhenAllTemplateVariablesAvailableAndEmailContacts(
@@ -411,6 +423,7 @@ class LtftListenerIntegrationTest {
         eq(""))).thenCallRealMethod();
     when(notificationService.getHrefTypeForContact(any())).thenCallRealMethod();
 
+    String modifiedByRole = state.equals("LTFT_ADMIN_UNSUBMITTED") ? "ADMIN" : "TRAINEE";
     String eventString = """
         {
           "traineeTisId": "%s",
@@ -438,12 +451,13 @@ class LtftListenerIntegrationTest {
                 "detail": "some detail"
               },
               "modifiedBy": {
-                "name": "Anne Other"
+                "name": "Anne Other",
+                "role": "%s"
               }
             }
           }
         }
-        """.formatted(traineeId, MANAGING_DEANERY, state, STATUS_REASON);
+        """.formatted(traineeId, MANAGING_DEANERY, state, STATUS_REASON, modifiedByRole);
 
     JsonNode eventJson = JsonMapper.builder()
         .build()
@@ -534,11 +548,12 @@ class LtftListenerIntegrationTest {
 
   @ParameterizedTest
   @CsvSource(delimiter = '|', textBlock = """
-      APPROVED     | LTFT_APPROVED    | v1.0.1
-      SUBMITTED    | LTFT_SUBMITTED   | v1.0.0
-      UNSUBMITTED  | LTFT_UNSUBMITTED | v1.0.0
-      WITHDRAWN    | LTFT_WITHDRAWN   | v1.0.0
-      Other-Status | LTFT_UPDATED     | v1.0.0
+      APPROVED     | LTFT_APPROVED          | v1.0.1
+      SUBMITTED    | LTFT_SUBMITTED         | v1.0.0
+      UNSUBMITTED  | LTFT_UNSUBMITTED       | v1.0.0
+      UNSUBMITTED  | LTFT_ADMIN_UNSUBMITTED | v1.0.0
+      WITHDRAWN    | LTFT_WITHDRAWN         | v1.0.0
+      Other-Status | LTFT_UPDATED           | v1.0.0
       """)
   void shouldStoreNotificationHistoryWhenMessageSent(String state, NotificationType type,
       String expectedVersion)
@@ -557,6 +572,7 @@ class LtftListenerIntegrationTest {
         eq(""))).thenCallRealMethod();
     when(notificationService.getHrefTypeForContact(any())).thenCallRealMethod();
 
+    String modifiedByRole = state.equals("LTFT_ADMIN_UNSUBMITTED") ? "ADMIN" : "TRAINEE";
     String eventString = """
         {
           "traineeTisId": "%s",
@@ -574,13 +590,14 @@ class LtftListenerIntegrationTest {
                 "detail": "some detail"
               },
               "modifiedBy": {
-                "name": "%s"
+                "name": "%s",
+                "role": "%s"
               }
             }
           }
         }
         """.formatted(traineeId, FORM_REF, LTFT_NAME, MANAGING_DEANERY, state, TIMESTAMP,
-        STATUS_REASON, MODIFIED_BY_NAME);
+        STATUS_REASON, MODIFIED_BY_NAME, modifiedByRole);
 
     JsonNode eventJson = JsonMapper.builder()
         .build()
@@ -629,8 +646,10 @@ class LtftListenerIntegrationTest {
     assertThat("Unexpected timestamp.", event.getTimestamp(), is(TIMESTAMP));
     assertThat("Unexpected status reason.", event.getStateDetail().reason(),
         is(STATUS_REASON_TEXT));
-    assertThat("Unexpected modified by name.", event.getModifiedByName(),
+    assertThat("Unexpected modified by name.", event.getModifiedBy().name(),
         is(MODIFIED_BY_NAME));
+    assertThat("Unexpected modified by role.", event.getModifiedBy().role(),
+        is(modifiedByRole));
 
     Map<String, Contact> contacts = (Map<String, Contact>) storedVariables.get("contacts");
     assertThat("Unexpected contact count.", contacts.keySet(), hasSize(4));

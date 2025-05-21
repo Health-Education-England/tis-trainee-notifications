@@ -17,7 +17,7 @@
   <p><strong>Reason for Withdrawal:</strong><br>
     <th:block th:text="${not #strings.isEmpty(var?.stateDetail?.reason)} ? ${var.stateDetail.reason} : 'unknown'"></th:block></p>
   <p><strong>Who Withdrew the Application:</strong><br>
-    <th:block th:text="${not #strings.isEmpty(var?.modifiedByName)} ? ${var?.modifiedByName}   : 'unknown'"></th:block></p>
+    <th:block th:text="${not #strings.isEmpty(var?.modifiedBy?.name)} ? ${var?.modifiedBy?.name}   : 'unknown'"></th:block></p>
   <p>As your application has been withdrawn, <strong>no further changes can be made</strong>. If you wish to apply for Less Than Full Time (LTFT) training in the future, you will need to submit a new application via the <a href="https://trainee.tis.nhs.uk/ltft" target="_blank">TIS Self-Service</a>.</p>
   <p>
     For any further queries, please contact your <th:block th:with="contact = ${contacts?.get('LTFT_SUPPORT')}">

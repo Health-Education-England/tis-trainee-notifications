@@ -26,6 +26,7 @@ import static uk.nhs.tis.trainee.notifications.model.LocalOfficeContactType.LTFT
 import static uk.nhs.tis.trainee.notifications.model.LocalOfficeContactType.SUPPORTED_RETURN_TO_TRAINING;
 import static uk.nhs.tis.trainee.notifications.model.LocalOfficeContactType.TSS_SUPPORT;
 import static uk.nhs.tis.trainee.notifications.model.MessageType.EMAIL;
+import static uk.nhs.tis.trainee.notifications.model.NotificationType.LTFT_ADMIN_UNSUBMITTED;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.LTFT_APPROVED;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.LTFT_APPROVED_TPD;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.LTFT_SUBMITTED;
@@ -61,6 +62,9 @@ import uk.nhs.tis.trainee.notifications.service.NotificationService;
 @Component
 public class LtftListener {
 
+  public static final String LTFT_ROLE_TRAINEE = "TRAINEE";
+  public static final String LTFT_ROLE_ADMIN = "ADMIN";
+
   private static final Set<LocalOfficeContactType> TEMPLATE_CONTACTS = Set.of(LTFT, LTFT_SUPPORT,
       SUPPORTED_RETURN_TO_TRAINING, TSS_SUPPORT);
 
@@ -89,7 +93,7 @@ public class LtftListener {
   }
 
   /**
-   * Handle LTFT update events.
+   * Handle LTFT update events, where the trainee is the message recipient.
    *
    * @param event The LTFT update event message.
    * @throws MessagingException If the message could not be sent.
@@ -98,11 +102,13 @@ public class LtftListener {
   public void handleLtftUpdate(LtftUpdateEvent event) throws MessagingException {
     log.info("Handling LTFT update event {}.", event);
     event = ltftEventMapper.map(event);
+    String statusModifiedByRole = getModifiedByRole(event);
 
     NotificationType notificationType = switch (event.getState()) {
       case "APPROVED" -> LTFT_APPROVED;
       case "SUBMITTED" -> LTFT_SUBMITTED;
-      case "UNSUBMITTED" -> LTFT_UNSUBMITTED;
+      case "UNSUBMITTED" ->
+          statusModifiedByRole.equals(LTFT_ROLE_ADMIN) ? LTFT_ADMIN_UNSUBMITTED : LTFT_UNSUBMITTED;
       case "WITHDRAWN" -> LTFT_WITHDRAWN;
       default -> LTFT_UPDATED;
     };
@@ -125,7 +131,7 @@ public class LtftListener {
   }
 
   /**
-   * Handle LTFT update events for the TPD.
+   * Handle LTFT update events, where the TPD is the message recipient.
    *
    * @param event The LTFT update event message.
    * @throws MessagingException If the message could not be sent.
@@ -166,6 +172,22 @@ public class LtftListener {
       log.info("No action required for the LTFT update TPD event with notification type '{}', "
           + "ignoring.", event.getState());
     }
+  }
+
+  /**
+   * Get the role of the person who modified the LTFT status.
+   *
+   * @param event The LTFT update event.
+   * @return The role of the person who modified the LTFT status, or 'unknown' if not available.
+   */
+  private String getModifiedByRole(LtftUpdateEvent event) {
+    String statusModifiedByRole = event.getModifiedBy() == null ? null
+        : event.getModifiedBy().role();
+    if (statusModifiedByRole == null) {
+      log.warn("LTFT update event {} has no status modified by role.", event);
+      statusModifiedByRole = "unknown";
+    }
+    return statusModifiedByRole;
   }
 
   /**
