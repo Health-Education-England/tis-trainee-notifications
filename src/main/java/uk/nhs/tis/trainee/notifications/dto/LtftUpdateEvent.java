@@ -47,7 +47,7 @@ public class LtftUpdateEvent {
   private String state;
   private Instant timestamp;
   private LftfStatusInfoDetailDto stateDetail;
-  private String modifiedByName;
+  private LtftStatusModifiedByDto modifiedBy;
 
   /**
    * A trainee's personal details.
@@ -92,6 +92,17 @@ public class LtftUpdateEvent {
   }
 
   /**
+   * A DTO for the person who modified the LTFT status.
+   *
+   * @param name The name of the person who modified the status.
+   * @param role The role of the person who modified the status.
+   */
+  @Builder
+  public record LtftStatusModifiedByDto(String name, String role) {
+
+  }
+
+  /**
    * Unpack the current status to set the state, timestamp and detail.
    *
    * @param status The value of the status property.
@@ -107,10 +118,14 @@ public class LtftUpdateEvent {
     stateDetail = detail == null ? null
         : LftfStatusInfoDetailDto.builder()
             .reason(detail.get("reason"))
-            .message(detail.get("detail"))
+            .message(detail.get("message"))
             .build();
-    Map<String, String> modifiedBy = (Map<String, String>) current.get("modifiedBy");
-    modifiedByName = modifiedBy == null ? null : modifiedBy.get("name");
+    Map<String, String> modifiedByMap = (Map<String, String>) current.get("modifiedBy");
+    modifiedBy = modifiedByMap == null ? null
+        : LtftStatusModifiedByDto.builder()
+            .name(modifiedByMap.get("name"))
+            .role(modifiedByMap.get("role"))
+            .build();
   }
 
   /**

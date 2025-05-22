@@ -38,6 +38,7 @@ import static uk.nhs.tis.trainee.notifications.model.LocalOfficeContactType.LTFT
 import static uk.nhs.tis.trainee.notifications.model.LocalOfficeContactType.LTFT_SUPPORT;
 import static uk.nhs.tis.trainee.notifications.model.LocalOfficeContactType.SUPPORTED_RETURN_TO_TRAINING;
 import static uk.nhs.tis.trainee.notifications.model.LocalOfficeContactType.TSS_SUPPORT;
+import static uk.nhs.tis.trainee.notifications.model.NotificationType.LTFT_ADMIN_UNSUBMITTED;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.LTFT_APPROVED_TPD;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.LTFT_SUBMITTED_TPD;
 
@@ -100,6 +101,7 @@ class LtftListenerTest {
         "ltft-submitted-tpd", new MessageTypeVersions(VERSION, null),
         "ltft-submitted", new MessageTypeVersions(VERSION, null),
         "ltft-unsubmitted", new MessageTypeVersions(VERSION, null),
+        "ltft-admin-unsubmitted", new MessageTypeVersions(VERSION, null),
         "ltft-withdrawn", new MessageTypeVersions(VERSION, null)
     ));
     listener = new LtftListener(notificationService, emailService, templateVersions,
@@ -111,11 +113,18 @@ class LtftListenerTest {
       APPROVED     | LTFT_APPROVED
       SUBMITTED    | LTFT_SUBMITTED
       UNSUBMITTED  | LTFT_UNSUBMITTED
+      UNSUBMITTED  | LTFT_ADMIN_UNSUBMITTED
       WITHDRAWN    | LTFT_WITHDRAWN
       Other-Status | LTFT_UPDATED
       """)
   void shouldThrowExceptionWhenNoEmailTemplateAvailable(String state, NotificationType type) {
-    LtftUpdateEvent event = LtftUpdateEvent.builder().state(state).build();
+    LtftUpdateEvent event = LtftUpdateEvent.builder()
+        .state(state)
+        .modifiedBy(LtftUpdateEvent.LtftStatusModifiedByDto.builder()
+            .name("Test User")
+            .role(type.equals(LTFT_ADMIN_UNSUBMITTED) ? "ADMIN" : "TRAINEE")
+            .build())
+        .build();
 
     TemplateVersionsProperties templateVersions = new TemplateVersionsProperties(Map.of(
         type.getTemplateName(), new MessageTypeVersions(null, VERSION)
@@ -154,6 +163,7 @@ class LtftListenerTest {
       APPROVED     | LTFT_APPROVED
       SUBMITTED    | LTFT_SUBMITTED
       UNSUBMITTED  | LTFT_UNSUBMITTED
+      UNSUBMITTED  | LTFT_ADMIN_UNSUBMITTED
       WITHDRAWN    | LTFT_WITHDRAWN
       Other-Status | LTFT_UPDATED
       """)
@@ -161,6 +171,10 @@ class LtftListenerTest {
       throws MessagingException {
     LtftUpdateEvent event = LtftUpdateEvent.builder()
         .state(state)
+        .modifiedBy(LtftUpdateEvent.LtftStatusModifiedByDto.builder()
+            .name("Test User")
+            .role(type.equals(LTFT_ADMIN_UNSUBMITTED) ? "ADMIN" : "TRAINEE")
+            .build())
         .build();
 
     listener.handleLtftUpdate(event);
@@ -170,16 +184,21 @@ class LtftListenerTest {
 
   @ParameterizedTest
   @CsvSource(delimiter = '|', textBlock = """
-      APPROVED     | LTFT_APPROVED    | v1.2.3
-      Other-Status | LTFT_UPDATED     | v2.3.4
-      SUBMITTED    | LTFT_SUBMITTED   | v3.4.5
-      UNSUBMITTED  | LTFT_UNSUBMITTED | v4.5.6
-      WITHDRAWN    | LTFT_WITHDRAWN   | v5.6.7
+      APPROVED     | LTFT_APPROVED          | v1.2.3
+      Other-Status | LTFT_UPDATED           | v2.3.4
+      SUBMITTED    | LTFT_SUBMITTED         | v3.4.5
+      UNSUBMITTED  | LTFT_UNSUBMITTED       | v4.5.6
+      UNSUBMITTED  | LTFT_ADMIN_UNSUBMITTED | v5.6.7
+      WITHDRAWN    | LTFT_WITHDRAWN         | v6.7.8
       """)
   void shouldSetTemplateVersionWhenLtftUpdated(String state, NotificationType type, String version)
       throws MessagingException {
     LtftUpdateEvent event = LtftUpdateEvent.builder()
         .state(state)
+        .modifiedBy(LtftUpdateEvent.LtftStatusModifiedByDto.builder()
+            .name("Test User")
+            .role(type.equals(LTFT_ADMIN_UNSUBMITTED) ? "ADMIN" : "TRAINEE")
+            .build())
         .build();
 
     TemplateVersionsProperties templateVersions = new TemplateVersionsProperties(Map.of(
@@ -215,6 +234,10 @@ class LtftListenerTest {
             .managingDeanery("Test Deanery")
             .build())
         .state(state)
+        .modifiedBy(LtftUpdateEvent.LtftStatusModifiedByDto.builder()
+            .name("Test User")
+            .role("TRAINEE")
+            .build())
         .build();
 
     listener.handleLtftUpdate(event);
@@ -419,7 +442,7 @@ class LtftListenerTest {
 
   @ParameterizedTest
   @CsvSource(delimiter = '|', textBlock = """
-      APPROVED    | LTFT_APPROVED_TPD | v2.3.4
+      APPROVED    | LTFT_APPROVED_TPD  | v2.3.4
       SUBMITTED   | LTFT_SUBMITTED_TPD | v3.4.5
       """)
   void shouldSetTemplateVersionWhenLtftUpdatedForTpd(String state, NotificationType type,
