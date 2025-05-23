@@ -48,7 +48,7 @@ import static uk.nhs.tis.trainee.notifications.model.NotificationType.USEFUL_INF
 import static uk.nhs.tis.trainee.notifications.model.TisReferenceType.PLACEMENT;
 import static uk.nhs.tis.trainee.notifications.model.TisReferenceType.PROGRAMME_MEMBERSHIP;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.CONTACT_TYPE_FIELD;
-import static uk.nhs.tis.trainee.notifications.service.NotificationService.NINE_HOURS_IN_SECONDS;
+import static uk.nhs.tis.trainee.notifications.service.NotificationService.ONE_DAY_IN_SECONDS;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.PERSON_ID_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.TEMPLATE_OWNER_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.PlacementService.GMC_NUMBER_FIELD;
@@ -282,7 +282,7 @@ class PlacementServiceTest {
         stringCaptor.capture(),
         jobDataMapCaptor.capture(),
         dateCaptor.capture(),
-        eq(NINE_HOURS_IN_SECONDS)
+        eq(ONE_DAY_IN_SECONDS)
     );
 
     //verify the details of the last notification added
@@ -577,7 +577,7 @@ class PlacementServiceTest {
         any(),
         any(),
         dateCaptor.capture(),
-        eq(NINE_HOURS_IN_SECONDS)
+        eq(ONE_DAY_IN_SECONDS)
     );
 
     Date when = dateCaptor.getValue();

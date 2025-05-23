@@ -49,7 +49,7 @@ import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.SPONSORSHIP;
 import static uk.nhs.tis.trainee.notifications.model.TisReferenceType.PROGRAMME_MEMBERSHIP;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.CONTACT_TYPE_FIELD;
-import static uk.nhs.tis.trainee.notifications.service.NotificationService.NINE_HOURS_IN_SECONDS;
+import static uk.nhs.tis.trainee.notifications.service.NotificationService.ONE_DAY_IN_SECONDS;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.PERSON_ID_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.PlacementService.GMC_NUMBER_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.BLOCK_INDEMNITY_FIELD;
@@ -700,7 +700,7 @@ class ProgrammeMembershipServiceTest {
         dayOneStringCaptor.capture(),
         dayOneJobDataMapCaptor.capture(),
         eq(Date.from(START_DATE.atStartOfDay(timezone).toInstant())),
-        eq(NINE_HOURS_IN_SECONDS));
+        eq(ONE_DAY_IN_SECONDS));
 
     String dayOneJobId = dayOneStringCaptor.getValue();
     String dayOneExpectedJobId = PROGRAMME_DAY_ONE + "-" + TIS_ID;
@@ -822,7 +822,7 @@ class ProgrammeMembershipServiceTest {
 
     String dayOneExpectedJobId = PROGRAMME_DAY_ONE + "-" + TIS_ID;
     verify(notificationService)
-        .scheduleNotification(eq(dayOneExpectedJobId), any(), any(), eq(NINE_HOURS_IN_SECONDS));
+        .scheduleNotification(eq(dayOneExpectedJobId), any(), any(), eq(ONE_DAY_IN_SECONDS));
   }
 
   @Test
@@ -897,7 +897,7 @@ class ProgrammeMembershipServiceTest {
 
     String dayOneExpectedJobId = PROGRAMME_DAY_ONE + "-" + TIS_ID;
     verify(notificationService)
-        .scheduleNotification(eq(dayOneExpectedJobId), any(), any(), eq(NINE_HOURS_IN_SECONDS));
+        .scheduleNotification(eq(dayOneExpectedJobId), any(), any(), eq(ONE_DAY_IN_SECONDS));
   }
 
   @Test
@@ -966,7 +966,7 @@ class ProgrammeMembershipServiceTest {
     Date expectedWhenDate = Date.from(
         expectedWhen.atStartOfDay(timezone).toInstant());
     verify(notificationService)
-        .scheduleNotification(any(), any(), eq(expectedWhenDate), eq(NINE_HOURS_IN_SECONDS));
+        .scheduleNotification(any(), any(), eq(expectedWhenDate), eq(ONE_DAY_IN_SECONDS));
     verify(notificationService, never()).executeNow(any(), any());
   }
 
@@ -1050,7 +1050,7 @@ class ProgrammeMembershipServiceTest {
     Date expectedWhenDate = Date.from(
         expectedWhen.atStartOfDay(timezone).toInstant());
     verify(notificationService)
-        .scheduleNotification(any(), any(), eq(expectedWhenDate), eq(NINE_HOURS_IN_SECONDS));
+        .scheduleNotification(any(), any(), eq(expectedWhenDate), eq(ONE_DAY_IN_SECONDS));
     verify(notificationService, never()).executeNow(any(), any());
   }
 

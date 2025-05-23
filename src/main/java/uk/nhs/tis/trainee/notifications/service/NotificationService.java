@@ -97,7 +97,7 @@ public class NotificationService implements Job {
   public static final String API_TRAINEE_LOCAL_OFFICE_CONTACTS
       = "/api/trainee-profile/local-office-contacts/{tisId}/{contactTypeName}";
   private static final String TRIGGER_ID_PREFIX = "trigger-";
-  public static final long NINE_HOURS_IN_SECONDS = 9 * 60 * 60L;
+  public static final long ONE_DAY_IN_SECONDS = 24 * 60 * 60L;
 
   public static final String TEMPLATE_NOTIFICATION_TYPE_FIELD = "notificationType";
   public static final String TEMPLATE_OWNER_CONTACT_FIELD = "localOfficeContact";
