@@ -61,7 +61,7 @@ import static uk.nhs.tis.trainee.notifications.service.NotificationService.CONTA
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.CONTACT_TYPE_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.DEFAULT_NO_CONTACT_MESSAGE;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.DUMMY_USER_ROLES;
-import static uk.nhs.tis.trainee.notifications.service.NotificationService.NINE_HOURS_IN_SECONDS;
+import static uk.nhs.tis.trainee.notifications.service.NotificationService.ONE_DAY_IN_SECONDS;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.PERSON_ID_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.TEMPLATE_CONTACT_HREF_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.TEMPLATE_NOTIFICATION_TYPE_FIELD;
@@ -1237,9 +1237,9 @@ class NotificationServiceTest {
     when(restTemplate.getForObject(ACCOUNT_DETAILS_URL, UserDetails.class,
         Map.of(TIS_ID_FIELD, PERSON_ID))).thenReturn(userAccountDetails);
 
-    service.scheduleNotification("id1", jobDataMap, scheduledDate, NINE_HOURS_IN_SECONDS);
-    service.scheduleNotification("id2", jobDataMap, scheduledDate, NINE_HOURS_IN_SECONDS);
-    service.scheduleNotification("id3", jobDataMap, scheduledDate, NINE_HOURS_IN_SECONDS);
+    service.scheduleNotification("id1", jobDataMap, scheduledDate, ONE_DAY_IN_SECONDS);
+    service.scheduleNotification("id2", jobDataMap, scheduledDate, ONE_DAY_IN_SECONDS);
+    service.scheduleNotification("id3", jobDataMap, scheduledDate, ONE_DAY_IN_SECONDS);
 
     ArgumentCaptor<Trigger> triggerCaptor = ArgumentCaptor.forClass(Trigger.class);
     verify(scheduler, times(3)).scheduleJob(any(), triggerCaptor.capture());
