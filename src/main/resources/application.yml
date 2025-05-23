@@ -90,7 +90,7 @@ application:
     placement-useful-information:
       in-app: v1.0.0
     programme-created:
-      email: v1.3.0
+      email: v1.3.1
     programme-day-one:
       email: v1.1.0
     programme-updated-week-0:
