@@ -120,18 +120,21 @@ public class ResendGoogleMailFailures {
 
     for (History failure : failures) {
       log.info("Progress: {}/{}.", current++, total);
+      boolean success;
 
       NotificationType type = failure.type();
       if (INSTANT_NOTIFICATIONS.contains(type)) {
-        sendEmail(failure);
+        success = sendEmail(failure);
       } else if (SCHEDULE_NOTIFICATIONS.contains(type)) {
-        scheduleEmail(failure);
+        success = scheduleEmail(failure);
       } else {
         log.warn("Skipping unexpected failed notification type {}.", type);
         continue;
       }
 
-      historyService.deleteHistoryForTrainee(failure.id(), failure.recipient().id());
+      if (success) {
+        historyService.deleteHistoryForTrainee(failure.id(), failure.recipient().id());
+      }
     }
   }
 
@@ -139,12 +142,15 @@ public class ResendGoogleMailFailures {
    * Retry sending the failed email.
    *
    * @param failure The failed notification history.
+   * @return Whether the notification was successfully sent.
    */
-  private void sendEmail(History failure) {
+  private boolean sendEmail(History failure) {
     try {
       emailService.resendMessage(failure, failure.recipient().contact());
+      return true;
     } catch (MessagingException e) {
       log.error("Failed to send notification retry.", e);
+      return false;
     }
   }
 
@@ -152,8 +158,9 @@ public class ResendGoogleMailFailures {
    * Schedule retrying to send the failed email.
    *
    * @param failure The failed notification history.
+   * @return Whether the notification was successfully scheduled.
    */
-  private void scheduleEmail(History failure) {
+  private boolean scheduleEmail(History failure) {
     Map<String, Object> templateVariables = failure.template().variables();
     JobDataMap jobData = new JobDataMap(templateVariables);
     String jobId = "%s-%s".formatted(failure.type(), failure.tisReference().id());
@@ -161,8 +168,10 @@ public class ResendGoogleMailFailures {
     try {
       notificationService.removeNotification(jobId);
       notificationService.scheduleNotification(jobId, jobData, Date.from(Instant.now()), WINDOW);
+      return true;
     } catch (SchedulerException e) {
       log.error("Failed to schedule notification retry.", e);
+      return false;
     }
   }
 

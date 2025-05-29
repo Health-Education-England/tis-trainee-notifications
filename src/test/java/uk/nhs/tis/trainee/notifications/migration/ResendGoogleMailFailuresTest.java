@@ -114,6 +114,29 @@ class ResendGoogleMailFailuresTest {
   }
 
   @ParameterizedTest
+  @EnumSource(NotificationType.class)
+  void shouldNotRemoveNotificationsWhenResendFails(NotificationType type)
+      throws MessagingException, SchedulerException {
+    ObjectId historyId = ObjectId.get();
+    History failure = History.builder()
+        .id(historyId)
+        .type(type)
+        .tisReference(new TisReferenceInfo(PLACEMENT, REFERENCE_ID))
+        .recipient(new RecipientInfo(TRAINEE_ID, EMAIL, TRAINEE_EMAIL))
+        .template(new TemplateInfo("template-name", "v1.2.3", Map.of()))
+        .build();
+    when(mongoTemplate.find(any(), eq(History.class))).thenReturn(List.of(failure));
+
+    doThrow(MessagingException.class).when(emailService).resendMessage(any(), any());
+    doThrow(SchedulerException.class).when(notificationService)
+        .scheduleNotification(any(), any(), any(), anyLong());
+
+    migrator.migrate();
+
+    verifyNoInteractions(historyService);
+  }
+
+  @ParameterizedTest
   @EnumSource(value = NotificationType.class, names = {
       "COJ_CONFIRMATION", "EMAIL_UPDATED_NEW", "FORM_UPDATED", "LTFT_SUBMITTED"})
   void shouldMigrateInstantEmails(NotificationType type) throws MessagingException {
