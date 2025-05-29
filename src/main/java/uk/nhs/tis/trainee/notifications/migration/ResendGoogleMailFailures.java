@@ -35,7 +35,6 @@ import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_
 import io.mongock.api.annotations.ChangeUnit;
 import io.mongock.api.annotations.Execution;
 import io.mongock.api.annotations.RollbackExecution;
-import jakarta.mail.MessagingException;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -46,7 +45,6 @@ import java.util.Set;
 import java.util.regex.Pattern;
 import lombok.extern.slf4j.Slf4j;
 import org.quartz.JobDataMap;
-import org.quartz.SchedulerException;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
@@ -148,7 +146,7 @@ public class ResendGoogleMailFailures {
     try {
       emailService.resendMessage(failure, failure.recipient().contact());
       return true;
-    } catch (MessagingException e) {
+    } catch (Exception e) {
       log.error("Failed to send notification retry.", e);
       return false;
     }
@@ -169,7 +167,7 @@ public class ResendGoogleMailFailures {
       notificationService.removeNotification(jobId);
       notificationService.scheduleNotification(jobId, jobData, Date.from(Instant.now()), WINDOW);
       return true;
-    } catch (SchedulerException e) {
+    } catch (Exception e) {
       log.error("Failed to schedule notification retry.", e);
       return false;
     }
