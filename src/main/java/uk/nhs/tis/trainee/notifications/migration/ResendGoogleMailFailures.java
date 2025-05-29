@@ -148,7 +148,7 @@ public class ResendGoogleMailFailures {
     try {
       emailService.resendMessage(failure, failure.recipient().contact());
       return true;
-    } catch (MessagingException e) {
+    } catch (Exception e) {
       log.error("Failed to send notification retry.", e);
       return false;
     }
@@ -169,7 +169,7 @@ public class ResendGoogleMailFailures {
       notificationService.removeNotification(jobId);
       notificationService.scheduleNotification(jobId, jobData, Date.from(Instant.now()), WINDOW);
       return true;
-    } catch (SchedulerException e) {
+    } catch (Exception e) {
       log.error("Failed to schedule notification retry.", e);
       return false;
     }
