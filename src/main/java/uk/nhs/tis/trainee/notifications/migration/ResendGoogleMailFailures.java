@@ -35,7 +35,6 @@ import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_
 import io.mongock.api.annotations.ChangeUnit;
 import io.mongock.api.annotations.Execution;
 import io.mongock.api.annotations.RollbackExecution;
-import jakarta.mail.MessagingException;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -46,7 +45,6 @@ import java.util.Set;
 import java.util.regex.Pattern;
 import lombok.extern.slf4j.Slf4j;
 import org.quartz.JobDataMap;
-import org.quartz.SchedulerException;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
