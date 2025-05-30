@@ -172,7 +172,8 @@ class LtftListenerTest {
     ArgumentCaptor<History.TisReferenceInfo> captor = ArgumentCaptor.captor();
     verify(emailService).sendMessageToExistingUser(any(), any(), any(), any(), captor.capture());
 
-    assertThat("Unexpected TIS reference type.", captor.getValue().type(), is(TisReferenceType.LTFT));
+    assertThat("Unexpected TIS reference type.", captor.getValue().type(),
+        is(TisReferenceType.LTFT));
     assertThat("Unexpected TIS reference id.", captor.getValue().id(), is("123"));
   }
 
@@ -388,7 +389,8 @@ class LtftListenerTest {
     ArgumentCaptor<History.TisReferenceInfo> captor = ArgumentCaptor.captor();
     verify(emailService).sendMessageToExistingUser(any(), any(), any(), any(), captor.capture());
 
-    assertThat("Unexpected TIS reference type.", captor.getValue().type(), is(TisReferenceType.LTFT));
+    assertThat("Unexpected TIS reference type.", captor.getValue().type(),
+        is(TisReferenceType.LTFT));
     assertThat("Unexpected TIS reference id.", captor.getValue().id(), is("123"));
   }
 
