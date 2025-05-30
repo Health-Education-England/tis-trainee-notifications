@@ -38,6 +38,8 @@ public class LtftUpdateEvent {
 
   @JsonAlias("traineeTisId")
   private String traineeId;
+  @JsonAlias("id")
+  private String formId;
   private String formRef;
   private String formName;
   private PersonalDetails personalDetails;
