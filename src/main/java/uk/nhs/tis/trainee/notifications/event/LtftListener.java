@@ -49,9 +49,10 @@ import uk.nhs.tis.trainee.notifications.config.TemplateVersionsProperties;
 import uk.nhs.tis.trainee.notifications.dto.LtftUpdateEvent;
 import uk.nhs.tis.trainee.notifications.dto.UserDetails;
 import uk.nhs.tis.trainee.notifications.mapper.LtftEventMapper;
-import uk.nhs.tis.trainee.notifications.model.HrefType;
+import uk.nhs.tis.trainee.notifications.model.History;
 import uk.nhs.tis.trainee.notifications.model.LocalOfficeContactType;
 import uk.nhs.tis.trainee.notifications.model.NotificationType;
+import uk.nhs.tis.trainee.notifications.model.TisReferenceType;
 import uk.nhs.tis.trainee.notifications.service.EmailService;
 import uk.nhs.tis.trainee.notifications.service.NotificationService;
 
@@ -124,8 +125,10 @@ public class LtftListener {
         "var", event,
         "contacts", getContacts(managingDeanery)
     );
+    History.TisReferenceInfo tisReferenceInfo
+        = new History.TisReferenceInfo(TisReferenceType.LTFT, event.getFormId());
     emailService.sendMessageToExistingUser(traineeTisId, notificationType, templateVersion,
-        templateVariables, null);
+        templateVariables, tisReferenceInfo);
     log.info("LTFT updated notification sent for trainee {}.", traineeTisId);
   }
 
@@ -162,9 +165,11 @@ public class LtftListener {
           : event.getProgrammeMembership().managingDeanery();
       templateVariables.put("contacts", getContacts(managingDeanery));
 
+      History.TisReferenceInfo tisReferenceInfo
+          = new History.TisReferenceInfo(TisReferenceType.LTFT, event.getFormId());
       String tpdEmail = event.getDiscussions() == null ? null : event.getDiscussions().tpdEmail();
       emailService.sendMessage(traineeTisId, tpdEmail, notificationType,
-          templateVersion, templateVariables, null, !emailNotificationsEnabled);
+          templateVersion, templateVariables, tisReferenceInfo, !emailNotificationsEnabled);
       log.info("LTFT {} notification sent to TPD at email '{}' for trainee {}.", event.getState(),
           tpdEmail, traineeTisId);
     } else {
