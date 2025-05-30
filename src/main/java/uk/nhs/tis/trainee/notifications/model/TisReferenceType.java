@@ -29,6 +29,6 @@ public enum TisReferenceType {
   PLACEMENT,
   PROGRAMME_MEMBERSHIP,
   FORMR_PARTA,
-  FORMR_PARTB
-
+  FORMR_PARTB,
+  LTFT
 }

@@ -61,8 +61,10 @@ import uk.nhs.tis.trainee.notifications.dto.ProgrammeMembershipDto;
 import uk.nhs.tis.trainee.notifications.dto.UserDetails;
 import uk.nhs.tis.trainee.notifications.event.LtftListener.Contact;
 import uk.nhs.tis.trainee.notifications.mapper.LtftEventMapper;
+import uk.nhs.tis.trainee.notifications.model.History;
 import uk.nhs.tis.trainee.notifications.model.LocalOfficeContactType;
 import uk.nhs.tis.trainee.notifications.model.NotificationType;
+import uk.nhs.tis.trainee.notifications.model.TisReferenceType;
 import uk.nhs.tis.trainee.notifications.service.EmailService;
 import uk.nhs.tis.trainee.notifications.service.NotificationService;
 
@@ -156,6 +158,22 @@ class LtftListenerTest {
     listener.handleLtftUpdate(event);
 
     verify(emailService).sendMessageToExistingUser(eq(TRAINEE_ID), any(), any(), any(), any());
+  }
+
+  @Test
+  void shouldSetTisReferenceInfoWhenLtftUpdated() throws MessagingException {
+    LtftUpdateEvent event = LtftUpdateEvent.builder()
+        .formId("123")
+        .state("")
+        .build();
+
+    listener.handleLtftUpdate(event);
+
+    ArgumentCaptor<History.TisReferenceInfo> captor = ArgumentCaptor.captor();
+    verify(emailService).sendMessageToExistingUser(any(), any(), any(), any(), captor.capture());
+
+    assertThat("Unexpected TIS reference type.", captor.getValue().type(), is(TisReferenceType.LTFT));
+    assertThat("Unexpected TIS reference id.", captor.getValue().id(), is("123"));
   }
 
   @ParameterizedTest
@@ -353,6 +371,25 @@ class LtftListenerTest {
 
     verify(emailService)
         .sendMessage(eq(TRAINEE_ID), any(), any(), any(), any(), any(), anyBoolean());
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"APPROVED", "SUBMITTED"})
+  void shouldSetTisReferenceInfoWhenLtftUpdatedForTpd(String state) throws MessagingException {
+    LtftUpdateEvent event = LtftUpdateEvent.builder()
+        .formId("123")
+        .state(state)
+        .build();
+
+    when(emailService.getRecipientAccount(TRAINEE_ID)).thenReturn(USER_DETAILS);
+
+    listener.handleLtftUpdate(event);
+
+    ArgumentCaptor<History.TisReferenceInfo> captor = ArgumentCaptor.captor();
+    verify(emailService).sendMessageToExistingUser(any(), any(), any(), any(), captor.capture());
+
+    assertThat("Unexpected TIS reference type.", captor.getValue().type(), is(TisReferenceType.LTFT));
+    assertThat("Unexpected TIS reference id.", captor.getValue().id(), is("123"));
   }
 
   @ParameterizedTest
