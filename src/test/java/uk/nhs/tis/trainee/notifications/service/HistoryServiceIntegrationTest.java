@@ -39,6 +39,7 @@ import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.UNREAD;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.FORM_UPDATED;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_DAY_ONE;
 
+import io.awspring.cloud.sqs.operations.SqsTemplate;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -101,6 +102,9 @@ class HistoryServiceIntegrationTest {
 
   @MockBean
   EventBroadcastService eventBroadcastService;
+
+  @MockBean
+  private SqsTemplate sqsTemplate;
 
   @Autowired
   private HistoryService service;

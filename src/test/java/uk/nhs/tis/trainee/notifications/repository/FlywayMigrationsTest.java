@@ -24,6 +24,7 @@ package uk.nhs.tis.trainee.notifications.repository;
 import static uk.nhs.tis.trainee.notifications.TestContainerConfiguration.MYSQL;
 
 import io.awspring.cloud.s3.S3Template;
+import io.awspring.cloud.sqs.operations.SqsTemplate;
 import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -63,6 +64,9 @@ class FlywayMigrationsTest implements TestExecutionListener {
 
   @MockBean
   private S3Template s3Template;
+
+  @MockBean
+  private SqsTemplate sqsTemplate;
 
   @Autowired
   Flyway flyway;

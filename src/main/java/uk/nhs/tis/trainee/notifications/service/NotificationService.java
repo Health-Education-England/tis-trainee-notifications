@@ -31,6 +31,7 @@ import static uk.nhs.tis.trainee.notifications.model.TisReferenceType.PLACEMENT;
 import static uk.nhs.tis.trainee.notifications.model.TisReferenceType.PROGRAMME_MEMBERSHIP;
 import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.TIS_ID_FIELD;
 
+import io.awspring.cloud.sqs.annotation.SqsListener;
 import jakarta.mail.MessagingException;
 import java.net.MalformedURLException;
 import java.net.URL;
@@ -118,11 +119,12 @@ public class NotificationService implements Job {
   private final String referenceUrl;
   private final Scheduler scheduler;
   private final MessagingControllerService messagingControllerService;
+  private final MessageSendingService messageSendingService;
   private final List<String> notificationsWhitelist;
   private final String timezone;
   protected final Integer immediateNotificationDelayMinutes;
 
-  private Random random;
+  private final Random random;
 
   /**
    * Initialise the Notification Service.
@@ -132,6 +134,7 @@ public class NotificationService implements Job {
    * @param scheduler                  The messaging scheduler.
    * @param messagingControllerService The messaging controller service to control whether to
    *                                   dispatch messages.
+   * @param messageSendingService      The service to use for sending to message queues.
    * @param templateVersions           The notification template versions.
    * @param serviceUrl                 The URL for the tis-trainee-details service to use for
    *                                   profile information.
@@ -142,6 +145,7 @@ public class NotificationService implements Job {
   public NotificationService(EmailService emailService, HistoryService historyService,
       RestTemplate restTemplate, Scheduler scheduler,
       MessagingControllerService messagingControllerService,
+      MessageSendingService messageSendingService,
       TemplateVersionsProperties templateVersions,
       @Value("${service.trainee.url}") String serviceUrl,
       @Value("${service.reference.url}") String referenceUrl,
@@ -156,6 +160,7 @@ public class NotificationService implements Job {
     this.serviceUrl = serviceUrl;
     this.referenceUrl = referenceUrl;
     this.messagingControllerService = messagingControllerService;
+    this.messageSendingService = messageSendingService;
     this.immediateNotificationDelayMinutes = notificationDelay;
     this.notificationsWhitelist = notificationsWhitelist;
     this.timezone = timezone;
@@ -170,6 +175,17 @@ public class NotificationService implements Job {
    * @return the result map with status details if successful.
    */
   public Map<String, String> executeNow(String jobKey, JobDataMap jobDetails) {
+    return messageSendingService.sendJobToOutbox(jobKey, jobDetails);
+  }
+
+  /**
+   * Process a queued job from the outbox.
+   *
+   * @param jobDetails The job details.
+   * @return the result map with status details if successful.
+   */
+  @SqsListener("${application.queues.outbox}")
+  public Map<String, String> executeQueued(JobDataMap jobDetails) {
     String jobName = "";
     Map<String, String> result = new HashMap<>();
 
@@ -226,8 +242,7 @@ public class NotificationService implements Job {
           throw new RuntimeException(e);
         }
 
-        log.info("Executed {} notification for {} ({}, starting {}) to {} using template {}",
-            jobKey,
+        log.info("Executed notification for {} ({}, starting {}) to {} using template {}",
             jobDetails.getString(TIS_ID_FIELD), jobName, startDate, userAccountDetails.email(),
             templateVersion.get());
         Instant processedOn = Instant.now();
@@ -617,7 +632,6 @@ public class NotificationService implements Job {
    * @param templateVariables The template variables.
    * @param templateVersion   The template version.
    * @param notificationType  The notification type (template type).
-   *
    * @return The set of distinct email addresses to which the mail was sent (or logged) in
    *         alphabetic order.
    * @throws MessagingException If the email(s) could not be sent.
@@ -649,7 +663,7 @@ public class NotificationService implements Job {
       }
     } else {
       log.warn("{} local office notification not processed for trainee {}: no local office "
-              + "contacts.", notificationType, traineeId);
+          + "contacts.", notificationType, traineeId);
     }
     return sentTo;
   }
@@ -675,7 +689,6 @@ public class NotificationService implements Job {
    * @param templateVariables The template variables.
    * @param templateVersion   The template version.
    * @param notificationType  The notification type (template type).
-   *
    * @throws MessagingException If the email could not be sent.
    */
   public void sendTraineeMail(String traineeId, String traineeEmail,
