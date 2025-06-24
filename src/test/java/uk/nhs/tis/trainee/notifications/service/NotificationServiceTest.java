@@ -168,8 +168,6 @@ class NotificationServiceTest {
   private static final String USER_GIVEN_NAME = "given-name";
   private static final String USER_GMC = "1234567";
 
-  private JobDetail programmeJobDetails;
-  private JobDetail placementJobDetails;
   private JobDataMap programmeJobDataMap;
   private JobDataMap placementJobDataMap;
 
@@ -211,16 +209,6 @@ class NotificationServiceTest {
     placementJobDataMap.put(TEMPLATE_OWNER_FIELD, LOCAL_OFFICE);
     placementJobDataMap.put(PLACEMENT_SPECIALTY_FIELD, PLACEMENT_SPECIALTY);
 
-    programmeJobDetails = newJob(NotificationService.class)
-        .withIdentity(JOB_KEY)
-        .usingJobData(programmeJobDataMap)
-        .build();
-
-    placementJobDetails = newJob(NotificationService.class)
-        .withIdentity(JOB_KEY)
-        .usingJobData(placementJobDataMap)
-        .build();
-
     TemplateVersionsProperties templateVersions = new TemplateVersionsProperties(
         Arrays.stream(NotificationType.values()).collect(Collectors.toMap(
             NotificationType::getTemplateName,
@@ -233,6 +221,64 @@ class NotificationServiceTest {
     serviceWhitelisted = new NotificationService(emailService, historyService, restTemplate,
         scheduler, messagingControllerService, messageSendingService, templateVersions,
         SERVICE_URL, REFERENCE_URL, NOTIFICATION_DELAY, WHITELISTED, TIMEZONE);
+  }
+
+  @Test
+  void shouldSendToOutboxWhenExecutingNow() {
+    JobDataMap jobData = new JobDataMap(Map.of(
+        "key1", "value1",
+        "key2", "value2"
+    ));
+
+    when(messageSendingService.sendJobToOutbox(any(), any())).thenReturn(
+        Map.of("status", "result 123"));
+
+    Map<String, String> result = service.executeNow(JOB_KEY_STRING, jobData);
+
+    assertThat("Unexpected result count.", result.keySet(), hasSize(1));
+    assertThat("Unexpected result status.", result.get("status"), is("result 123"));
+    verify(messageSendingService).sendJobToOutbox(JOB_KEY_STRING, jobData);
+  }
+
+  @Test
+  void shouldSetResultWhenSuccessfullyExecutingSendToOutbox() {
+    JobDataMap jobData = new JobDataMap(Map.of(
+        "key1", "value1",
+        "key2", "value2"
+    ));
+
+    when(jobExecutionContext.getJobDetail()).thenReturn(newJob(NotificationService.class)
+        .withIdentity(JOB_KEY)
+        .usingJobData(jobData)
+        .build());
+
+    Map<String, String> result = Map.of("status", "result-status-123");
+    when(messageSendingService.sendJobToOutbox(any(), any())).thenReturn(result);
+
+    service.execute(jobExecutionContext);
+
+    verify(jobExecutionContext).setResult(result);
+    verify(messageSendingService).sendJobToOutbox("DEFAULT." + JOB_KEY_STRING, jobData);
+  }
+
+  @Test
+  void shouldNotSetResultWhenUnsuccessfullyExecutingSendToOutbox() {
+    JobDataMap jobData = new JobDataMap(Map.of(
+        "key1", "value1",
+        "key2", "value2"
+    ));
+
+    when(jobExecutionContext.getJobDetail()).thenReturn(newJob(NotificationService.class)
+        .withIdentity(JOB_KEY)
+        .usingJobData(jobData)
+        .build());
+
+    when(messageSendingService.sendJobToOutbox(any(), any())).thenReturn(Map.of());
+
+    service.execute(jobExecutionContext);
+
+    verify(jobExecutionContext, never()).setResult(any());
+    verify(messageSendingService).sendJobToOutbox("DEFAULT." + JOB_KEY_STRING, jobData);
   }
 
   @Test
@@ -620,7 +666,6 @@ class NotificationServiceTest {
             false, USER_EMAIL, USER_TITLE, USER_FAMILY_NAME, USER_GIVEN_NAME, USER_GMC);
 
     programmeJobDataMap.put(TEMPLATE_NOTIFICATION_TYPE_FIELD, notificationType);
-    when(jobExecutionContext.getJobDetail()).thenReturn(programmeJobDetails);
     when(emailService.getRecipientAccountByEmail(USER_EMAIL)).thenReturn(userAccountDetails);
     when(restTemplate.getForObject(ACCOUNT_DETAILS_URL, UserDetails.class,
         Map.of(TIS_ID_FIELD, PERSON_ID))).thenReturn(userAccountDetails);
