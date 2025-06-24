@@ -25,7 +25,6 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
-import static org.junit.jupiter.params.provider.EnumSource.Mode.EXCLUDE;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
@@ -37,7 +36,6 @@ import static org.mockito.Mockito.when;
 import static uk.nhs.tis.trainee.notifications.model.MessageType.EMAIL;
 import static uk.nhs.tis.trainee.notifications.model.TisReferenceType.PLACEMENT;
 
-import jakarta.mail.MessagingException;
 import java.time.Instant;
 import java.util.Date;
 import java.util.List;
@@ -59,11 +57,10 @@ import uk.nhs.tis.trainee.notifications.model.History.RecipientInfo;
 import uk.nhs.tis.trainee.notifications.model.History.TemplateInfo;
 import uk.nhs.tis.trainee.notifications.model.History.TisReferenceInfo;
 import uk.nhs.tis.trainee.notifications.model.NotificationType;
-import uk.nhs.tis.trainee.notifications.service.EmailService;
 import uk.nhs.tis.trainee.notifications.service.HistoryService;
 import uk.nhs.tis.trainee.notifications.service.NotificationService;
 
-class ResendGoogleMailFailuresTest {
+class ResendAugust2025RotationScheduleFailuresTest {
 
   private static final String TRAINEE_ID = UUID.randomUUID().toString();
   private static final String TRAINEE_EMAIL = "trainee@example.com";
@@ -71,28 +68,24 @@ class ResendGoogleMailFailuresTest {
 
   private MongoTemplate mongoTemplate;
 
-  private EmailService emailService;
-
   private HistoryService historyService;
 
   private NotificationService notificationService;
 
-  private ResendGoogleMailFailures migrator;
+  private ResendAugust2025RotationScheduleFailures migrator;
 
   @BeforeEach
   void setUp() {
     mongoTemplate = mock(MongoTemplate.class);
-    emailService = mock(EmailService.class);
     historyService = mock(HistoryService.class);
     notificationService = mock(NotificationService.class);
-    migrator = new ResendGoogleMailFailures(mongoTemplate, emailService, historyService,
-        notificationService);
+    migrator = new ResendAugust2025RotationScheduleFailures(mongoTemplate,
+        historyService, notificationService);
   }
 
   @ParameterizedTest
   @EnumSource(NotificationType.class)
-  void shouldNotInterruptMigrationForExceptions(NotificationType type)
-      throws MessagingException, SchedulerException {
+  void shouldNotInterruptMigrationForExceptions(NotificationType type) throws SchedulerException {
     ObjectId historyId = ObjectId.get();
     History failure = History.builder()
         .id(historyId)
@@ -103,7 +96,6 @@ class ResendGoogleMailFailuresTest {
         .build();
     when(mongoTemplate.find(any(), eq(History.class))).thenReturn(List.of(failure));
 
-    doThrow(MessagingException.class).when(emailService).resendMessage(any(), any());
     doThrow(SchedulerException.class).when(notificationService)
         .scheduleNotification(any(), any(), any(), anyLong());
 
@@ -113,7 +105,7 @@ class ResendGoogleMailFailuresTest {
   @ParameterizedTest
   @EnumSource(NotificationType.class)
   void shouldNotRemoveNotificationsWhenResendFails(NotificationType type)
-      throws MessagingException, SchedulerException {
+      throws SchedulerException {
     ObjectId historyId = ObjectId.get();
     History failure = History.builder()
         .id(historyId)
@@ -124,7 +116,6 @@ class ResendGoogleMailFailuresTest {
         .build();
     when(mongoTemplate.find(any(), eq(History.class))).thenReturn(List.of(failure));
 
-    doThrow(MessagingException.class).when(emailService).resendMessage(any(), any());
     doThrow(SchedulerException.class).when(notificationService)
         .scheduleNotification(any(), any(), any(), anyLong());
 
@@ -134,27 +125,7 @@ class ResendGoogleMailFailuresTest {
   }
 
   @ParameterizedTest
-  @EnumSource(value = NotificationType.class, names = {
-      "COJ_CONFIRMATION", "EMAIL_UPDATED_NEW", "FORM_UPDATED", "LTFT_SUBMITTED"})
-  void shouldMigrateInstantEmails(NotificationType type) throws MessagingException {
-    ObjectId historyId = ObjectId.get();
-    History failure = History.builder()
-        .id(historyId)
-        .type(type)
-        .recipient(new RecipientInfo(TRAINEE_ID, EMAIL, TRAINEE_EMAIL))
-        .build();
-    when(mongoTemplate.find(any(), eq(History.class))).thenReturn(List.of(failure));
-
-    migrator.migrate();
-
-    verify(emailService).resendMessage(failure, TRAINEE_EMAIL);
-    verify(historyService).deleteHistoryForTrainee(historyId, TRAINEE_ID);
-    verifyNoInteractions(notificationService);
-  }
-
-  @ParameterizedTest
-  @EnumSource(value = NotificationType.class, names = {
-      "PLACEMENT_UPDATED_WEEK_12", "PROGRAMME_CREATED", "PROGRAMME_DAY_ONE"})
+  @EnumSource(NotificationType.class)
   void shouldMigrateScheduledEmails(NotificationType type) throws SchedulerException {
     ObjectId historyId = ObjectId.get();
     History failure = History.builder()
@@ -188,27 +159,6 @@ class ResendGoogleMailFailuresTest {
         DateCloseTo.closeTo(Instant.now().getEpochSecond(), 1));
 
     verify(historyService).deleteHistoryForTrainee(historyId, TRAINEE_ID);
-    verifyNoInteractions(emailService);
-  }
-
-  @ParameterizedTest
-  @EnumSource(value = NotificationType.class, mode = EXCLUDE, names = {
-      "COJ_CONFIRMATION", "EMAIL_UPDATED_NEW", "FORM_UPDATED", "LTFT_SUBMITTED",
-      "PLACEMENT_UPDATED_WEEK_12", "PROGRAMME_CREATED", "PROGRAMME_DAY_ONE"})
-  void shouldNotMigrateUnsupportedTypes(NotificationType type) {
-    History failure = History.builder()
-        .id(ObjectId.get())
-        .type(type)
-        .recipient(new RecipientInfo(TRAINEE_ID, EMAIL, TRAINEE_EMAIL))
-        .build();
-    when(mongoTemplate.find(any(), eq(History.class))).thenReturn(List.of(failure));
-
-    Mockito.clearInvocations(mongoTemplate);
-    migrator.migrate();
-
-    verifyNoInteractions(emailService);
-    verifyNoInteractions(notificationService);
-    verifyNoInteractions(historyService);
   }
 
   @Test
@@ -217,8 +167,6 @@ class ResendGoogleMailFailuresTest {
     migrator.rollback();
 
     verifyNoInteractions(mongoTemplate);
-    verifyNoInteractions(emailService);
-    verifyNoInteractions(notificationService);
     verifyNoInteractions(historyService);
   }
 }
