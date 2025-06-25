@@ -22,13 +22,11 @@
 package uk.nhs.tis.trainee.notifications.event;
 
 import io.awspring.cloud.sqs.annotation.SqsListener;
-import java.time.Instant;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import uk.nhs.tis.trainee.notifications.dto.EmailEvent;
 import uk.nhs.tis.trainee.notifications.dto.EmailEvent.Bounce;
 import uk.nhs.tis.trainee.notifications.dto.EmailEvent.Complaint;
-import uk.nhs.tis.trainee.notifications.dto.EmailEvent.Mail.MailHeader;
 import uk.nhs.tis.trainee.notifications.model.NotificationStatus;
 import uk.nhs.tis.trainee.notifications.service.HistoryService;
 

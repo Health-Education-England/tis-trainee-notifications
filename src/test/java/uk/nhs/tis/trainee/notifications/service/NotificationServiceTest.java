@@ -21,11 +21,14 @@
 
 package uk.nhs.tis.trainee.notifications.service;
 
+import static java.time.temporal.ChronoUnit.SECONDS;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.not;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.hasSize;
+import static org.hamcrest.Matchers.startsWith;
 import static org.junit.Assert.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.mockito.ArgumentMatchers.any;
@@ -165,8 +168,6 @@ class NotificationServiceTest {
   private static final String USER_GIVEN_NAME = "given-name";
   private static final String USER_GMC = "1234567";
 
-  private JobDetail programmeJobDetails;
-  private JobDetail placementJobDetails;
   private JobDataMap programmeJobDataMap;
   private JobDataMap placementJobDataMap;
 
@@ -177,6 +178,7 @@ class NotificationServiceTest {
   private RestTemplate restTemplate;
   private Scheduler scheduler;
   private MessagingControllerService messagingControllerService;
+  private MessageSendingService messageSendingService;
   private JobExecutionContext jobExecutionContext;
 
   @BeforeEach
@@ -187,6 +189,7 @@ class NotificationServiceTest {
     restTemplate = mock(RestTemplate.class);
     scheduler = mock(Scheduler.class);
     messagingControllerService = mock(MessagingControllerService.class);
+    messageSendingService = mock(MessageSendingService.class);
 
     programmeJobDataMap = new JobDataMap();
     programmeJobDataMap.put(TIS_ID_FIELD, TIS_ID);
@@ -206,16 +209,6 @@ class NotificationServiceTest {
     placementJobDataMap.put(TEMPLATE_OWNER_FIELD, LOCAL_OFFICE);
     placementJobDataMap.put(PLACEMENT_SPECIALTY_FIELD, PLACEMENT_SPECIALTY);
 
-    programmeJobDetails = newJob(NotificationService.class)
-        .withIdentity(JOB_KEY)
-        .usingJobData(programmeJobDataMap)
-        .build();
-
-    placementJobDetails = newJob(NotificationService.class)
-        .withIdentity(JOB_KEY)
-        .usingJobData(placementJobDataMap)
-        .build();
-
     TemplateVersionsProperties templateVersions = new TemplateVersionsProperties(
         Arrays.stream(NotificationType.values()).collect(Collectors.toMap(
             NotificationType::getTemplateName,
@@ -223,16 +216,73 @@ class NotificationServiceTest {
         )));
 
     service = new NotificationService(emailService, historyService, restTemplate, scheduler,
-        messagingControllerService, templateVersions, SERVICE_URL, REFERENCE_URL,
-        NOTIFICATION_DELAY, NOT_WHITELISTED, TIMEZONE);
+        messagingControllerService, messageSendingService, templateVersions, SERVICE_URL,
+        REFERENCE_URL, NOTIFICATION_DELAY, NOT_WHITELISTED, TIMEZONE);
     serviceWhitelisted = new NotificationService(emailService, historyService, restTemplate,
-        scheduler, messagingControllerService, templateVersions, SERVICE_URL, REFERENCE_URL,
-        NOTIFICATION_DELAY, WHITELISTED, TIMEZONE);
+        scheduler, messagingControllerService, messageSendingService, templateVersions,
+        SERVICE_URL, REFERENCE_URL, NOTIFICATION_DELAY, WHITELISTED, TIMEZONE);
+  }
+
+  @Test
+  void shouldSendToOutboxWhenExecutingNow() {
+    JobDataMap jobData = new JobDataMap(Map.of(
+        "key1", "value1",
+        "key2", "value2"
+    ));
+
+    when(messageSendingService.sendJobToOutbox(any(), any())).thenReturn(
+        Map.of("status", "result 123"));
+
+    Map<String, String> result = service.executeNow(JOB_KEY_STRING, jobData);
+
+    assertThat("Unexpected result count.", result.keySet(), hasSize(1));
+    assertThat("Unexpected result status.", result.get("status"), is("result 123"));
+    verify(messageSendingService).sendJobToOutbox(JOB_KEY_STRING, jobData);
+  }
+
+  @Test
+  void shouldSetResultWhenSuccessfullyExecutingSendToOutbox() {
+    JobDataMap jobData = new JobDataMap(Map.of(
+        "key1", "value1",
+        "key2", "value2"
+    ));
+
+    when(jobExecutionContext.getJobDetail()).thenReturn(newJob(NotificationService.class)
+        .withIdentity(JOB_KEY)
+        .usingJobData(jobData)
+        .build());
+
+    Map<String, String> result = Map.of("status", "result-status-123");
+    when(messageSendingService.sendJobToOutbox(any(), any())).thenReturn(result);
+
+    service.execute(jobExecutionContext);
+
+    verify(jobExecutionContext).setResult(result);
+    verify(messageSendingService).sendJobToOutbox("DEFAULT." + JOB_KEY_STRING, jobData);
+  }
+
+  @Test
+  void shouldNotSetResultWhenUnsuccessfullyExecutingSendToOutbox() {
+    JobDataMap jobData = new JobDataMap(Map.of(
+        "key1", "value1",
+        "key2", "value2"
+    ));
+
+    when(jobExecutionContext.getJobDetail()).thenReturn(newJob(NotificationService.class)
+        .withIdentity(JOB_KEY)
+        .usingJobData(jobData)
+        .build());
+
+    when(messageSendingService.sendJobToOutbox(any(), any())).thenReturn(Map.of());
+
+    service.execute(jobExecutionContext);
+
+    verify(jobExecutionContext, never()).setResult(any());
+    verify(messageSendingService).sendJobToOutbox("DEFAULT." + JOB_KEY_STRING, jobData);
   }
 
   @Test
   void shouldNotSendNotificationWhenTemplateVersionIsEmpty() {
-
     TemplateVersionsProperties templateVersions = new TemplateVersionsProperties(
         Arrays.stream(NotificationType.values()).collect(Collectors.toMap(
             NotificationType::getTemplateName,
@@ -240,20 +290,13 @@ class NotificationServiceTest {
         )));
 
     service = new NotificationService(emailService, historyService, restTemplate, scheduler,
-        messagingControllerService, templateVersions, SERVICE_URL, REFERENCE_URL,
-        NOTIFICATION_DELAY, NOT_WHITELISTED, TIMEZONE);
+        messagingControllerService, messageSendingService, templateVersions, SERVICE_URL,
+        REFERENCE_URL, NOTIFICATION_DELAY, NOT_WHITELISTED, TIMEZONE);
 
     JobDataMap jobDataMap = new JobDataMap();
     jobDataMap.put(TIS_ID_FIELD, TIS_ID);
     jobDataMap.put(PERSON_ID_FIELD, PERSON_ID);
     jobDataMap.put(TEMPLATE_NOTIFICATION_TYPE_FIELD, "PROGRAMME_CREATED");
-
-    JobDetail jobDetail = newJob(NotificationService.class)
-        .withIdentity(JOB_KEY)
-        .usingJobData(jobDataMap)
-        .build();
-
-    when(jobExecutionContext.getJobDetail()).thenReturn(jobDetail);
 
     when(messagingControllerService.isValidRecipient(PERSON_ID, MessageType.EMAIL))
         .thenReturn(true);
@@ -264,7 +307,7 @@ class NotificationServiceTest {
     when(emailService.getRecipientAccountByEmail(any())).thenReturn(null);
 
     Exception exception = assertThrows(IllegalArgumentException.class,
-        () -> service.execute(jobExecutionContext));
+        () -> service.executeQueued(jobDataMap));
 
     assertThat(exception.getMessage(),
         is("No email template version found for notification type '{}'."));
@@ -273,18 +316,10 @@ class NotificationServiceTest {
 
   @Test
   void shouldSendNotificationWhenTemplateVersionIsUnrecognised() throws MessagingException {
-
     JobDataMap jobDataMap = new JobDataMap();
     jobDataMap.put(TIS_ID_FIELD, TIS_ID);
     jobDataMap.put(PERSON_ID_FIELD, PERSON_ID);
     jobDataMap.put(TEMPLATE_NOTIFICATION_TYPE_FIELD, "PROGRAMME_DAY_ONE");
-
-    JobDetail jobDetail = newJob(NotificationService.class)
-        .withIdentity(JOB_KEY)
-        .usingJobData(jobDataMap)
-        .build();
-
-    when(jobExecutionContext.getJobDetail()).thenReturn(jobDetail);
 
     when(messagingControllerService.isValidRecipient(PERSON_ID, MessageType.EMAIL))
         .thenReturn(true);
@@ -294,10 +329,14 @@ class NotificationServiceTest {
 
     when(emailService.getRecipientAccountByEmail(any())).thenReturn(null);
 
-    service.execute(jobExecutionContext);
+    Map<String, String> result = service.executeQueued(jobDataMap);
+
+    assertThat("Unexpected result.", result.keySet(), hasSize(1));
+
+    String expected = ("sent " + Instant.now().truncatedTo(SECONDS)).replace("Z", "");
+    assertThat("Unexpected status.", result.get("status"), startsWith(expected));
 
     verify(emailService).sendMessage(any(), any(), any(), any(), any(), any(), eq(true));
-    verify(jobExecutionContext).setResult(any());
   }
 
   @Test
@@ -305,7 +344,6 @@ class NotificationServiceTest {
     UserDetails userAccountDetails =
         new UserDetails(
             true, USER_EMAIL, USER_TITLE, USER_FAMILY_NAME, USER_GIVEN_NAME, USER_GMC);
-    when(jobExecutionContext.getJobDetail()).thenReturn(programmeJobDetails);
     when(emailService.getRecipientAccountByEmail(USER_EMAIL)).thenReturn(userAccountDetails);
     when(restTemplate.getForObject(ACCOUNT_DETAILS_URL, UserDetails.class,
         Map.of(TIS_ID_FIELD, PERSON_ID))).thenReturn(userAccountDetails);
@@ -314,9 +352,12 @@ class NotificationServiceTest {
     when(messagingControllerService.isProgrammeMembershipNewStarter(PERSON_ID, TIS_ID))
         .thenReturn(true);
 
-    service.execute(jobExecutionContext);
+    Map<String, String> result = service.executeQueued(programmeJobDataMap);
 
-    verify(jobExecutionContext).setResult(any());
+    assertThat("Unexpected result.", result.keySet(), hasSize(1));
+
+    String expected = ("sent " + Instant.now().truncatedTo(SECONDS)).replace("Z", "");
+    assertThat("Unexpected status.", result.get("status"), startsWith(expected));
   }
 
   @Test
@@ -325,7 +366,6 @@ class NotificationServiceTest {
         new UserDetails(
             true, USER_EMAIL, USER_TITLE, USER_FAMILY_NAME, USER_GIVEN_NAME, USER_GMC);
 
-    when(jobExecutionContext.getJobDetail()).thenReturn(placementJobDetails);
     when(emailService.getRecipientAccountByEmail(USER_EMAIL)).thenReturn(userAccountDetails);
     when(restTemplate.getForObject(ACCOUNT_DETAILS_URL, UserDetails.class,
         Map.of(TIS_ID_FIELD, PERSON_ID))).thenReturn(userAccountDetails);
@@ -334,41 +374,34 @@ class NotificationServiceTest {
     when(messagingControllerService.isPlacementInPilot2024(PERSON_ID, TIS_ID))
         .thenReturn(true);
 
-    service.execute(jobExecutionContext);
+    Map<String, String> result = service.executeQueued(placementJobDataMap);
 
-    verify(jobExecutionContext).setResult(any());
+    assertThat("Unexpected result.", result.keySet(), hasSize(1));
+
+    String expected = ("sent " + Instant.now().truncatedTo(SECONDS)).replace("Z", "");
+    assertThat("Unexpected status.", result.get("status"), startsWith(expected));
   }
 
   @Test
   void shouldThrowExceptionWhenUserDetailsCannotBeFound() {
-    when(jobExecutionContext.getJobDetail()).thenReturn(programmeJobDetails);
-
     when(emailService.getRecipientAccountByEmail(any())).thenReturn(null);
     when(restTemplate.getForObject(any(), any(), anyMap())).thenReturn(null);
 
-    assertThrows(IllegalArgumentException.class, () -> service.execute(jobExecutionContext));
-
-    verify(jobExecutionContext, never()).setResult(any());
+    assertThrows(IllegalArgumentException.class, () -> service.executeQueued(programmeJobDataMap));
   }
 
   @Test
   void shouldThrowExceptionWhenRestClientExceptions() {
-    when(jobExecutionContext.getJobDetail()).thenReturn(programmeJobDetails);
-
     when(emailService.getRecipientAccountByEmail(any())).thenThrow(
         new IllegalArgumentException("error"));
     when(restTemplate.getForObject(any(), any(), anyMap()))
         .thenThrow(new RestClientException("error"));
 
-    assertThrows(IllegalArgumentException.class, () -> service.execute(jobExecutionContext));
-
-    verify(jobExecutionContext, never()).setResult(any());
+    assertThrows(IllegalArgumentException.class, () -> service.executeQueued(programmeJobDataMap));
   }
 
   @Test
   void shouldHandleCognitoExceptions() {
-    when(jobExecutionContext.getJobDetail()).thenReturn(programmeJobDetails);
-
     UserDetails userAccountDetails = new UserDetails(false, USER_EMAIL, USER_TITLE,
         USER_FAMILY_NAME, USER_GIVEN_NAME, USER_GMC);
     when(restTemplate.getForObject(ACCOUNT_DETAILS_URL, UserDetails.class,
@@ -376,9 +409,7 @@ class NotificationServiceTest {
 
     when(emailService.getRecipientAccountByEmail(any())).thenThrow(UserNotFoundException.class);
 
-    assertDoesNotThrow(() -> service.execute(jobExecutionContext));
-
-    verify(jobExecutionContext).setResult(any());
+    assertDoesNotThrow(() -> service.executeQueued(programmeJobDataMap));
   }
 
   @Test
@@ -388,7 +419,6 @@ class NotificationServiceTest {
             false, USER_EMAIL, USER_TITLE, USER_FAMILY_NAME, USER_GIVEN_NAME, USER_GMC);
     when(restTemplate.getForObject(ACCOUNT_DETAILS_URL, UserDetails.class,
         Map.of(TIS_ID_FIELD, PERSON_ID))).thenReturn(userAccountDetails);
-    when(jobExecutionContext.getJobDetail()).thenReturn(programmeJobDetails);
     when(emailService.getRecipientAccountByEmail(USER_EMAIL)).thenReturn(userAccountDetails);
     when(messagingControllerService.isValidRecipient(PERSON_ID, MessageType.EMAIL))
         .thenReturn(true);
@@ -398,7 +428,7 @@ class NotificationServiceTest {
     doThrow(new MessagingException("error"))
         .when(emailService).sendMessage(any(), any(), any(), any(), any(), any(), anyBoolean());
 
-    assertThrows(RuntimeException.class, () -> service.execute(jobExecutionContext));
+    assertThrows(RuntimeException.class, () -> service.executeQueued(programmeJobDataMap));
   }
 
   @ParameterizedTest
@@ -408,7 +438,6 @@ class NotificationServiceTest {
     UserDetails userAccountDetails =
         new UserDetails(
             false, USER_EMAIL, USER_TITLE, USER_FAMILY_NAME, USER_GIVEN_NAME, USER_GMC);
-    when(jobExecutionContext.getJobDetail()).thenReturn(placementJobDetails);
     when(emailService.getRecipientAccountByEmail(USER_EMAIL)).thenReturn(userAccountDetails);
     when(restTemplate.getForObject(ACCOUNT_DETAILS_URL, UserDetails.class,
         Map.of(TIS_ID_FIELD, PERSON_ID))).thenReturn(userAccountDetails);
@@ -416,10 +445,14 @@ class NotificationServiceTest {
     when(messagingControllerService.isPlacementInPilot2024(any(), any())).thenReturn(!apiResult);
     when(messagingControllerService.isPlacementInRollout2024(any(), any())).thenReturn(!apiResult);
 
-    service.execute(jobExecutionContext);
+    Map<String, String> result = service.executeQueued(placementJobDataMap);
+
+    assertThat("Unexpected result size.", result.keySet(), hasSize(1));
+
+    String expected = ("sent " + Instant.now().truncatedTo(SECONDS)).replace("Z", "");
+    assertThat("Unexpected status.", result.get("status"), startsWith(expected));
 
     verify(emailService).sendMessage(any(), any(), any(), any(), any(), any(), eq(true));
-    verify(jobExecutionContext).setResult(any());
   }
 
   @ParameterizedTest
@@ -429,18 +462,21 @@ class NotificationServiceTest {
     UserDetails userAccountDetails =
         new UserDetails(
             false, USER_EMAIL, USER_TITLE, USER_FAMILY_NAME, USER_GIVEN_NAME, USER_GMC);
-    placementJobDetails.getJobDataMap().put(TEMPLATE_NOTIFICATION_TYPE_FIELD,
+    placementJobDataMap.put(TEMPLATE_NOTIFICATION_TYPE_FIELD,
         PLACEMENT_ROLLOUT_2024_CORRECTION.toString());
-    when(jobExecutionContext.getJobDetail()).thenReturn(placementJobDetails);
     when(emailService.getRecipientAccountByEmail(USER_EMAIL)).thenReturn(userAccountDetails);
     when(restTemplate.getForObject(ACCOUNT_DETAILS_URL, UserDetails.class,
         Map.of(TIS_ID_FIELD, PERSON_ID))).thenReturn(userAccountDetails);
     when(messagingControllerService.isValidRecipient(any(), any())).thenReturn(isValid);
 
-    service.execute(jobExecutionContext);
+    Map<String, String> result = service.executeQueued(placementJobDataMap);
+
+    assertThat("Unexpected result size.", result.keySet(), hasSize(1));
+
+    String expected = ("sent " + Instant.now().truncatedTo(SECONDS)).replace("Z", "");
+    assertThat("Unexpected status.", result.get("status"), startsWith(expected));
 
     verify(emailService).sendMessage(any(), any(), any(), any(), any(), any(), eq(!isValid));
-    verify(jobExecutionContext).setResult(any());
   }
 
   @ParameterizedTest
@@ -451,7 +487,6 @@ class NotificationServiceTest {
         new UserDetails(
             false, USER_EMAIL, USER_TITLE, USER_FAMILY_NAME, USER_GIVEN_NAME, USER_GMC);
 
-    when(jobExecutionContext.getJobDetail()).thenReturn(programmeJobDetails);
     when(emailService.getRecipientAccountByEmail(USER_EMAIL)).thenReturn(userAccountDetails);
     when(restTemplate.getForObject(ACCOUNT_DETAILS_URL, UserDetails.class,
         Map.of(TIS_ID_FIELD, PERSON_ID))).thenReturn(userAccountDetails);
@@ -463,20 +498,22 @@ class NotificationServiceTest {
     when(messagingControllerService.isProgrammeMembershipInRollout2024(any(), any()))
         .thenReturn(apiResult);
 
-    service.execute(jobExecutionContext);
+    Map<String, String> result = service.executeQueued(programmeJobDataMap);
+
+    assertThat("Unexpected result size.", result.keySet(), hasSize(1));
+
+    String expected = ("sent " + Instant.now().truncatedTo(SECONDS)).replace("Z", "");
+    assertThat("Unexpected status.", result.get("status"), startsWith(expected));
 
     verify(emailService).sendMessage(any(), any(), any(), any(), any(), any(), eq(true));
-    verify(jobExecutionContext).setResult(any());
   }
 
   @ParameterizedTest
   @ValueSource(booleans = {true, false})
   void shouldSendPlacementEmailWhenNotMatchBothCriteriaButInWhiteList(boolean apiResult)
       throws MessagingException {
-    UserDetails userAccountDetails =
-        new UserDetails(
-            false, USER_EMAIL, USER_TITLE, USER_FAMILY_NAME, USER_GIVEN_NAME, USER_GMC);
-    when(jobExecutionContext.getJobDetail()).thenReturn(placementJobDetails);
+    UserDetails userAccountDetails = new UserDetails(false, USER_EMAIL, USER_TITLE,
+        USER_FAMILY_NAME, USER_GIVEN_NAME, USER_GMC);
     when(emailService.getRecipientAccountByEmail(USER_EMAIL)).thenReturn(userAccountDetails);
     when(restTemplate.getForObject(ACCOUNT_DETAILS_URL, UserDetails.class,
         Map.of(TIS_ID_FIELD, PERSON_ID))).thenReturn(userAccountDetails);
@@ -484,10 +521,14 @@ class NotificationServiceTest {
     when(messagingControllerService.isPlacementInPilot2024(any(), any())).thenReturn(!apiResult);
     when(messagingControllerService.isPlacementInRollout2024(any(), any())).thenReturn(!apiResult);
 
-    serviceWhitelisted.execute(jobExecutionContext);
+    Map<String, String> result = serviceWhitelisted.executeQueued(placementJobDataMap);
+
+    assertThat("Unexpected result size.", result.keySet(), hasSize(1));
+
+    String expected = ("sent " + Instant.now().truncatedTo(SECONDS)).replace("Z", "");
+    assertThat("Unexpected status.", result.get("status"), startsWith(expected));
 
     verify(emailService).sendMessage(any(), any(), any(), any(), any(), any(), eq(false));
-    verify(jobExecutionContext).setResult(any());
   }
 
   @ParameterizedTest
@@ -498,7 +539,6 @@ class NotificationServiceTest {
         new UserDetails(
             false, USER_EMAIL, USER_TITLE, USER_FAMILY_NAME, USER_GIVEN_NAME, USER_GMC);
 
-    when(jobExecutionContext.getJobDetail()).thenReturn(programmeJobDetails);
     when(emailService.getRecipientAccountByEmail(USER_EMAIL)).thenReturn(userAccountDetails);
     when(restTemplate.getForObject(ACCOUNT_DETAILS_URL, UserDetails.class,
         Map.of(TIS_ID_FIELD, PERSON_ID))).thenReturn(userAccountDetails);
@@ -510,10 +550,14 @@ class NotificationServiceTest {
     when(messagingControllerService.isProgrammeMembershipInRollout2024(any(), any()))
         .thenReturn(apiResult);
 
-    serviceWhitelisted.execute(jobExecutionContext);
+    Map<String, String> result = serviceWhitelisted.executeQueued(programmeJobDataMap);
+
+    assertThat("Unexpected result size.", result.keySet(), hasSize(1));
+
+    String expected = ("sent " + Instant.now().truncatedTo(SECONDS)).replace("Z", "");
+    assertThat("Unexpected status.", result.get("status"), startsWith(expected));
 
     verify(emailService).sendMessage(any(), any(), any(), any(), any(), any(), eq(false));
-    verify(jobExecutionContext).setResult(any());
   }
 
   @Test
@@ -522,17 +566,20 @@ class NotificationServiceTest {
         new UserDetails(
             false, USER_EMAIL, USER_TITLE, USER_FAMILY_NAME, USER_GIVEN_NAME, USER_GMC);
 
-    when(jobExecutionContext.getJobDetail()).thenReturn(placementJobDetails);
     when(emailService.getRecipientAccountByEmail(USER_EMAIL)).thenReturn(userAccountDetails);
     when(restTemplate.getForObject(ACCOUNT_DETAILS_URL, UserDetails.class,
         Map.of(TIS_ID_FIELD, PERSON_ID))).thenReturn(userAccountDetails);
     when(messagingControllerService.isValidRecipient(any(), any())).thenReturn(true);
     when(messagingControllerService.isPlacementInPilot2024(any(), any())).thenReturn(true);
 
-    service.execute(jobExecutionContext);
+    Map<String, String> result = service.executeQueued(placementJobDataMap);
+
+    assertThat("Unexpected result size.", result.keySet(), hasSize(1));
+
+    String expected = ("sent " + Instant.now().truncatedTo(SECONDS)).replace("Z", "");
+    assertThat("Unexpected status.", result.get("status"), startsWith(expected));
 
     verify(emailService).sendMessage(any(), any(), any(), any(), any(), any(), eq(false));
-    verify(jobExecutionContext).setResult(any());
   }
 
   @Test
@@ -541,7 +588,6 @@ class NotificationServiceTest {
         new UserDetails(
             false, USER_EMAIL, USER_TITLE, USER_FAMILY_NAME, USER_GIVEN_NAME, USER_GMC);
 
-    when(jobExecutionContext.getJobDetail()).thenReturn(placementJobDetails);
     when(emailService.getRecipientAccountByEmail(USER_EMAIL)).thenReturn(userAccountDetails);
     when(restTemplate.getForObject(ACCOUNT_DETAILS_URL, UserDetails.class,
         Map.of(TIS_ID_FIELD, PERSON_ID))).thenReturn(userAccountDetails);
@@ -549,10 +595,14 @@ class NotificationServiceTest {
     when(messagingControllerService.isPlacementInPilot2024(any(), any())).thenReturn(false);
     when(messagingControllerService.isPlacementInRollout2024(any(), any())).thenReturn(true);
 
-    service.execute(jobExecutionContext);
+    Map<String, String> result = service.executeQueued(placementJobDataMap);
+
+    assertThat("Unexpected result size.", result.keySet(), hasSize(1));
+
+    String expected = ("sent " + Instant.now().truncatedTo(SECONDS)).replace("Z", "");
+    assertThat("Unexpected status.", result.get("status"), startsWith(expected));
 
     verify(emailService).sendMessage(any(), any(), any(), any(), any(), any(), eq(false));
-    verify(jobExecutionContext).setResult(any());
   }
 
   @Test
@@ -561,7 +611,6 @@ class NotificationServiceTest {
         new UserDetails(
             false, USER_EMAIL, USER_TITLE, USER_FAMILY_NAME, USER_GIVEN_NAME, USER_GMC);
 
-    when(jobExecutionContext.getJobDetail()).thenReturn(programmeJobDetails);
     when(emailService.getRecipientAccountByEmail(USER_EMAIL)).thenReturn(userAccountDetails);
     when(restTemplate.getForObject(ACCOUNT_DETAILS_URL, UserDetails.class,
         Map.of(TIS_ID_FIELD, PERSON_ID))).thenReturn(userAccountDetails);
@@ -570,10 +619,14 @@ class NotificationServiceTest {
     when(messagingControllerService.isProgrammeMembershipInPilot2024(any(), any()))
         .thenReturn(true);
 
-    service.execute(jobExecutionContext);
+    Map<String, String> result = service.executeQueued(programmeJobDataMap);
+
+    assertThat("Unexpected result size.", result.keySet(), hasSize(1));
+
+    String expected = ("sent " + Instant.now().truncatedTo(SECONDS)).replace("Z", "");
+    assertThat("Unexpected status.", result.get("status"), startsWith(expected));
 
     verify(emailService).sendMessage(any(), any(), any(), any(), any(), any(), eq(false));
-    verify(jobExecutionContext).setResult(any());
   }
 
   @Test
@@ -582,7 +635,6 @@ class NotificationServiceTest {
         new UserDetails(
             false, USER_EMAIL, USER_TITLE, USER_FAMILY_NAME, USER_GIVEN_NAME, USER_GMC);
 
-    when(jobExecutionContext.getJobDetail()).thenReturn(programmeJobDetails);
     when(emailService.getRecipientAccountByEmail(USER_EMAIL)).thenReturn(userAccountDetails);
     when(restTemplate.getForObject(ACCOUNT_DETAILS_URL, UserDetails.class,
         Map.of(TIS_ID_FIELD, PERSON_ID))).thenReturn(userAccountDetails);
@@ -593,10 +645,14 @@ class NotificationServiceTest {
     when(messagingControllerService.isProgrammeMembershipInRollout2024(any(), any()))
         .thenReturn(true);
 
-    service.execute(jobExecutionContext);
+    Map<String, String> result = service.executeQueued(programmeJobDataMap);
+
+    assertThat("Unexpected result size.", result.keySet(), hasSize(1));
+
+    String expected = ("sent " + Instant.now().truncatedTo(SECONDS)).replace("Z", "");
+    assertThat("Unexpected status.", result.get("status"), startsWith(expected));
 
     verify(emailService).sendMessage(any(), any(), any(), any(), any(), any(), eq(false));
-    verify(jobExecutionContext).setResult(any());
   }
 
   @ParameterizedTest
@@ -609,23 +665,23 @@ class NotificationServiceTest {
         new UserDetails(
             false, USER_EMAIL, USER_TITLE, USER_FAMILY_NAME, USER_GIVEN_NAME, USER_GMC);
 
-    programmeJobDetails.getJobDataMap().put(TEMPLATE_NOTIFICATION_TYPE_FIELD, notificationType);
-    when(jobExecutionContext.getJobDetail()).thenReturn(programmeJobDetails);
+    programmeJobDataMap.put(TEMPLATE_NOTIFICATION_TYPE_FIELD, notificationType);
     when(emailService.getRecipientAccountByEmail(USER_EMAIL)).thenReturn(userAccountDetails);
     when(restTemplate.getForObject(ACCOUNT_DETAILS_URL, UserDetails.class,
         Map.of(TIS_ID_FIELD, PERSON_ID))).thenReturn(userAccountDetails);
 
-    service.execute(jobExecutionContext);
+    Map<String, String> result = service.executeQueued(programmeJobDataMap);
+
+    assertThat("Unexpected result size.", result.keySet(), hasSize(0));
 
     verify(emailService, never())
         .sendMessage(any(), any(), any(), any(), any(), any(), anyBoolean());
-    verify(jobExecutionContext, never()).setResult(any());
   }
 
   @ParameterizedTest
   @NullAndEmptySource
   @ValueSource(strings = {" "})
-  void shouldExecuteNowWithNullEmailWhenNoEmail(String email) throws MessagingException {
+  void shouldExecuteQueuedWithNullEmailWhenNoEmail(String email) throws MessagingException {
     UserDetails userAccountDetails = UserDetails.builder()
         .isRegistered(false)
         .email(email)
@@ -644,7 +700,7 @@ class NotificationServiceTest {
         TEMPLATE_NOTIFICATION_TYPE_FIELD, PROGRAMME_CREATED
     ));
 
-    service.executeNow(JOB_KEY_STRING, jobData);
+    service.executeQueued(jobData);
 
     verify(emailService, never()).getRecipientAccountByEmail(any());
     verify(emailService).sendMessage(eq(PERSON_ID), isNull(), any(), any(), anyMap(), any(),
@@ -653,7 +709,7 @@ class NotificationServiceTest {
 
   @ParameterizedTest
   @NullAndEmptySource
-  void shouldExecuteNowWithNullEmailWhenEmailNoLongerAvailable(String email)
+  void shouldExecuteQueuedWithNullEmailWhenEmailNoLongerAvailable(String email)
       throws MessagingException {
     UserDetails userAccountDetails = UserDetails.builder()
         .isRegistered(false)
@@ -674,7 +730,7 @@ class NotificationServiceTest {
         "email", "existing@example.com"
     ));
 
-    service.executeNow(JOB_KEY_STRING, jobData);
+    service.executeQueued(jobData);
 
     verify(emailService, never()).getRecipientAccountByEmail(any());
     verify(emailService).sendMessage(eq(PERSON_ID), isNull(), any(), any(), anyMap(), any(),
@@ -1004,7 +1060,6 @@ class NotificationServiceTest {
         new UserDetails(
             false, USER_EMAIL, USER_TITLE, USER_FAMILY_NAME, USER_GIVEN_NAME, USER_GMC);
 
-    when(jobExecutionContext.getJobDetail()).thenReturn(programmeJobDetails);
     when(emailService.getRecipientAccountByEmail(USER_EMAIL)).thenReturn(userAccountDetails);
     when(restTemplate.getForObject(ACCOUNT_DETAILS_URL, UserDetails.class,
         Map.of(TIS_ID_FIELD, PERSON_ID))).thenReturn(userAccountDetails);
@@ -1024,7 +1079,7 @@ class NotificationServiceTest {
         .getForObject("reference-url/api/local-office-contact-by-lo-name/{localOfficeName}",
             List.class, Map.of("localOfficeName", LOCAL_OFFICE))).thenReturn(contacts);
 
-    service.execute(jobExecutionContext);
+    service.executeQueued(programmeJobDataMap);
 
     ArgumentCaptor<Map<String, Object>> jobDetailsCaptor = ArgumentCaptor.captor();
     ArgumentCaptor<TisReferenceInfo> tisReferenceInfoCaptor = ArgumentCaptor.captor();
@@ -1058,7 +1113,6 @@ class NotificationServiceTest {
     UserDetails userAccountDetails = new UserDetails(false, USER_EMAIL, USER_TITLE,
         USER_FAMILY_NAME, USER_GIVEN_NAME, gmcNumber);
 
-    when(jobExecutionContext.getJobDetail()).thenReturn(programmeJobDetails);
     when(emailService.getRecipientAccountByEmail(USER_EMAIL)).thenReturn(userAccountDetails);
     when(restTemplate.getForObject(ACCOUNT_DETAILS_URL, UserDetails.class,
         Map.of(TIS_ID_FIELD, PERSON_ID))).thenReturn(userAccountDetails);
@@ -1078,7 +1132,7 @@ class NotificationServiceTest {
         .getForObject("reference-url/api/local-office-contact-by-lo-name/{localOfficeName}",
             List.class, Map.of("localOfficeName", LOCAL_OFFICE))).thenReturn(contacts);
 
-    service.execute(jobExecutionContext);
+    service.executeQueued(programmeJobDataMap);
 
     ArgumentCaptor<Map<String, Object>> jobDetailsCaptor = ArgumentCaptor.captor();
     ArgumentCaptor<TisReferenceInfo> tisReferenceInfoCaptor = ArgumentCaptor.captor();
@@ -1715,7 +1769,7 @@ class NotificationServiceTest {
   @EnumSource(LocalOfficeContactType.class)
   void shouldReturnEmptySetWhenTraineeLocalOfficeContactsEmpty(LocalOfficeContactType contactType) {
     ParameterizedTypeReference<Set<LocalOfficeContact>> loContactListListType
-        = new ParameterizedTypeReference<>(){};
+        = new ParameterizedTypeReference<>() {};
     when(restTemplate.exchange(any(), any(), any(), eq(loContactListListType), anyMap()))
         .thenReturn(new ResponseEntity<>(HttpStatus.OK));
 
@@ -1731,7 +1785,7 @@ class NotificationServiceTest {
         = Set.of(new LocalOfficeContact("contact", "local office"));
 
     ParameterizedTypeReference<Set<LocalOfficeContact>> loContactListListType
-        = new ParameterizedTypeReference<>(){};
+        = new ParameterizedTypeReference<>() {};
     when(restTemplate.exchange(any(), any(), any(), eq(loContactListListType),
         eq(Map.of(TIS_ID_FIELD, PERSON_ID, CONTACT_TYPE_FIELD, contactType))))
         .thenReturn(ResponseEntity.of(Optional.of(localOfficeContacts)));
@@ -1766,7 +1820,7 @@ class NotificationServiceTest {
   void shouldNotSendEmailIfNoLocalOfficeContact(LocalOfficeContactType localOfficeContactType)
       throws MessagingException {
     ParameterizedTypeReference<Set<LocalOfficeContact>> loContactListListType
-        = new ParameterizedTypeReference<>(){};
+        = new ParameterizedTypeReference<>() {};
     when(restTemplate.exchange(any(), any(), any(), eq(loContactListListType), anyMap()))
         .thenReturn(new ResponseEntity<>(HttpStatus.OK));
     when(messagingControllerService.isMessagingEnabled(any())).thenReturn(true);
@@ -1789,7 +1843,7 @@ class NotificationServiceTest {
     Set<LocalOfficeContact> localOfficeContacts = new HashSet<>();
     localOfficeContacts.add(new LocalOfficeContact(contact, "local office"));
     ParameterizedTypeReference<Set<LocalOfficeContact>> loContactListListType
-        = new ParameterizedTypeReference<>(){};
+        = new ParameterizedTypeReference<>() {};
     when(restTemplate.exchange(any(), any(), any(), eq(loContactListListType), anyMap()))
         .thenReturn(ResponseEntity.of(Optional.of(localOfficeContacts)));
     when(messagingControllerService.isMessagingEnabled(any())).thenReturn(true);
@@ -1809,7 +1863,7 @@ class NotificationServiceTest {
     Set<LocalOfficeContact> localOfficeContacts = new HashSet<>();
     localOfficeContacts.add(new LocalOfficeContact("contact@email.com", "local office"));
     ParameterizedTypeReference<Set<LocalOfficeContact>> loContactListListType
-        = new ParameterizedTypeReference<>(){};
+        = new ParameterizedTypeReference<>() {};
     when(restTemplate.exchange(any(), any(), any(), eq(loContactListListType), anyMap()))
         .thenReturn(ResponseEntity.of(Optional.of(localOfficeContacts)));
     when(messagingControllerService.isMessagingEnabled(any())).thenReturn(isMessagingEnabled);
@@ -1830,7 +1884,7 @@ class NotificationServiceTest {
     Set<LocalOfficeContact> localOfficeContacts = new HashSet<>();
     localOfficeContacts.add(new LocalOfficeContact("contact@email.com", "local office"));
     ParameterizedTypeReference<Set<LocalOfficeContact>> loContactListListType
-        = new ParameterizedTypeReference<>(){};
+        = new ParameterizedTypeReference<>() {};
     when(restTemplate.exchange(any(), any(), any(), eq(loContactListListType), anyMap()))
         .thenReturn(ResponseEntity.of(Optional.of(localOfficeContacts)));
     when(messagingControllerService.isMessagingEnabled(any())).thenReturn(true);
@@ -1854,7 +1908,7 @@ class NotificationServiceTest {
     localOfficeContacts.add(new LocalOfficeContact("contact2@email.com", "name3"));
     localOfficeContacts.add(new LocalOfficeContact("a@email.com", "name4"));
     ParameterizedTypeReference<Set<LocalOfficeContact>> loContactListListType
-        = new ParameterizedTypeReference<>(){};
+        = new ParameterizedTypeReference<>() {};
     when(restTemplate.exchange(any(), any(), any(), eq(loContactListListType), anyMap()))
         .thenReturn(ResponseEntity.of(Optional.of(localOfficeContacts)));
 
@@ -1885,7 +1939,7 @@ class NotificationServiceTest {
     Set<LocalOfficeContact> localOfficeContacts = new HashSet<>();
     localOfficeContacts.add(new LocalOfficeContact("contact@email.com", "local office"));
     ParameterizedTypeReference<Set<LocalOfficeContact>> loContactListListType
-        = new ParameterizedTypeReference<>(){};
+        = new ParameterizedTypeReference<>() {};
     when(restTemplate.exchange(any(), any(), any(), eq(loContactListListType), anyMap()))
         .thenReturn(ResponseEntity.of(Optional.of(localOfficeContacts)));
     when(messagingControllerService.isMessagingEnabled(any())).thenReturn(true);

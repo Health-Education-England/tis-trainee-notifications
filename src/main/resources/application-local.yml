@@ -13,6 +13,7 @@ application:
     email-event: ${local.sqs-path}/tis-trainee-notifications-local-email-failure
     ltft-updated: ${local.sqs-path}/tis-trainee-notifications-local-ltft-updated
     ltft-updated-tpd: ${local.sqs-path}/tis-trainee-notifications-local-ltft-updated-tpd
+    outbox: ${local.sqs-path}/tis-trainee-notifications-local-outbox
     form-updated: ${local.sqs-path}/tis-trainee-notifications-local-form-updated
     gmc-rejected: ${local.sqs-path}/tis-trainee-notifications-local-gmc-rejected
     gmc-updated: ${local.sqs-path}/tis-trainee-notifications-local-gmc-updated

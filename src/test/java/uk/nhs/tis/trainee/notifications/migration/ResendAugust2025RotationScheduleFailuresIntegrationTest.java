@@ -24,9 +24,10 @@ package uk.nhs.tis.trainee.notifications.migration;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
 import static org.junit.jupiter.params.provider.EnumSource.Mode.EXCLUDE;
+import static org.mockito.Mockito.mock;
 import static uk.nhs.tis.trainee.notifications.TestContainerConfiguration.MONGODB;
 import static uk.nhs.tis.trainee.notifications.model.MessageType.EMAIL;
-import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.FAILED;
+import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.SCHEDULED;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.WELCOME;
 
 import ch.qos.logback.classic.Logger;
@@ -35,7 +36,9 @@ import ch.qos.logback.core.read.ListAppender;
 import io.awspring.cloud.sqs.operations.SqsTemplate;
 import jakarta.annotation.Nullable;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.bson.types.ObjectId;
 import org.junit.jupiter.api.BeforeEach;
@@ -54,18 +57,23 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import uk.nhs.tis.trainee.notifications.model.History;
 import uk.nhs.tis.trainee.notifications.model.History.RecipientInfo;
+import uk.nhs.tis.trainee.notifications.model.History.TemplateInfo;
+import uk.nhs.tis.trainee.notifications.model.History.TisReferenceInfo;
 import uk.nhs.tis.trainee.notifications.model.MessageType;
 import uk.nhs.tis.trainee.notifications.model.NotificationStatus;
+import uk.nhs.tis.trainee.notifications.model.TisReferenceType;
+import uk.nhs.tis.trainee.notifications.service.HistoryService;
+import uk.nhs.tis.trainee.notifications.service.NotificationService;
 
 @SpringBootTest
 @ActiveProfiles("test")
 @Testcontainers(disabledWithoutDocker = true)
-class ResendGoogleMailFailuresIntegrationTest {
+class ResendAugust2025RotationScheduleFailuresIntegrationTest {
 
-  private static final String LOG_MESSAGE = "Found 2 qualifying failure(s).";
+  private static final String LOG_MESSAGE = "Found 2 qualifying missed schedules.";
 
   private static final Logger log = (Logger) LoggerFactory.getLogger(
-      ResendGoogleMailFailures.class);
+      ResendAugust2025RotationScheduleFailures.class);
 
   @Container
   @ServiceConnection
@@ -77,7 +85,7 @@ class ResendGoogleMailFailuresIntegrationTest {
   @MockBean
   private SqsTemplate sqsTemplate;
 
-  private ResendGoogleMailFailures migrator;
+  private ResendAugust2025RotationScheduleFailures migrator;
   private List<ILoggingEvent> logsList;
 
   @BeforeEach
@@ -88,56 +96,29 @@ class ResendGoogleMailFailuresIntegrationTest {
     logsList = listAppender.list;
 
     mongoTemplate.dropCollection(History.class);
-    migrator = new ResendGoogleMailFailures(mongoTemplate, null, null, null);
+    migrator = new ResendAugust2025RotationScheduleFailures(mongoTemplate,
+        mock(HistoryService.class), mock(NotificationService.class));
   }
 
   @ParameterizedTest
   @EnumSource(value = MessageType.class, mode = EXCLUDE, names = "EMAIL")
   void shouldFindByRecipientType(MessageType type) {
-    createFailure(null, null, null, null, null);
-    createFailure(EMAIL, null, null, null, null);
-    createFailure(type, null, null, null, null);
+    createMissedSchedule(null, null, null);
+    createMissedSchedule(EMAIL, null, null);
+    createMissedSchedule(type, null, null);
 
     migrator.migrate();
 
     String formattedMessage = logsList.get(0).getFormattedMessage();
     assertThat("Unexpected log message.", formattedMessage, is(LOG_MESSAGE));
-  }
-
-  @Test
-  void shouldFindByRecipientContact() {
-    createFailure(null, null, null, null, null);
-    createFailure(null, ".@gmail.com", null, null, null);
-    createFailure(null, ".@GMAIL.COM", null, null, null);
-    createFailure(null, ".@googlemail.com", null, null, null);
-    createFailure(null, ".@GOOGLEMAIL.COM", null, null, null);
-    createFailure(null, ".@example.com", null, null, null);
-    createFailure(null, ".@EXAMPLE.COM", null, null, null);
-
-    migrator.migrate();
-
-    String formattedMessage = logsList.get(0).getFormattedMessage();
-    assertThat("Unexpected log message.", formattedMessage, is("Found 5 qualifying failure(s)."));
   }
 
   @ParameterizedTest
-  @EnumSource(value = NotificationStatus.class, mode = EXCLUDE, names = "FAILED")
+  @EnumSource(value = NotificationStatus.class, mode = EXCLUDE, names = "SCHEDULED")
   void shouldFindByStatus(NotificationStatus status) {
-    createFailure(null, null, null, null, null);
-    createFailure(null, null, FAILED, null, null);
-    createFailure(null, null, status, null, null);
-
-    migrator.migrate();
-
-    String formattedMessage = logsList.get(0).getFormattedMessage();
-    assertThat("Unexpected log message.", formattedMessage, is(LOG_MESSAGE));
-  }
-
-  @Test
-  void shouldFindByStatusDetail() {
-    createFailure(null, null, null, null, null);
-    createFailure(null, null, null, "Bounce: Transient - General", null);
-    createFailure(null, null, null, "Some other status detail", null);
+    createMissedSchedule(null, null, null);
+    createMissedSchedule(null, SCHEDULED, null);
+    createMissedSchedule(null, status, null);
 
     migrator.migrate();
 
@@ -147,10 +128,11 @@ class ResendGoogleMailFailuresIntegrationTest {
 
   @Test
   void shouldFindBySentAt() {
-    createFailure(null, null, null, null, Instant.parse("2025-05-13T23:59:59Z"));
-    createFailure(null, null, null, null, Instant.parse("2025-05-14T00:00:00Z"));
-    createFailure(null, null, null, null, Instant.parse("2025-05-15T23:59:59Z"));
-    createFailure(null, null, null, null, Instant.parse("2025-05-16T00:00:00Z"));
+    createMissedSchedule(null, null, Instant.parse("2025-04-30T23:59:59Z"));
+    createMissedSchedule(null, null, Instant.parse("2025-05-01T00:00:00Z"));
+    createMissedSchedule(null, null, Instant.now()
+        .truncatedTo(ChronoUnit.DAYS).minusMillis(1));
+    createMissedSchedule(null, null, Instant.now().truncatedTo(ChronoUnit.DAYS));
 
     migrator.migrate();
 
@@ -159,25 +141,23 @@ class ResendGoogleMailFailuresIntegrationTest {
   }
 
   /**
-   * Create and persist a failure, uses valid defaults for null parameters.
+   * Create and persist a missed schedule, uses valid defaults for null parameters.
    *
-   * @param type         The message type.
-   * @param contact      The contact email address.
-   * @param status       The history status.
-   * @param statusDetail The status detail text.
-   * @param sentAt       The sent-at timestamp.
+   * @param type   The message type.
+   * @param status The history status.
+   * @param sentAt The sent-at timestamp.
    */
-  private void createFailure(@Nullable MessageType type, @Nullable String contact,
-      @Nullable NotificationStatus status, @Nullable String statusDetail,
+  private void createMissedSchedule(@Nullable MessageType type, @Nullable NotificationStatus status,
       @Nullable Instant sentAt) {
     History history = History.builder()
         .id(ObjectId.get())
         .type(WELCOME)
         .recipient(new RecipientInfo(UUID.randomUUID().toString(), type != null ? type : EMAIL,
-            contact != null ? contact : "_@gmail.com"))
-        .status(status != null ? status : FAILED)
-        .statusDetail(statusDetail != null ? statusDetail : "Bounce: Transient - General")
-        .sentAt(sentAt != null ? sentAt : Instant.parse("2025-05-14T12:00:00Z"))
+            "trainee@example.com"))
+        .status(status != null ? status : SCHEDULED)
+        .sentAt(sentAt != null ? sentAt : Instant.parse("2025-05-01T12:00:00Z"))
+        .template(new TemplateInfo("template", "v1.2.3", Map.of()))
+        .tisReference(new TisReferenceInfo(TisReferenceType.PLACEMENT, "123"))
         .build();
     mongoTemplate.save(history);
   }

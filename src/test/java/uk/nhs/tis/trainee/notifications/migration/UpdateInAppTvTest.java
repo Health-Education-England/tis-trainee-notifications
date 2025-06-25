@@ -40,6 +40,7 @@ import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipServic
 import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.LOCAL_OFFICE_CONTACT_TYPE_FIELD;
 
 import com.mongodb.MongoException;
+import io.awspring.cloud.sqs.operations.SqsTemplate;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -84,6 +85,9 @@ class UpdateInAppTvTest {
 
   @MockBean
   private NotificationService notificationService;
+
+  @MockBean
+  private SqsTemplate sqsTemplate;
 
   private UpdateInAppTvContact migrator;
 
