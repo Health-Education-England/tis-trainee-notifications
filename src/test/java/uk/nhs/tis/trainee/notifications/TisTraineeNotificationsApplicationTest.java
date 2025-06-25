@@ -25,7 +25,6 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 
 import io.awspring.cloud.s3.S3Template;
-import io.awspring.cloud.sqs.operations.SqsTemplate;
 import org.junit.jupiter.api.Test;
 import org.quartz.Scheduler;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -51,9 +50,6 @@ class TisTraineeNotificationsApplicationTest {
 
   @MockBean
   private S3Template s3Template;
-
-  @MockBean
-  private SqsTemplate sqsTemplate;
 
   @Autowired
   ApplicationContext context;

@@ -28,7 +28,6 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static uk.nhs.tis.trainee.notifications.TestContainerConfiguration.MONGODB;
 
 import io.awspring.cloud.s3.S3Template;
-import io.awspring.cloud.sqs.operations.SqsTemplate;
 import java.sql.Date;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -56,9 +55,6 @@ class MongoConfigurationIntegrationTest {
 
   @MockBean
   private S3Template s3Template;
-
-  @MockBean
-  private SqsTemplate sqsTemplate;
 
   @Container
   @ServiceConnection

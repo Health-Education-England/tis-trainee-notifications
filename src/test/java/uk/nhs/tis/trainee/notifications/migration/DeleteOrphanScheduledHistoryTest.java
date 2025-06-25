@@ -34,7 +34,6 @@ import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.SCHEDULE
 import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.SENT;
 
 import com.mongodb.MongoException;
-import io.awspring.cloud.sqs.operations.SqsTemplate;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
@@ -43,7 +42,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.boot.test.mock.mockito.SpyBean;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.data.mongodb.core.MongoTemplate;
@@ -64,9 +62,6 @@ class DeleteOrphanScheduledHistoryTest {
 
   @SpyBean
   private MongoTemplate mongoTemplate;
-
-  @MockBean
-  private SqsTemplate sqsTemplate;
 
   private DeleteOrphanScheduledHistory migrator;
 

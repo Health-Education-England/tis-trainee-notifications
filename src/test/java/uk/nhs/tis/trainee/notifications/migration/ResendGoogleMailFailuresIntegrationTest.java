@@ -32,7 +32,6 @@ import static uk.nhs.tis.trainee.notifications.model.NotificationType.WELCOME;
 import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
-import io.awspring.cloud.sqs.operations.SqsTemplate;
 import jakarta.annotation.Nullable;
 import java.time.Instant;
 import java.util.List;
@@ -44,7 +43,6 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.boot.test.mock.mockito.SpyBean;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.data.mongodb.core.MongoTemplate;
@@ -73,9 +71,6 @@ class ResendGoogleMailFailuresIntegrationTest {
 
   @SpyBean
   private MongoTemplate mongoTemplate;
-
-  @MockBean
-  private SqsTemplate sqsTemplate;
 
   private ResendGoogleMailFailures migrator;
   private List<ILoggingEvent> logsList;
