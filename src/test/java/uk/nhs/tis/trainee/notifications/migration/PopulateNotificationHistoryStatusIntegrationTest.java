@@ -31,7 +31,6 @@ import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.SENT;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.COJ_CONFIRMATION;
 
 import io.awspring.cloud.s3.S3Template;
-import io.awspring.cloud.sqs.operations.SqsTemplate;
 import java.time.Duration;
 import java.time.Instant;
 import org.junit.jupiter.api.BeforeEach;
@@ -62,9 +61,6 @@ class PopulateNotificationHistoryStatusIntegrationTest {
 
   @MockBean
   private S3Template s3Template;
-
-  @MockBean
-  private SqsTemplate sqsTemplate;
 
   private PopulateNotificationHistoryStatus migrator;
 

@@ -44,6 +44,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.bson.types.ObjectId;
+import org.hamcrest.Description;
+import org.hamcrest.Matcher;
+import org.hamcrest.TypeSafeMatcher;
+import org.hamcrest.number.IsCloseTo;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -53,7 +57,6 @@ import org.mockito.Mockito;
 import org.quartz.JobDataMap;
 import org.quartz.SchedulerException;
 import org.springframework.data.mongodb.core.MongoTemplate;
-import uk.nhs.tis.trainee.notifications.matcher.DateCloseTo;
 import uk.nhs.tis.trainee.notifications.model.History;
 import uk.nhs.tis.trainee.notifications.model.History.RecipientInfo;
 import uk.nhs.tis.trainee.notifications.model.History.TemplateInfo;
@@ -199,7 +202,6 @@ class ResendGoogleMailFailuresTest {
     History failure = History.builder()
         .id(ObjectId.get())
         .type(type)
-        .recipient(new RecipientInfo(TRAINEE_ID, EMAIL, TRAINEE_EMAIL))
         .build();
     when(mongoTemplate.find(any(), eq(History.class))).thenReturn(List.of(failure));
 
@@ -220,5 +222,44 @@ class ResendGoogleMailFailuresTest {
     verifyNoInteractions(emailService);
     verifyNoInteractions(notificationService);
     verifyNoInteractions(historyService);
+  }
+
+  /**
+   * A custom matcher which wraps {@link IsCloseTo} to allow easier use with Java Dates.
+   */
+  private static class DateCloseTo extends TypeSafeMatcher<Date> {
+
+    private final IsCloseTo isCloseTo;
+
+    /**
+     * Construct a matcher that matches when a date value is equal, within the error range.
+     *
+     * @param value The expected value of matching doubles after conversion.
+     * @param error The delta (+/-) within which matches will be allowed.
+     */
+    DateCloseTo(double value, double error) {
+      isCloseTo = new IsCloseTo(value, error);
+    }
+
+    @Override
+    protected boolean matchesSafely(Date date) {
+      return isCloseTo.matchesSafely((double) date.toInstant().getEpochSecond());
+    }
+
+    @Override
+    public void describeTo(Description description) {
+      isCloseTo.describeTo(description);
+    }
+
+    /**
+     * Get an instance of the closeTo matcher.
+     *
+     * @param operand The expected value of matching doubles after conversion.
+     * @param error   The delta (+/-) within which matches will be allowed.
+     * @return the matcher instance.
+     */
+    public static Matcher<Date> closeTo(double operand, double error) {
+      return new DateCloseTo(operand, error);
+    }
   }
 }

@@ -29,7 +29,6 @@ application:
     gmc-updated: ${GMC_UPDATED_QUEUE}
     ltft-updated: ${LTFT_UPDATED_QUEUE}
     ltft-updated-tpd: ${LTFT_UPDATED_TPD_QUEUE}
-    outbox: ${OUTBOX_QUEUE}
     placement-updated: ${PLACEMENT_UPDATED_QUEUE}
     placement-deleted: ${PLACEMENT_DELETED_QUEUE}
     programme-membership-updated: ${PROGRAMME_MEMBERSHIP_UPDATED_QUEUE}
