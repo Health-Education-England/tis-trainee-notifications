@@ -183,59 +183,60 @@ public class EmailService {
     String templateName = templateService.getTemplatePath(EMAIL, notificationType, templateVersion);
     log.info("Processing send job template {} to {}.", templateName, recipient);
 
-    if (!doNotSendJustLog) {
-      ObjectId notificationId = ObjectId.get();
-      NotificationStatus status;
-      String statusDetail = null;
+    ObjectId notificationId = ObjectId.get();
+    NotificationStatus status;
+    String statusDetail = null;
 
-      // find scheduled history from DB
-      History latestScheduledHistory = null;
-      if (tisReferenceInfo != null) {
-        latestScheduledHistory = historyService.findScheduledEmailForTraineeByRefAndType(
-            traineeId, tisReferenceInfo.type(), tisReferenceInfo.id(), notificationType);
-        if (latestScheduledHistory != null) {
-          notificationId = latestScheduledHistory.id();
-        }
+    // find scheduled history from DB
+    History latestScheduledHistory = null;
+    if (tisReferenceInfo != null) {
+      latestScheduledHistory = historyService.findScheduledEmailForTraineeByRefAndType(
+          traineeId, tisReferenceInfo.type(), tisReferenceInfo.id(), notificationType);
+      if (latestScheduledHistory != null) {
+        notificationId = latestScheduledHistory.id();
       }
+    }
 
-      List<StoredFile> attachments = attachment == null ? null : List.of(attachment);
+    List<StoredFile> attachments = attachment == null ? null : List.of(attachment);
 
-      if (recipient != null) {
-        MimeMessageHelper helper = buildMessageHelper(recipient, templateName, templateVariables,
-            notificationId, attachments);
+    if (recipient != null) {
+      MimeMessageHelper helper = buildMessageHelper(recipient, templateName, templateVariables,
+          notificationId, attachments);
+      if (!doNotSendJustLog) {
         mailSender.send(helper.getMimeMessage());
         log.info("Sent template {} to {}.", templateName, recipient);
         status = NotificationStatus.PENDING;
       } else {
-        log.info("No email address available for trainee {}, this failure will be recorded.",
-            traineeId);
-        status = NotificationStatus.FAILED;
-        statusDetail = "No email address available.";
+        log.info("Not sending email, just logging to {} from template {} with variables {}",
+            recipient, templateName, templateVariables);
+        status = NotificationStatus.SENT;
       }
 
-      // Store the notification history.
-      RecipientInfo recipientInfo = new RecipientInfo(traineeId, EMAIL, recipient);
-      TemplateInfo templateInfo = new TemplateInfo(notificationType.getTemplateName(),
-          templateVersion, templateVariables);
-      History history = new History(notificationId, tisReferenceInfo, notificationType,
-          recipientInfo, templateInfo, attachments, Instant.now(), null, status, statusDetail,
-          null);
-      historyService.save(history);
-
-      log.info("Finish processing send job {} to {}.", templateName, recipient);
     } else {
-      log.info("Send job is ignored. "
-              + "For now, just logging mail to '{}' from template '{}' with variables '{}'",
-          recipient, templateName, templateVariables);
+      log.info("No email address available for trainee {}, this failure will be recorded.",
+          traineeId);
+      status = NotificationStatus.FAILED;
+      statusDetail = "No email address available.";
     }
+
+    // Store the notification history.
+    RecipientInfo recipientInfo = new RecipientInfo(traineeId, EMAIL, recipient);
+    TemplateInfo templateInfo = new TemplateInfo(notificationType.getTemplateName(),
+        templateVersion, templateVariables);
+    History history = new History(notificationId, tisReferenceInfo, notificationType,
+        recipientInfo, templateInfo, attachments, Instant.now(), null, status, statusDetail,
+        null);
+    historyService.save(history);
+
+    log.info("Finish processing send job {} to {}.", templateName, recipient);
 
     // Delete SCHEDULED history after the notification is sent or ignored
     if (tisReferenceInfo != null) {
       List<History> allScheduledHistories =
           historyService.findAllScheduledEmailForTraineeByRefAndType(
           traineeId, tisReferenceInfo.type(), tisReferenceInfo.id(), notificationType);
-      for (History history : allScheduledHistories) {
-        historyService.deleteHistoryForTrainee(history.id(), traineeId);
+      for (History historyScheduled : allScheduledHistories) {
+        historyService.deleteHistoryForTrainee(historyScheduled.id(), traineeId);
       }
     }
   }
