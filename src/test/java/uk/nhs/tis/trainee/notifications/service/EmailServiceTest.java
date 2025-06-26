@@ -28,6 +28,7 @@ import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.CoreMatchers.startsWith;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -46,6 +47,7 @@ import static uk.nhs.tis.trainee.notifications.model.MessageType.EMAIL;
 import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.FAILED;
 import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.PENDING;
 import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.SCHEDULED;
+import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.SENT;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_CREATED;
 import static uk.nhs.tis.trainee.notifications.model.TisReferenceType.PLACEMENT;
 
@@ -694,11 +696,18 @@ class EmailServiceTest {
     when(historyService.findAllScheduledEmailForTraineeByRefAndType(any(), any(), any(), any()))
         .thenReturn(List.of(scheduledHistory));
 
-    service.sendMessage(TRAINEE_ID, RECIPIENT, NOTIFICATION_TYPE, "", Map.of("key1", "val1"),
+    service.sendMessage(TRAINEE_ID, RECIPIENT, NOTIFICATION_TYPE, "", new HashMap<>(),
         tisReferenceInfo, true);
 
     verify(mailSender, never()).send((MimeMessage) any());
-    verify(historyService, never()).save(any());
+    ArgumentCaptor<History> historyCaptor = ArgumentCaptor.captor();
+    verify(historyService).save(historyCaptor.capture());
+
+    History history = historyCaptor.getValue();
+    assertThat("Unexpected recipient contact.", history.recipient().contact(), is(RECIPIENT));
+    assertThat("Unexpected status.", history.status(), is(SENT));
+    assertNull(history.statusDetail(), "Unexpected status detail.");
+
     verify(historyService).deleteHistoryForTrainee(scheduledHistory.id(), TRAINEE_ID);
   }
 
