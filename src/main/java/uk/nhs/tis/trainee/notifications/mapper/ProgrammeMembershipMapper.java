@@ -62,6 +62,9 @@ public interface ProgrammeMembershipMapper {
    * @throws JsonProcessingException if curricula are malformed.
    */
   default List<Curriculum> toCurricula(String curriculumString) throws JsonProcessingException {
+    if (curriculumString == null) {
+      return List.of();
+    }
     ObjectMapper objectMapper = new ObjectMapper()
         .registerModule(new JavaTimeModule())
         .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
@@ -79,6 +82,9 @@ public interface ProgrammeMembershipMapper {
    */
   default ConditionsOfJoining toConditionsOfJoining(String cojString)
       throws JsonProcessingException {
+    if (cojString == null) {
+      return null;
+    }
     ObjectMapper objectMapper = new ObjectMapper()
         .registerModule(new JavaTimeModule())
         .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
@@ -96,6 +102,9 @@ public interface ProgrammeMembershipMapper {
    */
   default ResponsibleOfficer toResponsibleOfficer(String roString)
       throws JsonProcessingException {
+    if (roString == null) {
+      return null;
+    }
     ObjectMapper objectMapper = new ObjectMapper()
         .registerModule(new JavaTimeModule())
         .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);

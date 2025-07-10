@@ -23,6 +23,7 @@ package uk.nhs.tis.trainee.notifications.mapper;
 
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.nullValue;
 
 import java.time.Instant;
 import java.time.LocalDate;
@@ -31,6 +32,8 @@ import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import uk.nhs.tis.trainee.notifications.dto.CojPublishedEvent.ConditionsOfJoining;
 import uk.nhs.tis.trainee.notifications.dto.ProgrammeMembershipEvent;
 import uk.nhs.tis.trainee.notifications.dto.RecordDto;
@@ -75,6 +78,23 @@ class ProgrammeMembershipMapperTest {
     assertThat("Unexpected Conditions of joining.", returnedPm.getConditionsOfJoining(),
         is(new ConditionsOfJoining(COJ_SYNCED_AT)));
     assertThat("Unexpected Responsible Officer.", returnedPm.getResponsibleOfficer(), is(ro));
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"curricula", "conditionsOfJoining", "responsibleOfficer"})
+  void shouldHandleNullOrMissingFieldsInMappingEntity(String fieldToNull)  {
+    Map<String, String> recordData = new HashMap<>();
+    recordData.put("tisId", TIS_ID);
+    recordData.put("startDate", START_DATE.toString());
+    recordData.put(fieldToNull, null);
+
+    ProgrammeMembership pm = mapper.toEntity(recordData);
+
+    assertThat("Unexpected Tis Id.", pm.getTisId(), is(TIS_ID));
+    assertThat("Unexpected start date.", pm.getStartDate(), is(START_DATE));
+    assertThat("Unexpected curricula.", pm.getCurricula(), is(List.of()));
+    assertThat("Unexpected Conditions of joining.", pm.getConditionsOfJoining(), is(nullValue()));
+    assertThat("Unexpected Responsible Officer.", pm.getResponsibleOfficer(), is(nullValue()));
   }
 
   /**
