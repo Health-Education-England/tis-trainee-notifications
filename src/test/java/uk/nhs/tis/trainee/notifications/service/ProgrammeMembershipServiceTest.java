@@ -684,7 +684,7 @@ class ProgrammeMembershipServiceTest {
     assertThat("Unexpected job id.", jobId, is(expectedJobId));
 
     JobDataMap jobDataMap = jobDataMapCaptor.getValue();
-    assertThat("Unexpected variable count.", jobDataMap.size(), is(8));
+    assertThat("Unexpected variable count.", jobDataMap.size(), is(10));
     assertThat("Unexpected tisId.", jobDataMap.get(TIS_ID_FIELD), is(TIS_ID));
     assertThat("Unexpected personId.", jobDataMap.get(PERSON_ID_FIELD), is(PERSON_ID));
     assertThat("Unexpected programme.", jobDataMap.get(PROGRAMME_NAME_FIELD),
@@ -707,7 +707,7 @@ class ProgrammeMembershipServiceTest {
     assertThat("Unexpected job id.", dayOneJobId, is(dayOneExpectedJobId));
 
     JobDataMap dayOneJobDataMap = dayOneJobDataMapCaptor.getValue();
-    assertThat("Unexpected variable count.", dayOneJobDataMap.size(), is(9));
+    assertThat("Unexpected variable count.", dayOneJobDataMap.size(), is(10));
     assertThat("Unexpected tisId.", dayOneJobDataMap.get(TIS_ID_FIELD), is(TIS_ID));
     assertThat("Unexpected personId.", dayOneJobDataMap.get(PERSON_ID_FIELD), is(PERSON_ID));
     assertThat("Unexpected programme.", dayOneJobDataMap.get(PROGRAMME_NAME_FIELD),

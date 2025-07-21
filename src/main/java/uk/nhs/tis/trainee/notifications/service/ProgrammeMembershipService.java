@@ -55,6 +55,7 @@ import org.quartz.SchedulerException;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import uk.nhs.tis.trainee.notifications.dto.UserDetails;
+import uk.nhs.tis.trainee.notifications.mapper.ProgrammeMembershipMapper;
 import uk.nhs.tis.trainee.notifications.model.Curriculum;
 import uk.nhs.tis.trainee.notifications.model.History;
 import uk.nhs.tis.trainee.notifications.model.History.TisReferenceInfo;
@@ -194,8 +195,6 @@ public class ProgrammeMembershipService {
     notificationTypes.add(LTFT);
     notificationTypes.add(SPONSORSHIP);
     notificationTypes.add(DAY_ONE);
-    notificationTypes.add(PROGRAMME_DAY_ONE);
-
 
     for (NotificationType milestone : notificationTypes) {
       Optional<History> sentItem = correspondence.stream()
@@ -246,10 +245,10 @@ public class ProgrammeMembershipService {
   private void createDirectProgrammeNotifications(ProgrammeMembership programmeMembership,
       Map<NotificationType, History> notificationsAlreadySent) throws SchedulerException {
 
-    LocalDate startDate = programmeMembership.getStartDate();
-
     // Note the status of the trainee will be retrieved when the job is executed, as will
     // their name and email address and LO contact details.
+    JobDataMap jobDataMap = new JobDataMap();
+    addStandardProgrammeDetailsToJobMap(jobDataMap, programmeMembership);
 
     // PROGRAMME_CREATED
     boolean shouldScheduleProgrammeCreated = shouldScheduleNotification(PROGRAMME_CREATED,
@@ -258,28 +257,10 @@ public class ProgrammeMembershipService {
       log.info("Processing notification {} for {}.", PROGRAMME_CREATED,
           programmeMembership.getTisId());
 
-      JobDataMap pmCreatedJobDataMap = new JobDataMap();
-      pmCreatedJobDataMap.put(TEMPLATE_NOTIFICATION_TYPE_FIELD, PROGRAMME_CREATED);
-      pmCreatedJobDataMap.put(TIS_ID_FIELD, programmeMembership.getTisId());
-      pmCreatedJobDataMap.put(PERSON_ID_FIELD, programmeMembership.getPersonId());
-      pmCreatedJobDataMap.put(PROGRAMME_NAME_FIELD, programmeMembership.getProgrammeName());
-      pmCreatedJobDataMap.put(PROGRAMME_NUMBER_FIELD, programmeMembership.getProgrammeNumber());
-      pmCreatedJobDataMap.put(START_DATE_FIELD, startDate);
-      pmCreatedJobDataMap.put(TEMPLATE_OWNER_FIELD, programmeMembership.getManagingDeanery());
-      if (programmeMembership.getConditionsOfJoining() != null) {
-        pmCreatedJobDataMap.put(COJ_SYNCED_FIELD,
-            programmeMembership.getConditionsOfJoining().syncedAt());
-      }
+      jobDataMap.put(TEMPLATE_NOTIFICATION_TYPE_FIELD, PROGRAMME_CREATED);
 
-      String jobId = PROGRAMME_CREATED + "-" + programmeMembership.getTisId();
-      Date scheduleWhen = whenScheduleDeferredNotification(PROGRAMME_CREATED, programmeMembership,
+      doScheduleProgrammeNotification(PROGRAMME_CREATED, programmeMembership, jobDataMap,
           notificationsAlreadySent);
-      if (scheduleWhen == null) {
-        notificationService.executeNow(jobId, pmCreatedJobDataMap);
-      } else {
-        notificationService.scheduleNotification(jobId, pmCreatedJobDataMap, scheduleWhen,
-            ONE_DAY_IN_SECONDS);
-      }
     }
 
     // PROGRAMME_DAY_ONE
@@ -289,24 +270,74 @@ public class ProgrammeMembershipService {
       log.info("Processing notification {} for {}.", PROGRAMME_DAY_ONE,
           programmeMembership.getTisId());
 
-      JobDataMap pmDayOneJobDataMap = new JobDataMap();
-      pmDayOneJobDataMap.put(TIS_ID_FIELD, programmeMembership.getTisId());
-      pmDayOneJobDataMap.put(PERSON_ID_FIELD, programmeMembership.getPersonId());
-      pmDayOneJobDataMap.put(PROGRAMME_NAME_FIELD, programmeMembership.getProgrammeName());
-      pmDayOneJobDataMap.put(PROGRAMME_NUMBER_FIELD, programmeMembership.getProgrammeNumber());
-      pmDayOneJobDataMap.put(START_DATE_FIELD, startDate);
-      pmDayOneJobDataMap.put(TEMPLATE_OWNER_FIELD, programmeMembership.getManagingDeanery());
-      pmDayOneJobDataMap.put(TEMPLATE_NOTIFICATION_TYPE_FIELD, PROGRAMME_DAY_ONE);
-      pmDayOneJobDataMap.put(RO_NAME_FIELD, getRoName(programmeMembership.getResponsibleOfficer()));
-      pmDayOneJobDataMap.put(DESIGNATED_BODY_FIELD, programmeMembership.getDesignatedBody());
+      jobDataMap.put(TEMPLATE_NOTIFICATION_TYPE_FIELD, PROGRAMME_DAY_ONE);
 
-      String jobId = PROGRAMME_DAY_ONE + "-" + programmeMembership.getTisId();
-      if (startDate.isBefore(LocalDate.now(timezone).plusDays(1))) {
-        notificationService.executeNow(jobId, pmDayOneJobDataMap);
+      doScheduleProgrammeNotification(PROGRAMME_DAY_ONE, programmeMembership, jobDataMap,
+          notificationsAlreadySent);
+    }
+  }
+
+  /**
+   * Add standard programme details to the job data map for programme notifications.
+   *
+   * @param jobDataMap          The job data map to populate.
+   * @param programmeMembership The programme membership to extract details from.
+   */
+  private void addStandardProgrammeDetailsToJobMap(JobDataMap jobDataMap,
+      ProgrammeMembership programmeMembership) {
+    jobDataMap.put(TIS_ID_FIELD, programmeMembership.getTisId());
+    jobDataMap.put(PERSON_ID_FIELD, programmeMembership.getPersonId());
+    jobDataMap.put(PROGRAMME_NAME_FIELD, programmeMembership.getProgrammeName());
+    jobDataMap.put(PROGRAMME_NUMBER_FIELD, programmeMembership.getProgrammeNumber());
+    jobDataMap.put(START_DATE_FIELD, programmeMembership.getStartDate());
+    jobDataMap.put(TEMPLATE_OWNER_FIELD, programmeMembership.getManagingDeanery());
+
+    if (programmeMembership.getConditionsOfJoining() != null) {
+      jobDataMap.put(COJ_SYNCED_FIELD, programmeMembership.getConditionsOfJoining().syncedAt());
+    }
+    jobDataMap.put(RO_NAME_FIELD, getRoName(programmeMembership.getResponsibleOfficer()));
+    jobDataMap.put(DESIGNATED_BODY_FIELD, programmeMembership.getDesignatedBody());
+  }
+
+  /**
+   * Determine when a programme notification should be scheduled.
+   *
+   * @param notificationType The type of notification to schedule.
+   * @param programmeMembership The programme membership to consider.
+   * @param notificationsAlreadySent The notifications already sent for this entity.
+   * @return The date when the notification should be scheduled, or null if it should be sent
+   *         immediately.
+   */
+  private Date whenScheduleProgrammeNotification(NotificationType notificationType,
+      ProgrammeMembership programmeMembership,
+      Map<NotificationType, History> notificationsAlreadySent) {
+    if (notificationType == PROGRAMME_CREATED) {
+      return whenScheduleDeferredNotification(PROGRAMME_CREATED, programmeMembership,
+          notificationsAlreadySent);
+    } else {
+      Integer daysBeforeStart = getDaysBeforeStartForNotification(notificationType);
+      if (programmeMembership.getStartDate().minusDays(daysBeforeStart)
+          .isBefore(LocalDate.now(timezone).plusDays(1))) {
+        // If the deadline for this notification type is today or in the past, send immediately.
+        return null;
       } else {
-        notificationService.scheduleNotification(jobId, pmDayOneJobDataMap,
-            Date.from(startDate.atStartOfDay(timezone).toInstant()), ONE_DAY_IN_SECONDS);
+        // Otherwise, schedule for the deadline.
+        return Date.from(programmeMembership.getStartDate().minusDays(daysBeforeStart)
+            .atStartOfDay(timezone).toInstant());
       }
+    }
+  }
+
+  private void doScheduleProgrammeNotification(NotificationType notificationType,
+      ProgrammeMembership programmeMembership, JobDataMap jobDataMap,
+      Map<NotificationType, History> notificationsAlreadySent) throws SchedulerException {
+    String jobId = notificationType + "-" + jobDataMap.get(TIS_ID_FIELD);
+    Date scheduleWhen = whenScheduleProgrammeNotification(notificationType, programmeMembership,
+        notificationsAlreadySent);
+    if (scheduleWhen == null) {
+      notificationService.executeNow(jobId, jobDataMap);
+    } else {
+      notificationService.scheduleNotification(jobId, jobDataMap, scheduleWhen, ONE_DAY_IN_SECONDS);
     }
   }
 
@@ -564,5 +595,25 @@ public class ProgrammeMembershipService {
       ).trim();
     }
     return "";
+  }
+
+  /**
+   * Get the number of days before the programme start date that a notification should be sent.
+   *
+   * @param notificationType The notification type to check.
+   * @return The number of days before the start date to send the notification, or null if not
+   * applicable.
+   */
+  public Integer getDaysBeforeStartForNotification(NotificationType notificationType) {
+    return switch (notificationType) {
+      case PROGRAMME_DAY_ONE -> 0; // Day One is sent on the start date
+      case PROGRAMME_UPDATED_WEEK_12 -> 84;
+      case PROGRAMME_UPDATED_WEEK_8 -> 56;
+      case PROGRAMME_UPDATED_WEEK_4 -> 28;
+      case PROGRAMME_UPDATED_WEEK_2 -> 14;
+      case PROGRAMME_UPDATED_WEEK_1 -> 7;
+      case PROGRAMME_UPDATED_WEEK_0 -> 0;
+      default -> null; //not applicable
+    };
   }
 }
