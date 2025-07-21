@@ -184,6 +184,8 @@ service:
     port: ${TRAINEE_DETAILS_PORT:8203}
     url: http://${service.trainee.host}:${service.trainee.port}/trainee
   reference:
-    host: ${TRAINEE_REFERENCE_HOST:localhost}
     port: ${TRAINEE_REFERENCE_PORT:8205}
     url: http://${service.trainee.host}:${service.reference.port}/reference
+  actions:
+    port: ${TRAINEE_ACTIONS_PORT:8212}
+    url: http://${service.trainee.host}:${service.actions.port}/actions
