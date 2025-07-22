@@ -63,6 +63,7 @@ import static uk.nhs.tis.trainee.notifications.service.NotificationService.DEFAU
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.DUMMY_USER_ROLES;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.ONE_DAY_IN_SECONDS;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.PERSON_ID_FIELD;
+import static uk.nhs.tis.trainee.notifications.service.NotificationService.PROGRAMME_ID_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.TEMPLATE_CONTACT_HREF_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.TEMPLATE_NOTIFICATION_TYPE_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.TEMPLATE_OWNER_CONTACT_FIELD;
@@ -134,6 +135,8 @@ class NotificationServiceTest {
   private static final String REFERENCE_URL = "reference-url";
   private static final String ACCOUNT_DETAILS_URL =
       SERVICE_URL + "/api/trainee-profile/account-details/{tisId}";
+  private static final String ACTIONS_URL = "actions-url";
+  private static final String ACTIONS_FOR_PROGRAMME_URL = "actions-url";
   private static final String JOB_KEY_STRING = "job-key";
   private static final JobKey JOB_KEY = new JobKey(JOB_KEY_STRING);
   private static final String TIS_ID = "tis-id";
@@ -223,11 +226,11 @@ class NotificationServiceTest {
         )));
 
     service = new NotificationService(emailService, historyService, restTemplate, scheduler,
-        messagingControllerService, templateVersions, SERVICE_URL, REFERENCE_URL,
+        messagingControllerService, templateVersions, SERVICE_URL, REFERENCE_URL, ACTIONS_URL,
         NOTIFICATION_DELAY, NOT_WHITELISTED, TIMEZONE);
     serviceWhitelisted = new NotificationService(emailService, historyService, restTemplate,
         scheduler, messagingControllerService, templateVersions, SERVICE_URL, REFERENCE_URL,
-        NOTIFICATION_DELAY, WHITELISTED, TIMEZONE);
+        ACTIONS_URL, NOTIFICATION_DELAY, WHITELISTED, TIMEZONE);
   }
 
   @Test
@@ -240,7 +243,7 @@ class NotificationServiceTest {
         )));
 
     service = new NotificationService(emailService, historyService, restTemplate, scheduler,
-        messagingControllerService, templateVersions, SERVICE_URL, REFERENCE_URL,
+        messagingControllerService, templateVersions, SERVICE_URL, REFERENCE_URL, ACTIONS_URL,
         NOTIFICATION_DELAY, NOT_WHITELISTED, TIMEZONE);
 
     JobDataMap jobDataMap = new JobDataMap();
@@ -614,6 +617,8 @@ class NotificationServiceTest {
     when(emailService.getRecipientAccountByEmail(USER_EMAIL)).thenReturn(userAccountDetails);
     when(restTemplate.getForObject(ACCOUNT_DETAILS_URL, UserDetails.class,
         Map.of(TIS_ID_FIELD, PERSON_ID))).thenReturn(userAccountDetails);
+    when(restTemplate.getForObject(any(), eq(List.class),
+        eq(Map.of(PERSON_ID_FIELD, PERSON_ID, PROGRAMME_ID_FIELD, TIS_ID)))).thenReturn(List.of());
 
     service.execute(jobExecutionContext);
 
@@ -987,6 +992,8 @@ class NotificationServiceTest {
     when(emailService.getRecipientAccountByEmail(USER_EMAIL)).thenReturn(userAccountDetails);
     when(restTemplate.getForObject(ACCOUNT_DETAILS_URL, UserDetails.class,
         Map.of(TIS_ID_FIELD, PERSON_ID))).thenReturn(userAccountDetails);
+    when(restTemplate.getForObject(any(), eq(List.class),
+        eq(Map.of(PERSON_ID_FIELD, PERSON_ID, PROGRAMME_ID_FIELD, TIS_ID)))).thenReturn(List.of());
     when(messagingControllerService.isValidRecipient(any(), any())).thenReturn(true);
     when(messagingControllerService.isProgrammeMembershipNewStarter(any(), any()))
         .thenReturn(true);

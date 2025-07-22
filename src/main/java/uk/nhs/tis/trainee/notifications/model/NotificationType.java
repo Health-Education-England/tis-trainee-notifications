@@ -97,6 +97,15 @@ public enum NotificationType {
       PROGRAMME_UPDATED_WEEK_0);
 
   /**
+   * The set of reminder Programme Updated email notification types.
+   */
+  @Getter
+  private static final Set<NotificationType> reminderProgrammeUpdateNotificationTypes = EnumSet.of(
+      PROGRAMME_UPDATED_WEEK_12,
+      PROGRAMME_UPDATED_WEEK_4,
+      PROGRAMME_UPDATED_WEEK_2);
+
+  /**
    * The set of Programme Updated in-app notification types.
    */
   @Getter
