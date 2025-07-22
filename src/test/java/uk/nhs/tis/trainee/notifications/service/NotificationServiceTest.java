@@ -55,6 +55,12 @@ import static uk.nhs.tis.trainee.notifications.model.NotificationType.GMC_UPDATE
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PLACEMENT_ROLLOUT_2024_CORRECTION;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PLACEMENT_UPDATED_WEEK_12;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_CREATED;
+import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_UPDATED_WEEK_2;
+import static uk.nhs.tis.trainee.notifications.model.ProgrammeActionType.REGISTER_TSS;
+import static uk.nhs.tis.trainee.notifications.model.ProgrammeActionType.SIGN_COJ;
+import static uk.nhs.tis.trainee.notifications.model.ProgrammeActionType.SIGN_FORM_R_PART_A;
+import static uk.nhs.tis.trainee.notifications.model.ProgrammeActionType.SIGN_FORM_R_PART_B;
+import static uk.nhs.tis.trainee.notifications.model.TisReferenceType.PERSON;
 import static uk.nhs.tis.trainee.notifications.model.TisReferenceType.PLACEMENT;
 import static uk.nhs.tis.trainee.notifications.model.TisReferenceType.PROGRAMME_MEMBERSHIP;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.CONTACT_FIELD;
@@ -118,6 +124,7 @@ import org.testcontainers.shaded.org.apache.commons.lang3.time.DateUtils;
 import software.amazon.awssdk.services.cognitoidentityprovider.model.UserNotFoundException;
 import uk.nhs.tis.trainee.notifications.config.TemplateVersionsProperties;
 import uk.nhs.tis.trainee.notifications.config.TemplateVersionsProperties.MessageTypeVersions;
+import uk.nhs.tis.trainee.notifications.dto.ActionDto;
 import uk.nhs.tis.trainee.notifications.dto.UserDetails;
 import uk.nhs.tis.trainee.notifications.model.History;
 import uk.nhs.tis.trainee.notifications.model.History.TisReferenceInfo;
@@ -136,7 +143,7 @@ class NotificationServiceTest {
   private static final String ACCOUNT_DETAILS_URL =
       SERVICE_URL + "/api/trainee-profile/account-details/{tisId}";
   private static final String ACTIONS_URL = "actions-url";
-  private static final String ACTIONS_FOR_PROGRAMME_URL = "actions-url";
+  private static final String ACTIONS_PROGRAMME_URL = "/api/action/{personId}/{programmeId}";
   private static final String JOB_KEY_STRING = "job-key";
   private static final JobKey JOB_KEY = new JobKey(JOB_KEY_STRING);
   private static final String TIS_ID = "tis-id";
@@ -355,7 +362,7 @@ class NotificationServiceTest {
   }
 
   @Test
-  void shouldThrowExceptionWhenRestClientExceptions() {
+  void shouldThrowExceptionWhenTraineeDetailsRestClientExceptions() {
     when(jobExecutionContext.getJobDetail()).thenReturn(programmeJobDetails);
 
     when(emailService.getRecipientAccountByEmail(any())).thenThrow(
@@ -366,6 +373,34 @@ class NotificationServiceTest {
     assertThrows(IllegalArgumentException.class, () -> service.execute(jobExecutionContext));
 
     verify(jobExecutionContext, never()).setResult(any());
+  }
+
+  @Test
+  void shouldHandleActionsRestClientExceptions() {
+    programmeJobDataMap.put(TEMPLATE_NOTIFICATION_TYPE_FIELD, PROGRAMME_UPDATED_WEEK_2.toString());
+    programmeJobDetails = newJob(NotificationService.class)
+        .withIdentity(JOB_KEY)
+        .usingJobData(programmeJobDataMap)
+        .build();
+    when(jobExecutionContext.getJobDetail()).thenReturn(programmeJobDetails);
+
+    UserDetails userAccountDetails =
+        new UserDetails(
+            true, USER_EMAIL, USER_TITLE, USER_FAMILY_NAME, USER_GIVEN_NAME, USER_GMC);
+    when(restTemplate.getForObject(any(), eq(UserDetails.class), anyMap()))
+        .thenReturn(userAccountDetails);
+    when(messagingControllerService.isValidRecipient(any(), any())).thenReturn(true);
+    when(messagingControllerService.isProgrammeMembershipNewStarter(any(), any()))
+        .thenReturn(true);
+    when(messagingControllerService.isProgrammeMembershipInPilot2024(any(), any()))
+        .thenReturn(true);
+
+    when(restTemplate.getForObject(eq(ACTIONS_URL + ACTIONS_PROGRAMME_URL), eq(List.class),
+        anyMap())).thenThrow(new RestClientException("error"));
+
+    assertDoesNotThrow(() -> service.execute(jobExecutionContext));
+
+    verify(jobExecutionContext).setResult(any());
   }
 
   @Test
@@ -607,7 +642,7 @@ class NotificationServiceTest {
       names = {"PLACEMENT_UPDATED_WEEK_12", "PLACEMENT_ROLLOUT_2024_CORRECTION",
           "PROGRAMME_CREATED", "PROGRAMME_DAY_ONE", "PROGRAMME_UPDATED_WEEK_12",
           "PROGRAMME_UPDATED_WEEK_4", "PROGRAMME_UPDATED_WEEK_2"})
-  void shouldIgnoreNonProgrammeOrPlacementJobs(NotificationType notificationType)
+  void shouldIgnoreNonActiveProgrammeOrPlacementJobs(NotificationType notificationType)
       throws MessagingException {
     UserDetails userAccountDetails =
         new UserDetails(
@@ -618,8 +653,8 @@ class NotificationServiceTest {
     when(emailService.getRecipientAccountByEmail(USER_EMAIL)).thenReturn(userAccountDetails);
     when(restTemplate.getForObject(ACCOUNT_DETAILS_URL, UserDetails.class,
         Map.of(TIS_ID_FIELD, PERSON_ID))).thenReturn(userAccountDetails);
-    when(restTemplate.getForObject(any(), eq(List.class),
-        eq(Map.of(PERSON_ID_FIELD, PERSON_ID, PROGRAMME_ID_FIELD, TIS_ID)))).thenReturn(List.of());
+    when(restTemplate.getForObject(ACTIONS_URL + ACTIONS_PROGRAMME_URL, List.class,
+        Map.of(PERSON_ID_FIELD, PERSON_ID, PROGRAMME_ID_FIELD, TIS_ID))).thenReturn(List.of());
 
     service.execute(jobExecutionContext);
 
@@ -704,7 +739,9 @@ class NotificationServiceTest {
     assertThat("Unexpected actuallySendEmail boolean.", result, is(false));
   }
 
-  @Test
+  @ParameterizedTest
+  @EnumSource(value = NotificationType.class, names = {"PROGRAMME_CREATED", "PROGRAMME_DAY_ONE",
+      "PROGRAMME_UPDATED_WEEK_12", "PROGRAMME_UPDATED_WEEK_4", "PROGRAMME_UPDATED_WEEK_2"})
   void shouldScheduleProgrammeMembershipNotification() throws SchedulerException {
     NotificationType notificationType = NotificationType.PROGRAMME_CREATED;
 
@@ -976,7 +1013,8 @@ class NotificationServiceTest {
 
   @ParameterizedTest
   @EnumSource(value = NotificationType.class, mode = Mode.EXCLUDE,
-      names = {"PLACEMENT_UPDATED_WEEK_12", "PROGRAMME_CREATED", "PROGRAMME_DAY_ONE"})
+      names = {"PLACEMENT_UPDATED_WEEK_12", "PROGRAMME_CREATED", "PROGRAMME_DAY_ONE",
+          "PROGRAMME_UPDATED_WEEK_12", "PROGRAMME_UPDATED_WEEK_4", "PROGRAMME_UPDATED_WEEK_2"})
   void shouldNotSaveScheduleNotificationWhenNotCorrectNotificationType(
       NotificationType notificationType) {
     placementJobDataMap.put(TEMPLATE_NOTIFICATION_TYPE_FIELD,
@@ -994,12 +1032,14 @@ class NotificationServiceTest {
     when(emailService.getRecipientAccountByEmail(USER_EMAIL)).thenReturn(userAccountDetails);
     when(restTemplate.getForObject(ACCOUNT_DETAILS_URL, UserDetails.class,
         Map.of(TIS_ID_FIELD, PERSON_ID))).thenReturn(userAccountDetails);
-    when(restTemplate.getForObject(any(), eq(List.class),
-        eq(Map.of(PERSON_ID_FIELD, PERSON_ID, PROGRAMME_ID_FIELD, TIS_ID)))).thenReturn(List.of());
+    when(restTemplate.getForObject(ACTIONS_URL + ACTIONS_PROGRAMME_URL, List.class,
+        Map.of(PERSON_ID_FIELD, PERSON_ID, PROGRAMME_ID_FIELD, TIS_ID))).thenReturn(List.of());
     when(messagingControllerService.isValidRecipient(any(), any())).thenReturn(true);
     when(messagingControllerService.isProgrammeMembershipNewStarter(any(), any()))
         .thenReturn(true);
     when(messagingControllerService.isPlacementInPilot2024(any(), any()))
+        .thenReturn(true);
+    when(messagingControllerService.isProgrammeMembershipInPilot2024(any(), any()))
         .thenReturn(true);
 
     service.saveScheduleHistory(placementJobDataMap, when);
@@ -1057,6 +1097,107 @@ class NotificationServiceTest {
         is(PROGRAMME_MEMBERSHIP));
     assertThat("Unexpected TIS reference info id", tisReferenceInfo.id(),
         is(TIS_ID));
+  }
+
+  @ParameterizedTest
+  @EnumSource(value = NotificationType.class, names = {"PROGRAMME_UPDATED_WEEK_12",
+      "PROGRAMME_UPDATED_WEEK_4", "PROGRAMME_UPDATED_WEEK_2"})
+  void shouldAddReminderJobDetailsToNotification(NotificationType notificationType)
+      throws MessagingException {
+    UserDetails userAccountDetails =
+        new UserDetails(
+            false, USER_EMAIL, USER_TITLE, USER_FAMILY_NAME, USER_GIVEN_NAME, USER_GMC);
+
+    programmeJobDataMap.put(TEMPLATE_NOTIFICATION_TYPE_FIELD, notificationType.toString());
+    programmeJobDetails = newJob(NotificationService.class)
+        .withIdentity(JOB_KEY)
+        .usingJobData(programmeJobDataMap)
+        .build();
+    when(jobExecutionContext.getJobDetail()).thenReturn(programmeJobDetails);
+    when(emailService.getRecipientAccountByEmail(USER_EMAIL)).thenReturn(userAccountDetails);
+    when(restTemplate.getForObject(ACCOUNT_DETAILS_URL, UserDetails.class,
+        Map.of(TIS_ID_FIELD, PERSON_ID))).thenReturn(userAccountDetails);
+
+    List<ActionDto> reminderActions = List.of(
+        new ActionDto("action-id-1", SIGN_COJ.toString(), PERSON_ID,
+            new ActionDto.TisReferenceInfo(TIS_ID, PROGRAMME_MEMBERSHIP), null, null, Instant.now()),
+        new ActionDto("action-id-2", SIGN_FORM_R_PART_A.toString(), PERSON_ID,
+        new ActionDto.TisReferenceInfo(TIS_ID, PROGRAMME_MEMBERSHIP), null, null, null),
+        new ActionDto("action-id-3", SIGN_FORM_R_PART_B.toString(), PERSON_ID,
+            new ActionDto.TisReferenceInfo(TIS_ID, PROGRAMME_MEMBERSHIP), null, null, null),
+        new ActionDto("action-id-4", REGISTER_TSS.toString(), PERSON_ID,
+            new ActionDto.TisReferenceInfo(PERSON_ID, PERSON), null, null, null)
+        );
+    when(restTemplate.getForObject(ACTIONS_URL + ACTIONS_PROGRAMME_URL, List.class,
+        Map.of(PERSON_ID_FIELD, PERSON_ID, PROGRAMME_ID_FIELD, TIS_ID)))
+        .thenReturn(reminderActions);
+
+    when(messagingControllerService.isValidRecipient(any(), any())).thenReturn(true);
+    when(messagingControllerService.isProgrammeMembershipNewStarter(any(), any()))
+        .thenReturn(true);
+    when(messagingControllerService.isProgrammeMembershipInPilot2024(any(), any()))
+        .thenReturn(true);
+
+    service.execute(jobExecutionContext);
+
+    ArgumentCaptor<Map<String, Object>> jobDetailsCaptor = ArgumentCaptor.captor();
+    verify(emailService).sendMessage(eq(PERSON_ID), eq(USER_EMAIL), eq(notificationType),
+        eq(TEMPLATE_VERSION), jobDetailsCaptor.capture(), any(), anyBoolean());
+
+    Map<String, Object> jobDetailMap = jobDetailsCaptor.getValue();
+
+    assertThat("Unexpected action status SIGN_COJ.",
+        jobDetailMap.get(SIGN_COJ.toString()), is(true));
+    assertThat("Unexpected action status SIGN_FORM_R_PART_A.",
+        jobDetailMap.get(SIGN_FORM_R_PART_A.toString()), is(false));
+    assertThat("Unexpected action status SIGN_FORM_R_PART_B.",
+        jobDetailMap.get(SIGN_FORM_R_PART_B.toString()), is(false));
+    assertThat("Unexpected action status REGISTER_TSS.",
+        jobDetailMap.get(SIGN_FORM_R_PART_A.toString()), is(false));
+  }
+
+  @Test
+  void shouldAddDefaultCompletedReminderIfActionMissing() throws MessagingException {
+    UserDetails userAccountDetails =
+        new UserDetails(
+            false, USER_EMAIL, USER_TITLE, USER_FAMILY_NAME, USER_GIVEN_NAME, USER_GMC);
+
+    programmeJobDataMap.put(TEMPLATE_NOTIFICATION_TYPE_FIELD, PROGRAMME_UPDATED_WEEK_2.toString());
+    programmeJobDetails = newJob(NotificationService.class)
+        .withIdentity(JOB_KEY)
+        .usingJobData(programmeJobDataMap)
+        .build();
+    when(jobExecutionContext.getJobDetail()).thenReturn(programmeJobDetails);
+    when(emailService.getRecipientAccountByEmail(USER_EMAIL)).thenReturn(userAccountDetails);
+    when(restTemplate.getForObject(ACCOUNT_DETAILS_URL, UserDetails.class,
+        Map.of(TIS_ID_FIELD, PERSON_ID))).thenReturn(userAccountDetails);
+
+    when(restTemplate.getForObject(ACTIONS_URL + ACTIONS_PROGRAMME_URL, List.class,
+        Map.of(PERSON_ID_FIELD, PERSON_ID, PROGRAMME_ID_FIELD, TIS_ID)))
+        .thenReturn(List.of());
+
+    when(messagingControllerService.isValidRecipient(any(), any())).thenReturn(true);
+    when(messagingControllerService.isProgrammeMembershipNewStarter(any(), any()))
+        .thenReturn(true);
+    when(messagingControllerService.isProgrammeMembershipInPilot2024(any(), any()))
+        .thenReturn(true);
+
+    service.execute(jobExecutionContext);
+
+    ArgumentCaptor<Map<String, Object>> jobDetailsCaptor = ArgumentCaptor.captor();
+    verify(emailService).sendMessage(eq(PERSON_ID), eq(USER_EMAIL), eq(PROGRAMME_UPDATED_WEEK_2),
+        eq(TEMPLATE_VERSION), jobDetailsCaptor.capture(), any(), anyBoolean());
+
+    Map<String, Object> jobDetailMap = jobDetailsCaptor.getValue();
+
+    assertThat("Unexpected action status SIGN_COJ.",
+        jobDetailMap.get(SIGN_COJ.toString()), is(true));
+    assertThat("Unexpected action status SIGN_FORM_R_PART_A.",
+        jobDetailMap.get(SIGN_FORM_R_PART_A.toString()), is(true));
+    assertThat("Unexpected action status SIGN_FORM_R_PART_B.",
+        jobDetailMap.get(SIGN_FORM_R_PART_B.toString()), is(true));
+    assertThat("Unexpected action status REGISTER_TSS.",
+        jobDetailMap.get(SIGN_FORM_R_PART_A.toString()), is(true));
   }
 
   @ParameterizedTest
