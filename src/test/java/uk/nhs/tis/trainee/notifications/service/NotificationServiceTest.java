@@ -605,7 +605,8 @@ class NotificationServiceTest {
   @ParameterizedTest
   @EnumSource(value = NotificationType.class, mode = Mode.EXCLUDE,
       names = {"PLACEMENT_UPDATED_WEEK_12", "PLACEMENT_ROLLOUT_2024_CORRECTION",
-          "PROGRAMME_CREATED", "PROGRAMME_DAY_ONE"})
+          "PROGRAMME_CREATED", "PROGRAMME_DAY_ONE", "PROGRAMME_UPDATED_WEEK_12",
+          "PROGRAMME_UPDATED_WEEK_4", "PROGRAMME_UPDATED_WEEK_2"})
   void shouldIgnoreNonProgrammeOrPlacementJobs(NotificationType notificationType)
       throws MessagingException {
     UserDetails userAccountDetails =
@@ -689,7 +690,8 @@ class NotificationServiceTest {
   @ParameterizedTest
   @EnumSource(value = NotificationType.class, mode = Mode.EXCLUDE,
       names = {"PLACEMENT_UPDATED_WEEK_12", "PLACEMENT_ROLLOUT_2024_CORRECTION",
-          "PROGRAMME_CREATED", "PROGRAMME_DAY_ONE"})
+          "PROGRAMME_CREATED", "PROGRAMME_DAY_ONE", "PROGRAMME_UPDATED_WEEK_12",
+          "PROGRAMME_UPDATED_WEEK_4", "PROGRAMME_UPDATED_WEEK_2"})
   void shouldNotSendEmailWhenNotificationTypeNotCorrect(NotificationType notificationType) {
 
     when(messagingControllerService.isValidRecipient(any(), any())).thenReturn(true);

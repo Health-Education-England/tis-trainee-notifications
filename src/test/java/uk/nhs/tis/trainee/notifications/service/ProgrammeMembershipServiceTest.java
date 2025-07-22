@@ -1338,7 +1338,8 @@ class ProgrammeMembershipServiceTest {
 
   @ParameterizedTest
   @EnumSource(value = NotificationType.class, mode = Mode.EXCLUDE,
-      names = {"PROGRAMME_CREATED", "PROGRAMME_DAY_ONE"})
+      names = {"PROGRAMME_CREATED", "PROGRAMME_DAY_ONE", "PROGRAMME_UPDATED_WEEK_12", "PROGRAMME_UPDATED_WEEK_4",
+          "PROGRAMME_UPDATED_WEEK_2"})
   void shouldIgnoreNonPmCreatedSentNotifications(NotificationType notificationType)
       throws SchedulerException {
     List<History> sentNotifications = new ArrayList<>();
