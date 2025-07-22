@@ -199,8 +199,8 @@ public class NotificationService implements Job {
         NotificationType.valueOf(jobDetails.get(TEMPLATE_NOTIFICATION_TYPE_FIELD).toString());
 
     //only consider sending programme-created mails; ignore the programme-updated-* notifications
-    if (notificationType == NotificationType.PROGRAMME_CREATED
-        || notificationType == NotificationType.PROGRAMME_DAY_ONE) {
+    if (NotificationType.getProgrammeUpdateNotificationTypes().contains(notificationType)
+    && !NotificationType.getInactiveProgrammeUpdateNotificationTypes().contains(notificationType)) {
 
       jobName = jobDetails.getString(ProgrammeMembershipService.PROGRAMME_NAME_FIELD);
       startDate = (LocalDate) jobDetails.get(ProgrammeMembershipService.START_DATE_FIELD);
@@ -468,9 +468,8 @@ public class NotificationService implements Job {
     boolean actuallySendEmail = false; // default to log email only
     boolean inWhitelist = notificationsWhitelist.contains(personId);
 
-    //only consider sending programme-created mails; ignore the programme-updated-* notifications
-    if (notificationType == NotificationType.PROGRAMME_CREATED
-        || notificationType == NotificationType.PROGRAMME_DAY_ONE) {
+    if (NotificationType.getProgrammeUpdateNotificationTypes().contains(notificationType)
+        && !NotificationType.getInactiveProgrammeUpdateNotificationTypes().contains(notificationType)) {
 
       ProgrammeMembership minimalPm = new ProgrammeMembership();
       minimalPm.setPersonId(personId);
@@ -511,8 +510,8 @@ public class NotificationService implements Job {
 
     // get TIS Reference Info
     TisReferenceInfo tisReferenceInfo = null;
-    if (notificationType == NotificationType.PROGRAMME_CREATED
-        || notificationType == NotificationType.PROGRAMME_DAY_ONE) {
+    if (NotificationType.getProgrammeUpdateNotificationTypes().contains(notificationType)
+        && !NotificationType.getInactiveProgrammeUpdateNotificationTypes().contains(notificationType)) {
       tisReferenceInfo = new TisReferenceInfo(PROGRAMME_MEMBERSHIP,
           jobDetails.get(ProgrammeMembershipService.TIS_ID_FIELD).toString());
     } else if (notificationType == NotificationType.PLACEMENT_UPDATED_WEEK_12) {
