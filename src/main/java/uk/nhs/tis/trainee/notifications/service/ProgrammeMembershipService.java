@@ -22,14 +22,7 @@
 package uk.nhs.tis.trainee.notifications.service;
 
 import static uk.nhs.tis.trainee.notifications.model.MessageType.IN_APP;
-import static uk.nhs.tis.trainee.notifications.model.NotificationType.DAY_ONE;
-import static uk.nhs.tis.trainee.notifications.model.NotificationType.DEFERRAL;
-import static uk.nhs.tis.trainee.notifications.model.NotificationType.E_PORTFOLIO;
-import static uk.nhs.tis.trainee.notifications.model.NotificationType.INDEMNITY_INSURANCE;
-import static uk.nhs.tis.trainee.notifications.model.NotificationType.LTFT;
-import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_CREATED;
-import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_DAY_ONE;
-import static uk.nhs.tis.trainee.notifications.model.NotificationType.SPONSORSHIP;
+import static uk.nhs.tis.trainee.notifications.model.NotificationType.*;
 import static uk.nhs.tis.trainee.notifications.model.TisReferenceType.PROGRAMME_MEMBERSHIP;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.ONE_DAY_IN_SECONDS;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.PERSON_ID_FIELD;
@@ -55,7 +48,6 @@ import org.quartz.SchedulerException;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import uk.nhs.tis.trainee.notifications.dto.UserDetails;
-import uk.nhs.tis.trainee.notifications.mapper.ProgrammeMembershipMapper;
 import uk.nhs.tis.trainee.notifications.model.Curriculum;
 import uk.nhs.tis.trainee.notifications.model.History;
 import uk.nhs.tis.trainee.notifications.model.History.TisReferenceInfo;
@@ -250,30 +242,25 @@ public class ProgrammeMembershipService {
     JobDataMap jobDataMap = new JobDataMap();
     addStandardProgrammeDetailsToJobMap(jobDataMap, programmeMembership);
 
-    // PROGRAMME_CREATED
-    boolean shouldScheduleProgrammeCreated = shouldScheduleNotification(PROGRAMME_CREATED,
-        programmeMembership, notificationsAlreadySent);
-    if (shouldScheduleProgrammeCreated) {
-      log.info("Processing notification {} for {}.", PROGRAMME_CREATED,
-          programmeMembership.getTisId());
+    for (NotificationType notificationType
+        : NotificationType.getProgrammeUpdateNotificationTypes()) {
+      // Skip unused notification types.
+      if (NotificationType.getInactiveProgrammeUpdateNotificationTypes()
+          .contains(notificationType)) {
+        continue;
+      }
 
-      jobDataMap.put(TEMPLATE_NOTIFICATION_TYPE_FIELD, PROGRAMME_CREATED);
-
-      doScheduleProgrammeNotification(PROGRAMME_CREATED, programmeMembership, jobDataMap,
+      boolean shouldSchedule = shouldScheduleNotification(notificationType, programmeMembership,
           notificationsAlreadySent);
-    }
+      if (shouldSchedule) {
+        log.info("Processing notification {} for {}.", notificationType,
+            programmeMembership.getTisId());
 
-    // PROGRAMME_DAY_ONE
-    boolean shouldScheduleProgrammeDayOne = shouldScheduleNotification(PROGRAMME_DAY_ONE,
-        programmeMembership, notificationsAlreadySent);
-    if (shouldScheduleProgrammeDayOne) {
-      log.info("Processing notification {} for {}.", PROGRAMME_DAY_ONE,
-          programmeMembership.getTisId());
+        jobDataMap.put(TEMPLATE_NOTIFICATION_TYPE_FIELD, notificationType);
 
-      jobDataMap.put(TEMPLATE_NOTIFICATION_TYPE_FIELD, PROGRAMME_DAY_ONE);
-
-      doScheduleProgrammeNotification(PROGRAMME_DAY_ONE, programmeMembership, jobDataMap,
-          notificationsAlreadySent);
+        doScheduleProgrammeNotification(notificationType, programmeMembership, jobDataMap,
+            notificationsAlreadySent);
+      }
     }
   }
 
