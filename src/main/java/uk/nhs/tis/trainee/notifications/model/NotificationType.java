@@ -88,6 +88,15 @@ public enum NotificationType {
       PROGRAMME_CREATED);
 
   /**
+   * The set of inactive Programme Updated email notification types.
+   */
+  @Getter
+  private static final Set<NotificationType> inactiveProgrammeUpdateNotificationTypes = EnumSet.of(
+      PROGRAMME_UPDATED_WEEK_8,
+      PROGRAMME_UPDATED_WEEK_1,
+      PROGRAMME_UPDATED_WEEK_0);
+
+  /**
    * The set of Programme Updated in-app notification types.
    */
   @Getter

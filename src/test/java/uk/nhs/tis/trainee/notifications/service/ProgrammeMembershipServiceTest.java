@@ -737,16 +737,19 @@ class ProgrammeMembershipServiceTest {
     TemplateInfo templateInfo = new TemplateInfo(null, null,
         Map.of(START_DATE_FIELD, START_DATE));
     List<History> sentNotifications = new ArrayList<>();
-    sentNotifications.add(new History(ObjectId.get(),
-        new TisReferenceInfo(PROGRAMME_MEMBERSHIP, TIS_ID),
-        PROGRAMME_CREATED, recipientInfo,
-        templateInfo, null,
-        Instant.MIN, Instant.MAX, SENT, null, null));
-    sentNotifications.add(new History(ObjectId.get(),
-        new TisReferenceInfo(PROGRAMME_MEMBERSHIP, TIS_ID),
-        PROGRAMME_DAY_ONE, recipientInfo,
-        templateInfo, null,
-        Instant.MIN, Instant.MAX, SENT, null, null));
+    for (NotificationType notificationType
+        : NotificationType.getProgrammeUpdateNotificationTypes()) {
+      // Skip unused notification types.
+      if (NotificationType.getInactiveProgrammeUpdateNotificationTypes()
+          .contains(notificationType)) {
+        continue;
+      }
+      sentNotifications.add(new History(ObjectId.get(),
+          new TisReferenceInfo(PROGRAMME_MEMBERSHIP, TIS_ID),
+          notificationType, recipientInfo,
+          templateInfo, null,
+          Instant.MIN, Instant.MAX, SENT, null, null));
+    }
 
     when(historyService.findAllHistoryForTrainee(PERSON_ID)).thenReturn(sentNotifications);
 
@@ -1123,30 +1126,26 @@ class ProgrammeMembershipServiceTest {
     TemplateInfo previousTemplateInfo = new TemplateInfo(null, null,
         Map.of(START_DATE_FIELD, previousStartDate));
     List<History> sentNotifications = new ArrayList<>();
-    sentNotifications.add(new History(ObjectId.get(),
-        new TisReferenceInfo(PROGRAMME_MEMBERSHIP, TIS_ID),
-        PROGRAMME_CREATED, recipientInfo,
-        mostRecentTemplateInfo, null,
-        Instant.from(mostRecentSentAt.atStartOfDay(timezone)), Instant.MAX,
-        SENT, null, null));
-    sentNotifications.add(new History(ObjectId.get(),
-        new TisReferenceInfo(PROGRAMME_MEMBERSHIP, TIS_ID),
-        PROGRAMME_CREATED, recipientInfo,
-        previousTemplateInfo, null,
-        Instant.from(previousSentAt.atStartOfDay(timezone)), Instant.MAX,
-        SENT, null, null));
-    sentNotifications.add(new History(ObjectId.get(),
-        new TisReferenceInfo(PROGRAMME_MEMBERSHIP, TIS_ID),
-        PROGRAMME_DAY_ONE, recipientInfo,
-        mostRecentTemplateInfo, null,
-        Instant.from(mostRecentSentAt.atStartOfDay(timezone)), Instant.MAX,
-        SENT, null, null));
-    sentNotifications.add(new History(ObjectId.get(),
-        new TisReferenceInfo(PROGRAMME_MEMBERSHIP, TIS_ID),
-        PROGRAMME_DAY_ONE, recipientInfo,
-        previousTemplateInfo, null,
-        Instant.from(previousSentAt.atStartOfDay(timezone)), Instant.MAX,
-        SENT, null, null));
+    for (NotificationType notificationType
+        : NotificationType.getProgrammeUpdateNotificationTypes()) {
+      // Skip unused notification types.
+      if (NotificationType.getInactiveProgrammeUpdateNotificationTypes()
+          .contains(notificationType)) {
+        continue;
+      }
+      sentNotifications.add(new History(ObjectId.get(),
+          new TisReferenceInfo(PROGRAMME_MEMBERSHIP, TIS_ID),
+          notificationType, recipientInfo,
+          mostRecentTemplateInfo, null,
+          Instant.from(mostRecentSentAt.atStartOfDay(timezone)), Instant.MAX,
+          SENT, null, null));
+      sentNotifications.add(new History(ObjectId.get(),
+          new TisReferenceInfo(PROGRAMME_MEMBERSHIP, TIS_ID),
+          notificationType, recipientInfo,
+          previousTemplateInfo, null,
+          Instant.from(previousSentAt.atStartOfDay(timezone)), Instant.MAX,
+          SENT, null, null));
+    }
 
     when(historyService.findAllHistoryForTrainee(PERSON_ID)).thenReturn(sentNotifications);
 
@@ -1438,12 +1437,21 @@ class ProgrammeMembershipServiceTest {
   void shouldNotEncounterSchedulerExceptions() throws SchedulerException {
     LocalDate mostRecentSentAt = LocalDate.now().minusDays(50);
     List<History> sentNotifications = new ArrayList<>();
-    sentNotifications.add(new History(ObjectId.get(),
-        new TisReferenceInfo(PROGRAMME_MEMBERSHIP, TIS_ID),
-        PROGRAMME_DAY_ONE, any(),
-        new TemplateInfo(null, null, null), null,
-        Instant.from(mostRecentSentAt.atStartOfDay(timezone)), Instant.MAX,
-        SENT, null, null));
+    for (NotificationType notificationType
+        : NotificationType.getProgrammeUpdateNotificationTypes()) {
+      // Skip unused notification types.
+      if (NotificationType.getInactiveProgrammeUpdateNotificationTypes()
+          .contains(notificationType)) {
+        continue;
+      }
+      sentNotifications.add(new History(ObjectId.get(),
+          new TisReferenceInfo(PROGRAMME_MEMBERSHIP, TIS_ID),
+          notificationType, null,
+          new TemplateInfo(null, null, null), null,
+          Instant.from(mostRecentSentAt.atStartOfDay(timezone)), Instant.MAX,
+          SENT, null, null));
+    }
+
     when(historyService.findAllHistoryForTrainee(PERSON_ID)).thenReturn(sentNotifications);
 
     doThrow(new SchedulerException())
