@@ -200,7 +200,7 @@ public class NotificationService implements Job {
 
     //only consider sending programme-created mails; ignore the programme-updated-* notifications
     if (NotificationType.getProgrammeUpdateNotificationTypes().contains(notificationType)
-    && !NotificationType.getInactiveProgrammeUpdateNotificationTypes().contains(notificationType)) {
+        && !NotificationType.getInactiveProgrammeUpdateNotificationTypes().contains(notificationType)) {
 
       jobName = jobDetails.getString(ProgrammeMembershipService.PROGRAMME_NAME_FIELD);
       startDate = (LocalDate) jobDetails.get(ProgrammeMembershipService.START_DATE_FIELD);
@@ -599,7 +599,8 @@ public class NotificationService implements Job {
       LocalOfficeContactType contactType) {
     try {
       ParameterizedTypeReference<Set<LocalOfficeContact>> loContactListListType
-          = new ParameterizedTypeReference<>() {};
+          = new ParameterizedTypeReference<>() {
+      };
       Set<LocalOfficeContact> localOfficeContacts =
           restTemplate.exchange(serviceUrl + API_TRAINEE_LOCAL_OFFICE_CONTACTS,
                   HttpMethod.GET, null, loContactListListType,
@@ -634,9 +635,8 @@ public class NotificationService implements Job {
    * @param templateVariables The template variables.
    * @param templateVersion   The template version.
    * @param notificationType  The notification type (template type).
-   *
    * @return The set of distinct email addresses to which the mail was sent (or logged) in
-   *         alphabetic order.
+   * alphabetic order.
    * @throws MessagingException If the email(s) could not be sent.
    */
   public Set<String> sendLocalOfficeMail(UserDetails traineeDetails, String traineeId,
@@ -666,7 +666,7 @@ public class NotificationService implements Job {
       }
     } else {
       log.warn("{} local office notification not processed for trainee {}: no local office "
-              + "contacts.", notificationType, traineeId);
+          + "contacts.", notificationType, traineeId);
     }
     return sentTo;
   }
@@ -692,7 +692,6 @@ public class NotificationService implements Job {
    * @param templateVariables The template variables.
    * @param templateVersion   The template version.
    * @param notificationType  The notification type (template type).
-   *
    * @throws MessagingException If the email could not be sent.
    */
   public void sendTraineeMail(String traineeId, String traineeEmail,
@@ -891,7 +890,7 @@ public class NotificationService implements Job {
    *
    * @param contact The contact string, expected to be either an email address or a URL.
    * @return "email" if it looks like an email address, "url" if it looks like a URL, and "NOT_HREF"
-   *     otherwise.
+   * otherwise.
    */
   public String getHrefTypeForContact(String contact) {
     try {
@@ -953,18 +952,14 @@ public class NotificationService implements Job {
   private void addProgrammeReminderDetailsToJobMap(JobDataMap jobDataMap,
       String personId, String programmeId) {
     List<ActionDto> actions = getTraineeProgrammeActions(personId, programmeId);
-    if (actions.isEmpty()) {
-      log.warn("No actions found for trainee {} programme membership {}.", personId, programmeId);
-    } else {
-      for (ProgrammeActionType actionType : ProgrammeActionType.values()) {
-        Boolean isComplete = isProgrammeActionComplete(actions, actionType);
-        if (isComplete == null) {
-          log.warn("No {} action found for trainee {} programme membership {}: " +
-                  "listing as 'assumed complete'.", actionType, personId, programmeId);
-          isComplete = true; //assume complete if no action found
-        }
-        jobDataMap.put(actionType.toString(), isComplete);
+    for (ProgrammeActionType actionType : ProgrammeActionType.values()) {
+      Boolean isComplete = isProgrammeActionComplete(actions, actionType);
+      if (isComplete == null) {
+        log.warn("No {} action found for trainee {} programme membership {}: " +
+            "listing as 'assumed complete'.", actionType, personId, programmeId);
+        isComplete = true; //assume complete if no action found
       }
+      jobDataMap.put(actionType.toString(), isComplete);
     }
   }
 
