@@ -22,7 +22,13 @@
 package uk.nhs.tis.trainee.notifications.service;
 
 import static uk.nhs.tis.trainee.notifications.model.MessageType.IN_APP;
-import static uk.nhs.tis.trainee.notifications.model.NotificationType.*;
+import static uk.nhs.tis.trainee.notifications.model.NotificationType.DAY_ONE;
+import static uk.nhs.tis.trainee.notifications.model.NotificationType.DEFERRAL;
+import static uk.nhs.tis.trainee.notifications.model.NotificationType.E_PORTFOLIO;
+import static uk.nhs.tis.trainee.notifications.model.NotificationType.INDEMNITY_INSURANCE;
+import static uk.nhs.tis.trainee.notifications.model.NotificationType.LTFT;
+import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_CREATED;
+import static uk.nhs.tis.trainee.notifications.model.NotificationType.SPONSORSHIP;
 import static uk.nhs.tis.trainee.notifications.model.TisReferenceType.PROGRAMME_MEMBERSHIP;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.ONE_DAY_IN_SECONDS;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.PERSON_ID_FIELD;
