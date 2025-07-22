@@ -30,6 +30,7 @@ public enum TisReferenceType {
   PROGRAMME_MEMBERSHIP,
   FORMR_PARTA,
   FORMR_PARTB,
-  LTFT
+  LTFT,
+  PERSON
 
 }

@@ -69,6 +69,7 @@ import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 import software.amazon.awssdk.services.cognitoidentityprovider.model.UserNotFoundException;
 import uk.nhs.tis.trainee.notifications.config.TemplateVersionsProperties;
+import uk.nhs.tis.trainee.notifications.dto.ActionDto;
 import uk.nhs.tis.trainee.notifications.dto.UserDetails;
 import uk.nhs.tis.trainee.notifications.model.History;
 import uk.nhs.tis.trainee.notifications.model.History.TisReferenceInfo;
@@ -78,6 +79,7 @@ import uk.nhs.tis.trainee.notifications.model.MessageType;
 import uk.nhs.tis.trainee.notifications.model.NotificationStatus;
 import uk.nhs.tis.trainee.notifications.model.NotificationType;
 import uk.nhs.tis.trainee.notifications.model.Placement;
+import uk.nhs.tis.trainee.notifications.model.ProgrammeActionType;
 import uk.nhs.tis.trainee.notifications.model.ProgrammeMembership;
 
 /**
@@ -96,6 +98,7 @@ public class NotificationService implements Job {
   public static final String API_TRAINEE_DETAILS = "/api/trainee-profile/account-details/{tisId}";
   public static final String API_TRAINEE_LOCAL_OFFICE_CONTACTS
       = "/api/trainee-profile/local-office-contacts/{tisId}/{contactTypeName}";
+  private static final String API_PROGRAMME_ACTIONS = "/api/action/{personId}/{programmeId}";
   private static final String TRIGGER_ID_PREFIX = "trigger-";
   public static final long ONE_DAY_IN_SECONDS = 24 * 60 * 60L;
 
@@ -105,6 +108,7 @@ public class NotificationService implements Job {
   public static final String TEMPLATE_OWNER_FIELD = "localOfficeName";
   public static final String TEMPLATE_OWNER_WEBSITE_FIELD = "localOfficeWebsite";
   public static final String PERSON_ID_FIELD = "personId";
+  public static final String PROGRAMME_ID_FIELD = "programmeId";
   public static final String OWNER_FIELD = "localOfficeName";
   public static final String CONTACT_TYPE_FIELD = "contactTypeName";
   public static final String CONTACT_FIELD = "contact";
@@ -116,6 +120,7 @@ public class NotificationService implements Job {
   private final TemplateVersionsProperties templateVersions;
   private final String serviceUrl;
   private final String referenceUrl;
+  private final String actionsUrl;
   private final Scheduler scheduler;
   private final MessagingControllerService messagingControllerService;
   private final List<String> notificationsWhitelist;
@@ -137,6 +142,8 @@ public class NotificationService implements Job {
    *                                   profile information.
    * @param referenceUrl               The URL for the tis-trainee-reference service to use for
    *                                   local office information.
+   * @param actionsUrl                 The URL for the tis-trainee-actions service to use for
+   *                                   programme actions.
    * @param notificationsWhitelist     The whitelist of (tester) trainee TIS IDs.
    */
   public NotificationService(EmailService emailService, HistoryService historyService,
@@ -145,6 +152,7 @@ public class NotificationService implements Job {
       TemplateVersionsProperties templateVersions,
       @Value("${service.trainee.url}") String serviceUrl,
       @Value("${service.reference.url}") String referenceUrl,
+      @Value("${service.actions.url}") String actionsUrl,
       @Value("${application.immediate-notifications-delay-minutes}") Integer notificationDelay,
       @Value("${application.notifications-whitelist}") List<String> notificationsWhitelist,
       @Value("${application.timezone}") String timezone) {
@@ -155,6 +163,7 @@ public class NotificationService implements Job {
     this.templateVersions = templateVersions;
     this.serviceUrl = serviceUrl;
     this.referenceUrl = referenceUrl;
+    this.actionsUrl = actionsUrl;
     this.messagingControllerService = messagingControllerService;
     this.immediateNotificationDelayMinutes = notificationDelay;
     this.notificationsWhitelist = notificationsWhitelist;
@@ -434,6 +443,15 @@ public class NotificationService implements Job {
     }
 
     jobDetails.putIfAbsent("isValidGmc", isValidGmc(jobDetails.getString("gmcNumber")));
+
+    if (jobDetails.get(TEMPLATE_NOTIFICATION_TYPE_FIELD) != null
+        && NotificationType.getReminderProgrammeUpdateNotificationTypes()
+        .contains(NotificationType.valueOf(
+            jobDetails.get(TEMPLATE_NOTIFICATION_TYPE_FIELD).toString()))) {
+
+      addProgrammeReminderDetailsToJobMap(jobDetails, personId, jobDetails.getString(TIS_ID_FIELD));
+    }
+
     return jobDetails;
   }
 
@@ -888,4 +906,67 @@ public class NotificationService implements Job {
       }
     }
   }
+
+  /**
+   * Get the actions for a trainee and programme membership.
+   *
+   * @param personId    The person to get actions for.
+   * @param programmeId The programme membership to get actions for.
+   * @return A list of actions for the person and programme membership.
+   */
+  private List<ActionDto> getTraineeProgrammeActions(String personId, String programmeId) {
+    try {
+      return restTemplate.getForObject(actionsUrl + API_PROGRAMME_ACTIONS, List.class,
+          Map.of(PERSON_ID_FIELD, personId, PROGRAMME_ID_FIELD, programmeId));
+    } catch (RestClientException rce) {
+      log.warn("Exception occurred when requesting programme actions endpoint for trainee {} " +
+          "programme {}: {}", personId, programmeId, rce.toString());
+      return List.of();
+    }
+  }
+
+  /**
+   * Get whether the programme action of a given type is complete.
+   *
+   * @param actions    The list of actions to check.
+   * @param actionType The action type to check for completion.
+   * @return true if the action is complete, and false if not. Null if the action type is not found.
+   */
+  private Boolean isProgrammeActionComplete(List<ActionDto> actions,
+      ProgrammeActionType actionType) {
+    List<ActionDto> actionsOfType = actions.stream()
+        .filter(action -> action.type().equalsIgnoreCase(actionType.toString()))
+        .toList();
+    if (actionsOfType.isEmpty()) {
+      return null;
+    } else {
+      return actionsOfType.stream().anyMatch(action -> action.completed() != null);
+    }
+  }
+
+  /**
+   * Add the trainee's programme actions to the job data map for programme notifications.
+   *
+   * @param jobDataMap  The job data map to populate.
+   * @param personId    The person to get actions for.
+   * @param programmeId The programme membership to get actions for.
+   */
+  private void addProgrammeReminderDetailsToJobMap(JobDataMap jobDataMap,
+      String personId, String programmeId) {
+    List<ActionDto> actions = getTraineeProgrammeActions(personId, programmeId);
+    if (actions.isEmpty()) {
+      log.warn("No actions found for trainee {} programme membership {}.", personId, programmeId);
+    } else {
+      for (ProgrammeActionType actionType : ProgrammeActionType.values()) {
+        Boolean isComplete = isProgrammeActionComplete(actions, actionType);
+        if (isComplete == null) {
+          log.warn("No {} action found for trainee {} programme membership {}: " +
+                  "listing as 'assumed complete'.", actionType, personId, programmeId);
+          isComplete = true; //assume complete if no action found
+        }
+        jobDataMap.put(actionType.toString(), isComplete);
+      }
+    }
+  }
+
 }
