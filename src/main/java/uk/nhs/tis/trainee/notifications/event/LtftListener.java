@@ -29,6 +29,7 @@ import static uk.nhs.tis.trainee.notifications.model.MessageType.EMAIL;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.LTFT_ADMIN_UNSUBMITTED;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.LTFT_APPROVED;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.LTFT_APPROVED_TPD;
+import static uk.nhs.tis.trainee.notifications.model.NotificationType.LTFT_REJECTED;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.LTFT_SUBMITTED;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.LTFT_SUBMITTED_TPD;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.LTFT_UNSUBMITTED;
@@ -110,6 +111,7 @@ public class LtftListener {
       case "UNSUBMITTED" ->
           statusModifiedByRole.equals(LTFT_ROLE_ADMIN) ? LTFT_ADMIN_UNSUBMITTED : LTFT_UNSUBMITTED;
       case "WITHDRAWN" -> LTFT_WITHDRAWN;
+      case "REJECTED" -> LTFT_REJECTED;
       default -> LTFT_UPDATED;
     };
 
