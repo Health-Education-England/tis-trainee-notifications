@@ -106,7 +106,6 @@ public class NotificationService implements Job {
   public static final String TEMPLATE_OWNER_FIELD = "localOfficeName";
   public static final String TEMPLATE_OWNER_WEBSITE_FIELD = "localOfficeWebsite";
   public static final String PERSON_ID_FIELD = "personId";
-  public static final String PROGRAMME_ID_FIELD = "programmeId";
   public static final String OWNER_FIELD = "localOfficeName";
   public static final String CONTACT_TYPE_FIELD = "contactTypeName";
   public static final String CONTACT_FIELD = "contact";
@@ -444,7 +443,8 @@ public class NotificationService implements Job {
         .contains(NotificationType.valueOf(
             jobDetails.get(TEMPLATE_NOTIFICATION_TYPE_FIELD).toString()))) {
 
-      programmeMembershipNotificationsHelper.addProgrammeReminderDetailsToJobMap(jobDetails, personId, jobDetails.getString(TIS_ID_FIELD));
+      programmeMembershipNotificationsHelper.addProgrammeReminderDetailsToJobMap(jobDetails,
+          personId, jobDetails.getString(TIS_ID_FIELD));
     }
 
     return jobDetails;
@@ -596,8 +596,7 @@ public class NotificationService implements Job {
       LocalOfficeContactType contactType) {
     try {
       ParameterizedTypeReference<Set<LocalOfficeContact>> loContactListListType
-          = new ParameterizedTypeReference<>() {
-      };
+          = new ParameterizedTypeReference<>() {};
       Set<LocalOfficeContact> localOfficeContacts =
           restTemplate.exchange(serviceUrl + API_TRAINEE_LOCAL_OFFICE_CONTACTS,
                   HttpMethod.GET, null, loContactListListType,
@@ -633,7 +632,7 @@ public class NotificationService implements Job {
    * @param templateVersion   The template version.
    * @param notificationType  The notification type (template type).
    * @return The set of distinct email addresses to which the mail was sent (or logged) in
-   * alphabetic order.
+   *         alphabetic order.
    * @throws MessagingException If the email(s) could not be sent.
    */
   public Set<String> sendLocalOfficeMail(UserDetails traineeDetails, String traineeId,
@@ -663,7 +662,7 @@ public class NotificationService implements Job {
       }
     } else {
       log.warn("{} local office notification not processed for trainee {}: no local office "
-          + "contacts.", notificationType, traineeId);
+              + "contacts.", notificationType, traineeId);
     }
     return sentTo;
   }
@@ -689,6 +688,7 @@ public class NotificationService implements Job {
    * @param templateVariables The template variables.
    * @param templateVersion   The template version.
    * @param notificationType  The notification type (template type).
+   *
    * @throws MessagingException If the email could not be sent.
    */
   public void sendTraineeMail(String traineeId, String traineeEmail,
@@ -887,7 +887,7 @@ public class NotificationService implements Job {
    *
    * @param contact The contact string, expected to be either an email address or a URL.
    * @return "email" if it looks like an email address, "url" if it looks like a URL, and "NOT_HREF"
-   * otherwise.
+   *     otherwise.
    */
   public String getHrefTypeForContact(String contact) {
     try {
@@ -901,5 +901,4 @@ public class NotificationService implements Job {
       }
     }
   }
-
 }

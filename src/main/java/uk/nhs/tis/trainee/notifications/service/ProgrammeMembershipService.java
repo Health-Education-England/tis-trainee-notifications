@@ -299,7 +299,7 @@ public class ProgrammeMembershipService {
    * @param programmeMembership      The programme membership to consider.
    * @param notificationsAlreadySent The notifications already sent for this entity.
    * @return The date when the notification should be scheduled, or null if it should be sent
-   * immediately.
+   *         immediately.
    */
   private Date whenScheduleProgrammeNotification(NotificationType notificationType,
       ProgrammeMembership programmeMembership,
@@ -595,7 +595,7 @@ public class ProgrammeMembershipService {
    *
    * @param notificationType The notification type to check.
    * @return The number of days before the start date to send the notification, or null if not
-   * applicable.
+   *         applicable.
    */
   public Integer getDaysBeforeStartForNotification(NotificationType notificationType) {
     return switch (notificationType) {
