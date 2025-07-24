@@ -98,7 +98,6 @@ public class NotificationService implements Job {
   public static final String API_TRAINEE_DETAILS = "/api/trainee-profile/account-details/{tisId}";
   public static final String API_TRAINEE_LOCAL_OFFICE_CONTACTS
       = "/api/trainee-profile/local-office-contacts/{tisId}/{contactTypeName}";
-  private static final String API_PROGRAMME_ACTIONS = "/api/action/{personId}/{programmeId}";
   private static final String TRIGGER_ID_PREFIX = "trigger-";
   public static final long ONE_DAY_IN_SECONDS = 24 * 60 * 60L;
 
@@ -120,7 +119,6 @@ public class NotificationService implements Job {
   private final TemplateVersionsProperties templateVersions;
   private final String serviceUrl;
   private final String referenceUrl;
-  private final String actionsUrl;
   private final Scheduler scheduler;
   private final MessagingControllerService messagingControllerService;
   private final List<String> notificationsWhitelist;
@@ -142,8 +140,6 @@ public class NotificationService implements Job {
    *                                   profile information.
    * @param referenceUrl               The URL for the tis-trainee-reference service to use for
    *                                   local office information.
-   * @param actionsUrl                 The URL for the tis-trainee-actions service to use for
-   *                                   programme actions.
    * @param notificationsWhitelist     The whitelist of (tester) trainee TIS IDs.
    */
   public NotificationService(EmailService emailService, HistoryService historyService,
@@ -152,7 +148,6 @@ public class NotificationService implements Job {
       TemplateVersionsProperties templateVersions,
       @Value("${service.trainee.url}") String serviceUrl,
       @Value("${service.reference.url}") String referenceUrl,
-      @Value("${service.actions.url}") String actionsUrl,
       @Value("${application.immediate-notifications-delay-minutes}") Integer notificationDelay,
       @Value("${application.notifications-whitelist}") List<String> notificationsWhitelist,
       @Value("${application.timezone}") String timezone) {
@@ -163,7 +158,6 @@ public class NotificationService implements Job {
     this.templateVersions = templateVersions;
     this.serviceUrl = serviceUrl;
     this.referenceUrl = referenceUrl;
-    this.actionsUrl = actionsUrl;
     this.messagingControllerService = messagingControllerService;
     this.immediateNotificationDelayMinutes = notificationDelay;
     this.notificationsWhitelist = notificationsWhitelist;
@@ -198,9 +192,9 @@ public class NotificationService implements Job {
     NotificationType notificationType =
         NotificationType.valueOf(jobDetails.get(TEMPLATE_NOTIFICATION_TYPE_FIELD).toString());
 
-    //only consider sending programme-created mails; ignore the programme-updated-* notifications
     if (NotificationType.getProgrammeUpdateNotificationTypes().contains(notificationType)
-        && !NotificationType.getInactiveProgrammeUpdateNotificationTypes().contains(notificationType)) {
+        && !NotificationType.getInactiveProgrammeUpdateNotificationTypes()
+        .contains(notificationType)) {
 
       jobName = jobDetails.getString(ProgrammeMembershipService.PROGRAMME_NAME_FIELD);
       startDate = (LocalDate) jobDetails.get(ProgrammeMembershipService.START_DATE_FIELD);
@@ -469,7 +463,8 @@ public class NotificationService implements Job {
     boolean inWhitelist = notificationsWhitelist.contains(personId);
 
     if (NotificationType.getProgrammeUpdateNotificationTypes().contains(notificationType)
-        && !NotificationType.getInactiveProgrammeUpdateNotificationTypes().contains(notificationType)) {
+        && !NotificationType.getInactiveProgrammeUpdateNotificationTypes()
+        .contains(notificationType)) {
 
       ProgrammeMembership minimalPm = new ProgrammeMembership();
       minimalPm.setPersonId(personId);
@@ -511,7 +506,8 @@ public class NotificationService implements Job {
     // get TIS Reference Info
     TisReferenceInfo tisReferenceInfo = null;
     if (NotificationType.getProgrammeUpdateNotificationTypes().contains(notificationType)
-        && !NotificationType.getInactiveProgrammeUpdateNotificationTypes().contains(notificationType)) {
+        && !NotificationType.getInactiveProgrammeUpdateNotificationTypes()
+        .contains(notificationType)) {
       tisReferenceInfo = new TisReferenceInfo(PROGRAMME_MEMBERSHIP,
           jobDetails.get(ProgrammeMembershipService.TIS_ID_FIELD).toString());
     } else if (notificationType == NotificationType.PLACEMENT_UPDATED_WEEK_12) {
@@ -917,8 +913,8 @@ public class NotificationService implements Job {
       return restTemplate.getForObject(actionsUrl + API_PROGRAMME_ACTIONS, List.class,
           Map.of(PERSON_ID_FIELD, personId, PROGRAMME_ID_FIELD, programmeId));
     } catch (RestClientException rce) {
-      log.warn("Exception occurred when requesting programme actions endpoint for trainee {} " +
-          "programme {}: {}", personId, programmeId, rce.toString());
+      log.warn("Exception occurred when requesting programme actions endpoint for trainee {} "
+          + "programme {}: {}", personId, programmeId, rce.toString());
       return List.of();
     }
   }
@@ -936,7 +932,7 @@ public class NotificationService implements Job {
         .filter(action -> action.type().equalsIgnoreCase(actionType.toString()))
         .toList();
     if (actionsOfType.isEmpty()) {
-      return null;
+      return null; //no action of this type found
     } else {
       return actionsOfType.stream().anyMatch(action -> action.completed() != null);
     }
@@ -955,8 +951,8 @@ public class NotificationService implements Job {
     for (ProgrammeActionType actionType : ProgrammeActionType.values()) {
       Boolean isComplete = isProgrammeActionComplete(actions, actionType);
       if (isComplete == null) {
-        log.warn("No {} action found for trainee {} programme membership {}: " +
-            "listing as 'assumed complete'.", actionType, personId, programmeId);
+        log.warn("No {} action found for trainee {} programme membership {}: "
+            + "listing as 'assumed complete'.", actionType, personId, programmeId);
         isComplete = true; //assume complete if no action found
       }
       jobDataMap.put(actionType.toString(), isComplete);
