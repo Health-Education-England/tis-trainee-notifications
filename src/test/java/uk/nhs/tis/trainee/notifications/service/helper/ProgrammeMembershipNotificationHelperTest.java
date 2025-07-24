@@ -13,9 +13,9 @@ import static uk.nhs.tis.trainee.notifications.model.ProgrammeActionType.SIGN_FO
 import static uk.nhs.tis.trainee.notifications.model.ProgrammeActionType.SIGN_FORM_R_PART_B;
 import static uk.nhs.tis.trainee.notifications.model.TisReferenceType.PERSON;
 import static uk.nhs.tis.trainee.notifications.model.TisReferenceType.PROGRAMME_MEMBERSHIP;
-import static uk.nhs.tis.trainee.notifications.service.NotificationService.PERSON_ID_FIELD;
-import static uk.nhs.tis.trainee.notifications.service.NotificationService.PROGRAMME_ID_FIELD;
-import jakarta.mail.MessagingException;
+import static uk.nhs.tis.trainee.notifications.service.helper.ProgrammeMembershipNotificationHelper.PERSON_ID_FIELD;
+import static uk.nhs.tis.trainee.notifications.service.helper.ProgrammeMembershipNotificationHelper.PROGRAMME_ID_FIELD;
+
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -26,7 +26,10 @@ import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 import uk.nhs.tis.trainee.notifications.dto.ActionDto;
 
-public class ProgrammeMembershipNotificationHelperTest {
+/**
+ * Tests for the ProgrammeMembershipNotificationHelper class.
+ */
+class ProgrammeMembershipNotificationHelperTest {
 
   private static final String ACTIONS_URL = "actions-url";
   private static final String ACTIONS_PROGRAMME_URL = "/api/action/{personId}/{programmeId}";
@@ -84,7 +87,7 @@ public class ProgrammeMembershipNotificationHelperTest {
   }
 
   @Test
-  void shouldAddDefaultCompletedReminderIfActionMissing() throws MessagingException {
+  void shouldAddDefaultCompletedReminderIfActionMissing() {
     when(restTemplate.getForObject(ACTIONS_URL + ACTIONS_PROGRAMME_URL, List.class,
         Map.of(PERSON_ID_FIELD, PERSON_ID, PROGRAMME_ID_FIELD, TIS_ID)))
         .thenReturn(List.of());
