@@ -211,12 +211,8 @@ public class NotificationService implements Job {
         if (!programmeMembershipNotificationsHelper
             .hasIncompleteProgrammeActions(jobDetails)) {
           unnecessaryReminder = true;
-          // note that we still process the notification, so that the History is updated.
+          // note that we still process the notification, so that the History will be updated.
         }
-      } else {
-        // add welcome notification send date to jobDetails
-        History welcomeNotification = historyService.findScheduledEmailForTraineeByRefAndType(
-            personId, tisReferenceInfo.type(), tisReferenceInfo.id(), PROGRAMME_CREATED);
       }
 
     } else if (notificationType == NotificationType.PLACEMENT_UPDATED_WEEK_12
