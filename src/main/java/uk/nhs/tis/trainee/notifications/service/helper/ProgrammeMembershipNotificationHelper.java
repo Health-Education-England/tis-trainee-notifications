@@ -1,8 +1,7 @@
 package uk.nhs.tis.trainee.notifications.service.helper;
 
 import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.SENT;
-import static uk.nhs.tis.trainee.notifications.service.NotificationService.PERSON_ID_FIELD;
-import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.TIS_ID_FIELD;
+
 import java.util.List;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
@@ -24,6 +23,8 @@ public class ProgrammeMembershipNotificationHelper {
   public static final String TEMPLATE_WELCOME_NOTIFICATION_DATE_FIELD = "welcomeSendDate";
 
   private static final String API_PROGRAMME_ACTIONS = "/api/action/{personId}/{programmeId}";
+  private static final String PERSON_ID_FIELD = "personId";
+  public static final String TIS_ID_FIELD = "tisId";
 
   private final String actionsUrl;
   private final RestTemplate restTemplate;
@@ -122,8 +123,8 @@ public class ProgrammeMembershipNotificationHelper {
     if (welcomeNotification == null
         || welcomeNotification.status() == null
         || !welcomeNotification.status().equals(SENT)) {
-      log.warn("Welcome notification for trainee {} and programme membership {} is missing or " +
-              "not SENT, so it is not added to the job data map.",
+      log.warn("Welcome notification for trainee {} and programme membership {} is missing or "
+              + "not SENT, so it is not added to the job data map.",
           jobDataMap.get(PERSON_ID_FIELD), jobDataMap.get(TIS_ID_FIELD));
     } else {
       jobDataMap.putIfAbsent(TEMPLATE_WELCOME_NOTIFICATION_DATE_FIELD,
