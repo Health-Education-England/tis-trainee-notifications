@@ -1561,6 +1561,7 @@ class ProgrammeMembershipServiceTest {
     assertThat("Expected null for non-programme notification type " + notificationType,
         daysBeforeStartDate, is(nullValue()));
   }
+
   /**
    * Helper function to set up a default non-excluded programme membership.
    *
