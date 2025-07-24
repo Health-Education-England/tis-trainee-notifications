@@ -1,7 +1,9 @@
 package uk.nhs.tis.trainee.notifications.service.helper;
 
 import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.SENT;
+import static uk.nhs.tis.trainee.notifications.model.TisReferenceType.PROGRAMME_MEMBERSHIP;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
@@ -12,7 +14,10 @@ import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 import uk.nhs.tis.trainee.notifications.dto.ActionDto;
 import uk.nhs.tis.trainee.notifications.model.History;
+import uk.nhs.tis.trainee.notifications.model.NotificationSummary;
+import uk.nhs.tis.trainee.notifications.model.NotificationType;
 import uk.nhs.tis.trainee.notifications.model.ProgrammeActionType;
+import uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService;
 
 /**
  * A helper component for managing programme notifications.
@@ -21,10 +26,9 @@ import uk.nhs.tis.trainee.notifications.model.ProgrammeActionType;
 @Component
 public class ProgrammeMembershipNotificationHelper {
   public static final String TEMPLATE_WELCOME_NOTIFICATION_DATE_FIELD = "welcomeSendDate";
+  public static final String TEMPLATE_NOTIFICATION_TYPE_FIELD = "notificationType";
 
   private static final String API_PROGRAMME_ACTIONS = "/api/action/{personId}/{programmeId}";
-  private static final String PERSON_ID_FIELD = "personId";
-  public static final String TIS_ID_FIELD = "tisId";
 
   private final String actionsUrl;
   private final RestTemplate restTemplate;
@@ -125,12 +129,33 @@ public class ProgrammeMembershipNotificationHelper {
         || !welcomeNotification.status().equals(SENT)) {
       log.warn("Welcome notification for trainee {} and programme membership {} is missing or "
               + "not SENT, so it is not added to the job data map.",
-          jobDataMap.get(PERSON_ID_FIELD), jobDataMap.get(TIS_ID_FIELD));
+          jobDataMap.get("personId"), jobDataMap.get("tisId"));
     } else {
       jobDataMap.putIfAbsent(TEMPLATE_WELCOME_NOTIFICATION_DATE_FIELD,
           (welcomeNotification.lastRetry() != null
               ? welcomeNotification.lastRetry()
               : welcomeNotification.sentAt()));
     }
+  }
+
+  /**
+   * Get a summary of the notification based on the job data map.
+   *
+   * @param jobDataMap The job data map containing notification details.
+   * @return A NotificationSummary object.
+   */
+  public NotificationSummary getNotificationSummary(JobDataMap jobDataMap) {
+    boolean unnecessaryReminder = false;
+    String jobName = jobDataMap.getString(ProgrammeMembershipService.PROGRAMME_NAME_FIELD);
+    LocalDate startDate = (LocalDate) jobDataMap.get(ProgrammeMembershipService.START_DATE_FIELD);
+    History.TisReferenceInfo tisReferenceInfo = new History.TisReferenceInfo(PROGRAMME_MEMBERSHIP,
+        jobDataMap.get(ProgrammeMembershipService.TIS_ID_FIELD).toString());
+    NotificationType notificationType
+        = NotificationType.valueOf(jobDataMap.get(TEMPLATE_NOTIFICATION_TYPE_FIELD).toString());
+    if (NotificationType.getReminderProgrammeUpdateNotificationTypes().contains(notificationType)
+        && !hasIncompleteProgrammeActions(jobDataMap)) {
+      unnecessaryReminder = true;
+    }
+    return new NotificationSummary(jobName, startDate, tisReferenceInfo, unnecessaryReminder);
   }
 }

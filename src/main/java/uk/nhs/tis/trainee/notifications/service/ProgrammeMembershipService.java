@@ -249,12 +249,7 @@ public class ProgrammeMembershipService {
     addStandardProgrammeDetailsToJobMap(jobDataMap, programmeMembership);
 
     for (NotificationType notificationType
-        : NotificationType.getProgrammeUpdateNotificationTypes()) {
-      // Skip unused notification types.
-      if (NotificationType.getInactiveProgrammeUpdateNotificationTypes()
-          .contains(notificationType)) {
-        continue;
-      }
+        : NotificationType.getActiveProgrammeUpdateNotificationTypes()) {
 
       boolean shouldSchedule = shouldScheduleNotification(notificationType, programmeMembership,
           notificationsAlreadySent);

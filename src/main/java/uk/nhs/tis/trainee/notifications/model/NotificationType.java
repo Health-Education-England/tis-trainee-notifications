@@ -88,13 +88,15 @@ public enum NotificationType {
       PROGRAMME_CREATED);
 
   /**
-   * The set of inactive Programme Updated email notification types.
+   * The set of currently active Programme Updated email notification types.
    */
   @Getter
-  private static final Set<NotificationType> inactiveProgrammeUpdateNotificationTypes = EnumSet.of(
-      PROGRAMME_UPDATED_WEEK_8,
-      PROGRAMME_UPDATED_WEEK_1,
-      PROGRAMME_UPDATED_WEEK_0);
+  private static final Set<NotificationType> activeProgrammeUpdateNotificationTypes = EnumSet.of(
+      PROGRAMME_DAY_ONE,
+      PROGRAMME_UPDATED_WEEK_12,
+      PROGRAMME_UPDATED_WEEK_4,
+      PROGRAMME_UPDATED_WEEK_2,
+      PROGRAMME_CREATED);
 
   /**
    * The set of reminder Programme Updated email notification types.

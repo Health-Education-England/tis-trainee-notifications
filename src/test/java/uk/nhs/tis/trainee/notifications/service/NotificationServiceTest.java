@@ -25,7 +25,6 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.not;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.CoreMatchers.nullValue;
-import static org.hamcrest.CoreMatchers.sameInstance;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.Assert.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
@@ -91,7 +90,6 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-import org.bson.types.ObjectId;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -125,6 +123,7 @@ import uk.nhs.tis.trainee.notifications.model.History.TisReferenceInfo;
 import uk.nhs.tis.trainee.notifications.model.LocalOfficeContact;
 import uk.nhs.tis.trainee.notifications.model.LocalOfficeContactType;
 import uk.nhs.tis.trainee.notifications.model.MessageType;
+import uk.nhs.tis.trainee.notifications.model.NotificationSummary;
 import uk.nhs.tis.trainee.notifications.model.NotificationType;
 import uk.nhs.tis.trainee.notifications.model.Placement;
 import uk.nhs.tis.trainee.notifications.model.ProgrammeMembership;
@@ -172,6 +171,8 @@ class NotificationServiceTest {
   private JobDetail placementJobDetails;
   private JobDataMap programmeJobDataMap;
   private JobDataMap placementJobDataMap;
+  private NotificationSummary programmeNotificationSummary;
+  private NotificationSummary placementNotificationSummary;
 
   private NotificationService service;
   private NotificationService serviceWhitelisted;
@@ -201,6 +202,11 @@ class NotificationServiceTest {
     programmeJobDataMap.put(TEMPLATE_NOTIFICATION_TYPE_FIELD, PM_NOTIFICATION_TYPE.toString());
     programmeJobDataMap.put(START_DATE_FIELD, START_DATE);
 
+    programmeNotificationSummary = new NotificationSummary(PROGRAMME_NAME, START_DATE,
+        new TisReferenceInfo(PROGRAMME_MEMBERSHIP, TIS_ID), false);
+    when(programmeMembershipNotificationHelper.getNotificationSummary(any()))
+        .thenReturn(programmeNotificationSummary);
+
     placementJobDataMap = new JobDataMap();
     placementJobDataMap.put(TIS_ID_FIELD, TIS_ID);
     placementJobDataMap.put(PERSON_ID_FIELD, PERSON_ID);
@@ -210,6 +216,9 @@ class NotificationServiceTest {
     placementJobDataMap.put(PLACEMENT_TYPE_FIELD, PLACEMENT_TYPE);
     placementJobDataMap.put(TEMPLATE_OWNER_FIELD, LOCAL_OFFICE);
     placementJobDataMap.put(PLACEMENT_SPECIALTY_FIELD, PLACEMENT_SPECIALTY);
+
+    placementNotificationSummary = new NotificationSummary(PLACEMENT_TYPE, START_DATE,
+        new TisReferenceInfo(PLACEMENT, TIS_ID), false);
 
     programmeJobDetails = newJob(NotificationService.class)
         .withIdentity(JOB_KEY)
@@ -467,6 +476,11 @@ class NotificationServiceTest {
         .thenReturn(apiResult);
     when(messagingControllerService.isProgrammeMembershipInRollout2024(any(), any()))
         .thenReturn(apiResult);
+    NotificationSummary programmeNotificationSummaryUnnecessary
+        = new NotificationSummary(PROGRAMME_NAME, START_DATE,
+        new TisReferenceInfo(PROGRAMME_MEMBERSHIP, TIS_ID), true);
+    when(programmeMembershipNotificationHelper.getNotificationSummary(any()))
+        .thenReturn(programmeNotificationSummaryUnnecessary);
 
     service.execute(jobExecutionContext);
 
@@ -620,8 +634,6 @@ class NotificationServiceTest {
     when(messagingControllerService.isProgrammeMembershipNewStarter(any(), any())).thenReturn(true);
     when(messagingControllerService.isProgrammeMembershipInPilot2024(any(), any()))
         .thenReturn(true);
-    when(programmeMembershipNotificationHelper.hasIncompleteProgrammeActions(any()))
-        .thenReturn(true);
 
     service.execute(jobExecutionContext);
 
@@ -647,6 +659,11 @@ class NotificationServiceTest {
         .thenReturn(true);
     when(programmeMembershipNotificationHelper.hasIncompleteProgrammeActions(any()))
         .thenReturn(false);
+    NotificationSummary programmeNotificationSummaryUnnecessary
+        = new NotificationSummary(PROGRAMME_NAME, START_DATE,
+        new TisReferenceInfo(PROGRAMME_MEMBERSHIP, TIS_ID), true);
+    when(programmeMembershipNotificationHelper.getNotificationSummary(any()))
+        .thenReturn(programmeNotificationSummaryUnnecessary);
 
     service.execute(jobExecutionContext);
 
