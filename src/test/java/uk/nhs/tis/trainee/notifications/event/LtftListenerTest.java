@@ -140,7 +140,8 @@ class LtftListenerTest {
   }
 
   @ParameterizedTest
-  @ValueSource(strings = {"APPROVED", "REJECTED", "SUBMITTED", "UNSUBMITTED", "WITHDRAWN", "Other-Status"})
+  @ValueSource(strings = {"APPROVED", "REJECTED", "SUBMITTED", "UNSUBMITTED", "WITHDRAWN",
+      "Other-Status"})
   void shouldThrowExceptionWhenLtftUpdatedAndSendingFails(String state) throws MessagingException {
     doThrow(MessagingException.class).when(emailService)
         .sendMessageToExistingUser(any(), any(), any(), any(), any());
