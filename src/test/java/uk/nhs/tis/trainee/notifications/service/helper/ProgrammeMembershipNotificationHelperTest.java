@@ -13,8 +13,6 @@ import static uk.nhs.tis.trainee.notifications.model.ProgrammeActionType.SIGN_FO
 import static uk.nhs.tis.trainee.notifications.model.ProgrammeActionType.SIGN_FORM_R_PART_B;
 import static uk.nhs.tis.trainee.notifications.model.TisReferenceType.PERSON;
 import static uk.nhs.tis.trainee.notifications.model.TisReferenceType.PROGRAMME_MEMBERSHIP;
-import static uk.nhs.tis.trainee.notifications.service.helper.ProgrammeMembershipNotificationHelper.PERSON_ID_FIELD;
-import static uk.nhs.tis.trainee.notifications.service.helper.ProgrammeMembershipNotificationHelper.PROGRAMME_ID_FIELD;
 
 import java.time.Instant;
 import java.util.List;
@@ -71,7 +69,7 @@ class ProgrammeMembershipNotificationHelperTest {
             new ActionDto.TisReferenceInfo(PERSON_ID, PERSON), null, null, null)
     );
     when(restTemplate.getForObject(ACTIONS_URL + ACTIONS_PROGRAMME_URL, List.class,
-        Map.of(PERSON_ID_FIELD, PERSON_ID, PROGRAMME_ID_FIELD, TIS_ID)))
+        Map.of("personId", PERSON_ID, "programmeId", TIS_ID)))
         .thenReturn(reminderActions);
 
     service.addProgrammeReminderDetailsToJobMap(jobDataMap, PERSON_ID, TIS_ID);
@@ -89,7 +87,7 @@ class ProgrammeMembershipNotificationHelperTest {
   @Test
   void shouldAddDefaultCompletedReminderIfActionMissing() {
     when(restTemplate.getForObject(ACTIONS_URL + ACTIONS_PROGRAMME_URL, List.class,
-        Map.of(PERSON_ID_FIELD, PERSON_ID, PROGRAMME_ID_FIELD, TIS_ID)))
+        Map.of("personId", PERSON_ID, "programmeId", TIS_ID)))
         .thenReturn(List.of());
 
     service.addProgrammeReminderDetailsToJobMap(jobDataMap, PERSON_ID, TIS_ID);
