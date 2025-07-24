@@ -62,7 +62,7 @@ public class ProgrammeMembershipNotificationHelper {
         .filter(action -> action.type().equalsIgnoreCase(actionType.toString()))
         .toList();
     if (actionsOfType.isEmpty()) {
-      return null; //no action of this type found
+      return (Boolean) null; //no action of this type found
     } else {
       return actionsOfType.stream().anyMatch(action -> action.completed() != null);
     }
