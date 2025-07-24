@@ -27,6 +27,7 @@ import static uk.nhs.tis.trainee.notifications.model.HrefType.ABSOLUTE_URL;
 import static uk.nhs.tis.trainee.notifications.model.HrefType.NON_HREF;
 import static uk.nhs.tis.trainee.notifications.model.HrefType.PROTOCOL_EMAIL;
 import static uk.nhs.tis.trainee.notifications.model.MessageType.EMAIL;
+import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_CREATED;
 import static uk.nhs.tis.trainee.notifications.model.TisReferenceType.PLACEMENT;
 import static uk.nhs.tis.trainee.notifications.model.TisReferenceType.PROGRAMME_MEMBERSHIP;
 import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.TIS_ID_FIELD;
@@ -176,6 +177,8 @@ public class NotificationService implements Job {
   public Map<String, String> executeNow(String jobKey, JobDataMap jobDetails) {
     String jobName = "";
     Map<String, String> result = new HashMap<>();
+    boolean unnecessaryReminder = false; // flag to skip sending reminder notifications if no
+                                         // incomplete programme actions found
 
     // get job details according to notification type
     String personId = jobDetails.getString(PERSON_ID_FIELD);
@@ -202,6 +205,20 @@ public class NotificationService implements Job {
       tisReferenceInfo = new TisReferenceInfo(PROGRAMME_MEMBERSHIP,
           jobDetails.get(ProgrammeMembershipService.TIS_ID_FIELD).toString());
 
+      if (NotificationType.getReminderProgrammeUpdateNotificationTypes()
+          .contains(notificationType)) {
+        // if no incomplete programme actions, then this notification must not be sent
+        if (!programmeMembershipNotificationsHelper
+            .hasIncompleteProgrammeActions(jobDetails)) {
+          unnecessaryReminder = true;
+          // note that we still process the notification, so that the History is updated.
+        }
+      } else {
+        // add welcome notification send date to jobDetails
+        History welcomeNotification = historyService.findScheduledEmailForTraineeByRefAndType(
+            personId, tisReferenceInfo.type(), tisReferenceInfo.id(), PROGRAMME_CREATED);
+      }
+
     } else if (notificationType == NotificationType.PLACEMENT_UPDATED_WEEK_12
         || notificationType == NotificationType.PLACEMENT_ROLLOUT_2024_CORRECTION) {
 
@@ -225,7 +242,8 @@ public class NotificationService implements Job {
 
           emailService.sendMessage(personId, userAccountDetails.email(), notificationType,
               templateVersion.get(), jobDetails.getWrappedMap(), tisReferenceInfo,
-              !shouldActuallySendEmail(notificationType, personId, tisReferenceInfo.id()));
+              !shouldActuallySendEmail(
+                  notificationType, personId, tisReferenceInfo.id(), unnecessaryReminder));
         } catch (MessagingException e) {
           throw new RuntimeException(e);
         }
@@ -445,6 +463,12 @@ public class NotificationService implements Job {
 
       programmeMembershipNotificationsHelper.addProgrammeReminderDetailsToJobMap(jobDetails,
           personId, jobDetails.getString(TIS_ID_FIELD));
+      // add welcome notification send date to jobDetails
+      String tisId = jobDetails.get(ProgrammeMembershipService.TIS_ID_FIELD).toString();
+      History welcomeNotification = historyService.findScheduledEmailForTraineeByRefAndType(
+          personId, PROGRAMME_MEMBERSHIP, tisId, PROGRAMME_CREATED);
+      programmeMembershipNotificationsHelper
+          .addWelcomeSentDateToJobMap(jobDetails, welcomeNotification);
     }
 
     return jobDetails;
@@ -459,7 +483,12 @@ public class NotificationService implements Job {
    * @return the boolean if the email should be sent out.
    */
   protected boolean shouldActuallySendEmail(NotificationType notificationType, String personId,
-      String tisReferenceId) {
+      String tisReferenceId, boolean unnecessaryReminder) {
+    if (unnecessaryReminder) {
+      log.info("Skipping {} notification for {} as no incomplete programme actions found.",
+          notificationType, personId);
+      return false; // do not send reminder if no incomplete programme actions
+    }
     boolean actuallySendEmail = false; // default to log email only
     boolean inWhitelist = notificationsWhitelist.contains(personId);
 
@@ -531,9 +560,10 @@ public class NotificationService implements Job {
     History.TemplateInfo templateInfo = new History.TemplateInfo(notificationType.getTemplateName(),
         templateVersion.get(), jobDetails.getWrappedMap());
 
-    // Only save when notificationType is correct and in Pilot/Rollout
+    // Only save when notificationType is correct and in Pilot/Rollout. We ignore the completion
+    // status of programme actions since these could change before the notification is sent.
     if (tisReferenceInfo != null
-        && shouldActuallySendEmail(notificationType, personId, tisReferenceInfo.id())) {
+        && shouldActuallySendEmail(notificationType, personId, tisReferenceInfo.id(), false)) {
 
       // Save SCHEDULED History in DB
       History history = new History(

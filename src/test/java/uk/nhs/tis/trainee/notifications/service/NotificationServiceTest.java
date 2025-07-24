@@ -697,7 +697,21 @@ class NotificationServiceTest {
     when(messagingControllerService.isProgrammeMembershipInPilot2024(any(), any())).thenReturn(
         true);
 
-    boolean result = service.shouldActuallySendEmail(notificationType, PERSON_ID, TIS_ID);
+    boolean result = service.shouldActuallySendEmail(notificationType, PERSON_ID, TIS_ID, false);
+
+    assertThat("Unexpected actuallySendEmail boolean.", result, is(false));
+  }
+
+  @ParameterizedTest
+  @EnumSource(value = NotificationType.class)
+  void shouldNotSendEmailWhenUnnecessaryReminder(NotificationType notificationType) {
+
+    when(messagingControllerService.isValidRecipient(any(), any())).thenReturn(true);
+    when(messagingControllerService.isProgrammeMembershipNewStarter(any(), any())).thenReturn(true);
+    when(messagingControllerService.isProgrammeMembershipInPilot2024(any(), any())).thenReturn(
+        true);
+
+    boolean result = service.shouldActuallySendEmail(notificationType, PERSON_ID, TIS_ID, true);
 
     assertThat("Unexpected actuallySendEmail boolean.", result, is(false));
   }

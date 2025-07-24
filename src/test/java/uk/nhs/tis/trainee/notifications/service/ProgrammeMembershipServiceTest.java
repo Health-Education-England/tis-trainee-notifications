@@ -1532,6 +1532,35 @@ class ProgrammeMembershipServiceTest {
         is(nullValue()));
   }
 
+  @ParameterizedTest
+  @CsvSource(delimiter = '|', textBlock = """
+      PROGRAMME_DAY_ONE | 0
+      PROGRAMME_UPDATED_WEEK_12 | 84
+      PROGRAMME_UPDATED_WEEK_8 | 56
+      PROGRAMME_UPDATED_WEEK_4 | 28
+      PROGRAMME_UPDATED_WEEK_2 | 14
+      PROGRAMME_UPDATED_WEEK_1 | 7
+      PROGRAMME_UPDATED_WEEK_0 | 0
+      """)
+  void shouldCalculateDaysBeforeProgrammeStartDateForMilestoneNotifications(
+      NotificationType notificationType, int expectedDaysBeforeStart) {
+    int daysBeforeStartDate = service.getDaysBeforeStartForNotification(notificationType);
+
+    assertThat("Unexpected days before start date for " + notificationType,
+        daysBeforeStartDate, is(expectedDaysBeforeStart));
+  }
+
+  @ParameterizedTest
+  @EnumSource(value = NotificationType.class, mode = Mode.EXCLUDE,
+      names = {"PROGRAMME_DAY_ONE", "PROGRAMME_UPDATED_WEEK_12", "PROGRAMME_UPDATED_WEEK_8",
+          "PROGRAMME_UPDATED_WEEK_4", "PROGRAMME_UPDATED_WEEK_2", "PROGRAMME_UPDATED_WEEK_1",
+          "PROGRAMME_UPDATED_WEEK_0"})
+  void shouldReturnNullForNonProgrammeMilestoneNotifications(NotificationType notificationType) {
+    Integer daysBeforeStartDate = service.getDaysBeforeStartForNotification(notificationType);
+
+    assertThat("Expected null for non-programme notification type " + notificationType,
+        daysBeforeStartDate, is(nullValue()));
+  }
   /**
    * Helper function to set up a default non-excluded programme membership.
    *
