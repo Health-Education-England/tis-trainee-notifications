@@ -104,7 +104,8 @@ class LtftListenerTest {
         "ltft-submitted", new MessageTypeVersions(VERSION, null),
         "ltft-unsubmitted", new MessageTypeVersions(VERSION, null),
         "ltft-admin-unsubmitted", new MessageTypeVersions(VERSION, null),
-        "ltft-withdrawn", new MessageTypeVersions(VERSION, null)
+        "ltft-withdrawn", new MessageTypeVersions(VERSION, null),
+        "ltft-rejected", new MessageTypeVersions(VERSION, null)
     ));
     listener = new LtftListener(notificationService, emailService, templateVersions,
         ltftEventMapper, true);
@@ -113,6 +114,7 @@ class LtftListenerTest {
   @ParameterizedTest
   @CsvSource(delimiter = '|', textBlock = """
       APPROVED     | LTFT_APPROVED
+      REJECTED     | LTFT_REJECTED
       SUBMITTED    | LTFT_SUBMITTED
       UNSUBMITTED  | LTFT_UNSUBMITTED
       UNSUBMITTED  | LTFT_ADMIN_UNSUBMITTED
@@ -138,7 +140,7 @@ class LtftListenerTest {
   }
 
   @ParameterizedTest
-  @ValueSource(strings = {"APPROVED", "SUBMITTED", "UNSUBMITTED", "WITHDRAWN", "Other-Status"})
+  @ValueSource(strings = {"APPROVED", "REJECTED", "SUBMITTED", "UNSUBMITTED", "WITHDRAWN", "Other-Status"})
   void shouldThrowExceptionWhenLtftUpdatedAndSendingFails(String state) throws MessagingException {
     doThrow(MessagingException.class).when(emailService)
         .sendMessageToExistingUser(any(), any(), any(), any(), any());
@@ -180,6 +182,7 @@ class LtftListenerTest {
   @ParameterizedTest
   @CsvSource(delimiter = '|', textBlock = """
       APPROVED     | LTFT_APPROVED
+      REJECTED     | LTFT_REJECTED
       SUBMITTED    | LTFT_SUBMITTED
       UNSUBMITTED  | LTFT_UNSUBMITTED
       UNSUBMITTED  | LTFT_ADMIN_UNSUBMITTED
@@ -205,10 +208,11 @@ class LtftListenerTest {
   @CsvSource(delimiter = '|', textBlock = """
       APPROVED     | LTFT_APPROVED          | v1.2.3
       Other-Status | LTFT_UPDATED           | v2.3.4
-      SUBMITTED    | LTFT_SUBMITTED         | v3.4.5
-      UNSUBMITTED  | LTFT_UNSUBMITTED       | v4.5.6
-      UNSUBMITTED  | LTFT_ADMIN_UNSUBMITTED | v5.6.7
-      WITHDRAWN    | LTFT_WITHDRAWN         | v6.7.8
+      REJECTED     | LTFT_REJECTED          | v3.4.5
+      SUBMITTED    | LTFT_SUBMITTED         | v4.5.6
+      UNSUBMITTED  | LTFT_UNSUBMITTED       | v5.6.7
+      UNSUBMITTED  | LTFT_ADMIN_UNSUBMITTED | v6.7.8
+      WITHDRAWN    | LTFT_WITHDRAWN         | v7.8.9
       """)
   void shouldSetTemplateVersionWhenLtftUpdated(String state, NotificationType type, String version)
       throws MessagingException {
@@ -232,7 +236,8 @@ class LtftListenerTest {
   }
 
   @ParameterizedTest
-  @ValueSource(strings = {"APPROVED", "SUBMITTED", "UNSUBMITTED", "WITHDRAWN", "Other-Status"})
+  @ValueSource(strings = {"APPROVED", "REJECTED", "SUBMITTED", "UNSUBMITTED", "WITHDRAWN",
+      "Other-Status"})
   void shouldPopulateTemplateVariablesWithContactsWhenLtftUpdated(String state)
       throws MessagingException {
     Set<LocalOfficeContactType> expectedContacts = Set.of(
@@ -278,7 +283,8 @@ class LtftListenerTest {
   }
 
   @ParameterizedTest
-  @ValueSource(strings = {"APPROVED", "SUBMITTED", "UNSUBMITTED", "WITHDRAWN", "Other-Status"})
+  @ValueSource(strings = {"APPROVED", "REJECTED", "SUBMITTED", "UNSUBMITTED", "WITHDRAWN",
+      "Other-Status"})
   void shouldPopulateTemplateVariablesWithEventWhenLtftUpdated(String state)
       throws MessagingException {
     LtftUpdateEvent event = LtftUpdateEvent.builder().state(state).build();
