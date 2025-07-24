@@ -25,6 +25,7 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.not;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.CoreMatchers.nullValue;
+import static org.hamcrest.CoreMatchers.sameInstance;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.Assert.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
@@ -90,6 +91,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import org.bson.types.ObjectId;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -599,6 +601,56 @@ class NotificationServiceTest {
     service.execute(jobExecutionContext);
 
     verify(emailService).sendMessage(any(), any(), any(), any(), any(), any(), eq(false));
+    verify(jobExecutionContext).setResult(any());
+  }
+
+  @ParameterizedTest
+  @EnumSource(value = NotificationType.class,
+      names = {"PROGRAMME_UPDATED_WEEK_12", "PROGRAMME_UPDATED_WEEK_4", "PROGRAMME_UPDATED_WEEK_2"})
+  void shouldSendProgrammeReminderEmailWhenMatchAllCriteria(NotificationType notificationType)
+      throws MessagingException {
+    programmeJobDetails.getJobDataMap().put(TEMPLATE_NOTIFICATION_TYPE_FIELD, notificationType);
+    when(jobExecutionContext.getJobDetail()).thenReturn(programmeJobDetails);
+    UserDetails userAccountDetails = new UserDetails(
+            false, USER_EMAIL, USER_TITLE, USER_FAMILY_NAME, USER_GIVEN_NAME, USER_GMC);
+    when(emailService.getRecipientAccountByEmail(USER_EMAIL)).thenReturn(userAccountDetails);
+    when(restTemplate.getForObject(ACCOUNT_DETAILS_URL, UserDetails.class,
+        Map.of(TIS_ID_FIELD, PERSON_ID))).thenReturn(userAccountDetails);
+    when(messagingControllerService.isValidRecipient(any(), any())).thenReturn(true);
+    when(messagingControllerService.isProgrammeMembershipNewStarter(any(), any())).thenReturn(true);
+    when(messagingControllerService.isProgrammeMembershipInPilot2024(any(), any()))
+        .thenReturn(true);
+    when(programmeMembershipNotificationHelper.hasIncompleteProgrammeActions(any()))
+        .thenReturn(true);
+
+    service.execute(jobExecutionContext);
+
+    verify(emailService).sendMessage(any(), any(), any(), any(), any(), any(), eq(false));
+    verify(jobExecutionContext).setResult(any());
+  }
+
+  @ParameterizedTest
+  @EnumSource(value = NotificationType.class,
+      names = {"PROGRAMME_UPDATED_WEEK_12", "PROGRAMME_UPDATED_WEEK_4", "PROGRAMME_UPDATED_WEEK_2"})
+  void shouldLogProgrammeReminderEmailWhenNoIncompleteActions(NotificationType notificationType)
+      throws MessagingException {
+    programmeJobDetails.getJobDataMap().put(TEMPLATE_NOTIFICATION_TYPE_FIELD, notificationType);
+    when(jobExecutionContext.getJobDetail()).thenReturn(programmeJobDetails);
+    UserDetails userAccountDetails = new UserDetails(
+        false, USER_EMAIL, USER_TITLE, USER_FAMILY_NAME, USER_GIVEN_NAME, USER_GMC);
+    when(emailService.getRecipientAccountByEmail(USER_EMAIL)).thenReturn(userAccountDetails);
+    when(restTemplate.getForObject(ACCOUNT_DETAILS_URL, UserDetails.class,
+        Map.of(TIS_ID_FIELD, PERSON_ID))).thenReturn(userAccountDetails);
+    when(messagingControllerService.isValidRecipient(any(), any())).thenReturn(true);
+    when(messagingControllerService.isProgrammeMembershipNewStarter(any(), any())).thenReturn(true);
+    when(messagingControllerService.isProgrammeMembershipInPilot2024(any(), any()))
+        .thenReturn(true);
+    when(programmeMembershipNotificationHelper.hasIncompleteProgrammeActions(any()))
+        .thenReturn(false);
+
+    service.execute(jobExecutionContext);
+
+    verify(emailService).sendMessage(any(), any(), any(), any(), any(), any(), eq(true));
     verify(jobExecutionContext).setResult(any());
   }
 
@@ -1131,11 +1183,16 @@ class NotificationServiceTest {
         .thenReturn(true);
     when(messagingControllerService.isProgrammeMembershipInPilot2024(any(), any()))
         .thenReturn(true);
+    History welcomeNotification = History.builder().build();
+    when(historyService.findScheduledEmailForTraineeByRefAndType(PERSON_ID, PROGRAMME_MEMBERSHIP,
+        TIS_ID, PROGRAMME_CREATED)).thenReturn(welcomeNotification);
 
     service.execute(jobExecutionContext);
 
     verify(programmeMembershipNotificationHelper)
         .addProgrammeReminderDetailsToJobMap(any(), eq(PERSON_ID), eq(TIS_ID));
+    verify(programmeMembershipNotificationHelper)
+        .addWelcomeSentDateToJobMap(any(), eq(welcomeNotification));
   }
 
   @ParameterizedTest
@@ -1166,6 +1223,8 @@ class NotificationServiceTest {
 
     verify(programmeMembershipNotificationHelper, never())
         .addProgrammeReminderDetailsToJobMap(any(), any(), any());
+    verify(programmeMembershipNotificationHelper, never())
+        .addWelcomeSentDateToJobMap(any(), any());
   }
 
   @ParameterizedTest

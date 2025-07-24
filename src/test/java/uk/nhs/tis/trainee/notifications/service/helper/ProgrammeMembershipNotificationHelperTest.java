@@ -1,28 +1,36 @@
 package uk.nhs.tis.trainee.notifications.service.helper;
 
 import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.SENT;
 import static uk.nhs.tis.trainee.notifications.model.ProgrammeActionType.REGISTER_TSS;
 import static uk.nhs.tis.trainee.notifications.model.ProgrammeActionType.SIGN_COJ;
 import static uk.nhs.tis.trainee.notifications.model.ProgrammeActionType.SIGN_FORM_R_PART_A;
 import static uk.nhs.tis.trainee.notifications.model.ProgrammeActionType.SIGN_FORM_R_PART_B;
 import static uk.nhs.tis.trainee.notifications.model.TisReferenceType.PERSON;
 import static uk.nhs.tis.trainee.notifications.model.TisReferenceType.PROGRAMME_MEMBERSHIP;
+import static uk.nhs.tis.trainee.notifications.service.helper.ProgrammeMembershipNotificationHelper.TEMPLATE_WELCOME_NOTIFICATION_DATE_FIELD;
 
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.quartz.JobDataMap;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 import uk.nhs.tis.trainee.notifications.dto.ActionDto;
+import uk.nhs.tis.trainee.notifications.model.History;
+import uk.nhs.tis.trainee.notifications.model.NotificationStatus;
+import uk.nhs.tis.trainee.notifications.model.ProgrammeActionType;
 
 /**
  * Tests for the ProgrammeMembershipNotificationHelper class.
@@ -100,5 +108,79 @@ class ProgrammeMembershipNotificationHelperTest {
         jobDataMap.get(SIGN_FORM_R_PART_B.toString()), is(true));
     assertThat("Unexpected action status REGISTER_TSS.",
         jobDataMap.get(SIGN_FORM_R_PART_A.toString()), is(true));
+  }
+
+  @ParameterizedTest
+  @EnumSource(ProgrammeActionType.class)
+  void shouldIdentifyIfIncompleteActions(ProgrammeActionType actionType) {
+    jobDataMap.put(actionType.name(), false);
+
+    assertThat("Unexpected incomplete actions flag.",
+        service.hasIncompleteProgrammeActions(jobDataMap), is(true));
+  }
+
+  @Test
+  void shouldIdentifyIfAllActionsComplete() {
+    for (ProgrammeActionType actionType : ProgrammeActionType.values()) {
+      jobDataMap.put(actionType.name(), true);
+    }
+
+    assertThat("Unexpected incomplete actions flag.",
+        service.hasIncompleteProgrammeActions(jobDataMap), is(false));
+  }
+
+  @Test
+  void shouldRegardMissingActionsAsComplete() {
+    assertThat("Unexpected incomplete actions flag.",
+        service.hasIncompleteProgrammeActions(jobDataMap), is(false));
+  }
+
+  @Test
+  void shouldNotAddWelcomeSentDateToJobMapIfHistoryNull() {
+    service.addWelcomeSentDateToJobMap(jobDataMap, null);
+
+    assertThat("Unexpected welcome message in job data map.",
+        jobDataMap.get(TEMPLATE_WELCOME_NOTIFICATION_DATE_FIELD), nullValue());
+  }
+
+  @ParameterizedTest
+  @EnumSource(value = NotificationStatus.class, mode = EnumSource.Mode.EXCLUDE, names = {"SENT"})
+  void shouldNotAddWelcomeSentDateToJobMapIfHistoryStatusNotSent(NotificationStatus status) {
+    History history = History.builder()
+            .status(status)
+        .sentAt(Instant.now())
+                .build();
+    service.addWelcomeSentDateToJobMap(jobDataMap, history);
+
+    assertThat("Unexpected welcome message in job data map.",
+        jobDataMap.get(TEMPLATE_WELCOME_NOTIFICATION_DATE_FIELD), nullValue());
+  }
+
+  @Test
+  void shouldAddWelcomeSentDateToJobMapIfHistoryStatusSent() {
+    Instant sentAt = Instant.now();
+    History history = History.builder()
+        .status(SENT)
+        .sentAt(sentAt)
+        .build();
+    service.addWelcomeSentDateToJobMap(jobDataMap, history);
+
+    assertThat("Unexpected welcome message in job data map.",
+        jobDataMap.get(TEMPLATE_WELCOME_NOTIFICATION_DATE_FIELD), is(sentAt));
+  }
+
+  @Test
+  void shouldAddWelcomeRetryDateToJobMapIfHistoryStatusSent() {
+    Instant sentAt = Instant.now().minusMillis(1000);
+    Instant retryAt = Instant.now();
+    History history = History.builder()
+        .status(SENT)
+        .lastRetry(retryAt)
+        .sentAt(sentAt)
+        .build();
+    service.addWelcomeSentDateToJobMap(jobDataMap, history);
+
+    assertThat("Unexpected welcome message in job data map.",
+        jobDataMap.get(TEMPLATE_WELCOME_NOTIFICATION_DATE_FIELD), is(retryAt));
   }
 }
