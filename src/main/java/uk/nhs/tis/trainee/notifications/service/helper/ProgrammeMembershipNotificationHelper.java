@@ -11,6 +11,9 @@ import org.springframework.web.client.RestTemplate;
 import uk.nhs.tis.trainee.notifications.dto.ActionDto;
 import uk.nhs.tis.trainee.notifications.model.ProgrammeActionType;
 
+/**
+ * A helper component for managing programme notifications.
+ */
 @Slf4j
 @Component
 public class ProgrammeMembershipNotificationHelper {
@@ -72,7 +75,7 @@ public class ProgrammeMembershipNotificationHelper {
    * @param personId    The person to get actions for.
    * @param programmeId The programme membership to get actions for.
    */
-  private void addProgrammeReminderDetailsToJobMap(JobDataMap jobDataMap,
+  public void addProgrammeReminderDetailsToJobMap(JobDataMap jobDataMap,
       String personId, String programmeId) {
     List<ActionDto> actions = getTraineeProgrammeActions(personId, programmeId);
     for (ProgrammeActionType actionType : ProgrammeActionType.values()) {
