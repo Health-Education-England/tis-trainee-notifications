@@ -1104,9 +1104,6 @@ class NotificationServiceTest {
       "PROGRAMME_UPDATED_WEEK_4", "PROGRAMME_UPDATED_WEEK_2"})
   void shouldAddReminderJobDetailsToNotification(NotificationType notificationType)
       throws MessagingException {
-    UserDetails userAccountDetails =
-        new UserDetails(
-            false, USER_EMAIL, USER_TITLE, USER_FAMILY_NAME, USER_GIVEN_NAME, USER_GMC);
 
     programmeJobDataMap.put(TEMPLATE_NOTIFICATION_TYPE_FIELD, notificationType.toString());
     programmeJobDetails = newJob(NotificationService.class)
@@ -1114,20 +1111,24 @@ class NotificationServiceTest {
         .usingJobData(programmeJobDataMap)
         .build();
     when(jobExecutionContext.getJobDetail()).thenReturn(programmeJobDetails);
+    UserDetails userAccountDetails =
+        new UserDetails(
+            false, USER_EMAIL, USER_TITLE, USER_FAMILY_NAME, USER_GIVEN_NAME, USER_GMC);
     when(emailService.getRecipientAccountByEmail(USER_EMAIL)).thenReturn(userAccountDetails);
     when(restTemplate.getForObject(ACCOUNT_DETAILS_URL, UserDetails.class,
         Map.of(TIS_ID_FIELD, PERSON_ID))).thenReturn(userAccountDetails);
 
     List<ActionDto> reminderActions = List.of(
         new ActionDto("action-id-1", SIGN_COJ.toString(), PERSON_ID,
-            new ActionDto.TisReferenceInfo(TIS_ID, PROGRAMME_MEMBERSHIP), null, null, Instant.now()),
+            new ActionDto.TisReferenceInfo(TIS_ID, PROGRAMME_MEMBERSHIP), null, null,
+            Instant.now()),
         new ActionDto("action-id-2", SIGN_FORM_R_PART_A.toString(), PERSON_ID,
-        new ActionDto.TisReferenceInfo(TIS_ID, PROGRAMME_MEMBERSHIP), null, null, null),
+            new ActionDto.TisReferenceInfo(TIS_ID, PROGRAMME_MEMBERSHIP), null, null, null),
         new ActionDto("action-id-3", SIGN_FORM_R_PART_B.toString(), PERSON_ID,
             new ActionDto.TisReferenceInfo(TIS_ID, PROGRAMME_MEMBERSHIP), null, null, null),
         new ActionDto("action-id-4", REGISTER_TSS.toString(), PERSON_ID,
             new ActionDto.TisReferenceInfo(PERSON_ID, PERSON), null, null, null)
-        );
+    );
     when(restTemplate.getForObject(ACTIONS_URL + ACTIONS_PROGRAMME_URL, List.class,
         Map.of(PERSON_ID_FIELD, PERSON_ID, PROGRAMME_ID_FIELD, TIS_ID)))
         .thenReturn(reminderActions);
@@ -1158,9 +1159,6 @@ class NotificationServiceTest {
 
   @Test
   void shouldAddDefaultCompletedReminderIfActionMissing() throws MessagingException {
-    UserDetails userAccountDetails =
-        new UserDetails(
-            false, USER_EMAIL, USER_TITLE, USER_FAMILY_NAME, USER_GIVEN_NAME, USER_GMC);
 
     programmeJobDataMap.put(TEMPLATE_NOTIFICATION_TYPE_FIELD, PROGRAMME_UPDATED_WEEK_2.toString());
     programmeJobDetails = newJob(NotificationService.class)
@@ -1168,6 +1166,9 @@ class NotificationServiceTest {
         .usingJobData(programmeJobDataMap)
         .build();
     when(jobExecutionContext.getJobDetail()).thenReturn(programmeJobDetails);
+    UserDetails userAccountDetails =
+        new UserDetails(
+            false, USER_EMAIL, USER_TITLE, USER_FAMILY_NAME, USER_GIVEN_NAME, USER_GMC);
     when(emailService.getRecipientAccountByEmail(USER_EMAIL)).thenReturn(userAccountDetails);
     when(restTemplate.getForObject(ACCOUNT_DETAILS_URL, UserDetails.class,
         Map.of(TIS_ID_FIELD, PERSON_ID))).thenReturn(userAccountDetails);
@@ -1852,7 +1853,8 @@ class NotificationServiceTest {
   void shouldReturnEmptySetWhenRestClientExceptionsInGetTraineeLocalOfficeContacts(
       LocalOfficeContactType contactType) {
     ParameterizedTypeReference<Set<LocalOfficeContact>> loContactListListType
-        = new ParameterizedTypeReference<>(){};
+        = new ParameterizedTypeReference<>() {
+    };
     when(restTemplate.exchange(any(), any(), any(), eq(loContactListListType), anyMap()))
         .thenThrow(new RestClientException("error"));
 
@@ -1865,7 +1867,8 @@ class NotificationServiceTest {
   @EnumSource(LocalOfficeContactType.class)
   void shouldReturnEmptySetWhenTraineeLocalOfficeContactsEmpty(LocalOfficeContactType contactType) {
     ParameterizedTypeReference<Set<LocalOfficeContact>> loContactListListType
-        = new ParameterizedTypeReference<>(){};
+        = new ParameterizedTypeReference<>() {
+    };
     when(restTemplate.exchange(any(), any(), any(), eq(loContactListListType), anyMap()))
         .thenReturn(new ResponseEntity<>(HttpStatus.OK));
 
@@ -1881,7 +1884,8 @@ class NotificationServiceTest {
         = Set.of(new LocalOfficeContact("contact", "local office"));
 
     ParameterizedTypeReference<Set<LocalOfficeContact>> loContactListListType
-        = new ParameterizedTypeReference<>(){};
+        = new ParameterizedTypeReference<>() {
+    };
     when(restTemplate.exchange(any(), any(), any(), eq(loContactListListType),
         eq(Map.of(TIS_ID_FIELD, PERSON_ID, CONTACT_TYPE_FIELD, contactType))))
         .thenReturn(ResponseEntity.of(Optional.of(localOfficeContacts)));
@@ -1916,7 +1920,8 @@ class NotificationServiceTest {
   void shouldNotSendEmailIfNoLocalOfficeContact(LocalOfficeContactType localOfficeContactType)
       throws MessagingException {
     ParameterizedTypeReference<Set<LocalOfficeContact>> loContactListListType
-        = new ParameterizedTypeReference<>(){};
+        = new ParameterizedTypeReference<>() {
+    };
     when(restTemplate.exchange(any(), any(), any(), eq(loContactListListType), anyMap()))
         .thenReturn(new ResponseEntity<>(HttpStatus.OK));
     when(messagingControllerService.isMessagingEnabled(any())).thenReturn(true);
@@ -1939,7 +1944,8 @@ class NotificationServiceTest {
     Set<LocalOfficeContact> localOfficeContacts = new HashSet<>();
     localOfficeContacts.add(new LocalOfficeContact(contact, "local office"));
     ParameterizedTypeReference<Set<LocalOfficeContact>> loContactListListType
-        = new ParameterizedTypeReference<>(){};
+        = new ParameterizedTypeReference<>() {
+    };
     when(restTemplate.exchange(any(), any(), any(), eq(loContactListListType), anyMap()))
         .thenReturn(ResponseEntity.of(Optional.of(localOfficeContacts)));
     when(messagingControllerService.isMessagingEnabled(any())).thenReturn(true);
@@ -1959,7 +1965,8 @@ class NotificationServiceTest {
     Set<LocalOfficeContact> localOfficeContacts = new HashSet<>();
     localOfficeContacts.add(new LocalOfficeContact("contact@email.com", "local office"));
     ParameterizedTypeReference<Set<LocalOfficeContact>> loContactListListType
-        = new ParameterizedTypeReference<>(){};
+        = new ParameterizedTypeReference<>() {
+    };
     when(restTemplate.exchange(any(), any(), any(), eq(loContactListListType), anyMap()))
         .thenReturn(ResponseEntity.of(Optional.of(localOfficeContacts)));
     when(messagingControllerService.isMessagingEnabled(any())).thenReturn(isMessagingEnabled);
@@ -1980,7 +1987,8 @@ class NotificationServiceTest {
     Set<LocalOfficeContact> localOfficeContacts = new HashSet<>();
     localOfficeContacts.add(new LocalOfficeContact("contact@email.com", "local office"));
     ParameterizedTypeReference<Set<LocalOfficeContact>> loContactListListType
-        = new ParameterizedTypeReference<>(){};
+        = new ParameterizedTypeReference<>() {
+    };
     when(restTemplate.exchange(any(), any(), any(), eq(loContactListListType), anyMap()))
         .thenReturn(ResponseEntity.of(Optional.of(localOfficeContacts)));
     when(messagingControllerService.isMessagingEnabled(any())).thenReturn(true);
@@ -2004,7 +2012,8 @@ class NotificationServiceTest {
     localOfficeContacts.add(new LocalOfficeContact("contact2@email.com", "name3"));
     localOfficeContacts.add(new LocalOfficeContact("a@email.com", "name4"));
     ParameterizedTypeReference<Set<LocalOfficeContact>> loContactListListType
-        = new ParameterizedTypeReference<>(){};
+        = new ParameterizedTypeReference<>() {
+    };
     when(restTemplate.exchange(any(), any(), any(), eq(loContactListListType), anyMap()))
         .thenReturn(ResponseEntity.of(Optional.of(localOfficeContacts)));
 
@@ -2035,7 +2044,8 @@ class NotificationServiceTest {
     Set<LocalOfficeContact> localOfficeContacts = new HashSet<>();
     localOfficeContacts.add(new LocalOfficeContact("contact@email.com", "local office"));
     ParameterizedTypeReference<Set<LocalOfficeContact>> loContactListListType
-        = new ParameterizedTypeReference<>(){};
+        = new ParameterizedTypeReference<>() {
+    };
     when(restTemplate.exchange(any(), any(), any(), eq(loContactListListType), anyMap()))
         .thenReturn(ResponseEntity.of(Optional.of(localOfficeContacts)));
     when(messagingControllerService.isMessagingEnabled(any())).thenReturn(true);
