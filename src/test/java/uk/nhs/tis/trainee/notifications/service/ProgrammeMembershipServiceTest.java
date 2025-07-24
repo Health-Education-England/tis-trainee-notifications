@@ -738,12 +738,8 @@ class ProgrammeMembershipServiceTest {
         Map.of(START_DATE_FIELD, START_DATE));
     List<History> sentNotifications = new ArrayList<>();
     for (NotificationType notificationType
-        : NotificationType.getProgrammeUpdateNotificationTypes()) {
-      // Skip unused notification types.
-      if (NotificationType.getInactiveProgrammeUpdateNotificationTypes()
-          .contains(notificationType)) {
-        continue;
-      }
+        : NotificationType.getActiveProgrammeUpdateNotificationTypes()) {
+
       sentNotifications.add(new History(ObjectId.get(),
           new TisReferenceInfo(PROGRAMME_MEMBERSHIP, TIS_ID),
           notificationType, recipientInfo,
@@ -1127,12 +1123,8 @@ class ProgrammeMembershipServiceTest {
         Map.of(START_DATE_FIELD, previousStartDate));
     List<History> sentNotifications = new ArrayList<>();
     for (NotificationType notificationType
-        : NotificationType.getProgrammeUpdateNotificationTypes()) {
-      // Skip unused notification types.
-      if (NotificationType.getInactiveProgrammeUpdateNotificationTypes()
-          .contains(notificationType)) {
-        continue;
-      }
+        : NotificationType.getActiveProgrammeUpdateNotificationTypes()) {
+
       sentNotifications.add(new History(ObjectId.get(),
           new TisReferenceInfo(PROGRAMME_MEMBERSHIP, TIS_ID),
           notificationType, recipientInfo,
@@ -1439,12 +1431,8 @@ class ProgrammeMembershipServiceTest {
     LocalDate mostRecentSentAt = LocalDate.now().minusDays(50);
     List<History> sentNotifications = new ArrayList<>();
     for (NotificationType notificationType
-        : NotificationType.getProgrammeUpdateNotificationTypes()) {
-      // Skip unused notification types.
-      if (NotificationType.getInactiveProgrammeUpdateNotificationTypes()
-          .contains(notificationType)) {
-        continue;
-      }
+        : NotificationType.getActiveProgrammeUpdateNotificationTypes()) {
+
       sentNotifications.add(new History(ObjectId.get(),
           new TisReferenceInfo(PROGRAMME_MEMBERSHIP, TIS_ID),
           notificationType, null,

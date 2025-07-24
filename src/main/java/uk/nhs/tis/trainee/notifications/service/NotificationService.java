@@ -77,6 +77,7 @@ import uk.nhs.tis.trainee.notifications.model.LocalOfficeContact;
 import uk.nhs.tis.trainee.notifications.model.LocalOfficeContactType;
 import uk.nhs.tis.trainee.notifications.model.MessageType;
 import uk.nhs.tis.trainee.notifications.model.NotificationStatus;
+import uk.nhs.tis.trainee.notifications.model.NotificationSummary;
 import uk.nhs.tis.trainee.notifications.model.NotificationType;
 import uk.nhs.tis.trainee.notifications.model.Placement;
 import uk.nhs.tis.trainee.notifications.model.ProgrammeMembership;
@@ -175,16 +176,11 @@ public class NotificationService implements Job {
    * @return the result map with status details if successful.
    */
   public Map<String, String> executeNow(String jobKey, JobDataMap jobDetails) {
-    String jobName = "";
     Map<String, String> result = new HashMap<>();
-    boolean unnecessaryReminder = false; // flag to skip sending reminder notifications if no
-                                         // incomplete programme actions found
+    NotificationSummary notificationSummary = new NotificationSummary();
 
     // get job details according to notification type
     String personId = jobDetails.getString(PERSON_ID_FIELD);
-
-    TisReferenceInfo tisReferenceInfo = null;
-    LocalDate startDate = null;
 
     // Enrich User Account and Local Office details to jobDetails
     jobDetails = enrichJobDetails(jobDetails);
@@ -196,35 +192,21 @@ public class NotificationService implements Job {
     NotificationType notificationType =
         NotificationType.valueOf(jobDetails.get(TEMPLATE_NOTIFICATION_TYPE_FIELD).toString());
 
-    if (NotificationType.getProgrammeUpdateNotificationTypes().contains(notificationType)
-        && !NotificationType.getInactiveProgrammeUpdateNotificationTypes()
-        .contains(notificationType)) {
-
-      jobName = jobDetails.getString(ProgrammeMembershipService.PROGRAMME_NAME_FIELD);
-      startDate = (LocalDate) jobDetails.get(ProgrammeMembershipService.START_DATE_FIELD);
-      tisReferenceInfo = new TisReferenceInfo(PROGRAMME_MEMBERSHIP,
-          jobDetails.get(ProgrammeMembershipService.TIS_ID_FIELD).toString());
-
-      if (NotificationType.getReminderProgrammeUpdateNotificationTypes()
-          .contains(notificationType)) {
-        // if no incomplete programme actions, then this notification must not be sent
-        if (!programmeMembershipNotificationsHelper
-            .hasIncompleteProgrammeActions(jobDetails)) {
-          unnecessaryReminder = true;
-          // note that we still process the notification, so that the History will be updated.
-        }
-      }
+    if (NotificationType.getActiveProgrammeUpdateNotificationTypes().contains(notificationType)) {
+      notificationSummary = programmeMembershipNotificationsHelper.getNotificationSummary(jobDetails);
 
     } else if (notificationType == NotificationType.PLACEMENT_UPDATED_WEEK_12
         || notificationType == NotificationType.PLACEMENT_ROLLOUT_2024_CORRECTION) {
 
-      jobName = jobDetails.getString(PlacementService.PLACEMENT_TYPE_FIELD);
-      startDate = (LocalDate) jobDetails.get(PlacementService.START_DATE_FIELD);
-      tisReferenceInfo = new TisReferenceInfo(PLACEMENT,
+      // move this to new PlacementNotificationHelper
+      String jobName = jobDetails.getString(PlacementService.PLACEMENT_TYPE_FIELD);
+      LocalDate startDate = (LocalDate) jobDetails.get(PlacementService.START_DATE_FIELD);
+      History.TisReferenceInfo tisReferenceInfo = new TisReferenceInfo(PLACEMENT,
           jobDetails.get(PlacementService.TIS_ID_FIELD).toString());
+      notificationSummary = new NotificationSummary(jobName, startDate, tisReferenceInfo);
     }
 
-    if (tisReferenceInfo != null) {
+    if (notificationSummary.tisReferenceInfo() != null) {
       if (userAccountDetails != null) {
         Optional<String> templateVersion = templateVersions.getTemplateVersion(notificationType,
             EMAIL);
@@ -236,18 +218,22 @@ public class NotificationService implements Job {
 
         try {
 
+          // we 'send' (i.e. log) the email even if it is an unnecessary reminder, so that the
+          // History is correctly updated.
           emailService.sendMessage(personId, userAccountDetails.email(), notificationType,
-              templateVersion.get(), jobDetails.getWrappedMap(), tisReferenceInfo,
+              templateVersion.get(), jobDetails.getWrappedMap(),
+              notificationSummary.tisReferenceInfo(),
               !shouldActuallySendEmail(
-                  notificationType, personId, tisReferenceInfo.id(), unnecessaryReminder));
+                  notificationType, personId, notificationSummary.tisReferenceInfo().id(),
+                  notificationSummary.unnecessaryReminder()));
         } catch (MessagingException e) {
           throw new RuntimeException(e);
         }
 
         log.info("Executed {} notification for {} ({}, starting {}) to {} using template {}",
             jobKey,
-            jobDetails.getString(TIS_ID_FIELD), jobName, startDate, userAccountDetails.email(),
-            templateVersion.get());
+            jobDetails.getString(TIS_ID_FIELD), notificationSummary.jobName(),
+            notificationSummary.startDate(), userAccountDetails.email(), templateVersion.get());
         Instant processedOn = Instant.now();
         result.put("status", "sent " + processedOn.toString());
       } else {
@@ -488,9 +474,7 @@ public class NotificationService implements Job {
     boolean actuallySendEmail = false; // default to log email only
     boolean inWhitelist = notificationsWhitelist.contains(personId);
 
-    if (NotificationType.getProgrammeUpdateNotificationTypes().contains(notificationType)
-        && !NotificationType.getInactiveProgrammeUpdateNotificationTypes()
-        .contains(notificationType)) {
+    if (NotificationType.getActiveProgrammeUpdateNotificationTypes().contains(notificationType)) {
 
       ProgrammeMembership minimalPm = new ProgrammeMembership();
       minimalPm.setPersonId(personId);
@@ -531,9 +515,7 @@ public class NotificationService implements Job {
 
     // get TIS Reference Info
     TisReferenceInfo tisReferenceInfo = null;
-    if (NotificationType.getProgrammeUpdateNotificationTypes().contains(notificationType)
-        && !NotificationType.getInactiveProgrammeUpdateNotificationTypes()
-        .contains(notificationType)) {
+    if (NotificationType.getActiveProgrammeUpdateNotificationTypes().contains(notificationType)) {
       tisReferenceInfo = new TisReferenceInfo(PROGRAMME_MEMBERSHIP,
           jobDetails.get(ProgrammeMembershipService.TIS_ID_FIELD).toString());
     } else if (notificationType == NotificationType.PLACEMENT_UPDATED_WEEK_12) {
