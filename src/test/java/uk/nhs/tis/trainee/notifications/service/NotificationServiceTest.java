@@ -171,8 +171,6 @@ class NotificationServiceTest {
   private JobDetail placementJobDetails;
   private JobDataMap programmeJobDataMap;
   private JobDataMap placementJobDataMap;
-  private NotificationSummary programmeNotificationSummary;
-  private NotificationSummary placementNotificationSummary;
 
   private NotificationService service;
   private NotificationService serviceWhitelisted;
@@ -202,9 +200,10 @@ class NotificationServiceTest {
     programmeJobDataMap.put(TEMPLATE_NOTIFICATION_TYPE_FIELD, PM_NOTIFICATION_TYPE.toString());
     programmeJobDataMap.put(START_DATE_FIELD, START_DATE);
 
-    programmeNotificationSummary = new NotificationSummary(PROGRAMME_NAME, START_DATE,
+    NotificationSummary programmeNotificationSummary
+        = new NotificationSummary(PROGRAMME_NAME, START_DATE,
         new TisReferenceInfo(PROGRAMME_MEMBERSHIP, TIS_ID), false);
-    when(programmeMembershipNotificationHelper.getNotificationSummary(any()))
+    when(programmeMembershipNotificationHelper.getNotificationSummary(any(), anyBoolean()))
         .thenReturn(programmeNotificationSummary);
 
     placementJobDataMap = new JobDataMap();
@@ -216,9 +215,6 @@ class NotificationServiceTest {
     placementJobDataMap.put(PLACEMENT_TYPE_FIELD, PLACEMENT_TYPE);
     placementJobDataMap.put(TEMPLATE_OWNER_FIELD, LOCAL_OFFICE);
     placementJobDataMap.put(PLACEMENT_SPECIALTY_FIELD, PLACEMENT_SPECIALTY);
-
-    placementNotificationSummary = new NotificationSummary(PLACEMENT_TYPE, START_DATE,
-        new TisReferenceInfo(PLACEMENT, TIS_ID), false);
 
     programmeJobDetails = newJob(NotificationService.class)
         .withIdentity(JOB_KEY)
@@ -478,8 +474,8 @@ class NotificationServiceTest {
         .thenReturn(apiResult);
     NotificationSummary programmeNotificationSummaryUnnecessary
         = new NotificationSummary(PROGRAMME_NAME, START_DATE,
-        new TisReferenceInfo(PROGRAMME_MEMBERSHIP, TIS_ID), true);
-    when(programmeMembershipNotificationHelper.getNotificationSummary(any()))
+              new TisReferenceInfo(PROGRAMME_MEMBERSHIP, TIS_ID), true);
+    when(programmeMembershipNotificationHelper.getNotificationSummary(any(), anyBoolean()))
         .thenReturn(programmeNotificationSummaryUnnecessary);
 
     service.execute(jobExecutionContext);
@@ -653,16 +649,18 @@ class NotificationServiceTest {
     when(emailService.getRecipientAccountByEmail(USER_EMAIL)).thenReturn(userAccountDetails);
     when(restTemplate.getForObject(ACCOUNT_DETAILS_URL, UserDetails.class,
         Map.of(TIS_ID_FIELD, PERSON_ID))).thenReturn(userAccountDetails);
-    when(messagingControllerService.isValidRecipient(any(), any())).thenReturn(true);
-    when(messagingControllerService.isProgrammeMembershipNewStarter(any(), any())).thenReturn(true);
+    when(messagingControllerService.isValidRecipient(any(), any()))
+        .thenReturn(true);
+    when(messagingControllerService.isProgrammeMembershipNewStarter(any(), any()))
+        .thenReturn(true);
     when(messagingControllerService.isProgrammeMembershipInPilot2024(any(), any()))
         .thenReturn(true);
     when(programmeMembershipNotificationHelper.hasIncompleteProgrammeActions(any()))
         .thenReturn(false);
     NotificationSummary programmeNotificationSummaryUnnecessary
         = new NotificationSummary(PROGRAMME_NAME, START_DATE,
-        new TisReferenceInfo(PROGRAMME_MEMBERSHIP, TIS_ID), true);
-    when(programmeMembershipNotificationHelper.getNotificationSummary(any()))
+              new TisReferenceInfo(PROGRAMME_MEMBERSHIP, TIS_ID), true);
+    when(programmeMembershipNotificationHelper.getNotificationSummary(any(), anyBoolean()))
         .thenReturn(programmeNotificationSummaryUnnecessary);
 
     service.execute(jobExecutionContext);
@@ -706,8 +704,10 @@ class NotificationServiceTest {
     when(restTemplate.getForObject(ACCOUNT_DETAILS_URL, UserDetails.class,
         Map.of(TIS_ID_FIELD, PERSON_ID))).thenReturn(userAccountDetails);
 
-    when(messagingControllerService.isValidRecipient(any(), any())).thenReturn(true);
-    when(messagingControllerService.isProgrammeMembershipNewStarter(any(), any())).thenReturn(true);
+    when(messagingControllerService.isValidRecipient(any(), any()))
+        .thenReturn(true);
+    when(messagingControllerService.isProgrammeMembershipNewStarter(any(), any()))
+        .thenReturn(true);
     when(messagingControllerService.isProgrammeMembershipInPilot2024(any(), any())).thenReturn(
         true);
 
@@ -735,10 +735,12 @@ class NotificationServiceTest {
     when(restTemplate.getForObject(ACCOUNT_DETAILS_URL, UserDetails.class,
         Map.of(TIS_ID_FIELD, PERSON_ID))).thenReturn(userAccountDetails);
 
-    when(messagingControllerService.isValidRecipient(any(), any())).thenReturn(true);
-    when(messagingControllerService.isProgrammeMembershipNewStarter(any(), any())).thenReturn(true);
-    when(messagingControllerService.isProgrammeMembershipInPilot2024(any(), any())).thenReturn(
-        true);
+    when(messagingControllerService.isValidRecipient(any(), any()))
+        .thenReturn(true);
+    when(messagingControllerService.isProgrammeMembershipNewStarter(any(), any()))
+        .thenReturn(true);
+    when(messagingControllerService.isProgrammeMembershipInPilot2024(any(), any()))
+        .thenReturn(true);
 
     JobDataMap jobData = new JobDataMap(Map.of(
         PERSON_ID_FIELD, PERSON_ID,
@@ -761,10 +763,12 @@ class NotificationServiceTest {
           "PROGRAMME_UPDATED_WEEK_4", "PROGRAMME_UPDATED_WEEK_2"})
   void shouldNotSendEmailWhenNotificationTypeNotCorrect(NotificationType notificationType) {
 
-    when(messagingControllerService.isValidRecipient(any(), any())).thenReturn(true);
-    when(messagingControllerService.isProgrammeMembershipNewStarter(any(), any())).thenReturn(true);
-    when(messagingControllerService.isProgrammeMembershipInPilot2024(any(), any())).thenReturn(
-        true);
+    when(messagingControllerService.isValidRecipient(any(), any()))
+        .thenReturn(true);
+    when(messagingControllerService.isProgrammeMembershipNewStarter(any(), any()))
+        .thenReturn(true);
+    when(messagingControllerService.isProgrammeMembershipInPilot2024(any(), any()))
+        .thenReturn(true);
 
     boolean result = service.shouldActuallySendEmail(notificationType, PERSON_ID, TIS_ID, false);
 
@@ -775,10 +779,12 @@ class NotificationServiceTest {
   @EnumSource(value = NotificationType.class)
   void shouldNotSendEmailWhenUnnecessaryReminder(NotificationType notificationType) {
 
-    when(messagingControllerService.isValidRecipient(any(), any())).thenReturn(true);
-    when(messagingControllerService.isProgrammeMembershipNewStarter(any(), any())).thenReturn(true);
-    when(messagingControllerService.isProgrammeMembershipInPilot2024(any(), any())).thenReturn(
-        true);
+    when(messagingControllerService.isValidRecipient(any(), any()))
+        .thenReturn(true);
+    when(messagingControllerService.isProgrammeMembershipNewStarter(any(), any()))
+        .thenReturn(true);
+    when(messagingControllerService.isProgrammeMembershipInPilot2024(any(), any()))
+        .thenReturn(true);
 
     boolean result = service.shouldActuallySendEmail(notificationType, PERSON_ID, TIS_ID, true);
 
@@ -803,7 +809,8 @@ class NotificationServiceTest {
     when(emailService.getRecipientAccountByEmail(USER_EMAIL)).thenReturn(userAccountDetails);
     when(restTemplate.getForObject(ACCOUNT_DETAILS_URL, UserDetails.class,
         Map.of(TIS_ID_FIELD, PERSON_ID))).thenReturn(userAccountDetails);
-    when(messagingControllerService.isValidRecipient(any(), any())).thenReturn(true);
+    when(messagingControllerService.isValidRecipient(any(), any()))
+        .thenReturn(true);
     when(messagingControllerService.isProgrammeMembershipNewStarter(any(), any()))
         .thenReturn(true);
     when(messagingControllerService.isProgrammeMembershipInPilot2024(any(), any()))
@@ -849,7 +856,8 @@ class NotificationServiceTest {
     assertThat("Unexpected template version.", templateInfo.version(), is(TEMPLATE_VERSION));
 
     Map<String, Object> storedVariables = templateInfo.variables();
-    assertThat("Unexpected template variable.", storedVariables.get(TIS_ID_FIELD), is(TIS_ID));
+    assertThat("Unexpected template variable.", storedVariables.get(TIS_ID_FIELD),
+        is(TIS_ID));
     assertThat("Unexpected template variable.", storedVariables.get(START_DATE_FIELD),
         is(START_DATE));
     assertThat("Unexpected template variable.", storedVariables.get(PERSON_ID_FIELD),
@@ -918,7 +926,8 @@ class NotificationServiceTest {
     assertThat("Unexpected template version.", templateInfo.version(), is(TEMPLATE_VERSION));
 
     Map<String, Object> storedVariables = templateInfo.variables();
-    assertThat("Unexpected template variable.", storedVariables.get(TIS_ID_FIELD), is(TIS_ID));
+    assertThat("Unexpected template variable.", storedVariables.get(TIS_ID_FIELD),
+        is(TIS_ID));
     assertThat("Unexpected template variable.", storedVariables.get(START_DATE_FIELD),
         is(START_DATE));
     assertThat("Unexpected template variable.", storedVariables.get(PERSON_ID_FIELD),
@@ -1019,7 +1028,8 @@ class NotificationServiceTest {
     when(emailService.getRecipientAccountByEmail(USER_EMAIL)).thenReturn(userAccountDetails);
     when(restTemplate.getForObject(ACCOUNT_DETAILS_URL, UserDetails.class,
         Map.of(TIS_ID_FIELD, PERSON_ID))).thenReturn(userAccountDetails);
-    when(messagingControllerService.isValidRecipient(any(), any())).thenReturn(false);
+    when(messagingControllerService.isValidRecipient(any(), any()))
+        .thenReturn(false);
     when(messagingControllerService.isProgrammeMembershipNewStarter(any(), any()))
         .thenReturn(true);
     when(messagingControllerService.isPlacementInPilot2024(any(), any()))
@@ -1045,7 +1055,8 @@ class NotificationServiceTest {
     when(emailService.getRecipientAccountByEmail(USER_EMAIL)).thenReturn(userAccountDetails);
     when(restTemplate.getForObject(ACCOUNT_DETAILS_URL, UserDetails.class,
         Map.of(TIS_ID_FIELD, PERSON_ID))).thenReturn(userAccountDetails);
-    when(messagingControllerService.isValidRecipient(any(), any())).thenReturn(true);
+    when(messagingControllerService.isValidRecipient(any(), any()))
+        .thenReturn(true);
     when(messagingControllerService.isProgrammeMembershipNewStarter(any(), any()))
         .thenReturn(true);
     when(messagingControllerService.isPlacementInPilot2024(any(), any()))
@@ -1078,7 +1089,8 @@ class NotificationServiceTest {
     when(emailService.getRecipientAccountByEmail(USER_EMAIL)).thenReturn(userAccountDetails);
     when(restTemplate.getForObject(ACCOUNT_DETAILS_URL, UserDetails.class,
         Map.of(TIS_ID_FIELD, PERSON_ID))).thenReturn(userAccountDetails);
-    when(messagingControllerService.isValidRecipient(any(), any())).thenReturn(true);
+    when(messagingControllerService.isValidRecipient(any(), any()))
+        .thenReturn(true);
     when(messagingControllerService.isProgrammeMembershipNewStarter(any(), any()))
         .thenReturn(true);
     when(messagingControllerService.isPlacementInPilot2024(any(), any()))
@@ -1111,7 +1123,8 @@ class NotificationServiceTest {
     when(emailService.getRecipientAccountByEmail(USER_EMAIL)).thenReturn(userAccountDetails);
     when(restTemplate.getForObject(ACCOUNT_DETAILS_URL, UserDetails.class,
         Map.of(TIS_ID_FIELD, PERSON_ID))).thenReturn(userAccountDetails);
-    when(messagingControllerService.isValidRecipient(any(), any())).thenReturn(true);
+    when(messagingControllerService.isValidRecipient(any(), any()))
+        .thenReturn(true);
     when(messagingControllerService.isProgrammeMembershipNewStarter(any(), any()))
         .thenReturn(true);
     when(messagingControllerService.isPlacementInPilot2024(any(), any()))
@@ -1135,7 +1148,8 @@ class NotificationServiceTest {
     when(emailService.getRecipientAccountByEmail(USER_EMAIL)).thenReturn(userAccountDetails);
     when(restTemplate.getForObject(ACCOUNT_DETAILS_URL, UserDetails.class,
         Map.of(TIS_ID_FIELD, PERSON_ID))).thenReturn(userAccountDetails);
-    when(messagingControllerService.isValidRecipient(any(), any())).thenReturn(true);
+    when(messagingControllerService.isValidRecipient(any(), any()))
+        .thenReturn(true);
     when(messagingControllerService.isProgrammeMembershipNewStarter(any(), any()))
         .thenReturn(true);
     when(messagingControllerService.isProgrammeMembershipInPilot2024(any(), any()))
@@ -1195,7 +1209,8 @@ class NotificationServiceTest {
     when(restTemplate.getForObject(ACCOUNT_DETAILS_URL, UserDetails.class,
         Map.of(TIS_ID_FIELD, PERSON_ID))).thenReturn(userAccountDetails);
 
-    when(messagingControllerService.isValidRecipient(any(), any())).thenReturn(true);
+    when(messagingControllerService.isValidRecipient(any(), any()))
+        .thenReturn(true);
     when(messagingControllerService.isProgrammeMembershipNewStarter(any(), any()))
         .thenReturn(true);
     when(messagingControllerService.isProgrammeMembershipInPilot2024(any(), any()))
@@ -1230,7 +1245,8 @@ class NotificationServiceTest {
     when(restTemplate.getForObject(ACCOUNT_DETAILS_URL, UserDetails.class,
         Map.of(TIS_ID_FIELD, PERSON_ID))).thenReturn(userAccountDetails);
 
-    when(messagingControllerService.isValidRecipient(any(), any())).thenReturn(true);
+    when(messagingControllerService.isValidRecipient(any(), any()))
+        .thenReturn(true);
     when(messagingControllerService.isProgrammeMembershipNewStarter(any(), any()))
         .thenReturn(true);
     when(messagingControllerService.isProgrammeMembershipInPilot2024(any(), any()))
@@ -1256,7 +1272,8 @@ class NotificationServiceTest {
     when(emailService.getRecipientAccountByEmail(USER_EMAIL)).thenReturn(userAccountDetails);
     when(restTemplate.getForObject(ACCOUNT_DETAILS_URL, UserDetails.class,
         Map.of(TIS_ID_FIELD, PERSON_ID))).thenReturn(userAccountDetails);
-    when(messagingControllerService.isValidRecipient(any(), any())).thenReturn(true);
+    when(messagingControllerService.isValidRecipient(any(), any()))
+        .thenReturn(true);
     when(messagingControllerService.isProgrammeMembershipNewStarter(any(), any()))
         .thenReturn(true);
     when(messagingControllerService.isProgrammeMembershipInPilot2024(any(), any()))
@@ -1663,7 +1680,8 @@ class NotificationServiceTest {
     boolean isNotifiablePm = service.programmeMembershipIsNotifiable(programmeMembership,
         messageType);
 
-    assertThat("Unexpected programme membership is notifiable value.", isNotifiablePm, is(true));
+    assertThat("Unexpected programme membership is notifiable value.", isNotifiablePm,
+        is(true));
   }
 
   @ParameterizedTest
@@ -1678,7 +1696,8 @@ class NotificationServiceTest {
     boolean isNotifiablePm = service.programmeMembershipIsNotifiable(programmeMembership,
         messageType);
 
-    assertThat("Unexpected programme membership is notifiable value.", isNotifiablePm, is(false));
+    assertThat("Unexpected programme membership is notifiable value.", isNotifiablePm,
+        is(false));
   }
 
   @ParameterizedTest
@@ -1690,9 +1709,10 @@ class NotificationServiceTest {
 
     when(messagingControllerService.isValidRecipient(PERSON_ID, messageType)).thenReturn(true);
 
-    boolean isNotifiablePm = service.placementIsNotifiable(placement, messageType);
+    boolean isNotifiablePlacement = service.placementIsNotifiable(placement, messageType);
 
-    assertThat("Unexpected placement is notifiable value.", isNotifiablePm, is(true));
+    assertThat("Unexpected placement is notifiable value.", isNotifiablePlacement,
+        is(true));
   }
 
   @ParameterizedTest
@@ -1704,9 +1724,10 @@ class NotificationServiceTest {
 
     when(messagingControllerService.isValidRecipient(PERSON_ID, messageType)).thenReturn(false);
 
-    boolean isNotifiablePm = service.placementIsNotifiable(placement, messageType);
+    boolean isNotifiablePlacement = service.placementIsNotifiable(placement, messageType);
 
-    assertThat("Unexpected placement is notifiable value.", isNotifiablePm, is(false));
+    assertThat("Unexpected placement is notifiable value.", isNotifiablePlacement,
+        is(false));
   }
 
   @Test
