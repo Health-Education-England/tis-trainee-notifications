@@ -141,11 +141,12 @@ public class ProgrammeMembershipNotificationHelper {
   /**
    * Get a summary of the notification based on the job data map.
    *
-   * @param jobDataMap The job data map containing notification details.
+   * @param jobDataMap          The job data map containing notification details.
+   * @param unnecessaryReminder Indicates if the notification is an unnecessary reminder.
    * @return A NotificationSummary object.
    */
-  public NotificationSummary getNotificationSummary(JobDataMap jobDataMap) {
-    boolean unnecessaryReminder = false;
+  public NotificationSummary getNotificationSummary(JobDataMap jobDataMap,
+      boolean unnecessaryReminder) {
     String jobName = jobDataMap.getString(ProgrammeMembershipService.PROGRAMME_NAME_FIELD);
     LocalDate startDate = (LocalDate) jobDataMap.get(ProgrammeMembershipService.START_DATE_FIELD);
     History.TisReferenceInfo tisReferenceInfo = new History.TisReferenceInfo(PROGRAMME_MEMBERSHIP,
