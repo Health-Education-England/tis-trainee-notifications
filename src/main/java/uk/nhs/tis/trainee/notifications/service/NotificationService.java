@@ -169,13 +169,16 @@ public class NotificationService implements Job {
   }
 
   /**
-   * Process a job now.
+   * Process a job immediately, sending the notification if appropriate.
    *
-   * @param jobKey     The descriptive job identifier.
-   * @param jobDetails The job details.
-   * @return the result map with status details if successful.
+   * @param jobKey              The descriptive job identifier.
+   * @param jobDetails          The job details.
+   * @param unnecessaryReminder If true, the notification is an unnecessary reminder and should not
+   *                            be sent.
+   * @return The result map with status details if successful.
    */
-  public Map<String, String> executeNow(String jobKey, JobDataMap jobDetails) {
+  public Map<String, String> executeNow(String jobKey, JobDataMap jobDetails,
+      boolean unnecessaryReminder) {
     Map<String, String> result = new HashMap<>();
     NotificationSummary notificationSummary = new NotificationSummary();
 
@@ -193,7 +196,8 @@ public class NotificationService implements Job {
         NotificationType.valueOf(jobDetails.get(TEMPLATE_NOTIFICATION_TYPE_FIELD).toString());
 
     if (NotificationType.getActiveProgrammeUpdateNotificationTypes().contains(notificationType)) {
-      notificationSummary = programmeMembershipNotificationsHelper.getNotificationSummary(jobDetails);
+      notificationSummary = programmeMembershipNotificationsHelper
+          .getNotificationSummary(jobDetails, unnecessaryReminder);
 
     } else if (notificationType == NotificationType.PLACEMENT_UPDATED_WEEK_12
         || notificationType == NotificationType.PLACEMENT_ROLLOUT_2024_CORRECTION) {
@@ -241,6 +245,16 @@ public class NotificationService implements Job {
       }
     }
     return result;
+  }
+  /**
+   * Process a non-unnecessary job now.
+   *
+   * @param jobKey     The descriptive job identifier.
+   * @param jobDetails The job details.
+   * @return the result map with status details if successful.
+   */
+  public Map<String, String> executeNow(String jobKey, JobDataMap jobDetails) {
+    return executeNow(jobKey, jobDetails, false);
   }
 
   /**
@@ -635,6 +649,7 @@ public class NotificationService implements Job {
    *
    * @param traineeDetails    The details of the trainee.
    * @param traineeId         The id of the trainee.
+   * @param contactType       The type of local office contact to notify.
    * @param contactType       The type of local office contact to notify.
    * @param templateVariables The template variables.
    * @param templateVersion   The template version.

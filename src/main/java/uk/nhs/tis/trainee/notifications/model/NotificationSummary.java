@@ -14,22 +14,22 @@ public record NotificationSummary(String jobName, LocalDate startDate,
                                   History.TisReferenceInfo tisReferenceInfo,
                                   boolean unnecessaryReminder) {
 
-    /**
-     * Creates a NotificationSummary with unnecessaryReminder set to false.
-     *
-     * @param jobName         The name of the job.
-     * @param startDate       The start date of the notification.
-     * @param tisReferenceInfo The TIS reference information.
-     */
-    public NotificationSummary(String jobName, LocalDate startDate,
-        History.TisReferenceInfo tisReferenceInfo) {
-      this(jobName, startDate, tisReferenceInfo, false);
-    }
+  /**
+   * Creates a NotificationSummary with unnecessaryReminder set to false.
+   *
+   * @param jobName          The name of the job.
+   * @param startDate        The start date of the notification.
+   * @param tisReferenceInfo The TIS reference information.
+   */
+  public NotificationSummary(String jobName, LocalDate startDate,
+      History.TisReferenceInfo tisReferenceInfo) {
+    this(jobName, startDate, tisReferenceInfo, false);
+  }
 
   /**
-   *  Default constructor for NotificationSummary.
+   * Default constructor for NotificationSummary.
    */
   public NotificationSummary() {
-      this(null, null, null, false);
-    }
+    this(null, null, null, false);
+  }
 }
