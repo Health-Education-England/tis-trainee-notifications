@@ -173,8 +173,9 @@ public class NotificationService implements Job {
    *
    * @param jobKey              The descriptive job identifier.
    * @param jobDetails          The job details.
-   * @param unnecessaryReminder If true, the notification is an unnecessary reminder and should not
-   *                            be sent.
+   * @param unnecessaryReminder If true, the notification is definitely an unnecessary reminder and
+   *                            should not be sent. As the notification is enriched it may also be
+   *                            identified as unneeded, in which case it will not be sent.
    * @return The result map with status details if successful.
    */
   public Map<String, String> executeNow(String jobKey, JobDataMap jobDetails,
@@ -246,6 +247,7 @@ public class NotificationService implements Job {
     }
     return result;
   }
+
   /**
    * Process a non-unnecessary job now.
    *
