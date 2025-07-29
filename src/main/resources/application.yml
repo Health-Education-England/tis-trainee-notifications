@@ -65,13 +65,15 @@ application:
       email: v1.0.1
     ltft-approved-tpd:
       email: v1.0.1
-    ltft-updated:
+    ltft-rejected:
       email: v1.0.0
     ltft-submitted:
       email: v1.0.0
     ltft-submitted-tpd:
       email: v1.0.1
     ltft-unsubmitted:
+      email: v1.0.0
+    ltft-updated:
       email: v1.0.0
     ltft-withdrawn:
       email: v1.0.0

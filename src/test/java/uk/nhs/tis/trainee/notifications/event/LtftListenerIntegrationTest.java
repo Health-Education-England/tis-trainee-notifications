@@ -191,6 +191,7 @@ class LtftListenerIntegrationTest {
   @ParameterizedTest
   @CsvSource(delimiter = '|', textBlock = """
       APPROVED     | LTFT_APPROVED
+      REJECTED     | LTFT_REJECTED
       SUBMITTED    | LTFT_SUBMITTED
       UNSUBMITTED  | LTFT_UNSUBMITTED
       UNSUBMITTED  | LTFT_ADMIN_UNSUBMITTED
@@ -245,6 +246,7 @@ class LtftListenerIntegrationTest {
   @ParameterizedTest
   @CsvSource(delimiter = '|', textBlock = """
       APPROVED     | LTFT_APPROVED
+      REJECTED     | LTFT_REJECTED
       SUBMITTED    | LTFT_SUBMITTED
       UNSUBMITTED  | LTFT_UNSUBMITTED
       UNSUBMITTED  | LTFT_ADMIN_UNSUBMITTED
@@ -318,6 +320,7 @@ class LtftListenerIntegrationTest {
   @ParameterizedTest
   @CsvSource(delimiter = '|', textBlock = """
       APPROVED    | LTFT_APPROVED
+      REJECTED    | LTFT_REJECTED
       SUBMITTED   | LTFT_SUBMITTED
       UNSUBMITTED | LTFT_UNSUBMITTED
       UNSUBMITTED | LTFT_ADMIN_UNSUBMITTED
@@ -402,6 +405,7 @@ class LtftListenerIntegrationTest {
   @ParameterizedTest
   @CsvSource(delimiter = '|', textBlock = """
       APPROVED    | LTFT_APPROVED
+      REJECTED    | LTFT_REJECTED
       SUBMITTED   | LTFT_SUBMITTED
       UNSUBMITTED | LTFT_UNSUBMITTED
       UNSUBMITTED | LTFT_ADMIN_UNSUBMITTED
@@ -549,6 +553,7 @@ class LtftListenerIntegrationTest {
   @ParameterizedTest
   @CsvSource(delimiter = '|', textBlock = """
       APPROVED     | LTFT_APPROVED          | v1.0.1
+      REJECTED     | LTFT_REJECTED          | v1.0.0
       SUBMITTED    | LTFT_SUBMITTED         | v1.0.0
       UNSUBMITTED  | LTFT_UNSUBMITTED       | v1.0.0
       UNSUBMITTED  | LTFT_ADMIN_UNSUBMITTED | v1.0.0
