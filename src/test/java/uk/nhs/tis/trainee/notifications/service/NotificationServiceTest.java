@@ -123,9 +123,11 @@ import uk.nhs.tis.trainee.notifications.model.History.TisReferenceInfo;
 import uk.nhs.tis.trainee.notifications.model.LocalOfficeContact;
 import uk.nhs.tis.trainee.notifications.model.LocalOfficeContactType;
 import uk.nhs.tis.trainee.notifications.model.MessageType;
+import uk.nhs.tis.trainee.notifications.model.NotificationSummary;
 import uk.nhs.tis.trainee.notifications.model.NotificationType;
 import uk.nhs.tis.trainee.notifications.model.Placement;
 import uk.nhs.tis.trainee.notifications.model.ProgrammeMembership;
+import uk.nhs.tis.trainee.notifications.service.helper.ProgrammeMembershipNotificationHelper;
 
 class NotificationServiceTest {
 
@@ -174,6 +176,7 @@ class NotificationServiceTest {
   private NotificationService serviceWhitelisted;
   private EmailService emailService;
   private HistoryService historyService;
+  private ProgrammeMembershipNotificationHelper programmeMembershipNotificationHelper;
   private RestTemplate restTemplate;
   private Scheduler scheduler;
   private MessagingControllerService messagingControllerService;
@@ -184,6 +187,7 @@ class NotificationServiceTest {
     jobExecutionContext = mock(JobExecutionContext.class);
     emailService = mock(EmailService.class);
     historyService = mock(HistoryService.class);
+    programmeMembershipNotificationHelper = mock(ProgrammeMembershipNotificationHelper.class);
     restTemplate = mock(RestTemplate.class);
     scheduler = mock(Scheduler.class);
     messagingControllerService = mock(MessagingControllerService.class);
@@ -195,6 +199,12 @@ class NotificationServiceTest {
     programmeJobDataMap.put(TEMPLATE_OWNER_FIELD, LOCAL_OFFICE);
     programmeJobDataMap.put(TEMPLATE_NOTIFICATION_TYPE_FIELD, PM_NOTIFICATION_TYPE.toString());
     programmeJobDataMap.put(START_DATE_FIELD, START_DATE);
+
+    NotificationSummary programmeNotificationSummary
+        = new NotificationSummary(PROGRAMME_NAME, START_DATE,
+        new TisReferenceInfo(PROGRAMME_MEMBERSHIP, TIS_ID), false);
+    when(programmeMembershipNotificationHelper.getNotificationSummary(any(), anyBoolean()))
+        .thenReturn(programmeNotificationSummary);
 
     placementJobDataMap = new JobDataMap();
     placementJobDataMap.put(TIS_ID_FIELD, TIS_ID);
@@ -223,11 +233,11 @@ class NotificationServiceTest {
         )));
 
     service = new NotificationService(emailService, historyService, restTemplate, scheduler,
-        messagingControllerService, templateVersions, SERVICE_URL, REFERENCE_URL,
-        NOTIFICATION_DELAY, NOT_WHITELISTED, TIMEZONE);
+        messagingControllerService, programmeMembershipNotificationHelper, templateVersions,
+        SERVICE_URL, REFERENCE_URL, NOTIFICATION_DELAY, NOT_WHITELISTED, TIMEZONE);
     serviceWhitelisted = new NotificationService(emailService, historyService, restTemplate,
-        scheduler, messagingControllerService, templateVersions, SERVICE_URL, REFERENCE_URL,
-        NOTIFICATION_DELAY, WHITELISTED, TIMEZONE);
+        scheduler, messagingControllerService, programmeMembershipNotificationHelper,
+        templateVersions, SERVICE_URL, REFERENCE_URL, NOTIFICATION_DELAY, WHITELISTED, TIMEZONE);
   }
 
   @Test
@@ -240,8 +250,8 @@ class NotificationServiceTest {
         )));
 
     service = new NotificationService(emailService, historyService, restTemplate, scheduler,
-        messagingControllerService, templateVersions, SERVICE_URL, REFERENCE_URL,
-        NOTIFICATION_DELAY, NOT_WHITELISTED, TIMEZONE);
+        messagingControllerService, programmeMembershipNotificationHelper, templateVersions,
+        SERVICE_URL, REFERENCE_URL, NOTIFICATION_DELAY, NOT_WHITELISTED, TIMEZONE);
 
     JobDataMap jobDataMap = new JobDataMap();
     jobDataMap.put(TIS_ID_FIELD, TIS_ID);
@@ -352,7 +362,7 @@ class NotificationServiceTest {
   }
 
   @Test
-  void shouldThrowExceptionWhenRestClientExceptions() {
+  void shouldThrowExceptionWhenTraineeDetailsRestClientExceptions() {
     when(jobExecutionContext.getJobDetail()).thenReturn(programmeJobDetails);
 
     when(emailService.getRecipientAccountByEmail(any())).thenThrow(
@@ -462,6 +472,11 @@ class NotificationServiceTest {
         .thenReturn(apiResult);
     when(messagingControllerService.isProgrammeMembershipInRollout2024(any(), any()))
         .thenReturn(apiResult);
+    NotificationSummary programmeNotificationSummaryUnnecessary
+        = new NotificationSummary(PROGRAMME_NAME, START_DATE,
+              new TisReferenceInfo(PROGRAMME_MEMBERSHIP, TIS_ID), true);
+    when(programmeMembershipNotificationHelper.getNotificationSummary(any(), anyBoolean()))
+        .thenReturn(programmeNotificationSummaryUnnecessary);
 
     service.execute(jobExecutionContext);
 
@@ -600,10 +615,66 @@ class NotificationServiceTest {
   }
 
   @ParameterizedTest
+  @EnumSource(value = NotificationType.class,
+      names = {"PROGRAMME_UPDATED_WEEK_12", "PROGRAMME_UPDATED_WEEK_4", "PROGRAMME_UPDATED_WEEK_2"})
+  void shouldSendProgrammeReminderEmailWhenMatchAllCriteria(NotificationType notificationType)
+      throws MessagingException {
+    programmeJobDetails.getJobDataMap().put(TEMPLATE_NOTIFICATION_TYPE_FIELD, notificationType);
+    when(jobExecutionContext.getJobDetail()).thenReturn(programmeJobDetails);
+    UserDetails userAccountDetails = new UserDetails(
+            false, USER_EMAIL, USER_TITLE, USER_FAMILY_NAME, USER_GIVEN_NAME, USER_GMC);
+    when(emailService.getRecipientAccountByEmail(USER_EMAIL)).thenReturn(userAccountDetails);
+    when(restTemplate.getForObject(ACCOUNT_DETAILS_URL, UserDetails.class,
+        Map.of(TIS_ID_FIELD, PERSON_ID))).thenReturn(userAccountDetails);
+    when(messagingControllerService.isValidRecipient(any(), any())).thenReturn(true);
+    when(messagingControllerService.isProgrammeMembershipNewStarter(any(), any())).thenReturn(true);
+    when(messagingControllerService.isProgrammeMembershipInPilot2024(any(), any()))
+        .thenReturn(true);
+
+    service.execute(jobExecutionContext);
+
+    verify(emailService).sendMessage(any(), any(), any(), any(), any(), any(), eq(false));
+    verify(jobExecutionContext).setResult(any());
+  }
+
+  @ParameterizedTest
+  @EnumSource(value = NotificationType.class,
+      names = {"PROGRAMME_UPDATED_WEEK_12", "PROGRAMME_UPDATED_WEEK_4", "PROGRAMME_UPDATED_WEEK_2"})
+  void shouldLogProgrammeReminderEmailWhenNoIncompleteActions(NotificationType notificationType)
+      throws MessagingException {
+    programmeJobDetails.getJobDataMap().put(TEMPLATE_NOTIFICATION_TYPE_FIELD, notificationType);
+    when(jobExecutionContext.getJobDetail()).thenReturn(programmeJobDetails);
+    UserDetails userAccountDetails = new UserDetails(
+        false, USER_EMAIL, USER_TITLE, USER_FAMILY_NAME, USER_GIVEN_NAME, USER_GMC);
+    when(emailService.getRecipientAccountByEmail(USER_EMAIL)).thenReturn(userAccountDetails);
+    when(restTemplate.getForObject(ACCOUNT_DETAILS_URL, UserDetails.class,
+        Map.of(TIS_ID_FIELD, PERSON_ID))).thenReturn(userAccountDetails);
+    when(messagingControllerService.isValidRecipient(any(), any()))
+        .thenReturn(true);
+    when(messagingControllerService.isProgrammeMembershipNewStarter(any(), any()))
+        .thenReturn(true);
+    when(messagingControllerService.isProgrammeMembershipInPilot2024(any(), any()))
+        .thenReturn(true);
+    when(programmeMembershipNotificationHelper.hasIncompleteProgrammeActions(any()))
+        .thenReturn(false);
+    NotificationSummary programmeNotificationSummaryUnnecessary
+        = new NotificationSummary(PROGRAMME_NAME, START_DATE,
+              new TisReferenceInfo(PROGRAMME_MEMBERSHIP, TIS_ID), true);
+    when(programmeMembershipNotificationHelper.getNotificationSummary(any(), anyBoolean()))
+        .thenReturn(programmeNotificationSummaryUnnecessary);
+
+    service.execute(jobExecutionContext);
+
+    verify(emailService).sendMessage(any(), any(), any(), any(), any(), any(), eq(true));
+    verify(jobExecutionContext).setResult(any());
+  }
+
+  @ParameterizedTest
   @EnumSource(value = NotificationType.class, mode = Mode.EXCLUDE,
       names = {"PLACEMENT_UPDATED_WEEK_12", "PLACEMENT_ROLLOUT_2024_CORRECTION",
-          "PROGRAMME_CREATED", "PROGRAMME_DAY_ONE"})
-  void shouldIgnoreNonProgrammeOrPlacementJobs(NotificationType notificationType)
+          "PROGRAMME_CREATED", "PROGRAMME_DAY_ONE", "PROGRAMME_UPDATED_WEEK_12",
+          "PROGRAMME_UPDATED_WEEK_4", "PROGRAMME_UPDATED_WEEK_2"})
+  void shouldIgnoreNonActiveProgrammeOrPlacementJobs(NotificationType notificationType)
       throws MessagingException {
     UserDetails userAccountDetails =
         new UserDetails(
@@ -633,8 +704,10 @@ class NotificationServiceTest {
     when(restTemplate.getForObject(ACCOUNT_DETAILS_URL, UserDetails.class,
         Map.of(TIS_ID_FIELD, PERSON_ID))).thenReturn(userAccountDetails);
 
-    when(messagingControllerService.isValidRecipient(any(), any())).thenReturn(true);
-    when(messagingControllerService.isProgrammeMembershipNewStarter(any(), any())).thenReturn(true);
+    when(messagingControllerService.isValidRecipient(any(), any()))
+        .thenReturn(true);
+    when(messagingControllerService.isProgrammeMembershipNewStarter(any(), any()))
+        .thenReturn(true);
     when(messagingControllerService.isProgrammeMembershipInPilot2024(any(), any())).thenReturn(
         true);
 
@@ -662,10 +735,12 @@ class NotificationServiceTest {
     when(restTemplate.getForObject(ACCOUNT_DETAILS_URL, UserDetails.class,
         Map.of(TIS_ID_FIELD, PERSON_ID))).thenReturn(userAccountDetails);
 
-    when(messagingControllerService.isValidRecipient(any(), any())).thenReturn(true);
-    when(messagingControllerService.isProgrammeMembershipNewStarter(any(), any())).thenReturn(true);
-    when(messagingControllerService.isProgrammeMembershipInPilot2024(any(), any())).thenReturn(
-        true);
+    when(messagingControllerService.isValidRecipient(any(), any()))
+        .thenReturn(true);
+    when(messagingControllerService.isProgrammeMembershipNewStarter(any(), any()))
+        .thenReturn(true);
+    when(messagingControllerService.isProgrammeMembershipInPilot2024(any(), any()))
+        .thenReturn(true);
 
     JobDataMap jobData = new JobDataMap(Map.of(
         PERSON_ID_FIELD, PERSON_ID,
@@ -684,20 +759,41 @@ class NotificationServiceTest {
   @ParameterizedTest
   @EnumSource(value = NotificationType.class, mode = Mode.EXCLUDE,
       names = {"PLACEMENT_UPDATED_WEEK_12", "PLACEMENT_ROLLOUT_2024_CORRECTION",
-          "PROGRAMME_CREATED", "PROGRAMME_DAY_ONE"})
+          "PROGRAMME_CREATED", "PROGRAMME_DAY_ONE", "PROGRAMME_UPDATED_WEEK_12",
+          "PROGRAMME_UPDATED_WEEK_4", "PROGRAMME_UPDATED_WEEK_2"})
   void shouldNotSendEmailWhenNotificationTypeNotCorrect(NotificationType notificationType) {
 
-    when(messagingControllerService.isValidRecipient(any(), any())).thenReturn(true);
-    when(messagingControllerService.isProgrammeMembershipNewStarter(any(), any())).thenReturn(true);
-    when(messagingControllerService.isProgrammeMembershipInPilot2024(any(), any())).thenReturn(
-        true);
+    when(messagingControllerService.isValidRecipient(any(), any()))
+        .thenReturn(true);
+    when(messagingControllerService.isProgrammeMembershipNewStarter(any(), any()))
+        .thenReturn(true);
+    when(messagingControllerService.isProgrammeMembershipInPilot2024(any(), any()))
+        .thenReturn(true);
 
-    boolean result = service.shouldActuallySendEmail(notificationType, PERSON_ID, TIS_ID);
+    boolean result = service.shouldActuallySendEmail(notificationType, PERSON_ID, TIS_ID, false);
 
     assertThat("Unexpected actuallySendEmail boolean.", result, is(false));
   }
 
-  @Test
+  @ParameterizedTest
+  @EnumSource(value = NotificationType.class)
+  void shouldNotSendEmailWhenUnnecessaryReminder(NotificationType notificationType) {
+
+    when(messagingControllerService.isValidRecipient(any(), any()))
+        .thenReturn(true);
+    when(messagingControllerService.isProgrammeMembershipNewStarter(any(), any()))
+        .thenReturn(true);
+    when(messagingControllerService.isProgrammeMembershipInPilot2024(any(), any()))
+        .thenReturn(true);
+
+    boolean result = service.shouldActuallySendEmail(notificationType, PERSON_ID, TIS_ID, true);
+
+    assertThat("Unexpected actuallySendEmail boolean.", result, is(false));
+  }
+
+  @ParameterizedTest
+  @EnumSource(value = NotificationType.class, names = {"PROGRAMME_CREATED", "PROGRAMME_DAY_ONE",
+      "PROGRAMME_UPDATED_WEEK_12", "PROGRAMME_UPDATED_WEEK_4", "PROGRAMME_UPDATED_WEEK_2"})
   void shouldScheduleProgrammeMembershipNotification() throws SchedulerException {
     NotificationType notificationType = NotificationType.PROGRAMME_CREATED;
 
@@ -713,7 +809,8 @@ class NotificationServiceTest {
     when(emailService.getRecipientAccountByEmail(USER_EMAIL)).thenReturn(userAccountDetails);
     when(restTemplate.getForObject(ACCOUNT_DETAILS_URL, UserDetails.class,
         Map.of(TIS_ID_FIELD, PERSON_ID))).thenReturn(userAccountDetails);
-    when(messagingControllerService.isValidRecipient(any(), any())).thenReturn(true);
+    when(messagingControllerService.isValidRecipient(any(), any()))
+        .thenReturn(true);
     when(messagingControllerService.isProgrammeMembershipNewStarter(any(), any()))
         .thenReturn(true);
     when(messagingControllerService.isProgrammeMembershipInPilot2024(any(), any()))
@@ -759,7 +856,8 @@ class NotificationServiceTest {
     assertThat("Unexpected template version.", templateInfo.version(), is(TEMPLATE_VERSION));
 
     Map<String, Object> storedVariables = templateInfo.variables();
-    assertThat("Unexpected template variable.", storedVariables.get(TIS_ID_FIELD), is(TIS_ID));
+    assertThat("Unexpected template variable.", storedVariables.get(TIS_ID_FIELD),
+        is(TIS_ID));
     assertThat("Unexpected template variable.", storedVariables.get(START_DATE_FIELD),
         is(START_DATE));
     assertThat("Unexpected template variable.", storedVariables.get(PERSON_ID_FIELD),
@@ -828,7 +926,8 @@ class NotificationServiceTest {
     assertThat("Unexpected template version.", templateInfo.version(), is(TEMPLATE_VERSION));
 
     Map<String, Object> storedVariables = templateInfo.variables();
-    assertThat("Unexpected template variable.", storedVariables.get(TIS_ID_FIELD), is(TIS_ID));
+    assertThat("Unexpected template variable.", storedVariables.get(TIS_ID_FIELD),
+        is(TIS_ID));
     assertThat("Unexpected template variable.", storedVariables.get(START_DATE_FIELD),
         is(START_DATE));
     assertThat("Unexpected template variable.", storedVariables.get(PERSON_ID_FIELD),
@@ -929,7 +1028,8 @@ class NotificationServiceTest {
     when(emailService.getRecipientAccountByEmail(USER_EMAIL)).thenReturn(userAccountDetails);
     when(restTemplate.getForObject(ACCOUNT_DETAILS_URL, UserDetails.class,
         Map.of(TIS_ID_FIELD, PERSON_ID))).thenReturn(userAccountDetails);
-    when(messagingControllerService.isValidRecipient(any(), any())).thenReturn(false);
+    when(messagingControllerService.isValidRecipient(any(), any()))
+        .thenReturn(false);
     when(messagingControllerService.isProgrammeMembershipNewStarter(any(), any()))
         .thenReturn(true);
     when(messagingControllerService.isPlacementInPilot2024(any(), any()))
@@ -955,7 +1055,8 @@ class NotificationServiceTest {
     when(emailService.getRecipientAccountByEmail(USER_EMAIL)).thenReturn(userAccountDetails);
     when(restTemplate.getForObject(ACCOUNT_DETAILS_URL, UserDetails.class,
         Map.of(TIS_ID_FIELD, PERSON_ID))).thenReturn(userAccountDetails);
-    when(messagingControllerService.isValidRecipient(any(), any())).thenReturn(true);
+    when(messagingControllerService.isValidRecipient(any(), any()))
+        .thenReturn(true);
     when(messagingControllerService.isProgrammeMembershipNewStarter(any(), any()))
         .thenReturn(true);
     when(messagingControllerService.isPlacementInPilot2024(any(), any()))
@@ -969,7 +1070,8 @@ class NotificationServiceTest {
 
   @ParameterizedTest
   @EnumSource(value = NotificationType.class, mode = Mode.EXCLUDE,
-      names = {"PLACEMENT_UPDATED_WEEK_12", "PROGRAMME_CREATED", "PROGRAMME_DAY_ONE"})
+      names = {"PLACEMENT_UPDATED_WEEK_12", "PROGRAMME_CREATED", "PROGRAMME_DAY_ONE",
+          "PROGRAMME_UPDATED_WEEK_12", "PROGRAMME_UPDATED_WEEK_4", "PROGRAMME_UPDATED_WEEK_2"})
   void shouldNotSaveScheduleNotificationWhenNotCorrectNotificationType(
       NotificationType notificationType) {
     placementJobDataMap.put(TEMPLATE_NOTIFICATION_TYPE_FIELD,
@@ -987,13 +1089,51 @@ class NotificationServiceTest {
     when(emailService.getRecipientAccountByEmail(USER_EMAIL)).thenReturn(userAccountDetails);
     when(restTemplate.getForObject(ACCOUNT_DETAILS_URL, UserDetails.class,
         Map.of(TIS_ID_FIELD, PERSON_ID))).thenReturn(userAccountDetails);
-    when(messagingControllerService.isValidRecipient(any(), any())).thenReturn(true);
+    when(messagingControllerService.isValidRecipient(any(), any()))
+        .thenReturn(true);
     when(messagingControllerService.isProgrammeMembershipNewStarter(any(), any()))
         .thenReturn(true);
     when(messagingControllerService.isPlacementInPilot2024(any(), any()))
         .thenReturn(true);
+    when(messagingControllerService.isProgrammeMembershipInPilot2024(any(), any()))
+        .thenReturn(true);
 
     service.saveScheduleHistory(placementJobDataMap, when);
+
+    verify(historyService, never()).save(any());
+  }
+
+  @Test
+  void shouldNotSaveScheduleNotificationAndThrowExceptionIfTemplateVersionMissing() {
+    TemplateVersionsProperties templateVersions = mock(TemplateVersionsProperties.class);
+    when(templateVersions.getTemplateVersion(any(), any())).thenReturn(Optional.empty());
+    service = new NotificationService(emailService, historyService, restTemplate, scheduler,
+        messagingControllerService, programmeMembershipNotificationHelper, templateVersions,
+        SERVICE_URL, REFERENCE_URL, NOTIFICATION_DELAY, NOT_WHITELISTED, TIMEZONE);
+
+    LocalDate expectedDate = START_DATE.minusDays(84);
+    Date when = Date.from(expectedDate
+        .atStartOfDay()
+        .atZone(ZoneId.of(TIMEZONE))
+        .toInstant());
+
+    UserDetails userAccountDetails =
+        new UserDetails(
+            false, USER_EMAIL, USER_TITLE, USER_FAMILY_NAME, USER_GIVEN_NAME, USER_GMC);
+    when(emailService.getRecipientAccountByEmail(USER_EMAIL)).thenReturn(userAccountDetails);
+    when(restTemplate.getForObject(ACCOUNT_DETAILS_URL, UserDetails.class,
+        Map.of(TIS_ID_FIELD, PERSON_ID))).thenReturn(userAccountDetails);
+    when(messagingControllerService.isValidRecipient(any(), any()))
+        .thenReturn(true);
+    when(messagingControllerService.isProgrammeMembershipNewStarter(any(), any()))
+        .thenReturn(true);
+    when(messagingControllerService.isPlacementInPilot2024(any(), any()))
+        .thenReturn(true);
+    when(messagingControllerService.isProgrammeMembershipInPilot2024(any(), any()))
+        .thenReturn(true);
+
+    assertThrows(IllegalArgumentException.class, ()
+        -> service.saveScheduleHistory(placementJobDataMap, when));
 
     verify(historyService, never()).save(any());
   }
@@ -1008,7 +1148,8 @@ class NotificationServiceTest {
     when(emailService.getRecipientAccountByEmail(USER_EMAIL)).thenReturn(userAccountDetails);
     when(restTemplate.getForObject(ACCOUNT_DETAILS_URL, UserDetails.class,
         Map.of(TIS_ID_FIELD, PERSON_ID))).thenReturn(userAccountDetails);
-    when(messagingControllerService.isValidRecipient(any(), any())).thenReturn(true);
+    when(messagingControllerService.isValidRecipient(any(), any()))
+        .thenReturn(true);
     when(messagingControllerService.isProgrammeMembershipNewStarter(any(), any()))
         .thenReturn(true);
     when(messagingControllerService.isProgrammeMembershipInPilot2024(any(), any()))
@@ -1051,6 +1192,75 @@ class NotificationServiceTest {
   }
 
   @ParameterizedTest
+  @EnumSource(value = NotificationType.class, names = {"PROGRAMME_UPDATED_WEEK_12",
+      "PROGRAMME_UPDATED_WEEK_4", "PROGRAMME_UPDATED_WEEK_2"})
+  void shouldAddReminderJobDetailsToNotification(NotificationType notificationType) {
+
+    programmeJobDataMap.put(TEMPLATE_NOTIFICATION_TYPE_FIELD, notificationType.toString());
+    programmeJobDetails = newJob(NotificationService.class)
+        .withIdentity(JOB_KEY)
+        .usingJobData(programmeJobDataMap)
+        .build();
+    when(jobExecutionContext.getJobDetail()).thenReturn(programmeJobDetails);
+    UserDetails userAccountDetails =
+        new UserDetails(
+            false, USER_EMAIL, USER_TITLE, USER_FAMILY_NAME, USER_GIVEN_NAME, USER_GMC);
+    when(emailService.getRecipientAccountByEmail(USER_EMAIL)).thenReturn(userAccountDetails);
+    when(restTemplate.getForObject(ACCOUNT_DETAILS_URL, UserDetails.class,
+        Map.of(TIS_ID_FIELD, PERSON_ID))).thenReturn(userAccountDetails);
+
+    when(messagingControllerService.isValidRecipient(any(), any()))
+        .thenReturn(true);
+    when(messagingControllerService.isProgrammeMembershipNewStarter(any(), any()))
+        .thenReturn(true);
+    when(messagingControllerService.isProgrammeMembershipInPilot2024(any(), any()))
+        .thenReturn(true);
+    History welcomeNotification = History.builder().build();
+    when(historyService.findScheduledEmailForTraineeByRefAndType(PERSON_ID, PROGRAMME_MEMBERSHIP,
+        TIS_ID, PROGRAMME_CREATED)).thenReturn(welcomeNotification);
+
+    service.execute(jobExecutionContext);
+
+    verify(programmeMembershipNotificationHelper)
+        .addProgrammeReminderDetailsToJobMap(any(), eq(PERSON_ID), eq(TIS_ID));
+    verify(programmeMembershipNotificationHelper)
+        .addWelcomeSentDateToJobMap(any(), eq(welcomeNotification));
+  }
+
+  @ParameterizedTest
+  @EnumSource(value = NotificationType.class, mode = Mode.EXCLUDE,
+      names = {"PROGRAMME_UPDATED_WEEK_12", "PROGRAMME_UPDATED_WEEK_4", "PROGRAMME_UPDATED_WEEK_2"})
+  void shouldNotAddReminderJobDetailsToInapplicableNotification(NotificationType notificationType) {
+
+    programmeJobDataMap.put(TEMPLATE_NOTIFICATION_TYPE_FIELD, notificationType.toString());
+    programmeJobDetails = newJob(NotificationService.class)
+        .withIdentity(JOB_KEY)
+        .usingJobData(programmeJobDataMap)
+        .build();
+    when(jobExecutionContext.getJobDetail()).thenReturn(programmeJobDetails);
+    UserDetails userAccountDetails =
+        new UserDetails(
+            false, USER_EMAIL, USER_TITLE, USER_FAMILY_NAME, USER_GIVEN_NAME, USER_GMC);
+    when(emailService.getRecipientAccountByEmail(USER_EMAIL)).thenReturn(userAccountDetails);
+    when(restTemplate.getForObject(ACCOUNT_DETAILS_URL, UserDetails.class,
+        Map.of(TIS_ID_FIELD, PERSON_ID))).thenReturn(userAccountDetails);
+
+    when(messagingControllerService.isValidRecipient(any(), any()))
+        .thenReturn(true);
+    when(messagingControllerService.isProgrammeMembershipNewStarter(any(), any()))
+        .thenReturn(true);
+    when(messagingControllerService.isProgrammeMembershipInPilot2024(any(), any()))
+        .thenReturn(true);
+
+    service.execute(jobExecutionContext);
+
+    verify(programmeMembershipNotificationHelper, never())
+        .addProgrammeReminderDetailsToJobMap(any(), any(), any());
+    verify(programmeMembershipNotificationHelper, never())
+        .addWelcomeSentDateToJobMap(any(), any());
+  }
+
+  @ParameterizedTest
   @NullAndEmptySource
   @ValueSource(strings = {"123456", "12345678", "abcdefg"})
   void shouldFlagInvalidGmcInStandardJobDetailsWhenGmcInvalid(String gmcNumber)
@@ -1062,7 +1272,8 @@ class NotificationServiceTest {
     when(emailService.getRecipientAccountByEmail(USER_EMAIL)).thenReturn(userAccountDetails);
     when(restTemplate.getForObject(ACCOUNT_DETAILS_URL, UserDetails.class,
         Map.of(TIS_ID_FIELD, PERSON_ID))).thenReturn(userAccountDetails);
-    when(messagingControllerService.isValidRecipient(any(), any())).thenReturn(true);
+    when(messagingControllerService.isValidRecipient(any(), any()))
+        .thenReturn(true);
     when(messagingControllerService.isProgrammeMembershipNewStarter(any(), any()))
         .thenReturn(true);
     when(messagingControllerService.isProgrammeMembershipInPilot2024(any(), any()))
@@ -1469,7 +1680,8 @@ class NotificationServiceTest {
     boolean isNotifiablePm = service.programmeMembershipIsNotifiable(programmeMembership,
         messageType);
 
-    assertThat("Unexpected programme membership is notifiable value.", isNotifiablePm, is(true));
+    assertThat("Unexpected programme membership is notifiable value.", isNotifiablePm,
+        is(true));
   }
 
   @ParameterizedTest
@@ -1484,7 +1696,8 @@ class NotificationServiceTest {
     boolean isNotifiablePm = service.programmeMembershipIsNotifiable(programmeMembership,
         messageType);
 
-    assertThat("Unexpected programme membership is notifiable value.", isNotifiablePm, is(false));
+    assertThat("Unexpected programme membership is notifiable value.", isNotifiablePm,
+        is(false));
   }
 
   @ParameterizedTest
@@ -1496,9 +1709,10 @@ class NotificationServiceTest {
 
     when(messagingControllerService.isValidRecipient(PERSON_ID, messageType)).thenReturn(true);
 
-    boolean isNotifiablePm = service.placementIsNotifiable(placement, messageType);
+    boolean isNotifiablePlacement = service.placementIsNotifiable(placement, messageType);
 
-    assertThat("Unexpected placement is notifiable value.", isNotifiablePm, is(true));
+    assertThat("Unexpected placement is notifiable value.", isNotifiablePlacement,
+        is(true));
   }
 
   @ParameterizedTest
@@ -1510,9 +1724,10 @@ class NotificationServiceTest {
 
     when(messagingControllerService.isValidRecipient(PERSON_ID, messageType)).thenReturn(false);
 
-    boolean isNotifiablePm = service.placementIsNotifiable(placement, messageType);
+    boolean isNotifiablePlacement = service.placementIsNotifiable(placement, messageType);
 
-    assertThat("Unexpected placement is notifiable value.", isNotifiablePm, is(false));
+    assertThat("Unexpected placement is notifiable value.", isNotifiablePlacement,
+        is(false));
   }
 
   @Test
@@ -1702,7 +1917,7 @@ class NotificationServiceTest {
   void shouldReturnEmptySetWhenRestClientExceptionsInGetTraineeLocalOfficeContacts(
       LocalOfficeContactType contactType) {
     ParameterizedTypeReference<Set<LocalOfficeContact>> loContactListListType
-        = new ParameterizedTypeReference<>(){};
+        = new ParameterizedTypeReference<>() {};
     when(restTemplate.exchange(any(), any(), any(), eq(loContactListListType), anyMap()))
         .thenThrow(new RestClientException("error"));
 
@@ -1715,7 +1930,7 @@ class NotificationServiceTest {
   @EnumSource(LocalOfficeContactType.class)
   void shouldReturnEmptySetWhenTraineeLocalOfficeContactsEmpty(LocalOfficeContactType contactType) {
     ParameterizedTypeReference<Set<LocalOfficeContact>> loContactListListType
-        = new ParameterizedTypeReference<>(){};
+        = new ParameterizedTypeReference<>() {};
     when(restTemplate.exchange(any(), any(), any(), eq(loContactListListType), anyMap()))
         .thenReturn(new ResponseEntity<>(HttpStatus.OK));
 
@@ -1731,7 +1946,7 @@ class NotificationServiceTest {
         = Set.of(new LocalOfficeContact("contact", "local office"));
 
     ParameterizedTypeReference<Set<LocalOfficeContact>> loContactListListType
-        = new ParameterizedTypeReference<>(){};
+        = new ParameterizedTypeReference<>() {};
     when(restTemplate.exchange(any(), any(), any(), eq(loContactListListType),
         eq(Map.of(TIS_ID_FIELD, PERSON_ID, CONTACT_TYPE_FIELD, contactType))))
         .thenReturn(ResponseEntity.of(Optional.of(localOfficeContacts)));
@@ -1766,7 +1981,7 @@ class NotificationServiceTest {
   void shouldNotSendEmailIfNoLocalOfficeContact(LocalOfficeContactType localOfficeContactType)
       throws MessagingException {
     ParameterizedTypeReference<Set<LocalOfficeContact>> loContactListListType
-        = new ParameterizedTypeReference<>(){};
+        = new ParameterizedTypeReference<>() {};
     when(restTemplate.exchange(any(), any(), any(), eq(loContactListListType), anyMap()))
         .thenReturn(new ResponseEntity<>(HttpStatus.OK));
     when(messagingControllerService.isMessagingEnabled(any())).thenReturn(true);
@@ -1789,7 +2004,7 @@ class NotificationServiceTest {
     Set<LocalOfficeContact> localOfficeContacts = new HashSet<>();
     localOfficeContacts.add(new LocalOfficeContact(contact, "local office"));
     ParameterizedTypeReference<Set<LocalOfficeContact>> loContactListListType
-        = new ParameterizedTypeReference<>(){};
+        = new ParameterizedTypeReference<>() {};
     when(restTemplate.exchange(any(), any(), any(), eq(loContactListListType), anyMap()))
         .thenReturn(ResponseEntity.of(Optional.of(localOfficeContacts)));
     when(messagingControllerService.isMessagingEnabled(any())).thenReturn(true);
@@ -1809,7 +2024,7 @@ class NotificationServiceTest {
     Set<LocalOfficeContact> localOfficeContacts = new HashSet<>();
     localOfficeContacts.add(new LocalOfficeContact("contact@email.com", "local office"));
     ParameterizedTypeReference<Set<LocalOfficeContact>> loContactListListType
-        = new ParameterizedTypeReference<>(){};
+        = new ParameterizedTypeReference<>() {};
     when(restTemplate.exchange(any(), any(), any(), eq(loContactListListType), anyMap()))
         .thenReturn(ResponseEntity.of(Optional.of(localOfficeContacts)));
     when(messagingControllerService.isMessagingEnabled(any())).thenReturn(isMessagingEnabled);
@@ -1830,7 +2045,7 @@ class NotificationServiceTest {
     Set<LocalOfficeContact> localOfficeContacts = new HashSet<>();
     localOfficeContacts.add(new LocalOfficeContact("contact@email.com", "local office"));
     ParameterizedTypeReference<Set<LocalOfficeContact>> loContactListListType
-        = new ParameterizedTypeReference<>(){};
+        = new ParameterizedTypeReference<>() {};
     when(restTemplate.exchange(any(), any(), any(), eq(loContactListListType), anyMap()))
         .thenReturn(ResponseEntity.of(Optional.of(localOfficeContacts)));
     when(messagingControllerService.isMessagingEnabled(any())).thenReturn(true);
@@ -1854,7 +2069,7 @@ class NotificationServiceTest {
     localOfficeContacts.add(new LocalOfficeContact("contact2@email.com", "name3"));
     localOfficeContacts.add(new LocalOfficeContact("a@email.com", "name4"));
     ParameterizedTypeReference<Set<LocalOfficeContact>> loContactListListType
-        = new ParameterizedTypeReference<>(){};
+        = new ParameterizedTypeReference<>() {};
     when(restTemplate.exchange(any(), any(), any(), eq(loContactListListType), anyMap()))
         .thenReturn(ResponseEntity.of(Optional.of(localOfficeContacts)));
 
@@ -1885,7 +2100,7 @@ class NotificationServiceTest {
     Set<LocalOfficeContact> localOfficeContacts = new HashSet<>();
     localOfficeContacts.add(new LocalOfficeContact("contact@email.com", "local office"));
     ParameterizedTypeReference<Set<LocalOfficeContact>> loContactListListType
-        = new ParameterizedTypeReference<>(){};
+        = new ParameterizedTypeReference<>() {};
     when(restTemplate.exchange(any(), any(), any(), eq(loContactListListType), anyMap()))
         .thenReturn(ResponseEntity.of(Optional.of(localOfficeContacts)));
     when(messagingControllerService.isMessagingEnabled(any())).thenReturn(true);
@@ -1935,6 +2150,16 @@ class NotificationServiceTest {
     Map<String, Object> sentTemplate = sentTemplateCaptor.getValue();
     assertThat("Unexpected sent template size.", sentTemplate.size(), is(1));
     assertThat("Unexpected sent template element.", sentTemplate.get("key"), is("value"));
+  }
+
+  @Test
+  void shouldNotTreatNullRoleAsDummy() {
+    UserDetails userDetails = new UserDetails(
+        true, "traineeemail", "title", "family", "given", "1111111", null);
+
+    boolean isDummy = service.userHasDummyRole(userDetails);
+
+    assertThat("Unexpected dummy user check.", isDummy, is(false));
   }
 
   /**
