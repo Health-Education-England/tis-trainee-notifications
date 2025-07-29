@@ -46,9 +46,12 @@ class DateToObjectConverterTest {
     converter = new DateToObjectConverter();
   }
 
-
+  /**
+   * TODO: fails for non-UTC timezones if Date and LocalDate (UTC) are different calendar days.
+   */
   @Test
   void shouldConvertToLocalDateWhenDateIsNotNull() {
+    ZoneId utc = ZoneId.of("UTC");
     Instant now = Instant.now();
     Date date = Date.from(now);
 
@@ -57,8 +60,7 @@ class DateToObjectConverterTest {
     assertThat("Unexpected converted type.", convertedDate, instanceOf(LocalDate.class));
 
     LocalDate localDate = (LocalDate) convertedDate;
-    assertThat("Unexpected local date.", localDate,
-        is(LocalDate.from(now.atZone(ZoneId.of("UTC")))));
+    assertThat("Unexpected local date.", localDate, is(LocalDate.from(now.atZone(utc))));
   }
 
   @Test

@@ -37,6 +37,7 @@ import static uk.nhs.tis.trainee.notifications.model.LocalOfficeContactType.SUPP
 import static uk.nhs.tis.trainee.notifications.model.LocalOfficeContactType.TSS_SUPPORT;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.LTFT_ADMIN_UNSUBMITTED;
 
+import com.amazonaws.xray.AWSXRay;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.json.JsonMapper;
@@ -89,6 +90,7 @@ import uk.nhs.tis.trainee.notifications.model.LocalOfficeContactType;
 import uk.nhs.tis.trainee.notifications.model.MessageType;
 import uk.nhs.tis.trainee.notifications.model.NotificationType;
 import uk.nhs.tis.trainee.notifications.service.EmailService;
+import uk.nhs.tis.trainee.notifications.service.MessageSendingService;
 import uk.nhs.tis.trainee.notifications.service.NotificationService;
 import uk.nhs.tis.trainee.notifications.service.UserAccountService;
 
@@ -154,6 +156,9 @@ class LtftListenerIntegrationTest {
   private JavaMailSender mailSender;
 
   @MockBean
+  private MessageSendingService messageService;
+
+  @MockBean
   private NotificationService notificationService;
 
   @MockBean
@@ -181,6 +186,9 @@ class LtftListenerIntegrationTest {
     when(mailSender.createMimeMessage()).thenReturn(new MimeMessage((Session) null));
     traineeId = UUID.randomUUID().toString();
     when(userAccountService.getUserAccountIds(traineeId)).thenReturn(Set.of(USER_ID));
+
+    // Auto-instrumentation of the SQS client fails without a root segment.
+    AWSXRay.getGlobalRecorder().beginNoOpSegment();
   }
 
   @AfterEach

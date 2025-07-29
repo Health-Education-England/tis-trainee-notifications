@@ -29,10 +29,13 @@ application:
     gmc-updated: ${GMC_UPDATED_QUEUE}
     ltft-updated: ${LTFT_UPDATED_QUEUE}
     ltft-updated-tpd: ${LTFT_UPDATED_TPD_QUEUE}
+    outbox: ${OUTBOX_QUEUE}
     placement-updated: ${PLACEMENT_UPDATED_QUEUE}
     placement-deleted: ${PLACEMENT_DELETED_QUEUE}
     programme-membership-updated: ${PROGRAMME_MEMBERSHIP_UPDATED_QUEUE}
     programme-membership-deleted: ${PROGRAMME_MEMBERSHIP_DELETED_QUEUE}
+  schedules:
+    send-scheduled-emails: "@hourly"
   sns:
     notifications-event:
       arn: ${NOTIFICATIONS_EVENT_TOPIC_ARN:}
@@ -112,6 +115,8 @@ com:
     xray:
       emitters:
         daemon-address: ${AWS_XRAY_DAEMON_ADDRESS:}
+      strategy:
+        tracing-name: ${AWS_XRAY_TRACING_NAME:tis-trainee-notifications-${application.environment}}
 
 mongock:
   migration-scan-package: uk.nhs.tis.trainee.notifications.migration

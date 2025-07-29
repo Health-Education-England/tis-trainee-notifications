@@ -29,6 +29,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import io.awspring.cloud.sqs.operations.SqsTemplate;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Stream;
@@ -72,6 +73,9 @@ class UserAccountServiceIntegrationTest {
 
   @MockBean
   private CognitoIdentityProviderClient cognitoClient;
+
+  @MockBean
+  private SqsTemplate sqsTemplate;
 
   @Mock
   private ListUsersIterable responses;

@@ -46,6 +46,7 @@ import uk.nhs.tis.trainee.notifications.model.History.TemplateInfo;
 import uk.nhs.tis.trainee.notifications.model.MessageType;
 import uk.nhs.tis.trainee.notifications.model.NotificationStatus;
 import uk.nhs.tis.trainee.notifications.model.NotificationType;
+import uk.nhs.tis.trainee.notifications.model.ObjectIdWrapper;
 import uk.nhs.tis.trainee.notifications.model.TisReferenceType;
 import uk.nhs.tis.trainee.notifications.repository.HistoryRepository;
 
@@ -178,6 +179,16 @@ public class HistoryService {
       eventBroadcastService.publishNotificationsEvent(history);
     }
     return Optional.of(toDto(history));
+  }
+
+  /**
+   * List the IDs of all scheduled notifications which are overdue being sent.
+   *
+   * @return A list of overdue notification IDs, empty if none found.
+   */
+  public List<ObjectIdWrapper> findAllOverdue() {
+    log.debug("Finding all overdue notifications IDs.");
+    return repository.findIdByStatusAndSentAtLessThanEqualOrderById(SCHEDULED, Instant.now());
   }
 
   /**

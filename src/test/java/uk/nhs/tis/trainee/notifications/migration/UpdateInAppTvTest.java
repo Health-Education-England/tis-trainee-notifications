@@ -66,6 +66,7 @@ import uk.nhs.tis.trainee.notifications.model.HrefType;
 import uk.nhs.tis.trainee.notifications.model.LocalOfficeContactType;
 import uk.nhs.tis.trainee.notifications.model.NotificationStatus;
 import uk.nhs.tis.trainee.notifications.model.NotificationType;
+import uk.nhs.tis.trainee.notifications.service.MessageSendingService;
 import uk.nhs.tis.trainee.notifications.service.NotificationService;
 
 @SpringBootTest
@@ -84,6 +85,9 @@ class UpdateInAppTvTest {
 
   @MockBean
   private NotificationService notificationService;
+
+  @MockBean
+  private MessageSendingService messageService;
 
   private UpdateInAppTvContact migrator;
 

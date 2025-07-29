@@ -26,6 +26,8 @@ import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
+import static org.hamcrest.Matchers.hasItems;
+import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.nullValue;
 import static org.mockito.ArgumentMatchers.any;
 import static uk.nhs.tis.trainee.notifications.TestContainerConfiguration.MONGODB;
@@ -39,6 +41,7 @@ import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.UNREAD;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.FORM_UPDATED;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_DAY_ONE;
 
+import io.awspring.cloud.sqs.operations.SqsTemplate;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -68,6 +71,7 @@ import uk.nhs.tis.trainee.notifications.model.History.RecipientInfo;
 import uk.nhs.tis.trainee.notifications.model.History.TemplateInfo;
 import uk.nhs.tis.trainee.notifications.model.History.TisReferenceInfo;
 import uk.nhs.tis.trainee.notifications.model.NotificationType;
+import uk.nhs.tis.trainee.notifications.model.ObjectIdWrapper;
 import uk.nhs.tis.trainee.notifications.model.TisReferenceType;
 import uk.nhs.tis.trainee.notifications.repository.HistoryRepository;
 
@@ -101,6 +105,9 @@ class HistoryServiceIntegrationTest {
 
   @MockBean
   EventBroadcastService eventBroadcastService;
+
+  @MockBean
+  private SqsTemplate sqsTemplate;
 
   @Autowired
   private HistoryService service;
@@ -142,6 +149,33 @@ class HistoryServiceIntegrationTest {
         is(TIS_REFERENCE_TYPE));
     assertThat("Unexpected TIS reference id.", savedReferenceInfo.id(),
         is(TIS_REFERENCE_ID));
+  }
+
+  @Test
+  void shouldFindOverdueNotifications() {
+    RecipientInfo recipientInfo = new RecipientInfo(TRAINEE_ID, EMAIL, TRAINEE_CONTACT);
+    TemplateInfo templateInfo = new TemplateInfo(TEMPLATE_NAME, TEMPLATE_VERSION,
+        TEMPLATE_VARIABLES);
+    TisReferenceInfo tisReferenceInfo = new TisReferenceInfo(TIS_REFERENCE_TYPE, TIS_REFERENCE_ID);
+
+    History past = service.save(
+        new History(null, tisReferenceInfo, FORM_UPDATED, recipientInfo, templateInfo, null,
+            SENT_AT.minus(Duration.ofDays(1)), null, SCHEDULED, null, null));
+    History current = service.save(
+        new History(null, tisReferenceInfo, FORM_UPDATED, recipientInfo, templateInfo, null,
+            SENT_AT, null, SCHEDULED, null, null));
+    History future = service.save(
+        new History(null, tisReferenceInfo, FORM_UPDATED, recipientInfo, templateInfo, null,
+            SENT_AT.plus(Duration.ofDays(1)), null, SCHEDULED, null, null));
+
+    List<ObjectIdWrapper> wrappedOverdue = service.findAllOverdue();
+
+    assertThat("Unexpected overdue count.", wrappedOverdue, hasSize(2));
+
+    List<ObjectId> overdue = wrappedOverdue.stream()
+        .map(wrapper -> wrapper.id())
+        .toList();
+    assertThat("Unexpected overdue IDs.", overdue, hasItems(past.id(), current.id()));
   }
 
   @Test
