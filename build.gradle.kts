@@ -10,7 +10,7 @@ plugins {
 }
 
 group = "uk.nhs.tis.trainee"
-version = "2.12.0"
+version = "2.13.0"
 
 configurations {
   compileOnly {
@@ -40,20 +40,14 @@ dependencies {
   implementation("org.springframework.boot:spring-boot-starter-thymeleaf")
   implementation("org.springframework.boot:spring-boot-starter-web")
 
-  // TODO: get as bundle from latest version library.
-//  implementation(libs.bundles.shedlock.mongo)
-  implementation("net.javacrumbs.shedlock:shedlock-spring:6.9.2")
-  implementation("net.javacrumbs.shedlock:shedlock-provider-mongo:6.9.2")
+  implementation(libs.bundles.shedlock.mongo)
 
   implementation("io.awspring.cloud:spring-cloud-aws-starter-s3")
   implementation("io.awspring.cloud:spring-cloud-aws-starter-ses")
   implementation("io.awspring.cloud:spring-cloud-aws-starter-sns")
   implementation("io.awspring.cloud:spring-cloud-aws-starter-sqs")
   implementation("software.amazon.awssdk:cognitoidentityprovider")
-  implementation(libs.aws.xray)
-  // TODO: bundle with X-Ray
-  implementation("com.amazonaws:aws-xray-recorder-sdk-aws-sdk-v2:${libs.aws.xray.get().version}")
-  implementation("com.amazonaws:aws-xray-recorder-sdk-aws-sdk-v2-instrumentor:${libs.aws.xray.get().version}")
+  implementation(libs.bundles.aws.xray)
 
   implementation("com.mysql:mysql-connector-j")
   implementation("org.flywaydb:flyway-core")
