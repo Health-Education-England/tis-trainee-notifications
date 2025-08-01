@@ -15,6 +15,7 @@ application:
     gmc-updated: dummy-value
     ltft-updated: dummy-value
     ltft-updated-tpd: dummy-value
+    outbox: dummy-value
     placement-updated: dummy-value
     placement-deleted: dummy-value
     programme-membership-updated: dummy-value
@@ -30,8 +31,6 @@ spring:
         static: aws-global
       sqs:
         enabled: false
-    compatibility-verifier:
-      enabled: false # TODO: For unknown reasons there is currently a flagged incompatibility between Spring Cloud 2022.0.4 and Spring Boot 3.1.x.
   datasource:
     type: com.zaxxer.hikari.HikariDataSource
     url: jdbc:h2:mem:test;DB_CLOSE_DELAY=-1;IGNORECASE=TRUE;MODE=MySQL

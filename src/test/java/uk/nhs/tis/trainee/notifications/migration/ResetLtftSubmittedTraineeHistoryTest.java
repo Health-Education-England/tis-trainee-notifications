@@ -32,12 +32,14 @@ import static uk.nhs.tis.trainee.notifications.TestContainerConfiguration.MONGOD
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.LTFT_SUBMITTED;
 
 import com.mongodb.MongoException;
+import io.awspring.cloud.sqs.operations.SqsTemplate;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.boot.test.mock.mockito.SpyBean;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.data.mongodb.core.MongoTemplate;
@@ -61,6 +63,9 @@ class ResetLtftSubmittedTraineeHistoryTest {
 
   @SpyBean
   private MongoTemplate mongoTemplate;
+
+  @MockBean
+  private SqsTemplate sqsTemplate;
 
   private ResetLtftSubmittedTraineeHistory migrator;
 

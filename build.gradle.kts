@@ -24,8 +24,8 @@ repositories {
 
 dependencyManagement {
   imports {
-    mavenBom(libs.spring.cloud.dependencies.core.get().toString())
     mavenBom(libs.spring.cloud.dependencies.aws.get().toString())
+    mavenBom(libs.spring.cloud.dependencies.core.get().toString())
   }
 }
 
@@ -39,14 +39,15 @@ dependencies {
   implementation("org.springframework.boot:spring-boot-starter-quartz")
   implementation("org.springframework.boot:spring-boot-starter-thymeleaf")
   implementation("org.springframework.boot:spring-boot-starter-web")
-  testImplementation("org.springframework.boot:spring-boot-starter-test")
+
+  implementation(libs.bundles.shedlock.mongo)
 
   implementation("io.awspring.cloud:spring-cloud-aws-starter-s3")
   implementation("io.awspring.cloud:spring-cloud-aws-starter-ses")
   implementation("io.awspring.cloud:spring-cloud-aws-starter-sns")
   implementation("io.awspring.cloud:spring-cloud-aws-starter-sqs")
   implementation("software.amazon.awssdk:cognitoidentityprovider")
-  implementation(libs.aws.xray)
+  implementation(libs.bundles.aws.xray)
 
   implementation("com.mysql:mysql-connector-j")
   implementation("org.flywaydb:flyway-core")
@@ -66,8 +67,9 @@ dependencies {
   // Sentry reporting
   implementation(libs.bundles.sentry)
 
+  testImplementation("org.springframework.boot:spring-boot-starter-test")
   testImplementation("org.springframework.cloud:spring-cloud-starter-bootstrap")
-  testImplementation("com.playtika.testcontainers:embedded-redis:3.1.5")
+  testImplementation("com.playtika.testcontainers:embedded-redis:3.1.15")
   testImplementation("com.h2database:h2")
 
   testImplementation("org.springframework.boot:spring-boot-testcontainers")

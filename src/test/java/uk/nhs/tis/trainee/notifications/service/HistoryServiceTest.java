@@ -34,6 +34,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
+import static uk.nhs.tis.trainee.notifications.matcher.InstantCloseTo.closeTo;
 import static uk.nhs.tis.trainee.notifications.model.MessageType.EMAIL;
 import static uk.nhs.tis.trainee.notifications.model.MessageType.IN_APP;
 import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.FAILED;
@@ -68,6 +69,7 @@ import uk.nhs.tis.trainee.notifications.model.History.TisReferenceInfo;
 import uk.nhs.tis.trainee.notifications.model.MessageType;
 import uk.nhs.tis.trainee.notifications.model.NotificationStatus;
 import uk.nhs.tis.trainee.notifications.model.NotificationType;
+import uk.nhs.tis.trainee.notifications.model.ObjectIdWrapper;
 import uk.nhs.tis.trainee.notifications.model.TisReferenceType;
 import uk.nhs.tis.trainee.notifications.repository.HistoryRepository;
 
@@ -416,6 +418,40 @@ class HistoryServiceTest {
   }
 
   @Test
+  void shouldFindNoOverdueNotificationsWhenNoneExist() {
+    when(repository.findIdByStatusAndSentAtLessThanEqualOrderById(any(), any())).thenReturn(
+        List.of());
+
+    List<ObjectIdWrapper> allOverdue = service.findAllOverdue();
+
+    assertThat("Unexpected overdue count.", allOverdue.size(), is(0));
+  }
+
+  @Test
+  void shouldFindOverdueNotificationsWhenExists() {
+    ObjectIdWrapper overdueId = new ObjectIdWrapper(ObjectId.get());
+    when(repository.findIdByStatusAndSentAtLessThanEqualOrderById(any(), any())).thenReturn(
+        List.of(overdueId));
+
+    List<ObjectIdWrapper> allOverdue = service.findAllOverdue();
+
+    assertThat("Unexpected overdue count.", allOverdue.size(), is(1));
+    assertThat("Unexpected overdue ID.", allOverdue.get(0), sameInstance(overdueId));
+  }
+
+  @Test
+  void shouldUseScheduledDueAtCurrentTimeWhenLookingForOverdueNotifications() {
+    service.findAllOverdue();
+
+    ArgumentCaptor<Instant> dueCaptor = ArgumentCaptor.captor();
+    verify(repository).findIdByStatusAndSentAtLessThanEqualOrderById(eq(SCHEDULED),
+        dueCaptor.capture());
+
+    assertThat("Unexpected due timestamp.", dueCaptor.getValue(),
+        closeTo(Instant.now().getEpochSecond(), 1));
+  }
+
+  @Test
   void shouldFindNoHistoryDtoForTraineeWhenNotificationsNotExist() {
     when(repository.findAllByRecipient_IdOrderBySentAtDesc(TRAINEE_ID)).thenReturn(List.of());
 
@@ -552,7 +588,7 @@ class HistoryServiceTest {
   @ParameterizedTest
   @MethodSource("uk.nhs.tis.trainee.notifications.MethodArgumentUtil#getTemplateCombinations")
   void shouldFindHistoryForTraineeWhenSentNotificationsExist(MessageType messageType,
-                                                         NotificationType notificationType) {
+      NotificationType notificationType) {
     RecipientInfo recipientInfo = new RecipientInfo(TRAINEE_ID, messageType, TRAINEE_CONTACT);
     TemplateInfo templateInfo = new TemplateInfo(TEMPLATE_NAME, TEMPLATE_VERSION,
         TEMPLATE_VARIABLES);
@@ -620,7 +656,7 @@ class HistoryServiceTest {
   @ParameterizedTest
   @MethodSource("uk.nhs.tis.trainee.notifications.MethodArgumentUtil#getTemplateCombinations")
   void shouldFindHistoryForTraineeWhenScheduledNotificationsExist(MessageType messageType,
-                                                             NotificationType notificationType) {
+      NotificationType notificationType) {
     RecipientInfo recipientInfo = new RecipientInfo(TRAINEE_ID, messageType, TRAINEE_CONTACT);
     TemplateInfo templateInfo = new TemplateInfo(TEMPLATE_NAME, TEMPLATE_VERSION,
         TEMPLATE_VARIABLES);
