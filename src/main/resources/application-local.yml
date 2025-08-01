@@ -26,6 +26,8 @@ application:
   sns:
     notifications-event:
       arn: arn:aws:sns:eu-west-2:${local.account-id}:tis-trainee-notifications-event
+  strategy:
+    tracing-name: tis-trainee-notifications-local
 
 local:
   account-id: "000000000000"
