@@ -164,7 +164,7 @@ class HistoryServiceIntegrationTest {
     History current = service.save(
         new History(null, tisReferenceInfo, FORM_UPDATED, recipientInfo, templateInfo, null,
             SENT_AT, null, SCHEDULED, null, null));
-    History future = service.save(
+    service.save(
         new History(null, tisReferenceInfo, FORM_UPDATED, recipientInfo, templateInfo, null,
             SENT_AT.plus(Duration.ofDays(1)), null, SCHEDULED, null, null));
 
@@ -173,7 +173,7 @@ class HistoryServiceIntegrationTest {
     assertThat("Unexpected overdue count.", wrappedOverdue, hasSize(2));
 
     List<ObjectId> overdue = wrappedOverdue.stream()
-        .map(wrapper -> wrapper.id())
+        .map(ObjectIdWrapper::id)
         .toList();
     assertThat("Unexpected overdue IDs.", overdue, hasItems(past.id(), current.id()));
   }
