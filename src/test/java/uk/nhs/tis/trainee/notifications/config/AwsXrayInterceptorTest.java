@@ -35,6 +35,8 @@ import com.amazonaws.xray.strategy.sampling.AllSamplingStrategy;
 import com.amazonaws.xray.strategy.sampling.NoSamplingStrategy;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.Signature;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.InOrder;
@@ -43,11 +45,23 @@ class AwsXrayInterceptorTest {
 
   private static final String TRACING_NAME = "tis-trainee-notification-test";
 
+  private static AWSXRayRecorder originalRecorder;
+
   private AwsXrayInterceptor interceptor;
+
+  @BeforeAll
+  static void setUpBeforeAll() {
+    originalRecorder = AWSXRay.getGlobalRecorder();
+  }
 
   @BeforeEach
   void setUp() {
     interceptor = new AwsXrayInterceptor(TRACING_NAME);
+  }
+
+  @AfterAll
+  static void tearDownAfterAll() {
+    AWSXRay.setGlobalRecorder(originalRecorder);
   }
 
   @Test
