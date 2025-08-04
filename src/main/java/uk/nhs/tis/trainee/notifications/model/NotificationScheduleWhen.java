@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright 2023 Crown Copyright (Health Education England)
+ * Copyright 2025 Crown Copyright (Health Education England)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
  * associated documentation files (the "Software"), to deal in the Software without restriction,
@@ -21,16 +21,13 @@
 
 package uk.nhs.tis.trainee.notifications.model;
 
+import java.util.Date;
+
 /**
- * An enumeration of possible TIS reference (core entity) types.
+ * A record representing the scheduling of a notification.
+ *
+ * @param unnecessaryReminder Indicates if the notification is an unnecessary reminder.
+ * @param scheduleWhen        The date when the notification is scheduled to be sent.
  */
-public enum TisReferenceType {
-
-  PLACEMENT,
-  PROGRAMME_MEMBERSHIP,
-  FORMR_PARTA,
-  FORMR_PARTB,
-  LTFT,
-  PERSON
-
+public record NotificationScheduleWhen(boolean unnecessaryReminder, Date scheduleWhen) {
 }
