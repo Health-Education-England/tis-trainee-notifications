@@ -33,6 +33,7 @@ import org.springframework.data.mongodb.repository.Update;
 import org.springframework.stereotype.Repository;
 import uk.nhs.tis.trainee.notifications.model.History;
 import uk.nhs.tis.trainee.notifications.model.NotificationStatus;
+import uk.nhs.tis.trainee.notifications.model.ObjectIdWrapper;
 
 /**
  * A repository of historical notifications.
@@ -40,6 +41,17 @@ import uk.nhs.tis.trainee.notifications.model.NotificationStatus;
 @Repository
 public interface HistoryRepository extends
     MongoRepository<History, ObjectId> {
+
+  /**
+   * Get a list of the IDs of all matching history items.
+   *
+   * @param status The status to filter by.
+   * @param sentAt The timestamp to filter results by, must be less than or equal to this value.
+   * @return A list of IDs for matching history items.
+   */
+  @Query(fields = "{_id: 1}")
+  List<ObjectIdWrapper> findIdByStatusAndSentAtLessThanEqualOrderById(NotificationStatus status,
+      Instant sentAt);
 
   /**
    * Find all history for the given recipient ID.

@@ -11,15 +11,18 @@ application:
     contact-details-updated: ${local.sqs-path}/tis-trainee-notifications-local-contact-details-updated
     email-failure: ${local.sqs-path}/tis-trainee-notifications-local-email-failure
     email-event: ${local.sqs-path}/tis-trainee-notifications-local-email-failure
-    ltft-updated: ${local.sqs-path}/tis-trainee-notifications-local-ltft-updated
-    ltft-updated-tpd: ${local.sqs-path}/tis-trainee-notifications-local-ltft-updated-tpd
     form-updated: ${local.sqs-path}/tis-trainee-notifications-local-form-updated
     gmc-rejected: ${local.sqs-path}/tis-trainee-notifications-local-gmc-rejected
     gmc-updated: ${local.sqs-path}/tis-trainee-notifications-local-gmc-updated
+    ltft-updated: ${local.sqs-path}/tis-trainee-notifications-local-ltft-updated
+    ltft-updated-tpd: ${local.sqs-path}/tis-trainee-notifications-local-ltft-updated-tpd
+    outbox: ${local.sqs-path}/tis-trainee-notifications-local-outbox
     placement-deleted: ${local.sqs-path}/tis-trainee-notifications-local-placement-deleted
     placement-updated: ${local.sqs-path}/tis-trainee-notifications-local-placement-updated
     programme-membership-deleted: ${local.sqs-path}/tis-trainee-notifications-local-programme-membership-deleted
     programme-membership-updated: ${local.sqs-path}/tis-trainee-notifications-local-programme-membership-updated
+  schedules:
+    send-scheduled-emails: "*/30 * * * * *"
   sns:
     notifications-event:
       arn: arn:aws:sns:eu-west-2:${local.account-id}:tis-trainee-notifications-event

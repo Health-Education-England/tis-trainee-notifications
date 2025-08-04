@@ -23,10 +23,17 @@ package uk.nhs.tis.trainee.notifications.config;
 
 import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.is;
 
+import com.amazonaws.xray.AWSXRay;
+import com.amazonaws.xray.AWSXRayRecorder;
+import com.amazonaws.xray.internal.FastIdGenerator;
 import com.amazonaws.xray.jakarta.servlet.AWSXRayServletFilter;
+import com.amazonaws.xray.plugins.ECSPlugin;
+import com.amazonaws.xray.strategy.IgnoreErrorContextMissingStrategy;
 import jakarta.servlet.Filter;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 class AwsXrayConfigurationTest {
@@ -36,6 +43,30 @@ class AwsXrayConfigurationTest {
   @BeforeEach
   void setUp() {
     configuration = new AwsXrayConfiguration();
+  }
+
+  @Test
+  @Disabled("Relies on ECS_CONTAINER_METADATA_URI_V4 env var, which breaks other tests.")
+  void shouldRegisterEcsPlugin() {
+    AWSXRayRecorder recorder = AWSXRay.getGlobalRecorder();
+
+    assertThat("Unexpected recorder origin.", recorder.getOrigin(), is(ECSPlugin.ORIGIN));
+  }
+
+  @Test
+  void shouldUseFastIdGeneration() {
+    AWSXRayRecorder recorder = AWSXRay.getGlobalRecorder();
+
+    assertThat("Unexpected recorder ID generator.", recorder.getIdGenerator(),
+        instanceOf(FastIdGenerator.class));
+  }
+
+  @Test
+  void shouldIgnoreMissingContext() {
+    AWSXRayRecorder recorder = AWSXRay.getGlobalRecorder();
+
+    assertThat("Unexpected missing context strategy.", recorder.getContextMissingStrategy(),
+        instanceOf(IgnoreErrorContextMissingStrategy.class));
   }
 
   @Test

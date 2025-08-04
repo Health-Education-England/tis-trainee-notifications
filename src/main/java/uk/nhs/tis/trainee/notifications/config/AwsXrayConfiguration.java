@@ -21,7 +21,12 @@
 
 package uk.nhs.tis.trainee.notifications.config;
 
+import com.amazonaws.xray.AWSXRay;
+import com.amazonaws.xray.AWSXRayRecorder;
+import com.amazonaws.xray.AWSXRayRecorderBuilder;
 import com.amazonaws.xray.jakarta.servlet.AWSXRayServletFilter;
+import com.amazonaws.xray.plugins.ECSPlugin;
+import com.amazonaws.xray.strategy.IgnoreErrorContextMissingStrategy;
 import jakarta.servlet.Filter;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
@@ -36,8 +41,29 @@ import org.springframework.context.annotation.Configuration;
     + ".isEmpty('${com.amazonaws.xray.emitters.daemon-address}')")
 public class AwsXrayConfiguration {
 
+  /*
+   * Enable the ECS plugin for additional metadata.
+   */
+  static {
+    AWSXRayRecorder recorder = AWSXRayRecorderBuilder.standard()
+        .withPlugin(new ECSPlugin())
+        .withFastIdGenerator()
+        // TODO: Manual segments are not shared across threads, ignore errors to avoid alerts.
+        .withContextMissingStrategy(new IgnoreErrorContextMissingStrategy())
+        .build();
+
+    AWSXRay.setGlobalRecorder(recorder);
+  }
+
+  /**
+   * Create XRay tracing filter.
+   *
+   * @param tracingName The tracing name of the service, used as the segment name..
+   * @return The created tracing filter.
+   */
   @Bean
-  public Filter tracingFilter(@Value("${application.environment}") String environment) {
-    return new AWSXRayServletFilter("tis-trainee-notifications-" + environment);
+  public Filter tracingFilter(
+      @Value("${com.amazonaws.xray.strategy.tracing-name}") String tracingName) {
+    return new AWSXRayServletFilter(tracingName);
   }
 }

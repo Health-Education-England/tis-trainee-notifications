@@ -89,6 +89,7 @@ import uk.nhs.tis.trainee.notifications.model.LocalOfficeContactType;
 import uk.nhs.tis.trainee.notifications.model.MessageType;
 import uk.nhs.tis.trainee.notifications.model.NotificationType;
 import uk.nhs.tis.trainee.notifications.service.EmailService;
+import uk.nhs.tis.trainee.notifications.service.MessageSendingService;
 import uk.nhs.tis.trainee.notifications.service.NotificationService;
 import uk.nhs.tis.trainee.notifications.service.UserAccountService;
 
@@ -152,6 +153,9 @@ class LtftListenerIntegrationTest {
 
   @MockBean
   private JavaMailSender mailSender;
+
+  @MockBean
+  private MessageSendingService messageService;
 
   @MockBean
   private NotificationService notificationService;
