@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+  <title>LTFT Rejected</title>
+</head>
+<body>
+<h1>Email Message</h1>
+<h2>Subject</h2>
+<th:block th:fragment="subject">
+  Notification for Changing hours (LTFT) Application Rejection for <th:block th:text="${not #strings.isEmpty(familyName)} ? |Dr ${familyName}| : _">Doctor</th:block> (<th:block th:text="${not #strings.isEmpty(var?.formRef)} ? ${var.formRef} : 'unknown form reference'"></th:block>)
+</th:block><h2>Content</h2>
+<th:block th:fragment="content" th:with="subjectRefs = |GMC: ${not #strings.isEmpty(var?.personalDetails?.gmcNumber) ? var.personalDetails.gmcNumber : 'unknown'}, LTFT Ref No: ${not #strings.isEmpty(var?.formRef) ? var.formRef : 'unknown'}|">
+  <div th:replace="fragments/retry/v1.0.0 :: retry(${originallySentOn})"></div>
+  <div style="text-align:right"><img style="margin-right:25px; height:100px" src='https://trainee.tis.nhs.uk/nhse-logo.png' alt="NHS England logo"/></div>
+  <p>Dear <span th:text="${not #strings.isEmpty(var?.discussions?.tpdName)} ? |${var.discussions.tpdName}| : _">Training Programme Director</span>,</p>
+  <p>We are writing to inform you that the Less Than Full Time (LTFT) application for <th:block th:text="${not #strings.isEmpty(familyName)} ? |Dr ${familyName}| : _">Doctor</th:block> (<th:block th:text="${not #strings.isEmpty(var?.personalDetails?.gmcNumber)} ? ${var.personalDetails.gmcNumber} : 'unknown'"></th:block>) has been rejected as of <th:block th:text="${not #strings.isEmpty(var?.timestamp)} ? ${#temporals.format(var.timestamp, 'dd MMMM yyyy')}   : 'unknown'"
+  ></th:block>.</p>
+  <p>Your details were provided in the application as you have been part of discussions for the proposed hours. Please find a summary of the outcome below:</p>
+  <p>
+    <strong>Application Reference:</strong> <th:block th:text="${not #strings.isEmpty(var?.formRef)} ? ${var.formRef} : 'unknown'"></th:block>
+    <strong>Applicant:</strong> Dr <span th:text="${not #strings.isEmpty(givenName)} ? ${givenName} : _"></span> <span th:text="${not #strings.isEmpty(familyName)} ? ${familyName} : _"></span>
+    <strong>GMC Number:</strong> <th:block th:text="${not #strings.isEmpty(var?.personalDetails?.gmcNumber)} ? ${var.personalDetails.gmcNumber} : 'unknown'"></th:block>
+    <strong>Decision Date:</strong> <th:block th:text="${not #strings.isEmpty(var?.timestamp)} ? ${#temporals.format(var.timestamp, 'dd MMMM yyyy')}   : 'unknown'"></th:block>
+    <strong>Rejection Reason:</strong> <th:block th:text="${not #strings.isEmpty(var?.stateDetail?.reason)} ? ${var.stateDetail.reason} : 'unknown'"></th:block>
+    <strong>Additional Information from Local Office:</strong> <th:block th:text="${not #strings.isEmpty(var?.stateDetail?.message)} ? ${var.stateDetail.message} : 'unknown'"></th:block>
+  </p>
+  <p>If you have any queries regarding this application, please contact your <th:block th:with="contact = ${contacts?.get('LTFT_SUPPORT')}">
+    <th:block th:replace="~{fragments/link/v1.0.0 :: link(${contact?.contact}, ${contact?.type}, '', 'Local Office Support Team', '.', 'Local Office Support Team.', |Ltft Rejected - Enquiries - ${subjectRefs}|)}"></th:block>
+  </th:block></p>
+  <p><strong>Kind Regards,<br><th:block th:text="${not #strings.isEmpty(var?.programmeMembership?.managingDeanery)} ? |NHS England - ${var.programmeMembership.managingDeanery}| : 'Your Local Office'"></th:block></strong></p>
+  <p><em>(Please note: Health Education England is now part of NHS England, and our systems will be updated accordingly.)</em></p>
+  <p><strong>Workforce, Training and Education<br>NHS England</strong></p>
+  <div th:replace="fragments/disclaimer/v1.0.0 :: body"></div>
+</th:block>
+</body>
+</html>
