@@ -35,6 +35,7 @@ import static uk.nhs.tis.trainee.notifications.model.NotificationType.GMC_REJECT
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.GMC_REJECTED_TRAINEE;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.GMC_UPDATED;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.LTFT_APPROVED_TPD;
+import static uk.nhs.tis.trainee.notifications.model.NotificationType.LTFT_REJECTED_TPD;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.LTFT_SUBMITTED_TPD;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PLACEMENT_ROLLOUT_2024_CORRECTION;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PLACEMENT_UPDATED_WEEK_12;
@@ -168,7 +169,8 @@ class EmailServiceIntegrationTest {
       assertThat("Unexpected element tag.", greeting.tagName(), is("p"));
       assertThat("Unexpected greeting.", greeting.text(), is("Dear Local Office,"));
     } else if (notificationType.equals(LTFT_SUBMITTED_TPD)
-        || notificationType.equals(LTFT_APPROVED_TPD)) {
+        || notificationType.equals(LTFT_APPROVED_TPD)
+        || notificationType.equals(LTFT_REJECTED_TPD)) {
       Element greeting = body.children().get(getGreetingElementIndex(notificationType));
       assertThat("Unexpected element tag.", greeting.tagName(), is("p"));
       assertThat("Unexpected greeting.", greeting.text(),
@@ -208,7 +210,8 @@ class EmailServiceIntegrationTest {
       assertThat("Unexpected element tag.", greeting.tagName(), is("p"));
       assertThat("Unexpected greeting.", greeting.text(), is("Dear Local Office,"));
     } else if (notificationType.equals(LTFT_SUBMITTED_TPD)
-        || notificationType.equals(LTFT_APPROVED_TPD)) {
+        || notificationType.equals(LTFT_APPROVED_TPD)
+        || notificationType.equals(LTFT_REJECTED_TPD)) {
       Element greeting = body.children().get(getGreetingElementIndex(notificationType));
       assertThat("Unexpected element tag.", greeting.tagName(), is("p"));
       assertThat("Unexpected greeting.", greeting.text(),
@@ -266,7 +269,8 @@ class EmailServiceIntegrationTest {
       assertThat("Unexpected element tag.", greeting.tagName(), is("p"));
       assertThat("Unexpected greeting.", greeting.text(), is("Dear Local Office,"));
     } else if (notificationType.equals(LTFT_SUBMITTED_TPD)
-        || notificationType.equals(LTFT_APPROVED_TPD)) {
+        || notificationType.equals(LTFT_APPROVED_TPD)
+        || notificationType.equals(LTFT_REJECTED_TPD)) {
       Element greeting = body.children().get(getGreetingElementIndex(notificationType));
       assertThat("Unexpected element tag.", greeting.tagName(), is("p"));
       assertThat("Unexpected greeting.", greeting.text(), is("Dear TPD name,"));
@@ -724,7 +728,7 @@ class EmailServiceIntegrationTest {
           CREDENTIAL_REVOKED, FORM_UPDATED, GMC_UPDATED, GMC_REJECTED_LO,
            GMC_REJECTED_TRAINEE, LTFT_ADMIN_UNSUBMITTED, LTFT_APPROVED, LTFT_APPROVED_TPD,
            LTFT_UPDATED, LTFT_SUBMITTED, LTFT_SUBMITTED_TPD, LTFT_UNSUBMITTED, LTFT_WITHDRAWN,
-           LTFT_REJECTED -> 1;
+           LTFT_REJECTED, LTFT_REJECTED_TPD -> 1;
       default -> 0;
     };
   }
