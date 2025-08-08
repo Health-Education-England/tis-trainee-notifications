@@ -672,6 +672,7 @@ class LtftListenerIntegrationTest {
   @ParameterizedTest
   @CsvSource(delimiter = '|', textBlock = """
       APPROVED  | LTFT_APPROVED_TPD
+      REJECTED  | LTFT_REJECTED_TPD
       SUBMITTED | LTFT_SUBMITTED_TPD
       """)
   void shouldSendFullyTailoredTpdNotificationWhenAllTemplateVariablesAvailableAndUrlContacts(
@@ -749,6 +750,7 @@ class LtftListenerIntegrationTest {
   @ParameterizedTest
   @CsvSource(delimiter = '|', textBlock = """
       APPROVED  | LTFT_APPROVED_TPD
+      REJECTED  | LTFT_REJECTED_TPD
       SUBMITTED | LTFT_SUBMITTED_TPD
       """)
   void shouldSendFullyTailoredTpdNotificationWhenAllTemplateVariablesAvailableAndEmailContacts(
@@ -826,6 +828,7 @@ class LtftListenerIntegrationTest {
   @ParameterizedTest
   @CsvSource(delimiter = '|', textBlock = """
       APPROVED  | LTFT_APPROVED_TPD  | v1.0.1
+      REJECTED  | LTFT_REJECTED_TPD  | v1.0.0
       SUBMITTED | LTFT_SUBMITTED_TPD | v1.0.1
       """)
   void shouldStoreTpdNotificationHistoryWhenMessageSent(String state, NotificationType type,

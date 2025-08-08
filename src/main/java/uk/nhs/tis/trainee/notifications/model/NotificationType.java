@@ -49,6 +49,7 @@ public enum NotificationType {
   LTFT_APPROVED("ltft-approved"),
   LTFT_APPROVED_TPD("ltft-approved-tpd"),
   LTFT_REJECTED("ltft-rejected"),
+  LTFT_REJECTED_TPD("ltft-rejected-tpd"),
   LTFT_SUBMITTED("ltft-submitted"),
   LTFT_SUBMITTED_TPD("ltft-submitted-tpd"),
   LTFT_UNSUBMITTED("ltft-unsubmitted"),

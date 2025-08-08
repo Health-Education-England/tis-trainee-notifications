@@ -70,6 +70,8 @@ application:
       email: v1.0.1
     ltft-rejected:
       email: v1.0.0
+    ltft-rejected-tpd:
+      email: v1.0.0
     ltft-submitted:
       email: v1.0.0
     ltft-submitted-tpd:
