@@ -202,7 +202,7 @@ class NotificationServiceTest {
 
     NotificationSummary programmeNotificationSummary
         = new NotificationSummary(PROGRAMME_NAME, START_DATE,
-        new TisReferenceInfo(PROGRAMME_MEMBERSHIP, TIS_ID), false);
+            new TisReferenceInfo(PROGRAMME_MEMBERSHIP, TIS_ID), false);
     when(programmeMembershipNotificationHelper.getNotificationSummary(any(), anyBoolean()))
         .thenReturn(programmeNotificationSummary);
 

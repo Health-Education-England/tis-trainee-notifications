@@ -653,7 +653,6 @@ public class NotificationService implements Job {
    * @param traineeDetails    The details of the trainee.
    * @param traineeId         The id of the trainee.
    * @param contactType       The type of local office contact to notify.
-   * @param contactType       The type of local office contact to notify.
    * @param templateVariables The template variables.
    * @param templateVersion   The template version.
    * @param notificationType  The notification type (template type).
