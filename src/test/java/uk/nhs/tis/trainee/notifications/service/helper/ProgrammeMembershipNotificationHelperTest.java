@@ -24,33 +24,44 @@ package uk.nhs.tis.trainee.notifications.service.helper;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.notNullValue;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.SENT;
+import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_CREATED;
 import static uk.nhs.tis.trainee.notifications.model.ProgrammeActionType.REGISTER_TSS;
 import static uk.nhs.tis.trainee.notifications.model.ProgrammeActionType.SIGN_COJ;
 import static uk.nhs.tis.trainee.notifications.model.ProgrammeActionType.SIGN_FORM_R_PART_A;
 import static uk.nhs.tis.trainee.notifications.model.ProgrammeActionType.SIGN_FORM_R_PART_B;
 import static uk.nhs.tis.trainee.notifications.model.TisReferenceType.PERSON;
 import static uk.nhs.tis.trainee.notifications.model.TisReferenceType.PROGRAMME_MEMBERSHIP;
+import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.PROGRAMME_NAME_FIELD;
+import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.START_DATE_FIELD;
+import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.TIS_ID_FIELD;
+import static uk.nhs.tis.trainee.notifications.service.helper.ProgrammeMembershipNotificationHelper.TEMPLATE_NOTIFICATION_TYPE_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.helper.ProgrammeMembershipNotificationHelper.TEMPLATE_WELCOME_NOTIFICATION_DATE_FIELD;
 
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.params.provider.NullAndEmptySource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.quartz.JobDataMap;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 import uk.nhs.tis.trainee.notifications.dto.ActionDto;
 import uk.nhs.tis.trainee.notifications.model.History;
 import uk.nhs.tis.trainee.notifications.model.NotificationStatus;
+import uk.nhs.tis.trainee.notifications.model.NotificationSummary;
+import uk.nhs.tis.trainee.notifications.model.NotificationType;
 import uk.nhs.tis.trainee.notifications.model.ProgrammeActionType;
 
 /**
@@ -164,13 +175,24 @@ class ProgrammeMembershipNotificationHelperTest {
         jobDataMap.get(TEMPLATE_WELCOME_NOTIFICATION_DATE_FIELD), nullValue());
   }
 
+  @Test
+  void shouldNotAddWelcomeSentDateToJobMapIfHistoryStatusNull() {
+    History history = History.builder()
+        .sentAt(Instant.now())
+        .build();
+    service.addWelcomeSentDateToJobMap(jobDataMap, history);
+
+    assertThat("Unexpected welcome message in job data map.",
+        jobDataMap.get(TEMPLATE_WELCOME_NOTIFICATION_DATE_FIELD), nullValue());
+  }
+
   @ParameterizedTest
   @EnumSource(value = NotificationStatus.class, mode = EnumSource.Mode.EXCLUDE, names = {"SENT"})
   void shouldNotAddWelcomeSentDateToJobMapIfHistoryStatusNotSent(NotificationStatus status) {
     History history = History.builder()
-            .status(status)
+        .status(status)
         .sentAt(Instant.now())
-                .build();
+        .build();
     service.addWelcomeSentDateToJobMap(jobDataMap, history);
 
     assertThat("Unexpected welcome message in job data map.",
@@ -204,4 +226,94 @@ class ProgrammeMembershipNotificationHelperTest {
     assertThat("Unexpected welcome message in job data map.",
         jobDataMap.get(TEMPLATE_WELCOME_NOTIFICATION_DATE_FIELD), is(retryAt));
   }
+
+  @ParameterizedTest
+  @EnumSource(value = NotificationType.class, names = {"PROGRAMME_UPDATED_WEEK_12",
+      "PROGRAMME_UPDATED_WEEK_4", "PROGRAMME_UPDATED_WEEK_2"})
+  void shouldGetNotificationSummaryWithUnnecessaryReminderOverride(
+      NotificationType notificationType) {
+    jobDataMap.put(TEMPLATE_NOTIFICATION_TYPE_FIELD, notificationType);
+    NotificationSummary summary = service.getNotificationSummary(jobDataMap, false);
+
+    assertThat("Unexpected null summary", summary, notNullValue());
+    assertThat("Unexpected unnecessary reminder flag", summary.unnecessaryReminder(),
+        is(true));
+  }
+
+  @ParameterizedTest
+  @EnumSource(value = NotificationType.class, names = {"PROGRAMME_UPDATED_WEEK_12",
+      "PROGRAMME_UPDATED_WEEK_4", "PROGRAMME_UPDATED_WEEK_2"})
+  void shouldGetNotificationSummaryWithUnnecessaryReminderNotOverridden(
+      NotificationType notificationType) {
+    jobDataMap.put(TEMPLATE_NOTIFICATION_TYPE_FIELD, notificationType);
+    jobDataMap.put(String.valueOf(SIGN_COJ), false);
+    NotificationSummary summary = service.getNotificationSummary(jobDataMap, false);
+
+    assertThat("Unexpected null summary", summary, notNullValue());
+    assertThat("Unexpected unnecessary reminder flag", summary.unnecessaryReminder(),
+        is(false));
+  }
+
+  @ParameterizedTest
+  @EnumSource(value = NotificationType.class, mode = EnumSource.Mode.EXCLUDE,
+      names = {"PROGRAMME_UPDATED_WEEK_12", "PROGRAMME_UPDATED_WEEK_4", "PROGRAMME_UPDATED_WEEK_2"})
+  void shouldGetNotificationSummaryForNonReminderJobsWithUnnecessaryReminderNotOverridden(
+      NotificationType notificationType) {
+    jobDataMap.put(TEMPLATE_NOTIFICATION_TYPE_FIELD, notificationType);
+    jobDataMap.put(String.valueOf(SIGN_COJ), true); //should not really exist for these types
+    NotificationSummary summary = service.getNotificationSummary(jobDataMap, false);
+
+    assertThat("Unexpected null summary", summary, notNullValue());
+    assertThat("Unexpected unnecessary reminder flag", summary.unnecessaryReminder(),
+        is(false));
+  }
+
+  @ParameterizedTest
+  @NullAndEmptySource
+  @ValueSource(strings = "test")
+  void shouldGetNotificationSummaryWithJobName(String programmeName) {
+    jobDataMap.put(TEMPLATE_NOTIFICATION_TYPE_FIELD, PROGRAMME_CREATED);
+    jobDataMap.put(PROGRAMME_NAME_FIELD, programmeName);
+    NotificationSummary summary = service.getNotificationSummary(jobDataMap, false);
+
+    assertThat("Unexpected null summary", summary, notNullValue());
+    assertThat("Unexpected job name", summary.jobName(), is(programmeName));
+  }
+
+  @Test
+  void shouldGetNotificationSummaryWithStartDate() {
+    jobDataMap.put(TEMPLATE_NOTIFICATION_TYPE_FIELD, PROGRAMME_CREATED);
+    jobDataMap.put(START_DATE_FIELD, LocalDate.of(2020, 1, 1));
+
+    NotificationSummary summary = service.getNotificationSummary(jobDataMap, false);
+
+    assertThat("Unexpected null summary", summary, notNullValue());
+    assertThat("Unexpected start date", summary.startDate(),
+        is(LocalDate.of(2020, 1, 1)));
+  }
+
+  @Test
+  void shouldGetNotificationSummaryWithNoStartDate() {
+    jobDataMap.put(TEMPLATE_NOTIFICATION_TYPE_FIELD, PROGRAMME_CREATED);
+    NotificationSummary summary = service.getNotificationSummary(jobDataMap, false);
+
+    assertThat("Unexpected null summary", summary, notNullValue());
+    assertThat("Unexpected non-null start date", summary.startDate(), nullValue());
+  }
+
+  @Test
+  void shouldGetNotificationSummaryWithTisReference() {
+    jobDataMap.put(TEMPLATE_NOTIFICATION_TYPE_FIELD, PROGRAMME_CREATED);
+    jobDataMap.put(TIS_ID_FIELD, "tis-id-123");
+    NotificationSummary summary = service.getNotificationSummary(jobDataMap, false);
+
+    assertThat("Unexpected null summary", summary, notNullValue());
+    History.TisReferenceInfo tisRef = summary.tisReferenceInfo();
+    assertThat("Unexpected null TIS reference", tisRef, notNullValue());
+    assertThat("Unexpected TIS reference ID", tisRef.id(),
+        is(jobDataMap.get(TIS_ID_FIELD)));
+    assertThat("Unexpected TIS reference type", tisRef.type(),
+        is(PROGRAMME_MEMBERSHIP));
+  }
+
 }

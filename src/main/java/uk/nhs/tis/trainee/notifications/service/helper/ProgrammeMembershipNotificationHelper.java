@@ -23,6 +23,8 @@ package uk.nhs.tis.trainee.notifications.service.helper;
 
 import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.SENT;
 import static uk.nhs.tis.trainee.notifications.model.TisReferenceType.PROGRAMME_MEMBERSHIP;
+import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.PROGRAMME_NAME_FIELD;
+import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.START_DATE_FIELD;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -168,10 +170,10 @@ public class ProgrammeMembershipNotificationHelper {
    */
   public NotificationSummary getNotificationSummary(JobDataMap jobDataMap,
       boolean unnecessaryReminder) {
-    String jobName = jobDataMap.getString(ProgrammeMembershipService.PROGRAMME_NAME_FIELD);
-    LocalDate startDate = (LocalDate) jobDataMap.get(ProgrammeMembershipService.START_DATE_FIELD);
+    String jobName = jobDataMap.getString(PROGRAMME_NAME_FIELD);
+    LocalDate startDate = (LocalDate) jobDataMap.get(START_DATE_FIELD);
     History.TisReferenceInfo tisReferenceInfo = new History.TisReferenceInfo(PROGRAMME_MEMBERSHIP,
-        jobDataMap.get(ProgrammeMembershipService.TIS_ID_FIELD).toString());
+        (String) jobDataMap.get(ProgrammeMembershipService.TIS_ID_FIELD));
     NotificationType notificationType
         = NotificationType.valueOf(jobDataMap.get(TEMPLATE_NOTIFICATION_TYPE_FIELD).toString());
     if (NotificationType.getReminderProgrammeUpdateNotificationTypes().contains(notificationType)

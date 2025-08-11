@@ -305,7 +305,8 @@ public class ProgrammeMembershipService {
               notificationsAlreadySent));
     } else {
       Integer daysBeforeStart = getDaysBeforeStartForNotification(notificationType);
-      if (NotificationType.getReminderProgrammeUpdateNotificationTypes().contains(notificationType)) {
+      if (NotificationType.getReminderProgrammeUpdateNotificationTypes()
+          .contains(notificationType)) {
         if (programmeMembership.getStartDate().minusDays(daysBeforeStart)
             .isBefore(LocalDate.now(timezone))) {
           // If the notification is a reminder and the deadline is in the past, it is unnecessary.

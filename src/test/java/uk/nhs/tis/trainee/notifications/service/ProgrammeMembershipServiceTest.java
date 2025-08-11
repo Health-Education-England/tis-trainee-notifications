@@ -734,9 +734,9 @@ class ProgrammeMembershipServiceTest {
 
   @ParameterizedTest
   @EnumSource(value = NotificationType.class, names = {"PROGRAMME_UPDATED_WEEK_12",
-  "PROGRAMME_UPDATED_WEEK_4", "PROGRAMME_UPDATED_WEEK_2"})
+      "PROGRAMME_UPDATED_WEEK_4", "PROGRAMME_UPDATED_WEEK_2"})
   void shouldSendReminderEmailNowWhenTodayIsDueDate(NotificationType reminderNotification)
-  throws SchedulerException {
+      throws SchedulerException {
     when(historyService.findAllHistoryForTrainee(PERSON_ID)).thenReturn(new ArrayList<>());
 
     ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
@@ -746,25 +746,27 @@ class ProgrammeMembershipServiceTest {
 
     service.addNotifications(programmeMembership);
 
-    verify(notificationService).executeNow(eq(reminderNotification + "-" + TIS_ID), any(), eq(false));
+    verify(notificationService).executeNow(eq(reminderNotification + "-" + TIS_ID), any(),
+        eq(false));
   }
 
-    @ParameterizedTest
-    @EnumSource(value = NotificationType.class, names = {"PROGRAMME_UPDATED_WEEK_12",
-    "PROGRAMME_UPDATED_WEEK_4", "PROGRAMME_UPDATED_WEEK_2"})
-    void shouldNotSendReminderEmailWhenOverdue(NotificationType reminderNotification)
-    throws SchedulerException {
-        when(historyService.findAllHistoryForTrainee(PERSON_ID)).thenReturn(new ArrayList<>());
+  @ParameterizedTest
+  @EnumSource(value = NotificationType.class, names = {"PROGRAMME_UPDATED_WEEK_12",
+      "PROGRAMME_UPDATED_WEEK_4", "PROGRAMME_UPDATED_WEEK_2"})
+  void shouldNotSendReminderEmailWhenOverdue(NotificationType reminderNotification)
+      throws SchedulerException {
+    when(historyService.findAllHistoryForTrainee(PERSON_ID)).thenReturn(new ArrayList<>());
 
-        ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
-        int offsetDays = service.getDaysBeforeStartForNotification(reminderNotification);
-        LocalDate overdueDate = LocalDate.now().plusDays(offsetDays).minusDays(1);
-        programmeMembership.setStartDate(overdueDate);
+    ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
+    int offsetDays = service.getDaysBeforeStartForNotification(reminderNotification);
+    LocalDate overdueDate = LocalDate.now().plusDays(offsetDays).minusDays(1);
+    programmeMembership.setStartDate(overdueDate);
 
-        service.addNotifications(programmeMembership);
+    service.addNotifications(programmeMembership);
 
-        verify(notificationService).executeNow(eq(reminderNotification + "-" + TIS_ID), any(), eq(true));
-    }
+    verify(notificationService).executeNow(eq(reminderNotification + "-" + TIS_ID), any(),
+        eq(true));
+  }
 
   @Test
   void shouldNotResendSentNotificationIfNotDeferral() throws SchedulerException {
