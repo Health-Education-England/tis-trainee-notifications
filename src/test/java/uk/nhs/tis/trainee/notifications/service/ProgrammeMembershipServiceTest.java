@@ -677,7 +677,8 @@ class ProgrammeMembershipServiceTest {
     ArgumentCaptor<JobDataMap> jobDataMapCaptor = ArgumentCaptor.captor();
     verify(notificationService).executeNow(
         stringCaptor.capture(),
-        jobDataMapCaptor.capture());
+        jobDataMapCaptor.capture(),
+        eq(false));
 
     String jobId = stringCaptor.getValue();
     String expectedJobId = PROGRAMME_CREATED + "-" + TIS_ID;
@@ -728,8 +729,42 @@ class ProgrammeMembershipServiceTest {
 
     service.addNotifications(programmeMembership);
 
-    verify(notificationService).executeNow(eq(PROGRAMME_DAY_ONE + "-" + TIS_ID), any());
+    verify(notificationService).executeNow(eq(PROGRAMME_DAY_ONE + "-" + TIS_ID), any(), eq(false));
   }
+
+  @ParameterizedTest
+  @EnumSource(value = NotificationType.class, names = {"PROGRAMME_UPDATED_WEEK_12",
+  "PROGRAMME_UPDATED_WEEK_4", "PROGRAMME_UPDATED_WEEK_2"})
+  void shouldSendReminderEmailNowWhenTodayIsDueDate(NotificationType reminderNotification)
+  throws SchedulerException {
+    when(historyService.findAllHistoryForTrainee(PERSON_ID)).thenReturn(new ArrayList<>());
+
+    ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
+    int offsetDays = service.getDaysBeforeStartForNotification(reminderNotification);
+    LocalDate reminderDate = LocalDate.now().plusDays(offsetDays);
+    programmeMembership.setStartDate(reminderDate);
+
+    service.addNotifications(programmeMembership);
+
+    verify(notificationService).executeNow(eq(reminderNotification + "-" + TIS_ID), any(), eq(false));
+  }
+
+    @ParameterizedTest
+    @EnumSource(value = NotificationType.class, names = {"PROGRAMME_UPDATED_WEEK_12",
+    "PROGRAMME_UPDATED_WEEK_4", "PROGRAMME_UPDATED_WEEK_2"})
+    void shouldNotSendReminderEmailWhenOverdue(NotificationType reminderNotification)
+    throws SchedulerException {
+        when(historyService.findAllHistoryForTrainee(PERSON_ID)).thenReturn(new ArrayList<>());
+
+        ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
+        int offsetDays = service.getDaysBeforeStartForNotification(reminderNotification);
+        LocalDate overdueDate = LocalDate.now().plusDays(offsetDays).minusDays(1);
+        programmeMembership.setStartDate(overdueDate);
+
+        service.addNotifications(programmeMembership);
+
+        verify(notificationService).executeNow(eq(reminderNotification + "-" + TIS_ID), any(), eq(true));
+    }
 
   @Test
   void shouldNotResendSentNotificationIfNotDeferral() throws SchedulerException {
@@ -817,7 +852,7 @@ class ProgrammeMembershipServiceTest {
     service.addNotifications(programmeMembership);
 
     String programmeCreatedExpectedJobId = PROGRAMME_CREATED + "-" + TIS_ID;
-    verify(notificationService).executeNow(eq(programmeCreatedExpectedJobId), any());
+    verify(notificationService).executeNow(eq(programmeCreatedExpectedJobId), any(), eq(false));
 
     String dayOneExpectedJobId = PROGRAMME_DAY_ONE + "-" + TIS_ID;
     verify(notificationService)
@@ -892,7 +927,7 @@ class ProgrammeMembershipServiceTest {
     service.addNotifications(programmeMembership);
 
     String programmeCreatedExpectedJobId = PROGRAMME_CREATED + "-" + TIS_ID;
-    verify(notificationService).executeNow(eq(programmeCreatedExpectedJobId), any());
+    verify(notificationService).executeNow(eq(programmeCreatedExpectedJobId), any(), eq(false));
 
     String dayOneExpectedJobId = PROGRAMME_DAY_ONE + "-" + TIS_ID;
     verify(notificationService)
@@ -1269,7 +1304,7 @@ class ProgrammeMembershipServiceTest {
   }
 
   @Test
-  void shouldNoScheduleNotificationIfHistoryTemplateMissing() {
+  void shouldNotScheduleNotificationIfHistoryTemplateMissing() {
     RecipientInfo recipientInfo = new RecipientInfo("id", MessageType.EMAIL, "test@email.com");
 
     History sentNotification = new History(ObjectId.get(),
@@ -1348,7 +1383,7 @@ class ProgrammeMembershipServiceTest {
 
     service.addNotifications(programmeMembership);
 
-    verify(notificationService).executeNow(any(), any());
+    verify(notificationService).executeNow(any(), any(), anyBoolean());
   }
 
   @Test
@@ -1367,7 +1402,7 @@ class ProgrammeMembershipServiceTest {
 
     service.addNotifications(programmeMembership);
 
-    verify(notificationService).executeNow(any(), any());
+    verify(notificationService).executeNow(any(), any(), eq(false));
   }
 
   @Test
@@ -1386,7 +1421,7 @@ class ProgrammeMembershipServiceTest {
 
     service.addNotifications(programmeMembership);
 
-    verify(notificationService).executeNow(any(), any());
+    verify(notificationService).executeNow(any(), any(), anyBoolean());
   }
 
   @Test
@@ -1423,7 +1458,7 @@ class ProgrammeMembershipServiceTest {
 
     service.addNotifications(programmeMembership);
 
-    verify(notificationService).executeNow(any(), any());
+    verify(notificationService).executeNow(any(), any(), anyBoolean());
   }
 
   @Test
@@ -1512,7 +1547,7 @@ class ProgrammeMembershipServiceTest {
     service.addNotifications(programmeMembership);
 
     ArgumentCaptor<JobDataMap> jobDataMapCaptor = ArgumentCaptor.captor();
-    verify(notificationService).executeNow(any(), jobDataMapCaptor.capture());
+    verify(notificationService).executeNow(any(), jobDataMapCaptor.capture(), eq(false));
 
     //verify the details of the job scheduled
     JobDataMap jobDataMap = jobDataMapCaptor.getValue();

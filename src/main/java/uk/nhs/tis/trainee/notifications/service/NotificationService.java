@@ -475,9 +475,10 @@ public class NotificationService implements Job {
   /**
    * Determine if the email should actually be sent out.
    *
-   * @param notificationType The notification type.
-   * @param personId         The person Id.
-   * @param tisReferenceId   The TIS reference Id.
+   * @param notificationType    The notification type.
+   * @param personId            The person Id.
+   * @param tisReferenceId      The TIS reference Id.
+   * @param unnecessaryReminder Whether the notification is an unnecessary reminder.
    * @return the boolean if the email should be sent out.
    */
   protected boolean shouldActuallySendEmail(NotificationType notificationType, String personId,
