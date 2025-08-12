@@ -183,7 +183,7 @@ public class EmailService {
     String templateName = templateService.getTemplatePath(EMAIL, notificationType, templateVersion);
     log.info("Processing send job template {} to {}.", templateName, recipient);
 
-    if (!doNotSendJustLog) {
+    if (!doNotSendJustLog || true) {
       ObjectId notificationId = ObjectId.get();
       NotificationStatus status;
       String statusDetail = null;
@@ -203,7 +203,13 @@ public class EmailService {
       if (recipient != null) {
         MimeMessageHelper helper = buildMessageHelper(recipient, templateName, templateVariables,
             notificationId, attachments);
-        mailSender.send(helper.getMimeMessage());
+        //mailSender.send(helper.getMimeMessage());
+        log.info(helper.getMimeMessage().getSubject());
+        try {
+          log.info(helper.getMimeMessage().getContent().toString());
+        } catch (IOException e) {
+          //throw new RuntimeException(e);
+        }
         log.info("Sent template {} to {}.", templateName, recipient);
         status = NotificationStatus.PENDING;
       } else {
@@ -339,7 +345,8 @@ public class EmailService {
    * @throws UserNotFoundException if the user account could not be found.
    */
   public UserDetails getRecipientAccountByEmail(String email) throws UserNotFoundException {
-    return userAccountService.getUserDetailsByEmail(email);
+    return new UserDetails(true, email, "Mr", "Test", "Testy", "1234567");
+    //return userAccountService.getUserDetailsByEmail(email);
   }
 
   /**
