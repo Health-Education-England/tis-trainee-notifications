@@ -58,7 +58,6 @@ import uk.nhs.tis.trainee.notifications.model.Curriculum;
 import uk.nhs.tis.trainee.notifications.model.History;
 import uk.nhs.tis.trainee.notifications.model.History.TisReferenceInfo;
 import uk.nhs.tis.trainee.notifications.model.LocalOfficeContactType;
-import uk.nhs.tis.trainee.notifications.model.NotificationScheduleWhen;
 import uk.nhs.tis.trainee.notifications.model.NotificationType;
 import uk.nhs.tis.trainee.notifications.model.ProgrammeMembership;
 import uk.nhs.tis.trainee.notifications.model.ResponsibleOfficer;
@@ -293,38 +292,25 @@ public class ProgrammeMembershipService {
    * @param notificationType         The type of notification to schedule.
    * @param programmeMembership      The programme membership to consider.
    * @param notificationsAlreadySent The notifications already sent for this entity.
-   * @return Whether the notification is unnecessary, and the date when the notification should be
-   *     scheduled, or null if it should be sent immediately.
+   * @return The date when the notification should be scheduled, or null if it should be sent
+   * immediately.
    */
-  private NotificationScheduleWhen whenScheduleProgrammeNotification(
+  private Date whenScheduleProgrammeNotification(
       NotificationType notificationType, ProgrammeMembership programmeMembership,
       Map<NotificationType, History> notificationsAlreadySent) {
     if (notificationType == PROGRAMME_CREATED) {
-      return new NotificationScheduleWhen(false,
-          whenScheduleDeferredNotification(PROGRAMME_CREATED, programmeMembership,
-              notificationsAlreadySent));
+      return whenScheduleDeferredNotification(PROGRAMME_CREATED, programmeMembership,
+              notificationsAlreadySent);
     } else {
       Integer daysBeforeStart = getDaysBeforeStartForNotification(notificationType);
-      if (NotificationType.getReminderProgrammeUpdateNotificationTypes()
-          .contains(notificationType)) {
-        if (programmeMembership.getStartDate().minusDays(daysBeforeStart)
-            .isBefore(LocalDate.now(timezone))) {
-          // If the notification is a reminder and the deadline is in the past, it is unnecessary.
-          return new NotificationScheduleWhen(true, null);
-        } else if (programmeMembership.getStartDate().minusDays(daysBeforeStart)
-            .isEqual(LocalDate.now(timezone))) {
-          // If the deadline for this notification type is today, send immediately.
-          return new NotificationScheduleWhen(false, null);
-        }
-      } else if (programmeMembership.getStartDate().minusDays(daysBeforeStart)
+      if (programmeMembership.getStartDate().minusDays(daysBeforeStart)
           .isBefore(LocalDate.now(timezone).plusDays(1))) {
         // If the deadline for this notification type is today or in the past, send immediately.
-        return new NotificationScheduleWhen(false, null);
+        return null;
       }
       // Otherwise, schedule for the deadline.
-      return new NotificationScheduleWhen(false,
-          Date.from(programmeMembership.getStartDate().minusDays(daysBeforeStart)
-              .atStartOfDay(timezone).toInstant()));
+      return Date.from(programmeMembership.getStartDate().minusDays(daysBeforeStart)
+              .atStartOfDay(timezone).toInstant());
     }
   }
 
@@ -332,13 +318,12 @@ public class ProgrammeMembershipService {
       ProgrammeMembership programmeMembership, JobDataMap jobDataMap,
       Map<NotificationType, History> notificationsAlreadySent) throws SchedulerException {
     String jobId = notificationType + "-" + jobDataMap.get(TIS_ID_FIELD);
-    NotificationScheduleWhen scheduleWhen = whenScheduleProgrammeNotification(notificationType,
+    Date scheduleWhen = whenScheduleProgrammeNotification(notificationType,
         programmeMembership, notificationsAlreadySent);
-    if (scheduleWhen.scheduleWhen() == null) {
-      notificationService.executeNow(jobId, jobDataMap, scheduleWhen.unnecessaryReminder());
+    if (scheduleWhen == null) {
+      notificationService.executeNow(jobId, jobDataMap);
     } else {
-      notificationService.scheduleNotification(jobId, jobDataMap, scheduleWhen.scheduleWhen(),
-          ONE_DAY_IN_SECONDS);
+      notificationService.scheduleNotification(jobId, jobDataMap, scheduleWhen, ONE_DAY_IN_SECONDS);
     }
   }
 
@@ -526,7 +511,12 @@ public class ProgrammeMembershipService {
           programmeMembership.getStartDate());
       return isDeferral;
     }
-
+    //reminder notifications are only sent if the deadline is not past
+    if (NotificationType.getReminderProgrammeUpdateNotificationTypes().contains(notificationType)) {
+      Integer daysBeforeStart = getDaysBeforeStartForNotification(notificationType);
+      LocalDate deadline = programmeMembership.getStartDate().minusDays(daysBeforeStart);
+      return !deadline.isBefore(LocalDate.now(timezone)); //deadline is in the past, do not send
+    }
     return true; //send new notifications
   }
 
