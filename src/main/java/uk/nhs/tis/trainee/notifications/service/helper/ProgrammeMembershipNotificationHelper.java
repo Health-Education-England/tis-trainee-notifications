@@ -32,6 +32,8 @@ import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.quartz.JobDataMap;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.http.HttpMethod;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
@@ -72,8 +74,12 @@ public class ProgrammeMembershipNotificationHelper {
    */
   private List<ActionDto> getTraineeProgrammeActions(String personId, String programmeId) {
     try {
-      return restTemplate.getForObject(actionsUrl + API_PROGRAMME_ACTIONS, List.class,
-          Map.of("personId", personId, "programmeId", programmeId));
+      ParameterizedTypeReference<List<ActionDto>> actionListType
+          = new ParameterizedTypeReference<>() {};
+      List<ActionDto> actions = restTemplate.exchange(
+          actionsUrl + API_PROGRAMME_ACTIONS, HttpMethod.GET, null, actionListType,
+          Map.of("personId", personId, "programmeId", programmeId)).getBody();
+      return actions != null ? actions : List.of();
     } catch (RestClientException rce) {
       log.warn("Exception occurred when requesting programme actions endpoint for trainee {} "
           + "programme {}: {}", personId, programmeId, rce.toString());
@@ -146,7 +152,6 @@ public class ProgrammeMembershipNotificationHelper {
    * @param welcomeNotification The welcome notification history to check.
    */
   public void addWelcomeSentDateToJobMap(JobDataMap jobDataMap, History welcomeNotification) {
-
     if (welcomeNotification == null
         || welcomeNotification.status() == null
         || !welcomeNotification.status().equals(SENT)) {
