@@ -28,8 +28,9 @@ import static org.hamcrest.Matchers.notNullValue;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.SENT;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_CREATED;
 import static uk.nhs.tis.trainee.notifications.model.ProgrammeActionType.REGISTER_TSS;
@@ -55,6 +56,9 @@ import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.quartz.JobDataMap;
+import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 import uk.nhs.tis.trainee.notifications.dto.ActionDto;
@@ -88,8 +92,12 @@ class ProgrammeMembershipNotificationHelperTest {
 
   @Test
   void shouldHandleActionsRestClientExceptions() {
-    when(restTemplate.getForObject(eq(ACTIONS_URL + ACTIONS_PROGRAMME_URL), eq(List.class),
-        anyMap())).thenThrow(new RestClientException("error"));
+    ParameterizedTypeReference<List<ActionDto>> actionListType
+        = new ParameterizedTypeReference<>() {};
+    ResponseEntity<List<ActionDto>> responseEntity = ResponseEntity.ok(List.of());
+    doThrow(RestClientException.class)
+        .when(restTemplate).exchange(eq(ACTIONS_URL + ACTIONS_PROGRAMME_URL),
+            eq(HttpMethod.GET), eq(null), eq(actionListType), anyMap());
 
     assertDoesNotThrow(()
         -> service.addProgrammeReminderDetailsToJobMap(jobDataMap, PERSON_ID, TIS_ID));
@@ -108,9 +116,12 @@ class ProgrammeMembershipNotificationHelperTest {
         new ActionDto("action-id-4", REGISTER_TSS.toString(), PERSON_ID,
             new ActionDto.TisReferenceInfo(PERSON_ID, PERSON), null, null, null)
     );
-    when(restTemplate.getForObject(ACTIONS_URL + ACTIONS_PROGRAMME_URL, List.class,
-        Map.of("personId", PERSON_ID, "programmeId", TIS_ID)))
-        .thenReturn(reminderActions);
+    ParameterizedTypeReference<List<ActionDto>> actionListType
+        = new ParameterizedTypeReference<>() {};
+    ResponseEntity<List<ActionDto>> responseEntity = ResponseEntity.ok(reminderActions);
+    doReturn(responseEntity)
+        .when(restTemplate).exchange(eq(ACTIONS_URL + ACTIONS_PROGRAMME_URL),
+            eq(HttpMethod.GET), eq(null), eq(actionListType), anyMap());
 
     service.addProgrammeReminderDetailsToJobMap(jobDataMap, PERSON_ID, TIS_ID);
 
@@ -126,9 +137,12 @@ class ProgrammeMembershipNotificationHelperTest {
 
   @Test
   void shouldAddDefaultCompletedReminderIfActionMissing() {
-    when(restTemplate.getForObject(ACTIONS_URL + ACTIONS_PROGRAMME_URL, List.class,
-        Map.of("personId", PERSON_ID, "programmeId", TIS_ID)))
-        .thenReturn(List.of());
+    ParameterizedTypeReference<List<ActionDto>> actionListType
+        = new ParameterizedTypeReference<>() {};
+    ResponseEntity<List<ActionDto>> responseEntity = ResponseEntity.ok(List.of());
+    doReturn(responseEntity)
+        .when(restTemplate).exchange(eq(ACTIONS_URL + ACTIONS_PROGRAMME_URL),
+            eq(HttpMethod.GET), eq(null), eq(actionListType), anyMap());
 
     service.addProgrammeReminderDetailsToJobMap(jobDataMap, PERSON_ID, TIS_ID);
 
@@ -233,7 +247,7 @@ class ProgrammeMembershipNotificationHelperTest {
   void shouldGetNotificationSummaryWithUnnecessaryReminderOverride(
       NotificationType notificationType) {
     jobDataMap.put(TEMPLATE_NOTIFICATION_TYPE_FIELD, notificationType);
-    NotificationSummary summary = service.getNotificationSummary(jobDataMap, false);
+    NotificationSummary summary = service.getNotificationSummary(jobDataMap);
 
     assertThat("Unexpected null summary", summary, notNullValue());
     assertThat("Unexpected unnecessary reminder flag", summary.unnecessaryReminder(),
@@ -247,7 +261,7 @@ class ProgrammeMembershipNotificationHelperTest {
       NotificationType notificationType) {
     jobDataMap.put(TEMPLATE_NOTIFICATION_TYPE_FIELD, notificationType);
     jobDataMap.put(String.valueOf(SIGN_COJ), false);
-    NotificationSummary summary = service.getNotificationSummary(jobDataMap, false);
+    NotificationSummary summary = service.getNotificationSummary(jobDataMap);
 
     assertThat("Unexpected null summary", summary, notNullValue());
     assertThat("Unexpected unnecessary reminder flag", summary.unnecessaryReminder(),
@@ -261,7 +275,7 @@ class ProgrammeMembershipNotificationHelperTest {
       NotificationType notificationType) {
     jobDataMap.put(TEMPLATE_NOTIFICATION_TYPE_FIELD, notificationType);
     jobDataMap.put(String.valueOf(SIGN_COJ), true); //should not really exist for these types
-    NotificationSummary summary = service.getNotificationSummary(jobDataMap, false);
+    NotificationSummary summary = service.getNotificationSummary(jobDataMap);
 
     assertThat("Unexpected null summary", summary, notNullValue());
     assertThat("Unexpected unnecessary reminder flag", summary.unnecessaryReminder(),
@@ -274,7 +288,7 @@ class ProgrammeMembershipNotificationHelperTest {
   void shouldGetNotificationSummaryWithJobName(String programmeName) {
     jobDataMap.put(TEMPLATE_NOTIFICATION_TYPE_FIELD, PROGRAMME_CREATED);
     jobDataMap.put(PROGRAMME_NAME_FIELD, programmeName);
-    NotificationSummary summary = service.getNotificationSummary(jobDataMap, false);
+    NotificationSummary summary = service.getNotificationSummary(jobDataMap);
 
     assertThat("Unexpected null summary", summary, notNullValue());
     assertThat("Unexpected job name", summary.jobName(), is(programmeName));
@@ -285,7 +299,7 @@ class ProgrammeMembershipNotificationHelperTest {
     jobDataMap.put(TEMPLATE_NOTIFICATION_TYPE_FIELD, PROGRAMME_CREATED);
     jobDataMap.put(START_DATE_FIELD, LocalDate.of(2020, 1, 1));
 
-    NotificationSummary summary = service.getNotificationSummary(jobDataMap, false);
+    NotificationSummary summary = service.getNotificationSummary(jobDataMap);
 
     assertThat("Unexpected null summary", summary, notNullValue());
     assertThat("Unexpected start date", summary.startDate(),
@@ -295,7 +309,7 @@ class ProgrammeMembershipNotificationHelperTest {
   @Test
   void shouldGetNotificationSummaryWithNoStartDate() {
     jobDataMap.put(TEMPLATE_NOTIFICATION_TYPE_FIELD, PROGRAMME_CREATED);
-    NotificationSummary summary = service.getNotificationSummary(jobDataMap, false);
+    NotificationSummary summary = service.getNotificationSummary(jobDataMap);
 
     assertThat("Unexpected null summary", summary, notNullValue());
     assertThat("Unexpected non-null start date", summary.startDate(), nullValue());
@@ -305,7 +319,7 @@ class ProgrammeMembershipNotificationHelperTest {
   void shouldGetNotificationSummaryWithTisReference() {
     jobDataMap.put(TEMPLATE_NOTIFICATION_TYPE_FIELD, PROGRAMME_CREATED);
     jobDataMap.put(TIS_ID_FIELD, "tis-id-123");
-    NotificationSummary summary = service.getNotificationSummary(jobDataMap, false);
+    NotificationSummary summary = service.getNotificationSummary(jobDataMap);
 
     assertThat("Unexpected null summary", summary, notNullValue());
     History.TisReferenceInfo tisRef = summary.tisReferenceInfo();

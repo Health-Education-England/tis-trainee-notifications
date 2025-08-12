@@ -171,15 +171,11 @@ public class NotificationService implements Job {
   /**
    * Process a job immediately, sending the notification if appropriate.
    *
-   * @param jobKey              The descriptive job identifier.
-   * @param jobDetails          The job details.
-   * @param unnecessaryReminder If true, the notification is definitely an unnecessary reminder and
-   *                            should not be sent. As the notification is enriched it may also be
-   *                            identified as unneeded, in which case it will not be sent.
+   * @param jobKey     The descriptive job identifier.
+   * @param jobDetails The job details.
    * @return The result map with status details if successful.
    */
-  public Map<String, String> executeNow(String jobKey, JobDataMap jobDetails,
-      boolean unnecessaryReminder) {
+  public Map<String, String> executeNow(String jobKey, JobDataMap jobDetails) {
     Map<String, String> result = new HashMap<>();
     NotificationSummary notificationSummary = new NotificationSummary();
 
@@ -198,7 +194,7 @@ public class NotificationService implements Job {
 
     if (NotificationType.getActiveProgrammeUpdateNotificationTypes().contains(notificationType)) {
       notificationSummary = programmeMembershipNotificationsHelper
-          .getNotificationSummary(jobDetails, unnecessaryReminder);
+          .getNotificationSummary(jobDetails);
 
     } else if (notificationType == NotificationType.PLACEMENT_UPDATED_WEEK_12
         || notificationType == NotificationType.PLACEMENT_ROLLOUT_2024_CORRECTION) {
@@ -220,17 +216,21 @@ public class NotificationService implements Job {
           throw new IllegalArgumentException(
               "No email template version found for notification type '{}'.");
         }
-
+        if (notificationSummary.unnecessaryReminder()) {
+          log.info("Skipping unnecessary reminder for {} notification for {} ({}, starting {}) " +
+                  "to {}",
+              jobKey,
+              jobDetails.getString(TIS_ID_FIELD), notificationSummary.jobName(),
+              notificationSummary.startDate(), userAccountDetails.email());
+          result.put("status", "skipped unnecessary reminder");
+          return result;
+        }
         try {
-
-          // we 'send' (i.e. log) the email even if it is an unnecessary reminder, so that the
-          // History is correctly updated.
           emailService.sendMessage(personId, userAccountDetails.email(), notificationType,
               templateVersion.get(), jobDetails.getWrappedMap(),
               notificationSummary.tisReferenceInfo(),
               !shouldActuallySendEmail(
-                  notificationType, personId, notificationSummary.tisReferenceInfo().id(),
-                  notificationSummary.unnecessaryReminder()));
+                  notificationType, personId, notificationSummary.tisReferenceInfo().id()));
         } catch (MessagingException e) {
           throw new RuntimeException(e);
         }
@@ -246,17 +246,6 @@ public class NotificationService implements Job {
       }
     }
     return result;
-  }
-
-  /**
-   * Process a non-unnecessary job now.
-   *
-   * @param jobKey     The descriptive job identifier.
-   * @param jobDetails The job details.
-   * @return the result map with status details if successful.
-   */
-  public Map<String, String> executeNow(String jobKey, JobDataMap jobDetails) {
-    return executeNow(jobKey, jobDetails, false);
   }
 
   /**
@@ -478,16 +467,10 @@ public class NotificationService implements Job {
    * @param notificationType    The notification type.
    * @param personId            The person Id.
    * @param tisReferenceId      The TIS reference Id.
-   * @param unnecessaryReminder Whether the notification is an unnecessary reminder.
    * @return the boolean if the email should be sent out.
    */
   protected boolean shouldActuallySendEmail(NotificationType notificationType, String personId,
-      String tisReferenceId, boolean unnecessaryReminder) {
-    if (unnecessaryReminder) {
-      log.info("Skipping {} notification for {} as no incomplete programme actions found.",
-          notificationType, personId);
-      return false; // do not send reminder if no incomplete programme actions
-    }
+      String tisReferenceId) {
     boolean actuallySendEmail = false; // default to log email only
     boolean inWhitelist = notificationsWhitelist.contains(personId);
 
@@ -558,7 +541,7 @@ public class NotificationService implements Job {
     // Only save when notificationType is correct and in Pilot/Rollout. We ignore the completion
     // status of programme actions since these could change before the notification is sent.
     if (tisReferenceInfo != null
-        && shouldActuallySendEmail(notificationType, personId, tisReferenceInfo.id(), false)) {
+        && shouldActuallySendEmail(notificationType, personId, tisReferenceInfo.id())) {
 
       // Save SCHEDULED History in DB
       History history = new History(

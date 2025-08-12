@@ -677,8 +677,7 @@ class ProgrammeMembershipServiceTest {
     ArgumentCaptor<JobDataMap> jobDataMapCaptor = ArgumentCaptor.captor();
     verify(notificationService).executeNow(
         stringCaptor.capture(),
-        jobDataMapCaptor.capture(),
-        eq(false));
+        jobDataMapCaptor.capture());
 
     String jobId = stringCaptor.getValue();
     String expectedJobId = PROGRAMME_CREATED + "-" + TIS_ID;
@@ -729,7 +728,7 @@ class ProgrammeMembershipServiceTest {
 
     service.addNotifications(programmeMembership);
 
-    verify(notificationService).executeNow(eq(PROGRAMME_DAY_ONE + "-" + TIS_ID), any(), eq(false));
+    verify(notificationService).executeNow(eq(PROGRAMME_DAY_ONE + "-" + TIS_ID), any());
   }
 
   @ParameterizedTest
@@ -746,8 +745,7 @@ class ProgrammeMembershipServiceTest {
 
     service.addNotifications(programmeMembership);
 
-    verify(notificationService).executeNow(eq(reminderNotification + "-" + TIS_ID), any(),
-        eq(false));
+    verify(notificationService).executeNow(eq(reminderNotification + "-" + TIS_ID), any());
   }
 
   @ParameterizedTest
@@ -764,8 +762,7 @@ class ProgrammeMembershipServiceTest {
 
     service.addNotifications(programmeMembership);
 
-    verify(notificationService).executeNow(eq(reminderNotification + "-" + TIS_ID), any(),
-        eq(true));
+    verify(notificationService, never()).executeNow(eq(reminderNotification + "-" + TIS_ID), any());
   }
 
   @Test
@@ -854,7 +851,7 @@ class ProgrammeMembershipServiceTest {
     service.addNotifications(programmeMembership);
 
     String programmeCreatedExpectedJobId = PROGRAMME_CREATED + "-" + TIS_ID;
-    verify(notificationService).executeNow(eq(programmeCreatedExpectedJobId), any(), eq(false));
+    verify(notificationService).executeNow(eq(programmeCreatedExpectedJobId), any());
 
     String dayOneExpectedJobId = PROGRAMME_DAY_ONE + "-" + TIS_ID;
     verify(notificationService)
@@ -929,7 +926,7 @@ class ProgrammeMembershipServiceTest {
     service.addNotifications(programmeMembership);
 
     String programmeCreatedExpectedJobId = PROGRAMME_CREATED + "-" + TIS_ID;
-    verify(notificationService).executeNow(eq(programmeCreatedExpectedJobId), any(), eq(false));
+    verify(notificationService).executeNow(eq(programmeCreatedExpectedJobId), any());
 
     String dayOneExpectedJobId = PROGRAMME_DAY_ONE + "-" + TIS_ID;
     verify(notificationService)
@@ -1385,7 +1382,7 @@ class ProgrammeMembershipServiceTest {
 
     service.addNotifications(programmeMembership);
 
-    verify(notificationService).executeNow(any(), any(), anyBoolean());
+    verify(notificationService).executeNow(any(), any());
   }
 
   @Test
@@ -1404,7 +1401,7 @@ class ProgrammeMembershipServiceTest {
 
     service.addNotifications(programmeMembership);
 
-    verify(notificationService).executeNow(any(), any(), eq(false));
+    verify(notificationService).executeNow(any(), any());
   }
 
   @Test
@@ -1423,7 +1420,7 @@ class ProgrammeMembershipServiceTest {
 
     service.addNotifications(programmeMembership);
 
-    verify(notificationService).executeNow(any(), any(), anyBoolean());
+    verify(notificationService).executeNow(any(), any());
   }
 
   @Test
@@ -1460,7 +1457,7 @@ class ProgrammeMembershipServiceTest {
 
     service.addNotifications(programmeMembership);
 
-    verify(notificationService).executeNow(any(), any(), anyBoolean());
+    verify(notificationService).executeNow(any(), any());
   }
 
   @Test
@@ -1549,7 +1546,7 @@ class ProgrammeMembershipServiceTest {
     service.addNotifications(programmeMembership);
 
     ArgumentCaptor<JobDataMap> jobDataMapCaptor = ArgumentCaptor.captor();
-    verify(notificationService).executeNow(any(), jobDataMapCaptor.capture(), eq(false));
+    verify(notificationService).executeNow(any(), jobDataMapCaptor.capture());
 
     //verify the details of the job scheduled
     JobDataMap jobDataMap = jobDataMapCaptor.getValue();

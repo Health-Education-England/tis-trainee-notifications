@@ -203,7 +203,7 @@ class NotificationServiceTest {
     NotificationSummary programmeNotificationSummary
         = new NotificationSummary(PROGRAMME_NAME, START_DATE,
             new TisReferenceInfo(PROGRAMME_MEMBERSHIP, TIS_ID), false);
-    when(programmeMembershipNotificationHelper.getNotificationSummary(any(), anyBoolean()))
+    when(programmeMembershipNotificationHelper.getNotificationSummary(any()))
         .thenReturn(programmeNotificationSummary);
 
     placementJobDataMap = new JobDataMap();
@@ -474,8 +474,8 @@ class NotificationServiceTest {
         .thenReturn(apiResult);
     NotificationSummary programmeNotificationSummaryUnnecessary
         = new NotificationSummary(PROGRAMME_NAME, START_DATE,
-              new TisReferenceInfo(PROGRAMME_MEMBERSHIP, TIS_ID), true);
-    when(programmeMembershipNotificationHelper.getNotificationSummary(any(), anyBoolean()))
+              new TisReferenceInfo(PROGRAMME_MEMBERSHIP, TIS_ID), false);
+    when(programmeMembershipNotificationHelper.getNotificationSummary(any()))
         .thenReturn(programmeNotificationSummaryUnnecessary);
 
     service.execute(jobExecutionContext);
@@ -640,7 +640,7 @@ class NotificationServiceTest {
   @ParameterizedTest
   @EnumSource(value = NotificationType.class,
       names = {"PROGRAMME_UPDATED_WEEK_12", "PROGRAMME_UPDATED_WEEK_4", "PROGRAMME_UPDATED_WEEK_2"})
-  void shouldLogProgrammeReminderEmailWhenNoIncompleteActions(NotificationType notificationType)
+  void shouldSkipProgrammeReminderEmailWhenNoIncompleteActions(NotificationType notificationType)
       throws MessagingException {
     programmeJobDetails.getJobDataMap().put(TEMPLATE_NOTIFICATION_TYPE_FIELD, notificationType);
     when(jobExecutionContext.getJobDetail()).thenReturn(programmeJobDetails);
@@ -649,23 +649,16 @@ class NotificationServiceTest {
     when(emailService.getRecipientAccountByEmail(USER_EMAIL)).thenReturn(userAccountDetails);
     when(restTemplate.getForObject(ACCOUNT_DETAILS_URL, UserDetails.class,
         Map.of(TIS_ID_FIELD, PERSON_ID))).thenReturn(userAccountDetails);
-    when(messagingControllerService.isValidRecipient(any(), any()))
-        .thenReturn(true);
-    when(messagingControllerService.isProgrammeMembershipNewStarter(any(), any()))
-        .thenReturn(true);
-    when(messagingControllerService.isProgrammeMembershipInPilot2024(any(), any()))
-        .thenReturn(true);
-    when(programmeMembershipNotificationHelper.hasIncompleteProgrammeActions(any()))
-        .thenReturn(false);
     NotificationSummary programmeNotificationSummaryUnnecessary
         = new NotificationSummary(PROGRAMME_NAME, START_DATE,
               new TisReferenceInfo(PROGRAMME_MEMBERSHIP, TIS_ID), true);
-    when(programmeMembershipNotificationHelper.getNotificationSummary(any(), anyBoolean()))
+    when(programmeMembershipNotificationHelper.getNotificationSummary(any()))
         .thenReturn(programmeNotificationSummaryUnnecessary);
 
     service.execute(jobExecutionContext);
 
-    verify(emailService).sendMessage(any(), any(), any(), any(), any(), any(), eq(true));
+    verify(emailService, never())
+        .sendMessage(any(), any(), any(), any(), any(), any(), anyBoolean());
     verify(jobExecutionContext).setResult(any());
   }
 
@@ -770,23 +763,7 @@ class NotificationServiceTest {
     when(messagingControllerService.isProgrammeMembershipInPilot2024(any(), any()))
         .thenReturn(true);
 
-    boolean result = service.shouldActuallySendEmail(notificationType, PERSON_ID, TIS_ID, false);
-
-    assertThat("Unexpected actuallySendEmail boolean.", result, is(false));
-  }
-
-  @ParameterizedTest
-  @EnumSource(value = NotificationType.class)
-  void shouldNotSendEmailWhenUnnecessaryReminder(NotificationType notificationType) {
-
-    when(messagingControllerService.isValidRecipient(any(), any()))
-        .thenReturn(true);
-    when(messagingControllerService.isProgrammeMembershipNewStarter(any(), any()))
-        .thenReturn(true);
-    when(messagingControllerService.isProgrammeMembershipInPilot2024(any(), any()))
-        .thenReturn(true);
-
-    boolean result = service.shouldActuallySendEmail(notificationType, PERSON_ID, TIS_ID, true);
+    boolean result = service.shouldActuallySendEmail(notificationType, PERSON_ID, TIS_ID);
 
     assertThat("Unexpected actuallySendEmail boolean.", result, is(false));
   }
