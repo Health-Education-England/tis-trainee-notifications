@@ -8,36 +8,43 @@
 <h2>Subject</h2>
 <th:block th:fragment="subject">REMINDER - NHS England - <span
   th:text="${not #strings.isEmpty(localOfficeName)} ? ${localOfficeName} : 'your local office'" th:remove="tag"></span
-> - Onboarding to your Training Programme</th:block>
+  > - Onboarding to your Training Programme</th:block>
 <h2>Content</h2>
 <th:block th:fragment="content">
   <div th:replace="fragments/retry/v1.0.0 :: retry(${originallySentOn})"></div>
   <div style="text-align:right"><img style="margin-right:25px; height:100px" src='https://trainee.tis.nhs.uk/nhse-logo.png' alt="NHS England logo"/></div>
   <div th:replace="fragments/greeting/v1.0.0 :: greeting(${familyName})"></div>
-  <p>Following email notification sent on [INSERT DATE OF WELCOME EMAIL SENT] our records shows you have some outstanding actions.</p>
+  <div th:switch="${#strings.isEmpty(welcomeSendDate)}"
+    ><p th:case="true">You should shortly receive an email with details of your new training programme. There are some actions you need to perform to onboard to your programme, which are described below.</p
+    ><p th:case="false">Following email notification sent on <span
+          th:text="${#temporals.format(welcomeSendDate, 'dd MMMM yyyy')}"></span> our records shows you have some outstanding actions.</p
+  ></div>
   <p>Please take some time to start the onboarding process by signing in to TIS Self-Service. Once you have signed in you will be presented with a set of actions and notifications to read relating to your training programme. Please complete the actions below, see the <a
     href="https://trainee.tis.nhs.uk/action-summary">Action Summary</a> for further information.</p>
   <ul>
-    <li>[ACTION 1]</li>
-    <li>[ACTION 2]</li>
+    <li th:if="${not REGISTER_TSS}">Register for TSS</li>
+    <li th:if="${not SIGN_COJ}">Accept Conditions of Joining (COJ)</li>
+    <li th:if="${not SIGN_FORM_R_PART_A}">Submit FormR Part A</li>
+    <li th:if="${not SIGN_FORM_R_PART_B}">Submit FormR Part B</li>
   </ul>
-
   <p>It is essential that this is completed as part of your onboarding process to your training programme by <b><span
     th:text="${not #strings.isEmpty(startDate)} ? |${#temporals.format(startDate, 'dd MMMM yyyy')}| : _">start date missing</span></b>. Your progress will be monitored by your NHS England Local Office. Failure to complete these actions may be considered as non-engagement.</p>
-  <p><b>Accessing TIS Self-Service (TSS)</b></p>
+  <h3>Accessing TIS Self-Service (TSS)</h3>
   <p>TIS Self-Service (TSS) gives you access to your training information. You will need to use TSS to submit essential forms and sign training agreements and complete actions that are presented on the Action Summary.</p>
   <th:block th:switch="${isRegistered}"
-  ><p th:case="true">We have a registered account for you on TIS Self-Service against the email address <b><span th:text="${email}"></span></b>. To access details for onboarding onto your programme and actions to complete please sign in to <a href="https://trainee.tis.nhs.uk">TIS Self-Service</a>.</p>
+    ><p th:case="true">We have a registered account for you on TIS Self-Service against the email address <b><span th:text="${email}"></span></b>. To access details for onboarding onto your programme and actions to complete please sign in to <a href="https://trainee.tis.nhs.uk">TIS Self-Service</a>.</p>
     <div th:case="false"><p>We have no TIS Self Service account associated to your record. Please create one by clicking the link below.</p>
       <p>Please ensure you create an account using the email address we have against our records: <b><span th:text="${email}"></span></b></p>
       <p><a href="https://trainee.tis.nhs.uk/">TIS Self-Service</a>.</p>
       <p>If your email address is likely to change, or you need support signing up on TIS Self-Service, then please ensure that you contact us via <th:block th:switch="${contactHref}"
-  ><span th:case="url"><a th:href="${localOfficeContact}"><span th:text="${localOfficeContact}"></span></a></span
-  ><span th:case="email"><a id="loMail" th:href="|mailto:${localOfficeContact}?subject=Onboarding to Programme - GMC: ${not #strings.isEmpty(gmcNumber) ? gmcNumber : 'unknown'}, Prog No: ${not #strings.isEmpty(programmeNumber) ? programmeNumber : 'unknown'}|"><span th:text="${localOfficeContact}"></span></a></span
-  ><span th:case="*"><span th:text="${localOfficeContact}"></span></span
-  ></th:block> or see our <a href="https://tis-support.hee.nhs.uk/trainees/changes-to-account/">FAQ</a> for details.</p>
-  <p>Once you access TIS Self-Service, you will be presented with a set of actions and notifications to read relating to your training programme. Please complete the actions and read the notification as requested.</p>
-      <p>For more information regarding the onboarding process please visit our website: <a th:href="${localOfficeWebsite}"><span th:text="${localOfficeWebsite}"></span></a>.</p></div></th:block>
+        ><span th:case="url"><a th:href="${localOfficeContact}"><span th:text="${localOfficeContact}"></span></a></span
+        ><span th:case="email"><a id="loMail" th:href="|mailto:${localOfficeContact}?subject=Onboarding to Programme - GMC: ${not #strings.isEmpty(gmcNumber) ? gmcNumber : 'unknown'}, Prog No: ${not #strings.isEmpty(programmeNumber) ? programmeNumber : 'unknown'}|"><span th:text="${localOfficeContact}"></span></a></span
+        ><span th:case="*"><span th:text="${localOfficeContact}"></span></span
+      ></th:block> or see our <a href="https://tis-support.hee.nhs.uk/trainees/changes-to-account/">FAQ</a> for details.</p>
+      <p>Once you access TIS Self-Service, you will be presented with a set of actions and notifications to read relating to your training programme. Please complete the actions and read the notification as requested.</p>
+      <p>For more information regarding the onboarding process please visit our website: <a th:href="${localOfficeWebsite}"><span th:text="${localOfficeWebsite}"></span></a>.</p
+    ></div
+  ></th:block>
   <p>We look forward to welcoming you to NHS England.</p>
   <p>Kind Regards,</p>
   <p><span>NHS England</span> (Please note Health Education England is now part of NHS England. Our systems will be updated in due course.)</p>
