@@ -95,6 +95,7 @@ public class NotificationService implements Job {
   protected static final String DEFAULT_NO_CONTACT_MESSAGE
       = "your local office";
   protected static final List<String> DUMMY_USER_ROLES = List.of("Placeholder", "Dummy Record");
+  protected static final String JOB_RESULT_STATUS = "status";
 
   public static final String API_TRAINEE_DETAILS = "/api/trainee-profile/account-details/{tisId}";
   public static final String API_TRAINEE_LOCAL_OFFICE_CONTACTS
@@ -207,6 +208,16 @@ public class NotificationService implements Job {
       notificationSummary = new NotificationSummary(jobName, startDate, tisReferenceInfo);
     }
 
+    if (notificationSummary.unnecessaryReminder()) {
+      log.info("Skipping unnecessary reminder for {} notification for {} ({}, starting {}) "
+              + "to {}",
+          jobKey,
+          jobDetails.getString(TIS_ID_FIELD), notificationSummary.jobName(),
+          notificationSummary.startDate(), userAccountDetails.email());
+      result.put(JOB_RESULT_STATUS, "skipped unnecessary reminder");
+      return result;
+    }
+
     if (notificationSummary.tisReferenceInfo() != null) {
       if (userAccountDetails != null) {
         Optional<String> templateVersion = templateVersions.getTemplateVersion(notificationType,
@@ -215,15 +226,6 @@ public class NotificationService implements Job {
         if (templateVersion.isEmpty()) {
           throw new IllegalArgumentException(
               "No email template version found for notification type '{}'.");
-        }
-        if (notificationSummary.unnecessaryReminder()) {
-          log.info("Skipping unnecessary reminder for {} notification for {} ({}, starting {}) " +
-                  "to {}",
-              jobKey,
-              jobDetails.getString(TIS_ID_FIELD), notificationSummary.jobName(),
-              notificationSummary.startDate(), userAccountDetails.email());
-          result.put("status", "skipped unnecessary reminder");
-          return result;
         }
         try {
           emailService.sendMessage(personId, userAccountDetails.email(), notificationType,
@@ -240,7 +242,7 @@ public class NotificationService implements Job {
             jobDetails.getString(TIS_ID_FIELD), notificationSummary.jobName(),
             notificationSummary.startDate(), userAccountDetails.email(), templateVersion.get());
         Instant processedOn = Instant.now();
-        result.put("status", "sent " + processedOn.toString());
+        result.put(JOB_RESULT_STATUS, "sent " + processedOn.toString());
       } else {
         log.info("No notification could be sent, no TSS details found for tisId {}", personId);
       }
@@ -258,7 +260,7 @@ public class NotificationService implements Job {
     String jobKey = jobExecutionContext.getJobDetail().getKey().toString();
     JobDataMap jobDetails = jobExecutionContext.getJobDetail().getJobDataMap();
     Map<String, String> result = executeNow(jobKey, jobDetails);
-    if (result.get("status") != null) {
+    if (result.get(JOB_RESULT_STATUS) != null) {
       jobExecutionContext.setResult(result);
     }
   }
