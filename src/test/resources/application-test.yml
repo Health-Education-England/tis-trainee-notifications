@@ -41,3 +41,9 @@ spring:
     url: ${spring.datasource.url}
   quartz:
     auto-startup: false
+
+com:
+  amazonaws:
+    xray:
+      emitters:
+        daemon-address: suppress-errors

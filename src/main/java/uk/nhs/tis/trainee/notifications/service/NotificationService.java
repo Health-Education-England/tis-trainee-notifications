@@ -127,7 +127,7 @@ public class NotificationService implements Job {
   private final String timezone;
   protected final Integer immediateNotificationDelayMinutes;
 
-  private Random random;
+  private final Random random;
 
   /**
    * Initialise the Notification Service.
