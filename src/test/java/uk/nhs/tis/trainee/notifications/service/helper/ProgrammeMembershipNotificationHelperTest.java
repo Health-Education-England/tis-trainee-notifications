@@ -94,7 +94,6 @@ class ProgrammeMembershipNotificationHelperTest {
   void shouldHandleActionsRestClientExceptions() {
     ParameterizedTypeReference<List<ActionDto>> actionListType
         = new ParameterizedTypeReference<>() {};
-    ResponseEntity<List<ActionDto>> responseEntity = ResponseEntity.ok(List.of());
     doThrow(RestClientException.class)
         .when(restTemplate).exchange(eq(ACTIONS_URL + ACTIONS_PROGRAMME_URL),
             eq(HttpMethod.GET), eq(null), eq(actionListType), anyMap());
@@ -140,6 +139,27 @@ class ProgrammeMembershipNotificationHelperTest {
     ParameterizedTypeReference<List<ActionDto>> actionListType
         = new ParameterizedTypeReference<>() {};
     ResponseEntity<List<ActionDto>> responseEntity = ResponseEntity.ok(List.of());
+    doReturn(responseEntity)
+        .when(restTemplate).exchange(eq(ACTIONS_URL + ACTIONS_PROGRAMME_URL),
+            eq(HttpMethod.GET), eq(null), eq(actionListType), anyMap());
+
+    service.addProgrammeReminderDetailsToJobMap(jobDataMap, PERSON_ID, TIS_ID);
+
+    assertThat("Unexpected action status SIGN_COJ.",
+        jobDataMap.get(SIGN_COJ.toString()), is(true));
+    assertThat("Unexpected action status SIGN_FORM_R_PART_A.",
+        jobDataMap.get(SIGN_FORM_R_PART_A.toString()), is(true));
+    assertThat("Unexpected action status SIGN_FORM_R_PART_B.",
+        jobDataMap.get(SIGN_FORM_R_PART_B.toString()), is(true));
+    assertThat("Unexpected action status REGISTER_TSS.",
+        jobDataMap.get(SIGN_FORM_R_PART_A.toString()), is(true));
+  }
+
+  @Test
+  void shouldAddDefaultCompletedRemindersIfActionsServiceReturnsNull() {
+    ParameterizedTypeReference<List<ActionDto>> actionListType
+        = new ParameterizedTypeReference<>() {};
+    ResponseEntity<List<ActionDto>> responseEntity = ResponseEntity.ok(null);
     doReturn(responseEntity)
         .when(restTemplate).exchange(eq(ACTIONS_URL + ACTIONS_PROGRAMME_URL),
             eq(HttpMethod.GET), eq(null), eq(actionListType), anyMap());

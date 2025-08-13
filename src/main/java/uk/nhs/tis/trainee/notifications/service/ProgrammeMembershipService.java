@@ -293,7 +293,7 @@ public class ProgrammeMembershipService {
    * @param programmeMembership      The programme membership to consider.
    * @param notificationsAlreadySent The notifications already sent for this entity.
    * @return The date when the notification should be scheduled, or null if it should be sent
-   * immediately.
+   *         immediately.
    */
   private Date whenScheduleProgrammeNotification(
       NotificationType notificationType, ProgrammeMembership programmeMembership,
