@@ -29,6 +29,7 @@ import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipServic
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
+import javax.annotation.Nullable;
 import lombok.extern.slf4j.Slf4j;
 import org.quartz.JobDataMap;
 import org.springframework.beans.factory.annotation.Value;
@@ -95,6 +96,7 @@ public class ProgrammeMembershipNotificationHelper {
    *
    * @return true if the action is complete, and false if not. Null if the action type is not found.
    */
+  @Nullable
   private Boolean isProgrammeActionComplete(List<ActionDto> actions,
       ProgrammeActionType actionType) {
     List<ActionDto> actionsOfType = actions.stream()
