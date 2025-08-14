@@ -52,7 +52,7 @@ public record ActionDto(
    * @param id   The TIS ID of the entity that prompted the action.
    * @param type The TIS reference type for the entity that prompted the action.
    */
-  public record TisReferenceInfo(@Field("id") String id, TisReferenceType type) {
+  public record TisReferenceInfo(String id, TisReferenceType type) {
 
   }
 }

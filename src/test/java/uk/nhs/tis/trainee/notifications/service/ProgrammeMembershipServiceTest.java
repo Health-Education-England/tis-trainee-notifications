@@ -751,18 +751,41 @@ class ProgrammeMembershipServiceTest {
   @ParameterizedTest
   @EnumSource(value = NotificationType.class, names = {"PROGRAMME_UPDATED_WEEK_12",
       "PROGRAMME_UPDATED_WEEK_4", "PROGRAMME_UPDATED_WEEK_2"})
-  void shouldNotSendReminderEmailWhenOverdue(NotificationType reminderNotification)
+  void shouldNotSendOrScheduleReminderEmailWhenOverdue(NotificationType reminderNotification)
       throws SchedulerException {
     when(historyService.findAllHistoryForTrainee(PERSON_ID)).thenReturn(new ArrayList<>());
 
     ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
     int offsetDays = service.getDaysBeforeStartForNotification(reminderNotification);
-    LocalDate overdueDate = LocalDate.now().plusDays(offsetDays).minusDays(1);
+    LocalDate overdueDate = LocalDate.now().plusDays(offsetDays - 1);
     programmeMembership.setStartDate(overdueDate);
 
     service.addNotifications(programmeMembership);
 
-    verify(notificationService, never()).executeNow(eq(reminderNotification + "-" + TIS_ID), any());
+    verify(notificationService, never())
+        .executeNow(eq(reminderNotification + "-" + TIS_ID), any());
+    verify(notificationService, never())
+        .scheduleNotification(eq(reminderNotification + "-" + TIS_ID), any(), any(), anyLong());
+  }
+
+  @ParameterizedTest
+  @EnumSource(value = NotificationType.class, names = {"PROGRAMME_UPDATED_WEEK_12",
+      "PROGRAMME_UPDATED_WEEK_4", "PROGRAMME_UPDATED_WEEK_2"})
+  void shouldScheduleReminderEmailWhenDueInFuture(NotificationType reminderNotification)
+      throws SchedulerException {
+    when(historyService.findAllHistoryForTrainee(PERSON_ID)).thenReturn(new ArrayList<>());
+
+    ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
+    int offsetDays = service.getDaysBeforeStartForNotification(reminderNotification);
+    LocalDate overdueDate = LocalDate.now().plusDays(offsetDays + 1);
+    programmeMembership.setStartDate(overdueDate);
+
+    service.addNotifications(programmeMembership);
+
+    verify(notificationService, never())
+        .executeNow(eq(reminderNotification + "-" + TIS_ID), any());
+    verify(notificationService)
+        .scheduleNotification(eq(reminderNotification + "-" + TIS_ID), any(), any(), anyLong());
   }
 
   @Test
