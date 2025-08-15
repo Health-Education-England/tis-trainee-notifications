@@ -27,7 +27,6 @@ import static uk.nhs.tis.trainee.notifications.model.HrefType.ABSOLUTE_URL;
 import static uk.nhs.tis.trainee.notifications.model.HrefType.NON_HREF;
 import static uk.nhs.tis.trainee.notifications.model.HrefType.PROTOCOL_EMAIL;
 import static uk.nhs.tis.trainee.notifications.model.MessageType.EMAIL;
-import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_CREATED;
 import static uk.nhs.tis.trainee.notifications.model.TisReferenceType.PLACEMENT;
 import static uk.nhs.tis.trainee.notifications.model.TisReferenceType.PROGRAMME_MEMBERSHIP;
 import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.TIS_ID_FIELD;
@@ -81,7 +80,6 @@ import uk.nhs.tis.trainee.notifications.model.NotificationSummary;
 import uk.nhs.tis.trainee.notifications.model.NotificationType;
 import uk.nhs.tis.trainee.notifications.model.Placement;
 import uk.nhs.tis.trainee.notifications.model.ProgrammeMembership;
-import uk.nhs.tis.trainee.notifications.service.helper.ProgrammeMembershipNotificationHelper;
 
 /**
  * A service for executing notification scheduling jobs.
@@ -116,7 +114,7 @@ public class NotificationService implements Job {
 
   private final EmailService emailService;
   private final HistoryService historyService;
-  private final ProgrammeMembershipNotificationHelper programmeMembershipNotificationsHelper;
+  private final ProgrammeMembershipActionsService programmeMembershipActionService;
   private final RestTemplate restTemplate;
   private final TemplateVersionsProperties templateVersions;
   private final String serviceUrl;
@@ -145,9 +143,9 @@ public class NotificationService implements Job {
    * @param notificationsWhitelist     The whitelist of (tester) trainee TIS IDs.
    */
   public NotificationService(EmailService emailService, HistoryService historyService,
+      ProgrammeMembershipActionsService programmeMembershipActionService,
       RestTemplate restTemplate, Scheduler scheduler,
       MessagingControllerService messagingControllerService,
-      ProgrammeMembershipNotificationHelper programmeMembershipNotificationHelper,
       TemplateVersionsProperties templateVersions,
       @Value("${service.trainee.url}") String serviceUrl,
       @Value("${service.reference.url}") String referenceUrl,
@@ -156,7 +154,7 @@ public class NotificationService implements Job {
       @Value("${application.timezone}") String timezone) {
     this.emailService = emailService;
     this.historyService = historyService;
-    this.programmeMembershipNotificationsHelper = programmeMembershipNotificationHelper;
+    this.programmeMembershipActionService = programmeMembershipActionService;
     this.restTemplate = restTemplate;
     this.scheduler = scheduler;
     this.templateVersions = templateVersions;
@@ -184,7 +182,7 @@ public class NotificationService implements Job {
     String personId = jobDetails.getString(PERSON_ID_FIELD);
 
     // Enrich User Account and Local Office details to jobDetails
-    jobDetails = enrichJobDetails(jobDetails);
+    enrichJobDetails(jobDetails);
 
     UserDetails userTraineeDetails = getTraineeDetails(personId);
     UserDetails userCognitoAccountDetails = getCognitoAccountDetails(userTraineeDetails.email());
@@ -193,9 +191,10 @@ public class NotificationService implements Job {
     NotificationType notificationType =
         NotificationType.valueOf(jobDetails.get(TEMPLATE_NOTIFICATION_TYPE_FIELD).toString());
 
+
     if (NotificationType.getActiveProgrammeUpdateNotificationTypes().contains(notificationType)) {
-      notificationSummary = programmeMembershipNotificationsHelper
-          .getNotificationSummary(jobDetails);
+      programmeMembershipActionService.addActionsToJobMap(personId, jobDetails);
+      notificationSummary = programmeMembershipActionService.getNotificationSummary();
 
     } else if (notificationType == NotificationType.PLACEMENT_UPDATED_WEEK_12
         || notificationType == NotificationType.PLACEMENT_ROLLOUT_2024_CORRECTION) {
@@ -445,20 +444,6 @@ public class NotificationService implements Job {
     }
 
     jobDetails.putIfAbsent("isValidGmc", isValidGmc(jobDetails.getString("gmcNumber")));
-
-    if (NotificationType.getReminderProgrammeUpdateNotificationTypes()
-        .contains(NotificationType.valueOf(
-            jobDetails.get(TEMPLATE_NOTIFICATION_TYPE_FIELD).toString()))) {
-
-      programmeMembershipNotificationsHelper.addProgrammeReminderDetailsToJobMap(jobDetails,
-          personId, jobDetails.getString(TIS_ID_FIELD));
-      // add welcome notification send date to jobDetails
-      String tisId = jobDetails.get(ProgrammeMembershipService.TIS_ID_FIELD).toString();
-      History welcomeNotification = historyService.findScheduledEmailForTraineeByRefAndType(
-          personId, PROGRAMME_MEMBERSHIP, tisId, PROGRAMME_CREATED);
-      programmeMembershipNotificationsHelper
-          .addWelcomeSentDateToJobMap(jobDetails, welcomeNotification);
-    }
 
     return jobDetails;
   }
