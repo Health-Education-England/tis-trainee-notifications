@@ -13,7 +13,7 @@
 <th:block th:fragment="content">
   <div th:replace="fragments/retry/v1.0.0 :: retry(${originallySentOn})"></div>
   <div style="text-align:right"><img style="margin-right:25px; height:100px" src='https://trainee.tis.nhs.uk/nhse-logo.png' alt="NHS England logo"/></div>
-  <p th:replace="fragments/greeting/v1.0.0 :: greeting(${familyName})"></p>
+  <div th:replace="fragments/greeting/v1.0.0 :: greeting(${familyName})"></div>
   <div th:switch="${#strings.isEmpty(welcomeSendDate)}"
   ><p th:case="true">You should shortly receive an email with details of your new training programme. There are some actions you need to perform to onboard to your programme, which are described below.</p
   ><p th:case="false">Following email notification sent on <span

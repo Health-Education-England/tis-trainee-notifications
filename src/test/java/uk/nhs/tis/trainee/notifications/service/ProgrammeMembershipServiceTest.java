@@ -684,7 +684,7 @@ class ProgrammeMembershipServiceTest {
     assertThat("Unexpected job id.", jobId, is(expectedJobId));
 
     JobDataMap jobDataMap = jobDataMapCaptor.getValue();
-    assertThat("Unexpected variable count.", jobDataMap.size(), is(8));
+    assertThat("Unexpected variable count.", jobDataMap.size(), is(10));
     assertThat("Unexpected tisId.", jobDataMap.get(TIS_ID_FIELD), is(TIS_ID));
     assertThat("Unexpected personId.", jobDataMap.get(PERSON_ID_FIELD), is(PERSON_ID));
     assertThat("Unexpected programme.", jobDataMap.get(PROGRAMME_NAME_FIELD),
@@ -707,7 +707,7 @@ class ProgrammeMembershipServiceTest {
     assertThat("Unexpected job id.", dayOneJobId, is(dayOneExpectedJobId));
 
     JobDataMap dayOneJobDataMap = dayOneJobDataMapCaptor.getValue();
-    assertThat("Unexpected variable count.", dayOneJobDataMap.size(), is(9));
+    assertThat("Unexpected variable count.", dayOneJobDataMap.size(), is(10));
     assertThat("Unexpected tisId.", dayOneJobDataMap.get(TIS_ID_FIELD), is(TIS_ID));
     assertThat("Unexpected personId.", dayOneJobDataMap.get(PERSON_ID_FIELD), is(PERSON_ID));
     assertThat("Unexpected programme.", dayOneJobDataMap.get(PROGRAMME_NAME_FIELD),
@@ -731,22 +731,78 @@ class ProgrammeMembershipServiceTest {
     verify(notificationService).executeNow(eq(PROGRAMME_DAY_ONE + "-" + TIS_ID), any());
   }
 
+  @ParameterizedTest
+  @EnumSource(value = NotificationType.class, names = {"PROGRAMME_UPDATED_WEEK_12",
+      "PROGRAMME_UPDATED_WEEK_4", "PROGRAMME_UPDATED_WEEK_2"})
+  void shouldSendReminderEmailNowWhenTodayIsDueDate(NotificationType reminderNotification)
+      throws SchedulerException {
+    when(historyService.findAllHistoryForTrainee(PERSON_ID)).thenReturn(new ArrayList<>());
+
+    ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
+    int offsetDays = service.getDaysBeforeStartForNotification(reminderNotification);
+    LocalDate reminderDate = LocalDate.now().plusDays(offsetDays);
+    programmeMembership.setStartDate(reminderDate);
+
+    service.addNotifications(programmeMembership);
+
+    verify(notificationService).executeNow(eq(reminderNotification + "-" + TIS_ID), any());
+  }
+
+  @ParameterizedTest
+  @EnumSource(value = NotificationType.class, names = {"PROGRAMME_UPDATED_WEEK_12",
+      "PROGRAMME_UPDATED_WEEK_4", "PROGRAMME_UPDATED_WEEK_2"})
+  void shouldNotSendOrScheduleReminderEmailWhenOverdue(NotificationType reminderNotification)
+      throws SchedulerException {
+    when(historyService.findAllHistoryForTrainee(PERSON_ID)).thenReturn(new ArrayList<>());
+
+    ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
+    int offsetDays = service.getDaysBeforeStartForNotification(reminderNotification);
+    LocalDate overdueDate = LocalDate.now().plusDays(offsetDays - 1);
+    programmeMembership.setStartDate(overdueDate);
+
+    service.addNotifications(programmeMembership);
+
+    verify(notificationService, never())
+        .executeNow(eq(reminderNotification + "-" + TIS_ID), any());
+    verify(notificationService, never())
+        .scheduleNotification(eq(reminderNotification + "-" + TIS_ID), any(), any(), anyLong());
+  }
+
+  @ParameterizedTest
+  @EnumSource(value = NotificationType.class, names = {"PROGRAMME_UPDATED_WEEK_12",
+      "PROGRAMME_UPDATED_WEEK_4", "PROGRAMME_UPDATED_WEEK_2"})
+  void shouldScheduleReminderEmailWhenDueInFuture(NotificationType reminderNotification)
+      throws SchedulerException {
+    when(historyService.findAllHistoryForTrainee(PERSON_ID)).thenReturn(new ArrayList<>());
+
+    ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
+    int offsetDays = service.getDaysBeforeStartForNotification(reminderNotification);
+    LocalDate overdueDate = LocalDate.now().plusDays(offsetDays + 1);
+    programmeMembership.setStartDate(overdueDate);
+
+    service.addNotifications(programmeMembership);
+
+    verify(notificationService, never())
+        .executeNow(eq(reminderNotification + "-" + TIS_ID), any());
+    verify(notificationService)
+        .scheduleNotification(eq(reminderNotification + "-" + TIS_ID), any(), any(), anyLong());
+  }
+
   @Test
   void shouldNotResendSentNotificationIfNotDeferral() throws SchedulerException {
     RecipientInfo recipientInfo = new RecipientInfo("id", MessageType.EMAIL, "test@email.com");
     TemplateInfo templateInfo = new TemplateInfo(null, null,
         Map.of(START_DATE_FIELD, START_DATE));
     List<History> sentNotifications = new ArrayList<>();
-    sentNotifications.add(new History(ObjectId.get(),
-        new TisReferenceInfo(PROGRAMME_MEMBERSHIP, TIS_ID),
-        PROGRAMME_CREATED, recipientInfo,
-        templateInfo, null,
-        Instant.MIN, Instant.MAX, SENT, null, null));
-    sentNotifications.add(new History(ObjectId.get(),
-        new TisReferenceInfo(PROGRAMME_MEMBERSHIP, TIS_ID),
-        PROGRAMME_DAY_ONE, recipientInfo,
-        templateInfo, null,
-        Instant.MIN, Instant.MAX, SENT, null, null));
+    for (NotificationType notificationType
+        : NotificationType.getActiveProgrammeUpdateNotificationTypes()) {
+
+      sentNotifications.add(new History(ObjectId.get(),
+          new TisReferenceInfo(PROGRAMME_MEMBERSHIP, TIS_ID),
+          notificationType, recipientInfo,
+          templateInfo, null,
+          Instant.MIN, Instant.MAX, SENT, null, null));
+    }
 
     when(historyService.findAllHistoryForTrainee(PERSON_ID)).thenReturn(sentNotifications);
 
@@ -1123,30 +1179,22 @@ class ProgrammeMembershipServiceTest {
     TemplateInfo previousTemplateInfo = new TemplateInfo(null, null,
         Map.of(START_DATE_FIELD, previousStartDate));
     List<History> sentNotifications = new ArrayList<>();
-    sentNotifications.add(new History(ObjectId.get(),
-        new TisReferenceInfo(PROGRAMME_MEMBERSHIP, TIS_ID),
-        PROGRAMME_CREATED, recipientInfo,
-        mostRecentTemplateInfo, null,
-        Instant.from(mostRecentSentAt.atStartOfDay(timezone)), Instant.MAX,
-        SENT, null, null));
-    sentNotifications.add(new History(ObjectId.get(),
-        new TisReferenceInfo(PROGRAMME_MEMBERSHIP, TIS_ID),
-        PROGRAMME_CREATED, recipientInfo,
-        previousTemplateInfo, null,
-        Instant.from(previousSentAt.atStartOfDay(timezone)), Instant.MAX,
-        SENT, null, null));
-    sentNotifications.add(new History(ObjectId.get(),
-        new TisReferenceInfo(PROGRAMME_MEMBERSHIP, TIS_ID),
-        PROGRAMME_DAY_ONE, recipientInfo,
-        mostRecentTemplateInfo, null,
-        Instant.from(mostRecentSentAt.atStartOfDay(timezone)), Instant.MAX,
-        SENT, null, null));
-    sentNotifications.add(new History(ObjectId.get(),
-        new TisReferenceInfo(PROGRAMME_MEMBERSHIP, TIS_ID),
-        PROGRAMME_DAY_ONE, recipientInfo,
-        previousTemplateInfo, null,
-        Instant.from(previousSentAt.atStartOfDay(timezone)), Instant.MAX,
-        SENT, null, null));
+    for (NotificationType notificationType
+        : NotificationType.getActiveProgrammeUpdateNotificationTypes()) {
+
+      sentNotifications.add(new History(ObjectId.get(),
+          new TisReferenceInfo(PROGRAMME_MEMBERSHIP, TIS_ID),
+          notificationType, recipientInfo,
+          mostRecentTemplateInfo, null,
+          Instant.from(mostRecentSentAt.atStartOfDay(timezone)), Instant.MAX,
+          SENT, null, null));
+      sentNotifications.add(new History(ObjectId.get(),
+          new TisReferenceInfo(PROGRAMME_MEMBERSHIP, TIS_ID),
+          notificationType, recipientInfo,
+          previousTemplateInfo, null,
+          Instant.from(previousSentAt.atStartOfDay(timezone)), Instant.MAX,
+          SENT, null, null));
+    }
 
     when(historyService.findAllHistoryForTrainee(PERSON_ID)).thenReturn(sentNotifications);
 
@@ -1278,7 +1326,7 @@ class ProgrammeMembershipServiceTest {
   }
 
   @Test
-  void shouldNoScheduleNotificationIfHistoryTemplateMissing() {
+  void shouldNotScheduleNotificationIfHistoryTemplateMissing() {
     RecipientInfo recipientInfo = new RecipientInfo("id", MessageType.EMAIL, "test@email.com");
 
     History sentNotification = new History(ObjectId.get(),
@@ -1339,7 +1387,8 @@ class ProgrammeMembershipServiceTest {
 
   @ParameterizedTest
   @EnumSource(value = NotificationType.class, mode = Mode.EXCLUDE,
-      names = {"PROGRAMME_CREATED", "PROGRAMME_DAY_ONE"})
+      names = {"PROGRAMME_CREATED", "PROGRAMME_DAY_ONE", "PROGRAMME_UPDATED_WEEK_12",
+          "PROGRAMME_UPDATED_WEEK_4", "PROGRAMME_UPDATED_WEEK_2"})
   void shouldIgnoreNonPmCreatedSentNotifications(NotificationType notificationType)
       throws SchedulerException {
     List<History> sentNotifications = new ArrayList<>();
@@ -1438,12 +1487,17 @@ class ProgrammeMembershipServiceTest {
   void shouldNotEncounterSchedulerExceptions() throws SchedulerException {
     LocalDate mostRecentSentAt = LocalDate.now().minusDays(50);
     List<History> sentNotifications = new ArrayList<>();
-    sentNotifications.add(new History(ObjectId.get(),
-        new TisReferenceInfo(PROGRAMME_MEMBERSHIP, TIS_ID),
-        PROGRAMME_DAY_ONE, any(),
-        new TemplateInfo(null, null, null), null,
-        Instant.from(mostRecentSentAt.atStartOfDay(timezone)), Instant.MAX,
-        SENT, null, null));
+    for (NotificationType notificationType
+        : NotificationType.getActiveProgrammeUpdateNotificationTypes()) {
+
+      sentNotifications.add(new History(ObjectId.get(),
+          new TisReferenceInfo(PROGRAMME_MEMBERSHIP, TIS_ID),
+          notificationType, null,
+          new TemplateInfo(null, null, null), null,
+          Instant.from(mostRecentSentAt.atStartOfDay(timezone)), Instant.MAX,
+          SENT, null, null));
+    }
+
     when(historyService.findAllHistoryForTrainee(PERSON_ID)).thenReturn(sentNotifications);
 
     doThrow(new SchedulerException())
@@ -1521,6 +1575,36 @@ class ProgrammeMembershipServiceTest {
     JobDataMap jobDataMap = jobDataMapCaptor.getValue();
     assertThat("Unexpected CoJ synced at.", jobDataMap.get(COJ_SYNCED_FIELD),
         is(nullValue()));
+  }
+
+  @ParameterizedTest
+  @CsvSource(delimiter = '|', textBlock = """
+      PROGRAMME_DAY_ONE | 0
+      PROGRAMME_UPDATED_WEEK_12 | 84
+      PROGRAMME_UPDATED_WEEK_8 | 56
+      PROGRAMME_UPDATED_WEEK_4 | 28
+      PROGRAMME_UPDATED_WEEK_2 | 14
+      PROGRAMME_UPDATED_WEEK_1 | 7
+      PROGRAMME_UPDATED_WEEK_0 | 0
+      """)
+  void shouldCalculateDaysBeforeProgrammeStartDateForMilestoneNotifications(
+      NotificationType notificationType, int expectedDaysBeforeStart) {
+    int daysBeforeStartDate = service.getDaysBeforeStartForNotification(notificationType);
+
+    assertThat("Unexpected days before start date for " + notificationType,
+        daysBeforeStartDate, is(expectedDaysBeforeStart));
+  }
+
+  @ParameterizedTest
+  @EnumSource(value = NotificationType.class, mode = Mode.EXCLUDE,
+      names = {"PROGRAMME_DAY_ONE", "PROGRAMME_UPDATED_WEEK_12", "PROGRAMME_UPDATED_WEEK_8",
+          "PROGRAMME_UPDATED_WEEK_4", "PROGRAMME_UPDATED_WEEK_2", "PROGRAMME_UPDATED_WEEK_1",
+          "PROGRAMME_UPDATED_WEEK_0"})
+  void shouldReturnNullForNonProgrammeMilestoneNotifications(NotificationType notificationType) {
+    Integer daysBeforeStartDate = service.getDaysBeforeStartForNotification(notificationType);
+
+    assertThat("Expected null for non-programme notification type " + notificationType,
+        daysBeforeStartDate, is(nullValue()));
   }
 
   /**
