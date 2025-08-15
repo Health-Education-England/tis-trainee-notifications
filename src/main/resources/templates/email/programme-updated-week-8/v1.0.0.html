@@ -12,7 +12,7 @@
   <div th:replace="fragments/greeting/v1.0.0 :: greeting(${familyName})"></div>
   <p>
     We look forward to welcoming you as you start <b><span
-          th:text="${not #strings.isEmpty(programmeName)} ? ${programmeName} : 'your programme'"></span></b> in <b
+    th:text="${not #strings.isEmpty(programmeName)} ? ${programmeName} : 'your programme'"></span></b> in <b
     >8</b> weeks. Please ensure you have completed the following task(s) before the start of your programme:<br><br
     ><ul>
       <li>Register an account on <a th:href="${not #strings.isEmpty(domain)} ? @{{domain}/(domain=${domain})} : _"

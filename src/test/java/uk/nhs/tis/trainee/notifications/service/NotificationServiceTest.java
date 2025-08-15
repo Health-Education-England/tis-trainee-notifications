@@ -127,7 +127,6 @@ import uk.nhs.tis.trainee.notifications.model.NotificationSummary;
 import uk.nhs.tis.trainee.notifications.model.NotificationType;
 import uk.nhs.tis.trainee.notifications.model.Placement;
 import uk.nhs.tis.trainee.notifications.model.ProgrammeMembership;
-import uk.nhs.tis.trainee.notifications.service.helper.ProgrammeMembershipNotificationHelper;
 
 class NotificationServiceTest {
 
@@ -176,7 +175,7 @@ class NotificationServiceTest {
   private NotificationService serviceWhitelisted;
   private EmailService emailService;
   private HistoryService historyService;
-  private ProgrammeMembershipNotificationHelper programmeMembershipNotificationHelper;
+  private ProgrammeMembershipActionsService programmeMembershipActionsService;
   private RestTemplate restTemplate;
   private Scheduler scheduler;
   private MessagingControllerService messagingControllerService;
@@ -187,7 +186,7 @@ class NotificationServiceTest {
     jobExecutionContext = mock(JobExecutionContext.class);
     emailService = mock(EmailService.class);
     historyService = mock(HistoryService.class);
-    programmeMembershipNotificationHelper = mock(ProgrammeMembershipNotificationHelper.class);
+    programmeMembershipActionsService = mock(ProgrammeMembershipActionsService.class);
     restTemplate = mock(RestTemplate.class);
     scheduler = mock(Scheduler.class);
     messagingControllerService = mock(MessagingControllerService.class);
@@ -203,7 +202,7 @@ class NotificationServiceTest {
     NotificationSummary programmeNotificationSummary
         = new NotificationSummary(PROGRAMME_NAME, START_DATE,
             new TisReferenceInfo(PROGRAMME_MEMBERSHIP, TIS_ID), false);
-    when(programmeMembershipNotificationHelper.getNotificationSummary(any()))
+    when(programmeMembershipActionsService.getNotificationSummary())
         .thenReturn(programmeNotificationSummary);
 
     placementJobDataMap = new JobDataMap();
@@ -232,11 +231,12 @@ class NotificationServiceTest {
             e -> new MessageTypeVersions(TEMPLATE_VERSION, null)
         )));
 
-    service = new NotificationService(emailService, historyService, restTemplate, scheduler,
-        messagingControllerService, programmeMembershipNotificationHelper, templateVersions,
-        SERVICE_URL, REFERENCE_URL, NOTIFICATION_DELAY, NOT_WHITELISTED, TIMEZONE);
-    serviceWhitelisted = new NotificationService(emailService, historyService, restTemplate,
-        scheduler, messagingControllerService, programmeMembershipNotificationHelper,
+    service = new NotificationService(emailService, historyService,
+        programmeMembershipActionsService, restTemplate, scheduler, messagingControllerService,
+        templateVersions, SERVICE_URL, REFERENCE_URL, NOTIFICATION_DELAY, NOT_WHITELISTED,
+        TIMEZONE);
+    serviceWhitelisted = new NotificationService(emailService, historyService,
+        programmeMembershipActionsService, restTemplate, scheduler, messagingControllerService,
         templateVersions, SERVICE_URL, REFERENCE_URL, NOTIFICATION_DELAY, WHITELISTED, TIMEZONE);
   }
 
@@ -249,9 +249,10 @@ class NotificationServiceTest {
             e -> new MessageTypeVersions(null, null)
         )));
 
-    service = new NotificationService(emailService, historyService, restTemplate, scheduler,
-        messagingControllerService, programmeMembershipNotificationHelper, templateVersions,
-        SERVICE_URL, REFERENCE_URL, NOTIFICATION_DELAY, NOT_WHITELISTED, TIMEZONE);
+    service = new NotificationService(emailService, historyService,
+        programmeMembershipActionsService, restTemplate, scheduler, messagingControllerService,
+        templateVersions, SERVICE_URL, REFERENCE_URL, NOTIFICATION_DELAY, NOT_WHITELISTED,
+        TIMEZONE);
 
     JobDataMap jobDataMap = new JobDataMap();
     jobDataMap.put(TIS_ID_FIELD, TIS_ID);
@@ -475,7 +476,7 @@ class NotificationServiceTest {
     NotificationSummary programmeNotificationSummaryUnnecessary
         = new NotificationSummary(PROGRAMME_NAME, START_DATE,
               new TisReferenceInfo(PROGRAMME_MEMBERSHIP, TIS_ID), false);
-    when(programmeMembershipNotificationHelper.getNotificationSummary(any()))
+    when(programmeMembershipActionsService.getNotificationSummary())
         .thenReturn(programmeNotificationSummaryUnnecessary);
 
     service.execute(jobExecutionContext);
@@ -652,7 +653,7 @@ class NotificationServiceTest {
     NotificationSummary programmeNotificationSummaryUnnecessary
         = new NotificationSummary(PROGRAMME_NAME, START_DATE,
               new TisReferenceInfo(PROGRAMME_MEMBERSHIP, TIS_ID), true);
-    when(programmeMembershipNotificationHelper.getNotificationSummary(any()))
+    when(programmeMembershipActionsService.getNotificationSummary())
         .thenReturn(programmeNotificationSummaryUnnecessary);
 
     service.execute(jobExecutionContext);
@@ -1084,9 +1085,10 @@ class NotificationServiceTest {
   void shouldNotSaveScheduleNotificationAndThrowExceptionIfTemplateVersionMissing() {
     TemplateVersionsProperties templateVersions = mock(TemplateVersionsProperties.class);
     when(templateVersions.getTemplateVersion(any(), any())).thenReturn(Optional.empty());
-    service = new NotificationService(emailService, historyService, restTemplate, scheduler,
-        messagingControllerService, programmeMembershipNotificationHelper, templateVersions,
-        SERVICE_URL, REFERENCE_URL, NOTIFICATION_DELAY, NOT_WHITELISTED, TIMEZONE);
+    service = new NotificationService(emailService, historyService,
+        programmeMembershipActionsService, restTemplate, scheduler, messagingControllerService,
+        templateVersions, SERVICE_URL, REFERENCE_URL, NOTIFICATION_DELAY, NOT_WHITELISTED,
+        TIMEZONE);
 
     LocalDate expectedDate = START_DATE.minusDays(84);
     Date when = Date.from(expectedDate
@@ -1198,15 +1200,13 @@ class NotificationServiceTest {
 
     service.execute(jobExecutionContext);
 
-    verify(programmeMembershipNotificationHelper)
-        .addProgrammeReminderDetailsToJobMap(any(), eq(PERSON_ID), eq(TIS_ID));
-    verify(programmeMembershipNotificationHelper)
-        .addWelcomeSentDateToJobMap(any(), eq(welcomeNotification));
+    verify(programmeMembershipActionsService).addActionsToJobMap(eq(PERSON_ID), any());
   }
 
   @ParameterizedTest
   @EnumSource(value = NotificationType.class, mode = Mode.EXCLUDE,
-      names = {"PROGRAMME_UPDATED_WEEK_12", "PROGRAMME_UPDATED_WEEK_4", "PROGRAMME_UPDATED_WEEK_2"})
+      names = {"PROGRAMME_UPDATED_WEEK_12", "PROGRAMME_UPDATED_WEEK_4", "PROGRAMME_UPDATED_WEEK_2",
+          "PROGRAMME_CREATED", "PROGRAMME_DAY_ONE"})
   void shouldNotAddReminderJobDetailsToInapplicableNotification(NotificationType notificationType) {
 
     programmeJobDataMap.put(TEMPLATE_NOTIFICATION_TYPE_FIELD, notificationType.toString());
@@ -1231,10 +1231,7 @@ class NotificationServiceTest {
 
     service.execute(jobExecutionContext);
 
-    verify(programmeMembershipNotificationHelper, never())
-        .addProgrammeReminderDetailsToJobMap(any(), any(), any());
-    verify(programmeMembershipNotificationHelper, never())
-        .addWelcomeSentDateToJobMap(any(), any());
+    verify(programmeMembershipActionsService, never()).addActionsToJobMap(any(), any());
   }
 
   @ParameterizedTest
