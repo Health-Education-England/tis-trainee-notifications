@@ -199,7 +199,6 @@ public class NotificationService implements Job {
     } else if (notificationType == NotificationType.PLACEMENT_UPDATED_WEEK_12
         || notificationType == NotificationType.PLACEMENT_ROLLOUT_2024_CORRECTION) {
 
-      // move this to new PlacementNotificationHelper
       String jobName = jobDetails.getString(PlacementService.PLACEMENT_TYPE_FIELD);
       LocalDate startDate = (LocalDate) jobDetails.get(PlacementService.START_DATE_FIELD);
       History.TisReferenceInfo tisReferenceInfo = new TisReferenceInfo(PLACEMENT,

@@ -42,14 +42,15 @@ import static uk.nhs.tis.trainee.notifications.model.ProgrammeActionType.SIGN_FO
 import static uk.nhs.tis.trainee.notifications.model.ProgrammeActionType.SIGN_FORM_R_PART_B;
 import static uk.nhs.tis.trainee.notifications.model.TisReferenceType.PERSON;
 import static uk.nhs.tis.trainee.notifications.model.TisReferenceType.PROGRAMME_MEMBERSHIP;
+import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipActionsService.TEMPLATE_NOTIFICATION_TYPE_FIELD;
+import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipActionsService.TEMPLATE_WELCOME_NOTIFICATION_DATE_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.PROGRAMME_NAME_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.START_DATE_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.TIS_ID_FIELD;
-import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipActionsService.TEMPLATE_NOTIFICATION_TYPE_FIELD;
-import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipActionsService.TEMPLATE_WELCOME_NOTIFICATION_DATE_FIELD;
 
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
@@ -69,6 +70,7 @@ import uk.nhs.tis.trainee.notifications.model.History;
 import uk.nhs.tis.trainee.notifications.model.NotificationStatus;
 import uk.nhs.tis.trainee.notifications.model.NotificationSummary;
 import uk.nhs.tis.trainee.notifications.model.NotificationType;
+import uk.nhs.tis.trainee.notifications.model.ProgrammeActionType;
 
 /**
  * Tests for the ProgrammeMembershipActionsService class.
@@ -191,7 +193,7 @@ class ProgrammeMembershipActionsServiceTest {
     assertThat("Unexpected action status SIGN_FORM_R_PART_B.",
         jobDataMap.get(SIGN_FORM_R_PART_B.toString()), is(true));
     assertThat("Unexpected action status REGISTER_TSS.",
-        jobDataMap.get(SIGN_FORM_R_PART_A.toString()), is(true));
+        jobDataMap.get(REGISTER_TSS.toString()), is(true));
   }
 
   @ParameterizedTest
@@ -233,7 +235,7 @@ class ProgrammeMembershipActionsServiceTest {
   @ParameterizedTest
   @EnumSource(value = NotificationType.class,
       names = {"PROGRAMME_UPDATED_WEEK_12", "PROGRAMME_UPDATED_WEEK_4", "PROGRAMME_UPDATED_WEEK_2"})
-  void shouldIdentifyIfUnnecessaryReminder(NotificationType reminderNotificationType) {
+  void shouldIdentifyIfUnnecessaryReminderIfMissing(NotificationType reminderNotificationType) {
     jobDataMap.put(TEMPLATE_NOTIFICATION_TYPE_FIELD, reminderNotificationType);
     ResponseEntity<Set<ActionDto>> responseEntity = ResponseEntity.ok(Set.of());
     doReturn(responseEntity)
@@ -246,7 +248,27 @@ class ProgrammeMembershipActionsServiceTest {
         service.getNotificationSummary().unnecessaryReminder(), is(true));
   }
 
+  @ParameterizedTest
+  @EnumSource(value = NotificationType.class,
+      names = {"PROGRAMME_UPDATED_WEEK_12", "PROGRAMME_UPDATED_WEEK_4", "PROGRAMME_UPDATED_WEEK_2"})
+  void shouldIdentifyIfUnnecessaryReminder(NotificationType reminderNotificationType) {
+    jobDataMap.put(TEMPLATE_NOTIFICATION_TYPE_FIELD, reminderNotificationType);
+    Set<ActionDto> reminderActions = new HashSet<>();
+    for (ProgrammeActionType actionType : ProgrammeActionType.values()) {
+      reminderActions.add(new ActionDto("action-id-" + actionType, actionType.toString(),
+          PERSON_ID, new ActionDto.TisReferenceInfo(TIS_ID, PROGRAMME_MEMBERSHIP), null, null,
+          Instant.now()));
+    }
+    ResponseEntity<Set<ActionDto>> responseEntity = ResponseEntity.ok(reminderActions);
+    doReturn(responseEntity)
+        .when(restTemplate).exchange(eq(ACTIONS_URL + ACTIONS_PROGRAMME_URL),
+            eq(HttpMethod.GET), eq(null), eq(actionSetType), anyMap());
 
+    service.addActionsToJobMap(PERSON_ID, jobDataMap);
+
+    assertThat("Unexpected necessary reminder flag.",
+        service.getNotificationSummary().unnecessaryReminder(), is(true));
+  }
 
   @Test
   void shouldNotAddWelcomeSentDateToJobMapIfHistoryNull() {

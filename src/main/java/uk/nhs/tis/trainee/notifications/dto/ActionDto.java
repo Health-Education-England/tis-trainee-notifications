@@ -23,7 +23,6 @@ package uk.nhs.tis.trainee.notifications.dto;
 
 import java.time.Instant;
 import java.time.LocalDate;
-import org.springframework.data.mongodb.core.mapping.Field;
 import uk.nhs.tis.trainee.notifications.model.TisReferenceType;
 
 /**
