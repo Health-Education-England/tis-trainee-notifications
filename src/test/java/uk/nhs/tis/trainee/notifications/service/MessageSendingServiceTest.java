@@ -27,13 +27,16 @@ import static org.hamcrest.Matchers.hasItems;
 import static org.hamcrest.Matchers.hasKey;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.instanceOf;
+import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.not;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import com.amazonaws.xray.AWSXRay;
@@ -43,30 +46,109 @@ import com.amazonaws.xray.entities.TraceHeader;
 import io.awspring.cloud.sqs.operations.SendResult.Batch;
 import io.awspring.cloud.sqs.operations.SendResult.Failed;
 import io.awspring.cloud.sqs.operations.SqsTemplate;
+import java.time.Instant;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import java.util.stream.IntStream;
 import org.bson.types.ObjectId;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.NullAndEmptySource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
+import org.quartz.JobDataMap;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageHeaders;
+import org.springframework.messaging.MessagingException;
+import uk.nhs.tis.trainee.notifications.model.History;
+import uk.nhs.tis.trainee.notifications.model.History.TemplateInfo;
 import uk.nhs.tis.trainee.notifications.model.ObjectIdWrapper;
+import uk.nhs.tis.trainee.notifications.repository.HistoryRepository;
 
 class MessageSendingServiceTest {
 
   private static final String OUTBOX_QUEUE = "http://outbox.example.com";
+  private static final ObjectId NOTIFICATION_ID = ObjectId.get();
 
   private MessageSendingService service;
+  private HistoryRepository repository;
+  private NotificationService notificationService;
   private SqsTemplate sqsTemplate;
 
   @BeforeEach
   void setUp() {
+    repository = mock(HistoryRepository.class);
+    notificationService = mock(NotificationService.class);
     sqsTemplate = mock(SqsTemplate.class);
-    service = new MessageSendingService(sqsTemplate, OUTBOX_QUEUE);
+    service = new MessageSendingService(repository, notificationService, sqsTemplate, OUTBOX_QUEUE);
+  }
+
+  @Test
+  void shouldSendInstantlyWithTemplateVariables() {
+    Map<String, Object> templateVariables = Map.of(
+        "key1", "value1",
+        "key2", true,
+        "key3", 123
+    );
+    when(repository.findById(NOTIFICATION_ID)).thenReturn(Optional.of(
+        History.builder()
+            .template(new TemplateInfo("template", "v1.2.3", templateVariables))
+            .build()
+    ));
+
+    when(notificationService.executeNow(any(), any())).thenReturn(
+        Map.of("status", "sent " + Instant.now()));
+
+    ObjectIdWrapper notificationIdWrapper = new ObjectIdWrapper(NOTIFICATION_ID);
+    service.sendInstantly(notificationIdWrapper);
+
+    ArgumentCaptor<JobDataMap> jobDataCaptor = ArgumentCaptor.captor();
+    verify(notificationService).executeNow(eq("OUTBOX_" + NOTIFICATION_ID),
+        jobDataCaptor.capture());
+
+    JobDataMap jobData = jobDataCaptor.getValue();
+    assertThat("Unexpected job data count.", jobData.keySet(), hasSize(3));
+    assertThat("Unexpected job data.", jobData.getString("key1"), is("value1"));
+    assertThat("Unexpected job data.", jobData.getBoolean("key2"), is(true));
+    assertThat("Unexpected job data.", jobData.getInt("key3"), is(123));
+  }
+
+  @Test
+  void shouldThrowErrorSendingInstantlyWhenNotFound() {
+    when(repository.findById(NOTIFICATION_ID)).thenReturn(Optional.empty());
+
+    ObjectIdWrapper notificationIdWrapper = new ObjectIdWrapper(NOTIFICATION_ID);
+    assertThrows(MessagingException.class, () -> service.sendInstantly(notificationIdWrapper));
+
+    verifyNoInteractions(notificationService);
+  }
+
+  @ParameterizedTest
+  @NullAndEmptySource
+  @ValueSource(strings = "failed")
+  void shouldThrowErrorWhenSendInstantlyFails(String failedStatus) {
+    Map<String, Object> templateVariables = Map.of(
+        "key1", "value1",
+        "key2", true,
+        "key3", 123
+    );
+    when(repository.findById(NOTIFICATION_ID)).thenReturn(Optional.of(
+        History.builder()
+            .template(new TemplateInfo("template", "v1.2.3", templateVariables))
+            .build()
+    ));
+
+    Map<String, String> result = new HashMap<>();
+    result.put("status", failedStatus);
+    when(notificationService.executeNow(any(), any())).thenReturn(result);
+
+    ObjectIdWrapper notificationIdWrapper = new ObjectIdWrapper(NOTIFICATION_ID);
+    assertThrows(MessagingException.class, () -> service.sendInstantly(notificationIdWrapper));
   }
 
   @ParameterizedTest

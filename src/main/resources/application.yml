@@ -160,6 +160,8 @@ spring:
     user: ${spring.datasource.username}
     enabled: true
   quartz:
+    # TODO: Quartz is disabled to avoid conflicts, pending refactoring for removal.
+    auto-startup: false
     job-store-type: jdbc
     jdbc:
       initialize-schema: never
