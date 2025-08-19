@@ -50,8 +50,6 @@ import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipServic
 
 import java.time.Instant;
 import java.time.LocalDate;
-import java.time.temporal.ChronoUnit;
-import java.time.temporal.TemporalAmount;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -70,7 +68,6 @@ import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 import uk.nhs.tis.trainee.notifications.dto.ActionDto;
 import uk.nhs.tis.trainee.notifications.model.History;
-import uk.nhs.tis.trainee.notifications.model.NotificationStatus;
 import uk.nhs.tis.trainee.notifications.model.NotificationSummary;
 import uk.nhs.tis.trainee.notifications.model.NotificationType;
 import uk.nhs.tis.trainee.notifications.model.ProgrammeActionType;
@@ -287,40 +284,15 @@ class ProgrammeMembershipActionsServiceTest {
   }
 
   @Test
-  void shouldNotAddWelcomeSentDateToJobMapIfHistoryStatusNull() {
+  void shouldNotAddWelcomeSentDateToJobMapIfHistoryEmpty() {
     ResponseEntity<Set<ActionDto>> responseEntity = ResponseEntity.ok(Set.of());
     doReturn(responseEntity)
         .when(restTemplate).exchange(eq(ACTIONS_URL + ACTIONS_PROGRAMME_URL),
             eq(HttpMethod.GET), eq(null), eq(actionSetType), anyMap());
 
-    History history = History.builder()
-        .sentAt(Instant.MIN)
-        .build();
     when(historyService
-        .findScheduledEmailForTraineeByRefAndType(any(), any(), any(), any()))
-        .thenReturn(history);
-
-    service.addActionsToJobMap(PERSON_ID, jobDataMap);
-
-    assertThat("Unexpected welcome message in job data map.",
-        jobDataMap.get(TEMPLATE_WELCOME_NOTIFICATION_DATE_FIELD), nullValue());
-  }
-
-  @ParameterizedTest
-  @EnumSource(value = NotificationStatus.class, mode = EnumSource.Mode.EXCLUDE, names = {"SENT"})
-  void shouldNotAddWelcomeSentDateToJobMapIfHistoryStatusNotSent(NotificationStatus status) {
-    ResponseEntity<Set<ActionDto>> responseEntity = ResponseEntity.ok(Set.of());
-    doReturn(responseEntity)
-        .when(restTemplate).exchange(eq(ACTIONS_URL + ACTIONS_PROGRAMME_URL),
-            eq(HttpMethod.GET), eq(null), eq(actionSetType), anyMap());
-
-    History history = History.builder()
-        .status(status)
-        .sentAt(Instant.now())
-        .build();
-    when(historyService
-        .findScheduledEmailForTraineeByRefAndType(any(), any(), any(), any()))
-        .thenReturn(history);
+        .findAllSentEmailForTraineeByRefAndType(any(), any(), any(), any()))
+        .thenReturn(List.of());
 
     service.addActionsToJobMap(PERSON_ID, jobDataMap);
 
@@ -329,7 +301,7 @@ class ProgrammeMembershipActionsServiceTest {
   }
 
   @Test
-  void shouldAddWelcomeSentDateToJobMapIfHistoryStatusSent() {
+  void shouldAddWelcomeSentDateToJobMapIfHistoryPresent() {
     ResponseEntity<Set<ActionDto>> responseEntity = ResponseEntity.ok(Set.of());
     doReturn(responseEntity)
         .when(restTemplate).exchange(eq(ACTIONS_URL + ACTIONS_PROGRAMME_URL),

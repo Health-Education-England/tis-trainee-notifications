@@ -40,6 +40,7 @@ import static uk.nhs.tis.trainee.notifications.service.NotificationService.API_T
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.OWNER_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipActionsService.TEMPLATE_WELCOME_NOTIFICATION_DATE_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.TIS_ID_FIELD;
+
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.json.JsonMapper;
@@ -54,7 +55,6 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -106,7 +106,7 @@ import uk.nhs.tis.trainee.notifications.service.UserAccountService;
 @SpringBootTest
 @Testcontainers
 @ActiveProfiles("test")
-public class ProgrammeMembershipListenerIntegrationTest {
+class ProgrammeMembershipListenerIntegrationTest {
 
   private static final String PERSON_ID = "40";
   private static final UUID PROGRAMME_MEMBERSHIP_ID = UUID.randomUUID();
@@ -554,7 +554,9 @@ public class ProgrammeMembershipListenerIntegrationTest {
               "managingDeanery": "deaneryTest",
               "programmeNumber": "123456",
               "designatedBody": "desBody",
-              "curricula": "[{\\"curriculumSubType\\":\\"MEDICAL_CURRICULUM\\",\\"curriculumSpecialty\\":\\"specialty\\",\\"curriculumSpecialtyBlockIndemnity\\":false}]"
+              "curricula": "[{\\"curriculumSubType\\":\\"MEDICAL_CURRICULUM\\",
+              \\"curriculumSpecialty\\":\\"specialty\\",
+              \\"curriculumSpecialtyBlockIndemnity\\":false}]"
             },
             "metadata": {
               "operation": "LOAD"
