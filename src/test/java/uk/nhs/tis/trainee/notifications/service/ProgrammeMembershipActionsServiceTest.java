@@ -50,7 +50,10 @@ import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipServic
 
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
+import java.time.temporal.TemporalAmount;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
@@ -158,8 +161,8 @@ class ProgrammeMembershipActionsServiceTest {
         .sentAt(Instant.MIN)
         .build();
     when(historyService
-        .findScheduledEmailForTraineeByRefAndType(any(), any(), any(), any()))
-        .thenReturn(welcomeHistory);
+        .findAllSentEmailForTraineeByRefAndType(any(), any(), any(), any()))
+        .thenReturn(List.of(welcomeHistory));
 
     service.addActionsToJobMap(PERSON_ID, jobDataMap);
 
@@ -338,8 +341,35 @@ class ProgrammeMembershipActionsServiceTest {
         .sentAt(sentAt)
         .build();
     when(historyService
-        .findScheduledEmailForTraineeByRefAndType(any(), any(), any(), any()))
-        .thenReturn(history);
+        .findAllSentEmailForTraineeByRefAndType(any(), any(), any(), any()))
+        .thenReturn(List.of(history));
+
+    service.addActionsToJobMap(PERSON_ID, jobDataMap);
+
+    assertThat("Unexpected welcome message in job data map.",
+        jobDataMap.get(TEMPLATE_WELCOME_NOTIFICATION_DATE_FIELD), is(sentAt));
+  }
+
+  @Test
+  void shouldAddFirstWelcomeSentDateToJobMapIfMultipleHistoryStatusesSent() {
+    ResponseEntity<Set<ActionDto>> responseEntity = ResponseEntity.ok(Set.of());
+    doReturn(responseEntity)
+        .when(restTemplate).exchange(eq(ACTIONS_URL + ACTIONS_PROGRAMME_URL),
+            eq(HttpMethod.GET), eq(null), eq(actionSetType), anyMap());
+
+    Instant sentAt = Instant.now();
+    History history = History.builder()
+        .status(SENT)
+        .sentAt(sentAt)
+        .build();
+    Instant sentAt2 = Instant.now().minusMillis(1000);
+    History history2 = History.builder()
+        .status(SENT)
+        .sentAt(sentAt2)
+        .build();
+    when(historyService
+        .findAllSentEmailForTraineeByRefAndType(any(), any(), any(), any()))
+        .thenReturn(List.of(history, history2));
 
     service.addActionsToJobMap(PERSON_ID, jobDataMap);
 
@@ -362,8 +392,8 @@ class ProgrammeMembershipActionsServiceTest {
         .sentAt(sentAt)
         .build();
     when(historyService
-        .findScheduledEmailForTraineeByRefAndType(any(), any(), any(), any()))
-        .thenReturn(history);
+        .findAllSentEmailForTraineeByRefAndType(any(), any(), any(), any()))
+        .thenReturn(List.of(history));
 
     service.addActionsToJobMap(PERSON_ID, jobDataMap);
 

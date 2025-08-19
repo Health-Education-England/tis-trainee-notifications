@@ -88,16 +88,15 @@ import uk.nhs.tis.trainee.notifications.model.ProgrammeMembership;
 @Component
 public class NotificationService implements Job {
 
-  protected static final String API_GET_OWNER_CONTACT
-      = "/api/local-office-contact-by-lo-name/{localOfficeName}";
-  protected static final String DEFAULT_NO_CONTACT_MESSAGE
-      = "your local office";
+  protected static final String DEFAULT_NO_CONTACT_MESSAGE = "your local office";
   protected static final List<String> DUMMY_USER_ROLES = List.of("Placeholder", "Dummy Record");
   protected static final String JOB_RESULT_STATUS = "status";
 
   public static final String API_TRAINEE_DETAILS = "/api/trainee-profile/account-details/{tisId}";
   public static final String API_TRAINEE_LOCAL_OFFICE_CONTACTS
       = "/api/trainee-profile/local-office-contacts/{tisId}/{contactTypeName}";
+  public static final String API_GET_OWNER_CONTACT
+      = "/api/local-office-contact-by-lo-name/{localOfficeName}";
   private static final String TRIGGER_ID_PREFIX = "trigger-";
   public static final long ONE_DAY_IN_SECONDS = 24 * 60 * 60L;
 
