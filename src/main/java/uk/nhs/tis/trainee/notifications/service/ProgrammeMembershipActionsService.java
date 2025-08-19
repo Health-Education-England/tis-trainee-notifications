@@ -29,6 +29,7 @@ import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipServic
 import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.TIS_ID_FIELD;
 
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -57,7 +58,7 @@ public class ProgrammeMembershipActionsService {
   public static final String TEMPLATE_WELCOME_NOTIFICATION_DATE_FIELD = "welcomeSendDate";
   public static final String TEMPLATE_NOTIFICATION_TYPE_FIELD = "notificationType";
 
-  private static final String API_PROGRAMME_ACTIONS = "/api/action/{personId}/{programmeId}";
+  public static final String API_PROGRAMME_ACTIONS = "/api/action/{personId}/{programmeId}";
 
   private final String actionsUrl;
   private final RestTemplate restTemplate;
@@ -118,19 +119,21 @@ public class ProgrammeMembershipActionsService {
    * @param jobDataMap The job data map to populate.
    */
   private void addProgrammeReminderDetailsToJobMap(JobDataMap jobDataMap) {
-    History welcomeNotification = historyService.findScheduledEmailForTraineeByRefAndType(
+    List<History> welcomeNotification = historyService.findAllSentEmailForTraineeByRefAndType(
         personId, PROGRAMME_MEMBERSHIP, programmeId, PROGRAMME_CREATED);
-    if (welcomeNotification == null
-        || welcomeNotification.status() == null
-        || !welcomeNotification.status().equals(SENT)) {
+    if (welcomeNotification == null || welcomeNotification.isEmpty()) {
       log.warn("Welcome notification for trainee {} and programme membership {} is missing or "
               + "not SENT, so it is not added to the job data map.",
           personId, programmeId);
     } else {
+      if (welcomeNotification.size() > 1) {
+        log.warn("Multiple welcome notifications found for trainee {} and programme membership {}. "
+            + "Using the first one.", personId, programmeId);
+      }
       jobDataMap.putIfAbsent(TEMPLATE_WELCOME_NOTIFICATION_DATE_FIELD,
-          (welcomeNotification.lastRetry() != null
-              ? welcomeNotification.lastRetry()
-              : welcomeNotification.sentAt()));
+          (welcomeNotification.get(0).lastRetry() != null
+              ? welcomeNotification.get(0).lastRetry()
+              : welcomeNotification.get(0).sentAt()));
     }
     setActions();
     for (ProgrammeActionType actionType : ProgrammeActionType.values()) {
