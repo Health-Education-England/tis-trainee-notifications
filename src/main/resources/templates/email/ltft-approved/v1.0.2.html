@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+  <title>LTFT Approved</title>
+</head>
+<body>
+<h1>Email Message</h1>
+<h2>Subject</h2>
+<th:block th:fragment="subject">Notification of Your Less Than Full Time (LTFT) Application Status (<th:block th:text="${not #strings.isEmpty(var?.formRef)} ? ${var.formRef} : 'unknown'"></th:block>)</th:block>
+<h2>Content</h2>
+<th:block th:fragment="content" th:with="subjectRefs = |GMC: ${not #strings.isEmpty(var?.personalDetails?.gmcNumber) ? var.personalDetails.gmcNumber : 'unknown'}, LTFT Ref No: ${not #strings.isEmpty(var?.formRef) ? var.formRef : 'unknown'}|">
+  <div th:replace="fragments/retry/v1.0.0 :: retry(${originallySentOn})"></div>
+  <div style="text-align:right"><img style="margin-right:25px; height:100px" src='https://trainee.tis.nhs.uk/nhse-logo.png' alt="NHS England logo"/></div>
+  <p th:replace="~{fragments/greeting/v1.0.0 :: greeting(${familyName})}"></p>
+  <p>We are pleased to inform you that your application for Less Than Full Time (LTFT) training has been approved. Below are the details of your updated working arrangements:</p>
+  <table th:replace="~{fragments/ltft-summary/v1.0.0 :: ltftSummary(${var?.programmeMembership?.name}, ${var?.change?.startDate}, ${var?.change?.cctDate}, ${var?.programmeMembership?.wte}, ${var?.change?.wte})}"></table>
+  <p>Your estimated completion date will be adjusted as a result of your change in working hours and will be confirmed at your next Annual Review of Competence Progression (ARCP).</p>
+  <p><strong>Important Information for Skilled Worker (Tier 2) Visa Holders</strong></p>
+  <p>If you are an NHSE-sponsored Skilled Worker (Tier 2) visa holder, you are required to complete the reporting form within 5 working days to notify the <strong>National Overseas Sponsorship team</strong> of any change in your working hours.</p>
+  <p>For more details, please refer to the <a href="https://medical.hee.nhs.uk/medical-training-recruitment/medical-specialty-training/overseas-applicants">Overseas Sponsorship FAQ</a>.</p>
+  <p><strong>Additional Support & Resources</strong></p>
+  <ul>
+    <li><strong>Frequently Asked Questions: <a href="https://tis-support.hee.nhs.uk/trainees/">TSS Support FAQs</a></strong></li>
+    <li><strong>Supported Return to Training (SuppoRTT):</strong> If you are returning after a period of absence, resources are available through your local SuppoRTT team. Find more details
+      <th:block th:with="contact = ${contacts?.get('SUPPORTED_RETURN_TO_TRAINING')}">
+        <th:block th:replace="~{fragments/link/v1.0.0 :: link(${contact?.contact}, ${contact?.type}, 'by clicking on the following link for Supported Return to Training. ', ${contact?.contact}, '', 'from your <strong>Local Office Support team.</strong>', |Ltft Approved - Supported Return to Training - ${subjectRefs}|)}"></th:block>
+      </th:block>
+    </li>
+    <li><strong>LTFT Working Policy:</strong>
+      <th:block th:with="contact = ${contacts?.get('LTFT')}">
+        <th:block th:replace="~{fragments/link/v1.0.0 :: link(${contact?.contact}, ${contact?.type}, 'Please click on the following link for LTFT Working Policy. ', ${contact?.contact}, '', 'Please contact your <strong>Local Office Support team.</strong>', |Ltft Approved - Working Policy - ${subjectRefs}|)}"></th:block>
+      </th:block>
+    </li>
+  </ul>
+  <p><strong>Future Changes to Your Working Hours</strong></p>
+  <p>Any future changes to your working arrangements, including an increase or further decrease in hours, must be prospectively approved via the submission of a new application form.</p>
+  <p><strong>Your Employer and Pay</strong></p>
+  <p>Please note that NHSE is not an employer. Any issues you have with how your pay is calculated as a LTFT Resident Doctor should be submitted to the medical staffing department of your Employing Trust.</p>
+  <p>For any queries,
+    <th:block th:with="contact = ${contacts?.get('LTFT_SUPPORT')}">
+      <th:block th:replace="~{fragments/link/v1.0.0 :: link(${contact?.contact}, ${contact?.type}, 'please click on the following link for Local Office Support. ', ${contact?.contact}, '', 'please contact your <strong>Local Office Support team.</strong>', |Ltft Approved - Enquiries - ${subjectRefs}|)}"></th:block>
+    </th:block>
+  </p>
+  <p>
+    Kind Regards,
+  </p>
+  <p>
+    <th:block th:text="${not #strings.isEmpty(var?.programmeMembership?.managingDeanery)} ? |NHS England - ${var.programmeMembership.managingDeanery}| : 'Your Local Office'"></th:block>
+  </p>
+  <div th:replace="fragments/disclaimer/v1.0.0 :: body"></div>
+</th:block>
+</body>
+</html>
