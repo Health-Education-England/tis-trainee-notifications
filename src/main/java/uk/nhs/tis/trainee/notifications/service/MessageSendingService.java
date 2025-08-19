@@ -23,6 +23,7 @@ package uk.nhs.tis.trainee.notifications.service;
 
 import static io.awspring.cloud.sqs.listener.SqsHeaders.MessageSystemAttributes.SQS_AWS_TRACE_HEADER;
 import static java.util.stream.Collectors.toList;
+import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.SCHEDULED;
 
 import com.amazonaws.xray.AWSXRay;
 import com.amazonaws.xray.entities.TraceHeader;
@@ -47,6 +48,7 @@ import org.springframework.messaging.MessagingException;
 import org.springframework.messaging.support.GenericMessage;
 import org.springframework.stereotype.Service;
 import uk.nhs.tis.trainee.notifications.model.History;
+import uk.nhs.tis.trainee.notifications.model.NotificationStatus;
 import uk.nhs.tis.trainee.notifications.model.ObjectIdWrapper;
 import uk.nhs.tis.trainee.notifications.repository.HistoryRepository;
 
@@ -91,7 +93,7 @@ public class MessageSendingService {
    * @param notificationIdWrapper The wrapped ID of the notification to send.
    * @throws MessagingException If the notification could not be sent.
    */
-  public void sendInstantly(ObjectIdWrapper notificationIdWrapper) throws MessagingException {
+  public void sendScheduled(ObjectIdWrapper notificationIdWrapper) throws MessagingException {
     ObjectId notificationId = notificationIdWrapper.id();
     log.debug("Attempting to send scheduled notification '{}'.", notificationId);
     Optional<History> found = historyRepository.findById(notificationId);
@@ -102,6 +104,13 @@ public class MessageSendingService {
     }
 
     History history = found.get();
+    NotificationStatus status = history.status();
+
+    if (status != SCHEDULED) {
+      log.error("Ignoring attempt to send non-scheduled notification '{}'.", notificationId);
+      return;
+    }
+
     // TODO: Quartz job handlers re-used for consistency, to be refactored when Quartz removed.
     String jobKey = "OUTBOX_" + notificationId;
     JobDataMap jobDataMap = new JobDataMap(history.template().variables());

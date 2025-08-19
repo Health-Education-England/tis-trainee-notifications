@@ -45,6 +45,6 @@ public class OutboxListener {
    */
   @SqsListener("${application.queues.outbox}")
   public void handleOutboxMessages(ObjectIdWrapper notificationIdWrapper) {
-    messageSendingService.sendInstantly(notificationIdWrapper);
+    messageSendingService.sendScheduled(notificationIdWrapper);
   }
 }

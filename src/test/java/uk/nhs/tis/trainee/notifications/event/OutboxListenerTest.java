@@ -49,6 +49,6 @@ class OutboxListenerTest {
 
     listener.handleOutboxMessages(objectIdWrapper);
 
-    verify(messageSendingService).sendInstantly(objectIdWrapper);
+    verify(messageSendingService).sendScheduled(objectIdWrapper);
   }
 }

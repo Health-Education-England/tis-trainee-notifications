@@ -30,6 +30,7 @@ import static org.hamcrest.Matchers.instanceOf;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.not;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.params.provider.EnumSource.Mode.EXCLUDE;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
@@ -38,6 +39,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
+import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.SCHEDULED;
 
 import com.amazonaws.xray.AWSXRay;
 import com.amazonaws.xray.AWSXRayRecorder;
@@ -58,6 +60,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
@@ -67,6 +70,7 @@ import org.springframework.messaging.MessageHeaders;
 import org.springframework.messaging.MessagingException;
 import uk.nhs.tis.trainee.notifications.model.History;
 import uk.nhs.tis.trainee.notifications.model.History.TemplateInfo;
+import uk.nhs.tis.trainee.notifications.model.NotificationStatus;
 import uk.nhs.tis.trainee.notifications.model.ObjectIdWrapper;
 import uk.nhs.tis.trainee.notifications.repository.HistoryRepository;
 
@@ -89,7 +93,18 @@ class MessageSendingServiceTest {
   }
 
   @Test
-  void shouldSendInstantlyWithTemplateVariables() {
+  void shouldThrowErrorSendingScheduledWhenNotFound() {
+    when(repository.findById(NOTIFICATION_ID)).thenReturn(Optional.empty());
+
+    ObjectIdWrapper notificationIdWrapper = new ObjectIdWrapper(NOTIFICATION_ID);
+    assertThrows(MessagingException.class, () -> service.sendScheduled(notificationIdWrapper));
+
+    verifyNoInteractions(notificationService);
+  }
+
+  @ParameterizedTest
+  @EnumSource(value = NotificationStatus.class, mode = EXCLUDE, names = "SCHEDULED")
+  void shouldSkipSendingScheduledWhenStateNotScheduled(NotificationStatus status) {
     Map<String, Object> templateVariables = Map.of(
         "key1", "value1",
         "key2", true,
@@ -97,6 +112,27 @@ class MessageSendingServiceTest {
     );
     when(repository.findById(NOTIFICATION_ID)).thenReturn(Optional.of(
         History.builder()
+            .status(status)
+            .template(new TemplateInfo("template", "v1.2.3", templateVariables))
+            .build()
+    ));
+
+    ObjectIdWrapper notificationIdWrapper = new ObjectIdWrapper(NOTIFICATION_ID);
+    service.sendScheduled(notificationIdWrapper);
+
+    verifyNoInteractions(notificationService);
+  }
+
+  @Test
+  void shouldSendScheduledWithTemplateVariables() {
+    Map<String, Object> templateVariables = Map.of(
+        "key1", "value1",
+        "key2", true,
+        "key3", 123
+    );
+    when(repository.findById(NOTIFICATION_ID)).thenReturn(Optional.of(
+        History.builder()
+            .status(SCHEDULED)
             .template(new TemplateInfo("template", "v1.2.3", templateVariables))
             .build()
     ));
@@ -105,7 +141,7 @@ class MessageSendingServiceTest {
         Map.of("status", "sent " + Instant.now()));
 
     ObjectIdWrapper notificationIdWrapper = new ObjectIdWrapper(NOTIFICATION_ID);
-    service.sendInstantly(notificationIdWrapper);
+    service.sendScheduled(notificationIdWrapper);
 
     ArgumentCaptor<JobDataMap> jobDataCaptor = ArgumentCaptor.captor();
     verify(notificationService).executeNow(eq("OUTBOX_" + NOTIFICATION_ID),
@@ -118,20 +154,10 @@ class MessageSendingServiceTest {
     assertThat("Unexpected job data.", jobData.getInt("key3"), is(123));
   }
 
-  @Test
-  void shouldThrowErrorSendingInstantlyWhenNotFound() {
-    when(repository.findById(NOTIFICATION_ID)).thenReturn(Optional.empty());
-
-    ObjectIdWrapper notificationIdWrapper = new ObjectIdWrapper(NOTIFICATION_ID);
-    assertThrows(MessagingException.class, () -> service.sendInstantly(notificationIdWrapper));
-
-    verifyNoInteractions(notificationService);
-  }
-
   @ParameterizedTest
   @NullAndEmptySource
   @ValueSource(strings = "failed")
-  void shouldThrowErrorWhenSendInstantlyFails(String failedStatus) {
+  void shouldThrowErrorWhenSendScheduledFails(String failedStatus) {
     Map<String, Object> templateVariables = Map.of(
         "key1", "value1",
         "key2", true,
@@ -139,6 +165,7 @@ class MessageSendingServiceTest {
     );
     when(repository.findById(NOTIFICATION_ID)).thenReturn(Optional.of(
         History.builder()
+            .status(SCHEDULED)
             .template(new TemplateInfo("template", "v1.2.3", templateVariables))
             .build()
     ));
@@ -148,7 +175,7 @@ class MessageSendingServiceTest {
     when(notificationService.executeNow(any(), any())).thenReturn(result);
 
     ObjectIdWrapper notificationIdWrapper = new ObjectIdWrapper(NOTIFICATION_ID);
-    assertThrows(MessagingException.class, () -> service.sendInstantly(notificationIdWrapper));
+    assertThrows(MessagingException.class, () -> service.sendScheduled(notificationIdWrapper));
   }
 
   @ParameterizedTest
