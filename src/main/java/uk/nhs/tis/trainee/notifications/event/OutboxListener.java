@@ -21,7 +21,9 @@
 
 package uk.nhs.tis.trainee.notifications.event;
 
+import com.amazonaws.xray.spring.aop.XRayEnabled;
 import io.awspring.cloud.sqs.annotation.SqsListener;
+import org.springframework.messaging.Message;
 import org.springframework.stereotype.Component;
 import uk.nhs.tis.trainee.notifications.model.ObjectIdWrapper;
 import uk.nhs.tis.trainee.notifications.service.MessageSendingService;
@@ -30,6 +32,7 @@ import uk.nhs.tis.trainee.notifications.service.MessageSendingService;
  * Listener for messages in the email outbox.
  */
 @Component
+@XRayEnabled
 public class OutboxListener {
 
   private final MessageSendingService messageSendingService;
@@ -41,10 +44,11 @@ public class OutboxListener {
   /**
    * Handle messages in the email outbox queue.
    *
-   * @param notificationIdWrapper The wrapped notification ID.
+   * @param message The wrapped notification ID message.
    */
   @SqsListener("${application.queues.outbox}")
-  public void handleOutboxMessages(ObjectIdWrapper notificationIdWrapper) {
+  public void handleOutboxMessages(Message<ObjectIdWrapper> message) {
+    ObjectIdWrapper notificationIdWrapper = message.getPayload();
     messageSendingService.sendScheduled(notificationIdWrapper);
   }
 }

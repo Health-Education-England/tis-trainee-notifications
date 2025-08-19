@@ -27,6 +27,8 @@ import static org.mockito.Mockito.verify;
 import org.bson.types.ObjectId;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.messaging.Message;
+import org.springframework.messaging.support.GenericMessage;
 import uk.nhs.tis.trainee.notifications.model.ObjectIdWrapper;
 import uk.nhs.tis.trainee.notifications.service.MessageSendingService;
 
@@ -46,8 +48,9 @@ class OutboxListenerTest {
   @Test
   void handleOutboxMessages() {
     ObjectIdWrapper objectIdWrapper = new ObjectIdWrapper(NOTIFICATION_ID);
+    Message<ObjectIdWrapper> message = new GenericMessage<>(objectIdWrapper);
 
-    listener.handleOutboxMessages(objectIdWrapper);
+    listener.handleOutboxMessages(message);
 
     verify(messageSendingService).sendScheduled(objectIdWrapper);
   }
