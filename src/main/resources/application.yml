@@ -65,7 +65,7 @@ application:
     ltft-admin-unsubmitted:
       email: v1.0.0
     ltft-approved:
-      email: v1.0.1
+      email: v1.0.2
     ltft-approved-tpd:
       email: v1.0.1
     ltft-rejected:

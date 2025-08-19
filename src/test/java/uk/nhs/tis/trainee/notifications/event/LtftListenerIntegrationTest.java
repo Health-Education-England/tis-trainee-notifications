@@ -556,7 +556,7 @@ class LtftListenerIntegrationTest {
 
   @ParameterizedTest
   @CsvSource(delimiter = '|', textBlock = """
-      APPROVED     | LTFT_APPROVED          | v1.0.1
+      APPROVED     | LTFT_APPROVED          | v1.0.2
       REJECTED     | LTFT_REJECTED          | v1.0.0
       SUBMITTED    | LTFT_SUBMITTED         | v1.0.0
       UNSUBMITTED  | LTFT_UNSUBMITTED       | v1.0.0
