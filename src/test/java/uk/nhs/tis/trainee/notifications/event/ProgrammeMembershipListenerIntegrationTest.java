@@ -30,10 +30,12 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.testcontainers.containers.localstack.LocalStackContainer.Service.SQS;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_CREATED;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_UPDATED_WEEK_12;
+import static uk.nhs.tis.trainee.notifications.model.ProgrammeActionType.SIGN_COJ;
 import static uk.nhs.tis.trainee.notifications.model.TisReferenceType.PROGRAMME_MEMBERSHIP;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.API_GET_OWNER_CONTACT;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.API_TRAINEE_DETAILS;
@@ -46,10 +48,14 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.json.JsonMapper;
 import io.awspring.cloud.s3.S3Template;
 import io.awspring.cloud.sqs.operations.SqsTemplate;
+import jakarta.mail.MessagingException;
 import jakarta.mail.Session;
 import jakarta.mail.internet.MimeMessage;
 import java.io.IOException;
 import java.net.URI;
+import java.net.URISyntaxException;
+import java.net.URL;
+import java.nio.file.Paths;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -62,10 +68,15 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import org.bson.types.ObjectId;
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
+import org.mockito.ArgumentCaptor;
 import org.quartz.Scheduler;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -531,7 +542,107 @@ class ProgrammeMembershipListenerIntegrationTest {
         is(LocalDate.from(Instant.now().atZone(ZoneId.of("UTC")))));
   }
 
-  //TODO: template content tests
+  @ParameterizedTest
+  @EnumSource(value = NotificationType.class, names = "PROGRAMME_UPDATED_WEEK_12")
+  void shouldSendFullNotificationsWhenTemplateVariablesPresent(NotificationType type)
+      throws MessagingException, IOException, URISyntaxException {
+
+    when(emailService.getRecipientAccountByEmail(EMAIL)).thenReturn(USER_DETAILS);
+
+    //insert a welcome notification for the trainee, so that we don't send this email as well.
+    ObjectId id = ObjectId.get();
+    History welcomeNotification = new History(
+        id, new History.TisReferenceInfo(PROGRAMME_MEMBERSHIP, PROGRAMME_MEMBERSHIP_ID.toString()),
+        PROGRAMME_CREATED, new History.RecipientInfo(PERSON_ID, MessageType.EMAIL, EMAIL), null,
+        null, Instant.now(), null, NotificationStatus.SENT, null, null);
+    mongoTemplate.insert(welcomeNotification);
+
+    Set<ActionDto> completeActions = new HashSet<>();
+    for (ProgrammeActionType actionType : ProgrammeActionType.values()) {
+      completeActions.add(new ActionDto(
+          "id", actionType.toString(), PERSON_ID,
+          new ActionDto.TisReferenceInfo(PROGRAMME_MEMBERSHIP_ID.toString(), PROGRAMME_MEMBERSHIP),
+          LocalDate.MIN, LocalDate.MIN.plusDays(1), null));
+    }
+    ResponseEntity<Set<ActionDto>> responseEntity
+        = new ResponseEntity<>(completeActions, HttpStatus.OK);
+    when(restTemplate.exchange(anyString(), any(), isNull(), any(ParameterizedTypeReference.class),
+        anyMap())).thenReturn(responseEntity);
+
+    when(userAccountService.getUserDetailsById(PERSON_ID)).thenReturn(
+        new UserDetails(true, EMAIL, TITLE, FAMILY_NAME, GIVEN_NAME, GMC));
+
+    LocalDate week12ReminderDate = LocalDate.now().plusWeeks(12);
+    sqsTemplate.send(PM_UPDATED_QUEUE,
+        buildStandardProgrammeMembershipEvent(week12ReminderDate));
+
+    ArgumentCaptor<MimeMessage> messageCaptor = ArgumentCaptor.captor();
+
+    await()
+        .pollInterval(Duration.ofSeconds(2))
+        .atMost(Duration.ofSeconds(10))
+        .ignoreExceptions()
+        .untilAsserted(() -> verify(mailSender).send(messageCaptor.capture()));
+
+    MimeMessage message = messageCaptor.getValue();
+
+    Document content = Jsoup.parse((String) message.getContent());
+
+    URL resource = getClass().getResource("/email/" + type.getTemplateName() + "-full.html");
+    assert resource != null;
+    Document expectedContent = Jsoup.parse(Paths.get(resource.toURI()).toFile());
+    assertThat("Unexpected content.", content.html(), is(expectedContent.html()));
+  }
+
+  @ParameterizedTest
+  @EnumSource(value = NotificationType.class, names = "PROGRAMME_UPDATED_WEEK_12")
+  void shouldSendMinimalNotificationsWhenTemplateVariablesMissing(NotificationType type)
+      throws MessagingException, IOException, URISyntaxException {
+
+    //insert a welcome notification for the trainee, so that we don't send this email as well.
+    ObjectId id = ObjectId.get();
+    History welcomeNotification = new History(
+        id, new History.TisReferenceInfo(PROGRAMME_MEMBERSHIP, PROGRAMME_MEMBERSHIP_ID.toString()),
+        PROGRAMME_CREATED, new History.RecipientInfo(PERSON_ID, MessageType.EMAIL, EMAIL), null,
+        null, Instant.now(), null, NotificationStatus.FAILED, null, null);
+    mongoTemplate.insert(welcomeNotification);
+
+    Set<ActionDto> completeActions = new HashSet<>();
+    completeActions.add(new ActionDto(
+        "id", SIGN_COJ.toString(), PERSON_ID,
+        new ActionDto.TisReferenceInfo(PROGRAMME_MEMBERSHIP_ID.toString(), PROGRAMME_MEMBERSHIP),
+        LocalDate.MIN, LocalDate.MIN.plusDays(1), null));
+
+    ResponseEntity<Set<ActionDto>> responseEntity
+        = new ResponseEntity<>(completeActions, HttpStatus.OK);
+    when(restTemplate.exchange(anyString(), any(), isNull(), any(ParameterizedTypeReference.class),
+        anyMap())).thenReturn(responseEntity);
+
+    when(userAccountService.getUserDetailsById(PERSON_ID)).thenReturn(
+        new UserDetails(true, EMAIL, null, null, null, null));
+
+    LocalDate week12ReminderDate = LocalDate.now().plusWeeks(12);
+    sqsTemplate.send(PM_UPDATED_QUEUE,
+        buildStandardProgrammeMembershipEvent(week12ReminderDate));
+
+    ArgumentCaptor<MimeMessage> messageCaptor = ArgumentCaptor.captor();
+
+    await()
+        .pollInterval(Duration.ofSeconds(2))
+        .atMost(Duration.ofSeconds(10))
+        .ignoreExceptions()
+        .untilAsserted(() -> verify(mailSender).send(messageCaptor.capture()));
+
+    MimeMessage message = messageCaptor.getValue();
+
+    Document content = Jsoup.parse((String) message.getContent());
+
+    URL resource = getClass().getResource("/email/" + type.getTemplateName() + "-minimal.html");
+    assert resource != null;
+    Document expectedContent = Jsoup.parse(Paths.get(resource.toURI()).toFile());
+    assertThat("Unexpected content.", content.html(), is(expectedContent.html()));
+  }
+
 
   /**
    * Helper method to build a standard programme membership event JSON.

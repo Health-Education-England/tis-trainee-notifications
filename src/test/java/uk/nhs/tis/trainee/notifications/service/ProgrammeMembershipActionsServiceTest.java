@@ -277,6 +277,10 @@ class ProgrammeMembershipActionsServiceTest {
         .when(restTemplate).exchange(eq(ACTIONS_URL + ACTIONS_PROGRAMME_URL),
             eq(HttpMethod.GET), eq(null), eq(actionSetType), anyMap());
 
+    when(historyService
+        .findAllSentEmailForTraineeByRefAndType(any(), any(), any(), any()))
+        .thenReturn(null);
+
     service.addActionsToJobMap(PERSON_ID, jobDataMap);
 
     assertThat("Unexpected welcome message in job data map.",
