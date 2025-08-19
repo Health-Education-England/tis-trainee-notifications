@@ -554,9 +554,7 @@ class ProgrammeMembershipListenerIntegrationTest {
               "managingDeanery": "deaneryTest",
               "programmeNumber": "123456",
               "designatedBody": "desBody",
-              "curricula": "[{\\"curriculumSubType\\":\\"MEDICAL_CURRICULUM\\",
-              \\"curriculumSpecialty\\":\\"specialty\\",
-              \\"curriculumSpecialtyBlockIndemnity\\":false}]"
+              "curricula": "[{\\"curriculumSubType\\":\\"MEDICAL_CURRICULUM\\",\\"curriculumSpecialty\\":\\"specialty\\",\\"curriculumSpecialtyBlockIndemnity\\":false}]"
             },
             "metadata": {
               "operation": "LOAD"
