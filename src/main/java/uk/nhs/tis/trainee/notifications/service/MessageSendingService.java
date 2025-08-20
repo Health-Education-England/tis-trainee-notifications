@@ -23,6 +23,7 @@ package uk.nhs.tis.trainee.notifications.service;
 
 import static io.awspring.cloud.sqs.listener.SqsHeaders.MessageSystemAttributes.SQS_AWS_TRACE_HEADER;
 import static java.util.stream.Collectors.toList;
+import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.SCHEDULED;
 
 import com.amazonaws.xray.AWSXRay;
 import com.amazonaws.xray.entities.TraceHeader;
@@ -36,13 +37,20 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
+import org.bson.types.ObjectId;
+import org.quartz.JobDataMap;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.messaging.Message;
+import org.springframework.messaging.MessagingException;
 import org.springframework.messaging.support.GenericMessage;
 import org.springframework.stereotype.Service;
+import uk.nhs.tis.trainee.notifications.model.History;
+import uk.nhs.tis.trainee.notifications.model.NotificationStatus;
 import uk.nhs.tis.trainee.notifications.model.ObjectIdWrapper;
+import uk.nhs.tis.trainee.notifications.repository.HistoryRepository;
 
 /**
  * A service for sending SQS and SNS messages.
@@ -54,6 +62,9 @@ public class MessageSendingService {
 
   private static final int MAX_BATCH_SIZE = 10;
 
+  private final HistoryRepository historyRepository;
+  private final NotificationService notificationService;
+
   private final SqsTemplate sqsTemplate;
 
   private final String outboxQueue;
@@ -64,10 +75,54 @@ public class MessageSendingService {
    * @param sqsTemplate The SQS template to use for sending SQS messages.
    * @param outboxQueue The queue name/url of the outbox queue.
    */
-  public MessageSendingService(SqsTemplate sqsTemplate,
+  public MessageSendingService(HistoryRepository historyRepository,
+      NotificationService notificationService, SqsTemplate sqsTemplate,
       @Value("${application.queues.outbox}") String outboxQueue) {
+    this.historyRepository = historyRepository;
+    this.notificationService = notificationService;
     this.sqsTemplate = sqsTemplate;
     this.outboxQueue = outboxQueue;
+  }
+
+  /**
+   * Send the given scheduled notification instantly, will fail if not a scheduled notification.
+   *
+   * <p>Prefer sending via {@link #sendToOutbox(List)} to allow for better load balancing, retries
+   * and throttling.
+   *
+   * @param notificationIdWrapper The wrapped ID of the notification to send.
+   * @throws MessagingException If the notification could not be sent.
+   */
+  public void sendScheduled(ObjectIdWrapper notificationIdWrapper) throws MessagingException {
+    ObjectId notificationId = notificationIdWrapper.id();
+    log.debug("Attempting to send scheduled notification '{}'.", notificationId);
+    Optional<History> found = historyRepository.findById(notificationId);
+
+    if (found.isEmpty()) {
+      String message = "No notification found with id '%s'.".formatted(notificationId);
+      throw new MessagingException(message);
+    }
+
+    History history = found.get();
+    NotificationStatus status = history.status();
+
+    if (status != SCHEDULED) {
+      log.error("Ignoring attempt to send non-scheduled notification '{}'.", notificationId);
+      return;
+    }
+
+    // TODO: Quartz job handlers re-used for consistency, to be refactored when Quartz removed.
+    String jobKey = "OUTBOX_" + notificationId;
+    JobDataMap jobDataMap = new JobDataMap(history.template().variables());
+    Map<String, String> result = notificationService.executeNow(jobKey, jobDataMap);
+    String resultStatus = result.get("status");
+
+    if (resultStatus != null && resultStatus.startsWith("sent ")) {
+      log.debug("Sent scheduled notification '{}'.", notificationId);
+    } else {
+      String message = "Failed sending scheduled notification '%s'.".formatted(notificationId);
+      throw new MessagingException(message);
+    }
   }
 
   /**
