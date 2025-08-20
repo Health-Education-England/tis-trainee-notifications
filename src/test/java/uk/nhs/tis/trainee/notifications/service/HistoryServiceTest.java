@@ -42,7 +42,10 @@ import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.SCHEDULE
 import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.SENT;
 import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.UNREAD;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.COJ_CONFIRMATION;
+import static uk.nhs.tis.trainee.notifications.model.NotificationType.PLACEMENT_UPDATED_WEEK_12;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_CREATED;
+import static uk.nhs.tis.trainee.notifications.model.TisReferenceType.PLACEMENT;
+import static uk.nhs.tis.trainee.notifications.model.TisReferenceType.PROGRAMME_MEMBERSHIP;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -85,7 +88,7 @@ class HistoryServiceTest {
   private static final String TEMPLATE_VERSION = "v1.2.3";
   private static final Map<String, Object> TEMPLATE_VARIABLES = Map.of("key1", "value1");
 
-  private static final TisReferenceType TIS_REFERENCE_TYPE = TisReferenceType.PLACEMENT;
+  private static final TisReferenceType TIS_REFERENCE_TYPE = PLACEMENT;
   private static final String TIS_REFERENCE_ID = UUID.randomUUID().toString();
 
   private HistoryService service;
@@ -641,6 +644,104 @@ class HistoryServiceTest {
     assertThat("Unexpected history contact.", historyDto1.contact(), is(TRAINEE_CONTACT));
     assertThat("Unexpected history sent at.", historyDto1.sentAt(), is(Instant.MIN));
     assertThat("Unexpected history read at.", historyDto1.readAt(), is(Instant.MAX));
+  }
+
+  @Test
+  void shouldFindNoSentHistoryForTraineeRefAndTypeWhenNotificationsNotExist() {
+    when(repository.findAllByRecipient_IdOrderBySentAtDesc(TRAINEE_ID)).thenReturn(List.of());
+
+    List<History> history = service.findAllSentEmailForTraineeByRefAndType(
+        TRAINEE_ID, TIS_REFERENCE_TYPE, TIS_REFERENCE_ID, PROGRAMME_CREATED);
+
+    assertThat("Unexpected history count.", history.size(), is(0));
+  }
+
+  @Test
+  void shouldFindSentHistoryForTraineeRefAndTypeWhenSentNotificationsExist() {
+    RecipientInfo recipientInfo = new RecipientInfo(TRAINEE_ID, EMAIL, TRAINEE_CONTACT);
+    TemplateInfo templateInfo = new TemplateInfo(TEMPLATE_NAME, TEMPLATE_VERSION,
+        TEMPLATE_VARIABLES);
+    TisReferenceInfo tisReferenceInfo = new TisReferenceInfo(TIS_REFERENCE_TYPE, TIS_REFERENCE_ID);
+
+    ObjectId id1 = ObjectId.get();
+    History history1 = new History(id1, tisReferenceInfo, PLACEMENT_UPDATED_WEEK_12, recipientInfo,
+        templateInfo, null, Instant.MIN, Instant.MAX, SENT, null, null);
+
+    //not sent
+    ObjectId id2 = ObjectId.get();
+    History history2 = new History(id2, tisReferenceInfo, PLACEMENT_UPDATED_WEEK_12, recipientInfo,
+        templateInfo, null, null, null, SCHEDULED, null, null);
+
+    //not same ref type
+    ObjectId id3 = ObjectId.get();
+    TisReferenceInfo tisReferenceInfo2
+        = new TisReferenceInfo(PROGRAMME_MEMBERSHIP, TIS_REFERENCE_ID);
+    History history3 = new History(id3, tisReferenceInfo2, PLACEMENT_UPDATED_WEEK_12, recipientInfo,
+        templateInfo, null, Instant.MIN, Instant.MAX, SENT, null, null);
+
+    //not same ref
+    ObjectId id4 = ObjectId.get();
+    TisReferenceInfo tisReferenceInfo3
+        = new TisReferenceInfo(TIS_REFERENCE_TYPE, "other id");
+    History history4 = new History(id4, tisReferenceInfo3, PLACEMENT_UPDATED_WEEK_12, recipientInfo,
+        templateInfo, null, Instant.MIN, Instant.MAX, SENT, null, null);
+
+    when(repository.findAllByRecipient_IdOrderBySentAtDesc(TRAINEE_ID)).thenReturn(
+        List.of(history4, history3, history2, history1));
+
+    when(templateService.process(any(), any(), anyMap())).thenReturn("");
+
+    List<History> history = service.findAllSentEmailForTraineeByRefAndType(
+        TRAINEE_ID, TIS_REFERENCE_TYPE, TIS_REFERENCE_ID, PLACEMENT_UPDATED_WEEK_12);
+
+    assertThat("Unexpected history count.", history.size(), is(1));
+
+    History returnedHistory1 = history.get(0);
+    assertThat("Unexpected history id.", returnedHistory1.id(), is(id1));
+    TisReferenceInfo referenceInfo2 = history.get(0).tisReference();
+    assertThat("Unexpected history TIS reference type.", referenceInfo2.type(),
+        is(TIS_REFERENCE_TYPE));
+    assertThat("Unexpected history TIS reference id.", referenceInfo2.id(),
+        is(TIS_REFERENCE_ID));
+    assertThat("Unexpected history sent at.", returnedHistory1.sentAt(), is(Instant.MIN));
+    assertThat("Unexpected history read at.", returnedHistory1.readAt(), is(Instant.MAX));
+  }
+
+  @Test
+  void shouldSortSentHistoryForTraineeRefAndTypeWhenSentNotificationsExist() {
+    RecipientInfo recipientInfo = new RecipientInfo(TRAINEE_ID, EMAIL, TRAINEE_CONTACT);
+    TemplateInfo templateInfo = new TemplateInfo(TEMPLATE_NAME, TEMPLATE_VERSION,
+        TEMPLATE_VARIABLES);
+    TisReferenceInfo tisReferenceInfo = new TisReferenceInfo(TIS_REFERENCE_TYPE, TIS_REFERENCE_ID);
+
+    Instant sentRecently = Instant.now();
+    ObjectId id1 = ObjectId.get();
+    History history1 = new History(id1, tisReferenceInfo, PLACEMENT_UPDATED_WEEK_12, recipientInfo,
+        templateInfo, null, sentRecently, Instant.MAX, SENT, null, null);
+
+    ObjectId id2 = ObjectId.get();
+    History history2 = new History(id2, tisReferenceInfo, PLACEMENT_UPDATED_WEEK_12, recipientInfo,
+        templateInfo, null, Instant.MIN, Instant.MAX, SENT, null, null);
+
+    when(repository.findAllByRecipient_IdOrderBySentAtDesc(TRAINEE_ID)).thenReturn(
+        List.of(history1, history2));
+
+    when(templateService.process(any(), any(), anyMap())).thenReturn("");
+
+    List<History> history = service.findAllSentEmailForTraineeByRefAndType(
+        TRAINEE_ID, TIS_REFERENCE_TYPE, TIS_REFERENCE_ID, PLACEMENT_UPDATED_WEEK_12);
+
+    assertThat("Unexpected history count.", history.size(), is(2));
+
+    History returnedHistory1 = history.get(0);
+    assertThat("Unexpected history id.", returnedHistory1.id(), is(id1));
+    TisReferenceInfo referenceInfo2 = history.get(0).tisReference();
+    assertThat("Unexpected history TIS reference type.", referenceInfo2.type(),
+        is(TIS_REFERENCE_TYPE));
+    assertThat("Unexpected history TIS reference id.", referenceInfo2.id(),
+        is(TIS_REFERENCE_ID));
+    assertThat("Unexpected history sent at.", returnedHistory1.sentAt(), is(sentRecently));
+    assertThat("Unexpected history read at.", returnedHistory1.readAt(), is(Instant.MAX));
   }
 
   @Test

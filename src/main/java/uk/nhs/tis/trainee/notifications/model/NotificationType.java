@@ -63,8 +63,10 @@ public enum NotificationType {
   USEFUL_INFORMATION("placement-useful-information"),
   PLACEMENT_UPDATED_WEEK_12("placement-updated-week-12"),
   PROGRAMME_DAY_ONE("programme-day-one"),
+  PROGRAMME_UPDATED_WEEK_12("programme-updated-week-12"),
   PROGRAMME_UPDATED_WEEK_8("programme-updated-week-8"),
   PROGRAMME_UPDATED_WEEK_4("programme-updated-week-4"),
+  PROGRAMME_UPDATED_WEEK_2("programme-updated-week-2"),
   PROGRAMME_UPDATED_WEEK_1("programme-updated-week-1"),
   PROGRAMME_UPDATED_WEEK_0("programme-updated-week-0"),
   PROGRAMME_CREATED("programme-created"),
@@ -77,11 +79,33 @@ public enum NotificationType {
   @Getter
   private static final Set<NotificationType> programmeUpdateNotificationTypes = EnumSet.of(
       PROGRAMME_DAY_ONE,
+      PROGRAMME_UPDATED_WEEK_12,
       PROGRAMME_UPDATED_WEEK_8,
       PROGRAMME_UPDATED_WEEK_4,
+      PROGRAMME_UPDATED_WEEK_2,
       PROGRAMME_UPDATED_WEEK_1,
       PROGRAMME_UPDATED_WEEK_0,
       PROGRAMME_CREATED);
+
+  /**
+   * The set of currently active Programme Updated email notification types.
+   */
+  @Getter
+  private static final Set<NotificationType> activeProgrammeUpdateNotificationTypes = EnumSet.of(
+      PROGRAMME_DAY_ONE,
+      PROGRAMME_UPDATED_WEEK_12,
+      PROGRAMME_UPDATED_WEEK_4,
+      PROGRAMME_UPDATED_WEEK_2,
+      PROGRAMME_CREATED);
+
+  /**
+   * The set of reminder Programme Updated email notification types.
+   */
+  @Getter
+  private static final Set<NotificationType> reminderProgrammeUpdateNotificationTypes = EnumSet.of(
+      PROGRAMME_UPDATED_WEEK_12,
+      PROGRAMME_UPDATED_WEEK_4,
+      PROGRAMME_UPDATED_WEEK_2);
 
   /**
    * The set of Programme Updated in-app notification types.
