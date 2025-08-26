@@ -60,6 +60,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -187,7 +188,7 @@ class ProgrammeMembershipListenerIntegrationTest {
   Scheduler scheduler;
 
   @MockBean
-  RestTemplate restTemplate;
+  private RestTemplate restTemplate;
 
   @Autowired
   private EmailService emailService;
@@ -591,7 +592,11 @@ class ProgrammeMembershipListenerIntegrationTest {
     URL resource = getClass().getResource("/email/" + type.getTemplateName() + "-full.html");
     assert resource != null;
     Document expectedContent = Jsoup.parse(Paths.get(resource.toURI()).toFile());
-    assertThat("Unexpected content.", content.html(), is(expectedContent.html()));
+    DateTimeFormatter longDateFormatter = DateTimeFormatter.ofPattern("dd MMMM yyyy");
+    String expectedContentStr = expectedContent.html()
+        .replace("{{DATE TODAY}}", LocalDate.now().format(longDateFormatter))
+        .replace("{{DATE START}}", week12ReminderDate.format(longDateFormatter));
+    assertThat("Unexpected content.", content.html(), is(expectedContentStr));
   }
 
   @ParameterizedTest
@@ -640,7 +645,10 @@ class ProgrammeMembershipListenerIntegrationTest {
     URL resource = getClass().getResource("/email/" + type.getTemplateName() + "-minimal.html");
     assert resource != null;
     Document expectedContent = Jsoup.parse(Paths.get(resource.toURI()).toFile());
-    assertThat("Unexpected content.", content.html(), is(expectedContent.html()));
+    DateTimeFormatter longDateFormatter = DateTimeFormatter.ofPattern("dd MMMM yyyy");
+    String expectedContentStr = expectedContent.html()
+        .replace("{{DATE START}}", week12ReminderDate.format(longDateFormatter));
+    assertThat("Unexpected content.", content.html(), is(expectedContentStr));
   }
 
 

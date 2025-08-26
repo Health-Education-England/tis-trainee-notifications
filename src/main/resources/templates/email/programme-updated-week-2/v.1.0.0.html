@@ -47,7 +47,7 @@
     ></th:block>
   <p>We look forward to welcoming you to NHS England.</p>
   <p>Kind Regards,</p>
-  <p><span>NHS England</span> (Please note Health Education England is now part of NHS England. Our systems will be updated in due course.)</p>
+  <p><span th:text="${not #strings.isEmpty(localOfficeName)} ? ${localOfficeName} : 'Your local office'"></span> (Please note Health Education England is now part of NHS England. Our systems will be updated in due course.)</p>
   <p>Workforce, Training and Education</p>
   <p>NHS England</p>
   <div th:replace="fragments/disclaimer/v1.0.0 :: body"></div>
