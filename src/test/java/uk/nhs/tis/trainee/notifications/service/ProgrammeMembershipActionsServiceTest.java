@@ -111,16 +111,44 @@ class ProgrammeMembershipActionsServiceTest {
         .when(restTemplate).exchange(eq(ACTIONS_URL + ACTIONS_PROGRAMME_URL),
             eq(HttpMethod.GET), eq(null), eq(actionSetType), anyMap());
 
-    assertDoesNotThrow(()
-        -> service.addActionsToJobMap(PERSON_ID, jobDataMap));
+    assertDoesNotThrow(() -> service.getActions(PERSON_ID, TIS_ID));
+    assertThat("Unexpected actions.", service.getActions(PERSON_ID, TIS_ID), is(Set.of()));
+  }
+
+  @Test
+  void shouldReturnEmptySetOfActionsIfNullRestClientResponseBody() {
+    ResponseEntity<Set<ActionDto>> responseEntity = ResponseEntity.ok(null);
+    when(restTemplate.exchange(eq(ACTIONS_URL + ACTIONS_PROGRAMME_URL),
+        eq(HttpMethod.GET), eq(null), eq(actionSetType), anyMap()))
+        .thenReturn(responseEntity);
+
+    assertThat("Unexpected actions.", service.getActions(PERSON_ID, TIS_ID), is(Set.of()));
+  }
+
+  @Test
+  void shouldReturnActionsIfRestClientResponseOk() {
+    Set<ActionDto> expectedActions = Set.of(
+        new ActionDto("action-id-1", SIGN_COJ.toString(), PERSON_ID,
+            new ActionDto.TisReferenceInfo(TIS_ID, PROGRAMME_MEMBERSHIP), null, null,
+            Instant.now()));
+    ResponseEntity<Set<ActionDto>> responseEntity = ResponseEntity.ok(expectedActions);
+    doReturn(responseEntity)
+        .when(restTemplate).exchange(eq(ACTIONS_URL + ACTIONS_PROGRAMME_URL),
+            eq(HttpMethod.GET), eq(null), eq(actionSetType), anyMap());
+
+    assertThat("Unexpected actions.", service.getActions(PERSON_ID, TIS_ID),
+        is(expectedActions));
   }
 
   @ParameterizedTest
   @EnumSource(value = NotificationType.class, mode = EnumSource.Mode.EXCLUDE,
       names = {"PROGRAMME_UPDATED_WEEK_12", "PROGRAMME_UPDATED_WEEK_4", "PROGRAMME_UPDATED_WEEK_2"})
-  void shouldIgnoreNonReminderNotificationTypes(NotificationType notificationType) {
+  void shouldNotAddRemindersToNonApplicableNotificationTypes(NotificationType notificationType) {
     jobDataMap.put(TEMPLATE_NOTIFICATION_TYPE_FIELD, notificationType);
-    service.addActionsToJobMap(PERSON_ID, jobDataMap);
+    Set<ActionDto> reminderActions = Set.of(
+        new ActionDto("action-id-1", SIGN_COJ.toString(), PERSON_ID,
+            new ActionDto.TisReferenceInfo(TIS_ID, PROGRAMME_MEMBERSHIP), null, null, null));
+    service.addActionsToJobMap(jobDataMap, reminderActions);
 
     assertThat("Unexpected action status SIGN_COJ.",
         jobDataMap.get(SIGN_COJ.toString()), nullValue());
@@ -135,7 +163,7 @@ class ProgrammeMembershipActionsServiceTest {
   }
 
   @Test
-  void shouldAddReminderJobDetails() {
+  void shouldAddRemindersToJobDetails() {
     Set<ActionDto> reminderActions = Set.of(
         new ActionDto("action-id-1", SIGN_COJ.toString(), PERSON_ID,
             new ActionDto.TisReferenceInfo(TIS_ID, PROGRAMME_MEMBERSHIP), null, null,
@@ -149,10 +177,6 @@ class ProgrammeMembershipActionsServiceTest {
         new ActionDto("action-id-4", REGISTER_TSS.toString(), PERSON_ID,
             new ActionDto.TisReferenceInfo(PERSON_ID, PERSON), null, null,
             Instant.MIN));
-    ResponseEntity<Set<ActionDto>> responseEntity = ResponseEntity.ok(reminderActions);
-    doReturn(responseEntity)
-        .when(restTemplate).exchange(eq(ACTIONS_URL + ACTIONS_PROGRAMME_URL),
-            eq(HttpMethod.GET), eq(null), eq(actionSetType), anyMap());
     History welcomeHistory = History.builder()
         .status(SENT)
         .sentAt(Instant.MIN)
@@ -161,7 +185,7 @@ class ProgrammeMembershipActionsServiceTest {
         .findAllSentEmailForTraineeByRefAndType(any(), any(), any(), any()))
         .thenReturn(List.of(welcomeHistory));
 
-    service.addActionsToJobMap(PERSON_ID, jobDataMap);
+    service.addActionsToJobMap(jobDataMap, reminderActions);
 
     assertThat("Unexpected action status SIGN_COJ.",
         jobDataMap.get(SIGN_COJ.toString()), is(true)); //was completed
@@ -179,12 +203,7 @@ class ProgrammeMembershipActionsServiceTest {
   @ParameterizedTest
   @NullAndEmptySource
   void shouldAddDefaultCompletedReminderIfActionMissing(Set<ActionDto> actions) {
-    ResponseEntity<Set<ActionDto>> responseEntity = ResponseEntity.ok(actions);
-    doReturn(responseEntity)
-        .when(restTemplate).exchange(eq(ACTIONS_URL + ACTIONS_PROGRAMME_URL),
-            eq(HttpMethod.GET), eq(null), eq(actionSetType), anyMap());
-
-    service.addActionsToJobMap(PERSON_ID, jobDataMap);
+    service.addActionsToJobMap(jobDataMap, actions);
 
     assertThat("Unexpected action status SIGN_COJ.",
         jobDataMap.get(SIGN_COJ.toString()), is(true));
@@ -205,15 +224,11 @@ class ProgrammeMembershipActionsServiceTest {
         new ActionDto("action-id-1", SIGN_COJ.toString(), PERSON_ID,
             new ActionDto.TisReferenceInfo(TIS_ID, PROGRAMME_MEMBERSHIP), null, null,
             null));
-    ResponseEntity<Set<ActionDto>> responseEntity = ResponseEntity.ok(reminderActions);
-    doReturn(responseEntity)
-        .when(restTemplate).exchange(eq(ACTIONS_URL + ACTIONS_PROGRAMME_URL),
-            eq(HttpMethod.GET), eq(null), eq(actionSetType), anyMap());
 
-    service.addActionsToJobMap(PERSON_ID, jobDataMap);
+    service.addActionsToJobMap(jobDataMap, reminderActions);
 
     assertThat("Unexpected unnecessary reminder flag.",
-        service.getNotificationSummary().unnecessaryReminder(), is(false));
+        service.getNotificationSummary(jobDataMap).unnecessaryReminder(), is(false));
   }
 
   @ParameterizedTest
@@ -221,15 +236,11 @@ class ProgrammeMembershipActionsServiceTest {
       names = {"PROGRAMME_UPDATED_WEEK_12", "PROGRAMME_UPDATED_WEEK_4", "PROGRAMME_UPDATED_WEEK_2"})
   void shouldIdentifyIfNotificationNotReminder(NotificationType notReminderNotificationType) {
     jobDataMap.put(TEMPLATE_NOTIFICATION_TYPE_FIELD, notReminderNotificationType);
-    ResponseEntity<Set<ActionDto>> responseEntity = ResponseEntity.ok(Set.of());
-    doReturn(responseEntity)
-        .when(restTemplate).exchange(eq(ACTIONS_URL + ACTIONS_PROGRAMME_URL),
-            eq(HttpMethod.GET), eq(null), eq(actionSetType), anyMap());
 
-    service.addActionsToJobMap(PERSON_ID, jobDataMap);
+    service.addActionsToJobMap(jobDataMap, Set.of());
 
     assertThat("Unexpected unnecessary reminder flag.",
-        service.getNotificationSummary().unnecessaryReminder(), is(false));
+        service.getNotificationSummary(jobDataMap).unnecessaryReminder(), is(false));
   }
 
   @ParameterizedTest
@@ -237,15 +248,11 @@ class ProgrammeMembershipActionsServiceTest {
       names = {"PROGRAMME_UPDATED_WEEK_12", "PROGRAMME_UPDATED_WEEK_4", "PROGRAMME_UPDATED_WEEK_2"})
   void shouldIdentifyIfUnnecessaryReminderIfMissing(NotificationType reminderNotificationType) {
     jobDataMap.put(TEMPLATE_NOTIFICATION_TYPE_FIELD, reminderNotificationType);
-    ResponseEntity<Set<ActionDto>> responseEntity = ResponseEntity.ok(Set.of());
-    doReturn(responseEntity)
-        .when(restTemplate).exchange(eq(ACTIONS_URL + ACTIONS_PROGRAMME_URL),
-            eq(HttpMethod.GET), eq(null), eq(actionSetType), anyMap());
 
-    service.addActionsToJobMap(PERSON_ID, jobDataMap);
+    service.addActionsToJobMap(jobDataMap, Set.of());
 
     assertThat("Unexpected necessary reminder flag.",
-        service.getNotificationSummary().unnecessaryReminder(), is(true));
+        service.getNotificationSummary(jobDataMap).unnecessaryReminder(), is(true));
   }
 
   @ParameterizedTest
@@ -259,29 +266,19 @@ class ProgrammeMembershipActionsServiceTest {
           PERSON_ID, new ActionDto.TisReferenceInfo(TIS_ID, PROGRAMME_MEMBERSHIP), null, null,
           Instant.now()));
     }
-    ResponseEntity<Set<ActionDto>> responseEntity = ResponseEntity.ok(reminderActions);
-    doReturn(responseEntity)
-        .when(restTemplate).exchange(eq(ACTIONS_URL + ACTIONS_PROGRAMME_URL),
-            eq(HttpMethod.GET), eq(null), eq(actionSetType), anyMap());
-
-    service.addActionsToJobMap(PERSON_ID, jobDataMap);
+    service.addActionsToJobMap(jobDataMap, reminderActions);
 
     assertThat("Unexpected necessary reminder flag.",
-        service.getNotificationSummary().unnecessaryReminder(), is(true));
+        service.getNotificationSummary(jobDataMap).unnecessaryReminder(), is(true));
   }
 
   @Test
   void shouldNotAddWelcomeSentDateToJobMapIfHistoryNull() {
-    ResponseEntity<Set<ActionDto>> responseEntity = ResponseEntity.ok(Set.of());
-    doReturn(responseEntity)
-        .when(restTemplate).exchange(eq(ACTIONS_URL + ACTIONS_PROGRAMME_URL),
-            eq(HttpMethod.GET), eq(null), eq(actionSetType), anyMap());
-
     when(historyService
         .findAllSentEmailForTraineeByRefAndType(any(), any(), any(), any()))
         .thenReturn(null);
 
-    service.addActionsToJobMap(PERSON_ID, jobDataMap);
+    service.addActionsToJobMap(jobDataMap, Set.of());
 
     assertThat("Unexpected welcome message in job data map.",
         jobDataMap.get(TEMPLATE_WELCOME_NOTIFICATION_DATE_FIELD), nullValue());
@@ -289,16 +286,11 @@ class ProgrammeMembershipActionsServiceTest {
 
   @Test
   void shouldNotAddWelcomeSentDateToJobMapIfHistoryEmpty() {
-    ResponseEntity<Set<ActionDto>> responseEntity = ResponseEntity.ok(Set.of());
-    doReturn(responseEntity)
-        .when(restTemplate).exchange(eq(ACTIONS_URL + ACTIONS_PROGRAMME_URL),
-            eq(HttpMethod.GET), eq(null), eq(actionSetType), anyMap());
-
     when(historyService
         .findAllSentEmailForTraineeByRefAndType(any(), any(), any(), any()))
         .thenReturn(List.of());
 
-    service.addActionsToJobMap(PERSON_ID, jobDataMap);
+    service.addActionsToJobMap(jobDataMap, Set.of());
 
     assertThat("Unexpected welcome message in job data map.",
         jobDataMap.get(TEMPLATE_WELCOME_NOTIFICATION_DATE_FIELD), nullValue());
@@ -306,11 +298,6 @@ class ProgrammeMembershipActionsServiceTest {
 
   @Test
   void shouldAddWelcomeSentDateToJobMapIfHistoryPresent() {
-    ResponseEntity<Set<ActionDto>> responseEntity = ResponseEntity.ok(Set.of());
-    doReturn(responseEntity)
-        .when(restTemplate).exchange(eq(ACTIONS_URL + ACTIONS_PROGRAMME_URL),
-            eq(HttpMethod.GET), eq(null), eq(actionSetType), anyMap());
-
     Instant sentAt = Instant.now();
     History history = History.builder()
         .status(SENT)
@@ -320,7 +307,7 @@ class ProgrammeMembershipActionsServiceTest {
         .findAllSentEmailForTraineeByRefAndType(any(), any(), any(), any()))
         .thenReturn(List.of(history));
 
-    service.addActionsToJobMap(PERSON_ID, jobDataMap);
+    service.addActionsToJobMap(jobDataMap, Set.of());
 
     assertThat("Unexpected welcome message in job data map.",
         jobDataMap.get(TEMPLATE_WELCOME_NOTIFICATION_DATE_FIELD), is(sentAt));
@@ -328,11 +315,6 @@ class ProgrammeMembershipActionsServiceTest {
 
   @Test
   void shouldAddFirstWelcomeSentDateToJobMapIfMultipleHistoryStatusesSent() {
-    ResponseEntity<Set<ActionDto>> responseEntity = ResponseEntity.ok(Set.of());
-    doReturn(responseEntity)
-        .when(restTemplate).exchange(eq(ACTIONS_URL + ACTIONS_PROGRAMME_URL),
-            eq(HttpMethod.GET), eq(null), eq(actionSetType), anyMap());
-
     Instant sentAt = Instant.now();
     History history = History.builder()
         .status(SENT)
@@ -347,7 +329,7 @@ class ProgrammeMembershipActionsServiceTest {
         .findAllSentEmailForTraineeByRefAndType(any(), any(), any(), any()))
         .thenReturn(List.of(history, history2));
 
-    service.addActionsToJobMap(PERSON_ID, jobDataMap);
+    service.addActionsToJobMap(jobDataMap, Set.of());
 
     assertThat("Unexpected welcome message in job data map.",
         jobDataMap.get(TEMPLATE_WELCOME_NOTIFICATION_DATE_FIELD), is(sentAt));
@@ -355,11 +337,6 @@ class ProgrammeMembershipActionsServiceTest {
 
   @Test
   void shouldAddWelcomeRetryDateToJobMapIfHistoryStatusSent() {
-    ResponseEntity<Set<ActionDto>> responseEntity = ResponseEntity.ok(Set.of());
-    doReturn(responseEntity)
-        .when(restTemplate).exchange(eq(ACTIONS_URL + ACTIONS_PROGRAMME_URL),
-            eq(HttpMethod.GET), eq(null), eq(actionSetType), anyMap());
-
     Instant sentAt = Instant.now().minusMillis(1000);
     Instant retryAt = Instant.now();
     History history = History.builder()
@@ -371,7 +348,7 @@ class ProgrammeMembershipActionsServiceTest {
         .findAllSentEmailForTraineeByRefAndType(any(), any(), any(), any()))
         .thenReturn(List.of(history));
 
-    service.addActionsToJobMap(PERSON_ID, jobDataMap);
+    service.addActionsToJobMap(jobDataMap, Set.of());
 
     assertThat("Unexpected welcome message in job data map.",
         jobDataMap.get(TEMPLATE_WELCOME_NOTIFICATION_DATE_FIELD), is(retryAt));
@@ -381,16 +358,11 @@ class ProgrammeMembershipActionsServiceTest {
   @NullAndEmptySource
   @ValueSource(strings = "test")
   void shouldGetNotificationSummaryWithJobName(String programmeName) {
-    ResponseEntity<Set<ActionDto>> responseEntity = ResponseEntity.ok(Set.of());
-    doReturn(responseEntity)
-        .when(restTemplate).exchange(eq(ACTIONS_URL + ACTIONS_PROGRAMME_URL),
-            eq(HttpMethod.GET), eq(null), eq(actionSetType), anyMap());
-
     jobDataMap.put(PROGRAMME_NAME_FIELD, programmeName);
 
-    service.addActionsToJobMap(PERSON_ID, jobDataMap);
+    service.addActionsToJobMap(jobDataMap, Set.of());
 
-    NotificationSummary summary = service.getNotificationSummary();
+    NotificationSummary summary = service.getNotificationSummary(jobDataMap);
 
     assertThat("Unexpected null summary", summary, notNullValue());
     assertThat("Unexpected job name", summary.jobName(), is(programmeName));
@@ -398,15 +370,10 @@ class ProgrammeMembershipActionsServiceTest {
 
   @Test
   void shouldGetNotificationSummaryWithStartDate() {
-    ResponseEntity<Set<ActionDto>> responseEntity = ResponseEntity.ok(Set.of());
-    doReturn(responseEntity)
-        .when(restTemplate).exchange(eq(ACTIONS_URL + ACTIONS_PROGRAMME_URL),
-            eq(HttpMethod.GET), eq(null), eq(actionSetType), anyMap());
-
     jobDataMap.put(START_DATE_FIELD, LocalDate.of(2020, 1, 1));
 
-    service.addActionsToJobMap(PERSON_ID, jobDataMap);
-    NotificationSummary summary = service.getNotificationSummary();
+    service.addActionsToJobMap(jobDataMap, Set.of());
+    NotificationSummary summary = service.getNotificationSummary(jobDataMap);
 
     assertThat("Unexpected null summary", summary, notNullValue());
     assertThat("Unexpected start date", summary.startDate(),
@@ -415,15 +382,10 @@ class ProgrammeMembershipActionsServiceTest {
 
   @Test
   void shouldGetNotificationSummaryWithNoStartDate() {
-    ResponseEntity<Set<ActionDto>> responseEntity = ResponseEntity.ok(Set.of());
-    doReturn(responseEntity)
-        .when(restTemplate).exchange(eq(ACTIONS_URL + ACTIONS_PROGRAMME_URL),
-            eq(HttpMethod.GET), eq(null), eq(actionSetType), anyMap());
-
     jobDataMap.put(START_DATE_FIELD, null);
 
-    service.addActionsToJobMap(PERSON_ID, jobDataMap);
-    NotificationSummary summary = service.getNotificationSummary();
+    service.addActionsToJobMap(jobDataMap, Set.of());
+    NotificationSummary summary = service.getNotificationSummary(jobDataMap);
 
     assertThat("Unexpected null summary", summary, notNullValue());
     assertThat("Unexpected non-null start date", summary.startDate(), nullValue());
@@ -431,16 +393,11 @@ class ProgrammeMembershipActionsServiceTest {
 
   @Test
   void shouldGetNotificationSummaryWithTisReference() {
-    ResponseEntity<Set<ActionDto>> responseEntity = ResponseEntity.ok(Set.of());
-    doReturn(responseEntity)
-        .when(restTemplate).exchange(eq(ACTIONS_URL + ACTIONS_PROGRAMME_URL),
-            eq(HttpMethod.GET), eq(null), eq(actionSetType), anyMap());
-
     jobDataMap.put(TEMPLATE_NOTIFICATION_TYPE_FIELD, PROGRAMME_CREATED);
     jobDataMap.put(TIS_ID_FIELD, "tis-id-123");
 
-    service.addActionsToJobMap(PERSON_ID, jobDataMap);
-    NotificationSummary summary = service.getNotificationSummary();
+    service.addActionsToJobMap(jobDataMap, Set.of());
+    NotificationSummary summary = service.getNotificationSummary(jobDataMap);
 
     assertThat("Unexpected null summary", summary, notNullValue());
     History.TisReferenceInfo tisRef = summary.tisReferenceInfo();

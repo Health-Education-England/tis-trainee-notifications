@@ -202,7 +202,7 @@ class NotificationServiceTest {
     NotificationSummary programmeNotificationSummary
         = new NotificationSummary(PROGRAMME_NAME, START_DATE,
             new TisReferenceInfo(PROGRAMME_MEMBERSHIP, TIS_ID), false);
-    when(programmeMembershipActionsService.getNotificationSummary())
+    when(programmeMembershipActionsService.getNotificationSummary(any()))
         .thenReturn(programmeNotificationSummary);
 
     placementJobDataMap = new JobDataMap();
@@ -476,7 +476,7 @@ class NotificationServiceTest {
     NotificationSummary programmeNotificationSummaryUnnecessary
         = new NotificationSummary(PROGRAMME_NAME, START_DATE,
               new TisReferenceInfo(PROGRAMME_MEMBERSHIP, TIS_ID), false);
-    when(programmeMembershipActionsService.getNotificationSummary())
+    when(programmeMembershipActionsService.getNotificationSummary(any()))
         .thenReturn(programmeNotificationSummaryUnnecessary);
 
     service.execute(jobExecutionContext);
@@ -653,7 +653,7 @@ class NotificationServiceTest {
     NotificationSummary programmeNotificationSummaryUnnecessary
         = new NotificationSummary(PROGRAMME_NAME, START_DATE,
               new TisReferenceInfo(PROGRAMME_MEMBERSHIP, TIS_ID), true);
-    when(programmeMembershipActionsService.getNotificationSummary())
+    when(programmeMembershipActionsService.getNotificationSummary(any()))
         .thenReturn(programmeNotificationSummaryUnnecessary);
 
     service.execute(jobExecutionContext);
@@ -1200,7 +1200,8 @@ class NotificationServiceTest {
 
     service.execute(jobExecutionContext);
 
-    verify(programmeMembershipActionsService).addActionsToJobMap(eq(PERSON_ID), any());
+    verify(programmeMembershipActionsService).getActions(PERSON_ID, TIS_ID);
+    verify(programmeMembershipActionsService).addActionsToJobMap(any(), any());
   }
 
   @ParameterizedTest

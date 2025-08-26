@@ -23,6 +23,7 @@ package uk.nhs.tis.trainee.notifications.service;
 
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_CREATED;
 import static uk.nhs.tis.trainee.notifications.model.TisReferenceType.PROGRAMME_MEMBERSHIP;
+import static uk.nhs.tis.trainee.notifications.service.NotificationService.PERSON_ID_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.PROGRAMME_NAME_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.START_DATE_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.TIS_ID_FIELD;
@@ -63,13 +64,6 @@ public class ProgrammeMembershipActionsService {
   private final RestTemplate restTemplate;
   private final HistoryService historyService;
 
-  private String personId;
-  private String programmeId;
-  private String jobName;
-  private LocalDate startDate;
-  private NotificationType notificationType;
-  private Set<ActionDto> actions;
-
   ProgrammeMembershipActionsService(@Value("${service.actions.url}") String actionsUrl,
       RestTemplate restTemplate, HistoryService historyService) {
     this.historyService = historyService;
@@ -78,35 +72,64 @@ public class ProgrammeMembershipActionsService {
   }
 
   /**
+   * Get the actions for a trainee and programme membership.
+   *
+   * @param personId    The ID of the trainee.
+   * @param programmeId The ID of the programme membership.
+   * @return the set of actions for the trainee and programme membership, or an empty set if none
+   * found or an error occurs.
+   */
+  public Set<ActionDto> getActions(String personId, String programmeId) {
+    Set<ActionDto> actions;
+    try {
+      ParameterizedTypeReference<Set<ActionDto>> actionSetType
+          = new ParameterizedTypeReference<>() {};
+      actions = restTemplate.exchange(
+          actionsUrl + API_PROGRAMME_ACTIONS, HttpMethod.GET, null, actionSetType,
+          Map.of("personId", personId, "programmeId", programmeId)).getBody();
+      if (actions == null) {
+        return Set.of();
+      }
+    } catch (RestClientException rce) {
+      log.warn("Exception occurred when requesting programme actions endpoint for trainee {} "
+          + "programme {}: {}", personId, programmeId, rce.toString());
+      return Set.of();
+    }
+    return actions;
+  }
+
+  /**
    * Add programme action details to the job data map.
    *
-   * @param personId    The ID of the person associated with the programme.
    * @param jobDataMap The job data map to populate with programme actions.
+   * @param actions    The set of actions associated with the person and programme.
    */
-  public void addActionsToJobMap(@Nonnull String personId, @Nonnull JobDataMap jobDataMap) {
-    this.personId = personId;
-    this.programmeId = jobDataMap.getString(TIS_ID_FIELD);
-    this.jobName = jobDataMap.getString(PROGRAMME_NAME_FIELD);
-    this.startDate = (LocalDate) jobDataMap.get(START_DATE_FIELD);
-    this.notificationType = NotificationType.valueOf(
+  public void addActionsToJobMap(@Nonnull JobDataMap jobDataMap, Set<ActionDto> actions) {
+    NotificationType notificationType = NotificationType.valueOf(
         jobDataMap.get(TEMPLATE_NOTIFICATION_TYPE_FIELD).toString());
 
     if (NotificationType.getReminderProgrammeUpdateNotificationTypes().contains(notificationType)) {
-      addProgrammeReminderDetailsToJobMap(jobDataMap);
+      addProgrammeReminderDetailsToJobMap(jobDataMap, actions);
     }
   }
 
   /**
    * Get a summary of the programme notification.
    *
+   * @param jobDataMap The job data map containing programme notification details.
    * @return A NotificationSummary object.
    */
-  public NotificationSummary getNotificationSummary() {
+  public NotificationSummary getNotificationSummary(@Nonnull JobDataMap jobDataMap) {
     boolean unnecessaryReminder = false;
+    String programmeId = jobDataMap.getString(TIS_ID_FIELD);
+    String jobName = jobDataMap.getString(PROGRAMME_NAME_FIELD);
+    LocalDate startDate = (LocalDate) jobDataMap.get(START_DATE_FIELD);
+    NotificationType notificationType
+        = NotificationType.valueOf(jobDataMap.get(TEMPLATE_NOTIFICATION_TYPE_FIELD).toString());
     History.TisReferenceInfo tisReferenceInfo = new History.TisReferenceInfo(PROGRAMME_MEMBERSHIP,
         programmeId);
     if (NotificationType.getReminderProgrammeUpdateNotificationTypes().contains(notificationType)
-        && !hasIncompleteProgrammeActions()) {
+        && !hasIncompleteProgrammeActions(jobDataMap)) {
       unnecessaryReminder = true;
     }
     return new NotificationSummary(jobName, startDate, tisReferenceInfo, unnecessaryReminder);
@@ -117,7 +140,9 @@ public class ProgrammeMembershipActionsService {
    *
    * @param jobDataMap The job data map to populate.
    */
-  private void addProgrammeReminderDetailsToJobMap(JobDataMap jobDataMap) {
+  private void addProgrammeReminderDetailsToJobMap(JobDataMap jobDataMap, Set<ActionDto> actions) {
+    String programmeId = jobDataMap.getString(TIS_ID_FIELD);
+    String personId = jobDataMap.getString(PERSON_ID_FIELD);
     List<History> welcomeNotification = historyService.findAllSentEmailForTraineeByRefAndType(
         personId, PROGRAMME_MEMBERSHIP, programmeId, PROGRAMME_CREATED);
     if (welcomeNotification == null || welcomeNotification.isEmpty()) {
@@ -134,9 +159,8 @@ public class ProgrammeMembershipActionsService {
               ? welcomeNotification.get(0).lastRetry()
               : welcomeNotification.get(0).sentAt()));
     }
-    setActions();
     for (ProgrammeActionType actionType : ProgrammeActionType.values()) {
-      Boolean isComplete = isProgrammeActionComplete(actionType);
+      Boolean isComplete = isProgrammeActionComplete(actionType, actions);
       if (isComplete == null) {
         log.warn("No {} action found for trainee {} programme membership {}: "
             + "listing as 'assumed complete'.", actionType, personId, programmeId);
@@ -147,35 +171,14 @@ public class ProgrammeMembershipActionsService {
   }
 
   /**
-   * Set the actions for a trainee and programme membership.
+   * Check if there are any incomplete programme actions in the job data map
    *
-   */
-  private void setActions() {
-    try {
-      ParameterizedTypeReference<Set<ActionDto>> actionSetType
-          = new ParameterizedTypeReference<>() {};
-      actions = restTemplate.exchange(
-          actionsUrl + API_PROGRAMME_ACTIONS, HttpMethod.GET, null, actionSetType,
-          Map.of("personId", personId, "programmeId", programmeId)).getBody();
-      if (actions == null) {
-        actions = Set.of();
-      }
-    } catch (RestClientException rce) {
-      log.warn("Exception occurred when requesting programme actions endpoint for trainee {} "
-          + "programme {}: {}", personId, programmeId, rce.toString());
-      actions = Set.of();
-    }
-  }
-
-  /**
-   * Check if there are any incomplete programme actions.
-   *
+   * @param jobDataMap The job data map to check.
    * @return true if there are any incomplete actions, false otherwise.
    */
-  private boolean hasIncompleteProgrammeActions() {
+  private boolean hasIncompleteProgrammeActions(@Nonnull JobDataMap jobDataMap) {
     for (ProgrammeActionType actionType : ProgrammeActionType.values()) {
-      Boolean isComplete = isProgrammeActionComplete(actionType);
-      if (isComplete != null && !isComplete) {
+      if (!jobDataMap.getBoolean(actionType.toString())) {
         return true; // Found an incomplete action
       }
     }
@@ -186,11 +189,16 @@ public class ProgrammeMembershipActionsService {
    * Get whether the programme action of a given type is complete.
    *
    * @param actionType The action type to check for completion.
+   * @param actions    The set of actions to check within.
    *
    * @return true if the action is complete, and false if not. Null if the action type is not found.
    */
   @Nullable
-  private Boolean isProgrammeActionComplete(ProgrammeActionType actionType) {
+  private Boolean isProgrammeActionComplete(ProgrammeActionType actionType,
+      Set<ActionDto> actions) {
+    if (actions == null) {
+      return null; //no actions found
+    }
     Optional<ActionDto> actionOfType = actions.stream()
         .filter(action -> action.type().equalsIgnoreCase(actionType.toString()))
         .findFirst();

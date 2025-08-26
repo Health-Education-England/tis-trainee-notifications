@@ -22,6 +22,7 @@
 package uk.nhs.tis.trainee.notifications.model;
 
 import java.time.LocalDate;
+import lombok.Builder;
 
 /**
  * A record representing a summary of a notification.
@@ -31,6 +32,7 @@ import java.time.LocalDate;
  * @param tisReferenceInfo    The TIS reference information associated with the notification.
  * @param unnecessaryReminder Indicates if the notification is an unnecessary reminder.
  */
+@Builder
 public record NotificationSummary(String jobName, LocalDate startDate,
                                   History.TisReferenceInfo tisReferenceInfo,
                                   boolean unnecessaryReminder) {
@@ -45,12 +47,5 @@ public record NotificationSummary(String jobName, LocalDate startDate,
   public NotificationSummary(String jobName, LocalDate startDate,
       History.TisReferenceInfo tisReferenceInfo) {
     this(jobName, startDate, tisReferenceInfo, false);
-  }
-
-  /**
-   * Default constructor for NotificationSummary.
-   */
-  public NotificationSummary() {
-    this(null, null, null, false);
   }
 }

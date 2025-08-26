@@ -69,6 +69,7 @@ import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 import software.amazon.awssdk.services.cognitoidentityprovider.model.UserNotFoundException;
 import uk.nhs.tis.trainee.notifications.config.TemplateVersionsProperties;
+import uk.nhs.tis.trainee.notifications.dto.ActionDto;
 import uk.nhs.tis.trainee.notifications.dto.UserDetails;
 import uk.nhs.tis.trainee.notifications.model.History;
 import uk.nhs.tis.trainee.notifications.model.History.TisReferenceInfo;
@@ -175,7 +176,7 @@ public class NotificationService implements Job {
    */
   public Map<String, String> executeNow(String jobKey, JobDataMap jobDetails) {
     Map<String, String> result = new HashMap<>();
-    NotificationSummary notificationSummary = new NotificationSummary();
+    NotificationSummary notificationSummary = NotificationSummary.builder().build();
 
     // get job details according to notification type
     String personId = jobDetails.getString(PERSON_ID_FIELD);
@@ -192,8 +193,10 @@ public class NotificationService implements Job {
 
 
     if (NotificationType.getActiveProgrammeUpdateNotificationTypes().contains(notificationType)) {
-      programmeMembershipActionService.addActionsToJobMap(personId, jobDetails);
-      notificationSummary = programmeMembershipActionService.getNotificationSummary();
+      String programmeId = jobDetails.getString(TIS_ID_FIELD);
+      Set<ActionDto> actions = programmeMembershipActionService.getActions(personId, programmeId);
+      programmeMembershipActionService.addActionsToJobMap(jobDetails, actions);
+      notificationSummary = programmeMembershipActionService.getNotificationSummary(jobDetails);
 
     } else if (notificationType == NotificationType.PLACEMENT_UPDATED_WEEK_12
         || notificationType == NotificationType.PLACEMENT_ROLLOUT_2024_CORRECTION) {

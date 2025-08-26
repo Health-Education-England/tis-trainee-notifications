@@ -42,9 +42,3 @@ spring:
         static: eu-west-2
       s3:
         path-style-access-enabled: true
-
-com:
-  amazonaws:
-    xray:
-      emitters:
-        daemon-address: suppress-errors

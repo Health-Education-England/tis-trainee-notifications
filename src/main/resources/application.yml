@@ -122,7 +122,7 @@ com:
   amazonaws:
     xray:
       emitters:
-        daemon-address: ${AWS_XRAY_DAEMON_ADDRESS:}
+        daemon-address: ${AWS_XRAY_DAEMON_ADDRESS:suppress-errors}
       strategy:
         tracing-name: ${AWS_XRAY_TRACING_NAME:tis-trainee-notifications-${application.environment}}
 
