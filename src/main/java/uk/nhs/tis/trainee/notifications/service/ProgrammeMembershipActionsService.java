@@ -77,7 +77,7 @@ public class ProgrammeMembershipActionsService {
    * @param personId    The ID of the trainee.
    * @param programmeId The ID of the programme membership.
    * @return the set of actions for the trainee and programme membership, or an empty set if none
-   * found or an error occurs.
+   *         found or an error occurs.
    */
   public Set<ActionDto> getActions(String personId, String programmeId) {
     Set<ActionDto> actions;
@@ -171,7 +171,7 @@ public class ProgrammeMembershipActionsService {
   }
 
   /**
-   * Check if there are any incomplete programme actions in the job data map
+   * Check if there are any incomplete programme actions in the job data map.
    *
    * @param jobDataMap The job data map to check.
    * @return true if there are any incomplete actions, false otherwise.
