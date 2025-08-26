@@ -33,6 +33,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 import static uk.nhs.tis.trainee.notifications.matcher.InstantCloseTo.closeTo;
 import static uk.nhs.tis.trainee.notifications.model.MessageType.EMAIL;
@@ -62,6 +63,8 @@ import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.EnumSource.Mode;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.ArgumentCaptor;
+import org.springframework.data.domain.Example;
+import org.springframework.data.domain.Sort;
 import uk.nhs.tis.trainee.notifications.dto.HistoryDto;
 import uk.nhs.tis.trainee.notifications.mapper.HistoryMapper;
 import uk.nhs.tis.trainee.notifications.mapper.HistoryMapperImpl;
@@ -95,7 +98,7 @@ class HistoryServiceTest {
   private HistoryRepository repository;
   private TemplateService templateService;
   private EventBroadcastService eventBroadcastService;
-  private HistoryMapper mapper = new HistoryMapperImpl();
+  private final HistoryMapper mapper = new HistoryMapperImpl();
 
   @BeforeEach
   void setUp() {
@@ -657,91 +660,23 @@ class HistoryServiceTest {
   }
 
   @Test
-  void shouldFindSentHistoryForTraineeRefAndTypeWhenSentNotificationsExist() {
-    RecipientInfo recipientInfo = new RecipientInfo(TRAINEE_ID, EMAIL, TRAINEE_CONTACT);
-    TemplateInfo templateInfo = new TemplateInfo(TEMPLATE_NAME, TEMPLATE_VERSION,
-        TEMPLATE_VARIABLES);
+  void shouldFindAndSortSentHistoryForTraineeRefAndType() {
     TisReferenceInfo tisReferenceInfo = new TisReferenceInfo(TIS_REFERENCE_TYPE, TIS_REFERENCE_ID);
+    History.RecipientInfo recipient = new History.RecipientInfo(TRAINEE_ID, EMAIL, null);
+    History historyExample = History.builder()
+        .recipient(recipient)
+        .tisReference(tisReferenceInfo)
+        .type(PLACEMENT_UPDATED_WEEK_12)
+        .status(SENT)
+        .build();
+    Example<History> example = Example.of(historyExample);
+    Sort sort = Sort.by("sentAt").descending();
 
-    ObjectId id1 = ObjectId.get();
-    History history1 = new History(id1, tisReferenceInfo, PLACEMENT_UPDATED_WEEK_12, recipientInfo,
-        templateInfo, null, Instant.MIN, Instant.MAX, SENT, null, null);
+    service.findAllSentEmailForTraineeByRefAndType(TRAINEE_ID, TIS_REFERENCE_TYPE, TIS_REFERENCE_ID,
+        PLACEMENT_UPDATED_WEEK_12);
 
-    //not sent
-    ObjectId id2 = ObjectId.get();
-    History history2 = new History(id2, tisReferenceInfo, PLACEMENT_UPDATED_WEEK_12, recipientInfo,
-        templateInfo, null, null, null, SCHEDULED, null, null);
-
-    //not same ref type
-    ObjectId id3 = ObjectId.get();
-    TisReferenceInfo tisReferenceInfo2
-        = new TisReferenceInfo(PROGRAMME_MEMBERSHIP, TIS_REFERENCE_ID);
-    History history3 = new History(id3, tisReferenceInfo2, PLACEMENT_UPDATED_WEEK_12, recipientInfo,
-        templateInfo, null, Instant.MIN, Instant.MAX, SENT, null, null);
-
-    //not same ref
-    ObjectId id4 = ObjectId.get();
-    TisReferenceInfo tisReferenceInfo3
-        = new TisReferenceInfo(TIS_REFERENCE_TYPE, "other id");
-    History history4 = new History(id4, tisReferenceInfo3, PLACEMENT_UPDATED_WEEK_12, recipientInfo,
-        templateInfo, null, Instant.MIN, Instant.MAX, SENT, null, null);
-
-    when(repository.findAllByRecipient_IdOrderBySentAtDesc(TRAINEE_ID)).thenReturn(
-        List.of(history4, history3, history2, history1));
-
-    when(templateService.process(any(), any(), anyMap())).thenReturn("");
-
-    List<History> history = service.findAllSentEmailForTraineeByRefAndType(
-        TRAINEE_ID, TIS_REFERENCE_TYPE, TIS_REFERENCE_ID, PLACEMENT_UPDATED_WEEK_12);
-
-    assertThat("Unexpected history count.", history.size(), is(1));
-
-    History returnedHistory1 = history.get(0);
-    assertThat("Unexpected history id.", returnedHistory1.id(), is(id1));
-    TisReferenceInfo referenceInfo2 = history.get(0).tisReference();
-    assertThat("Unexpected history TIS reference type.", referenceInfo2.type(),
-        is(TIS_REFERENCE_TYPE));
-    assertThat("Unexpected history TIS reference id.", referenceInfo2.id(),
-        is(TIS_REFERENCE_ID));
-    assertThat("Unexpected history sent at.", returnedHistory1.sentAt(), is(Instant.MIN));
-    assertThat("Unexpected history read at.", returnedHistory1.readAt(), is(Instant.MAX));
-  }
-
-  @Test
-  void shouldSortSentHistoryForTraineeRefAndTypeWhenSentNotificationsExist() {
-    RecipientInfo recipientInfo = new RecipientInfo(TRAINEE_ID, EMAIL, TRAINEE_CONTACT);
-    TemplateInfo templateInfo = new TemplateInfo(TEMPLATE_NAME, TEMPLATE_VERSION,
-        TEMPLATE_VARIABLES);
-    TisReferenceInfo tisReferenceInfo = new TisReferenceInfo(TIS_REFERENCE_TYPE, TIS_REFERENCE_ID);
-
-    Instant sentRecently = Instant.now();
-    ObjectId id1 = ObjectId.get();
-    History history1 = new History(id1, tisReferenceInfo, PLACEMENT_UPDATED_WEEK_12, recipientInfo,
-        templateInfo, null, sentRecently, Instant.MAX, SENT, null, null);
-
-    ObjectId id2 = ObjectId.get();
-    History history2 = new History(id2, tisReferenceInfo, PLACEMENT_UPDATED_WEEK_12, recipientInfo,
-        templateInfo, null, Instant.MIN, Instant.MAX, SENT, null, null);
-
-    when(repository.findAllByRecipient_IdOrderBySentAtDesc(TRAINEE_ID)).thenReturn(
-        List.of(history1, history2));
-
-    when(templateService.process(any(), any(), anyMap())).thenReturn("");
-
-    List<History> history = service.findAllSentEmailForTraineeByRefAndType(
-        TRAINEE_ID, TIS_REFERENCE_TYPE, TIS_REFERENCE_ID, PLACEMENT_UPDATED_WEEK_12);
-
-    assertThat("Unexpected history count.", history.size(), is(2));
-
-    History returnedHistory1 = history.get(0);
-    assertThat("Unexpected history id.", returnedHistory1.id(), is(id1));
-    TisReferenceInfo referenceInfo2 = history.get(0).tisReference();
-    assertThat("Unexpected history TIS reference type.", referenceInfo2.type(),
-        is(TIS_REFERENCE_TYPE));
-    assertThat("Unexpected history TIS reference id.", referenceInfo2.id(),
-        is(TIS_REFERENCE_ID));
-    assertThat("Unexpected history sent at.", returnedHistory1.sentAt(), is(sentRecently));
-    assertThat("Unexpected history read at.", returnedHistory1.readAt(), is(Instant.MAX));
+    verify(repository).findAll(example, sort);
+    verifyNoMoreInteractions(repository);
   }
 
   @Test

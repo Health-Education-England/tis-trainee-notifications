@@ -38,6 +38,8 @@ import java.util.Optional;
 import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
 import org.bson.types.ObjectId;
+import org.springframework.data.domain.Example;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import uk.nhs.tis.trainee.notifications.dto.HistoryDto;
 import uk.nhs.tis.trainee.notifications.mapper.HistoryMapper;
@@ -241,15 +243,20 @@ public class HistoryService {
    */
   public List<History> findAllSentEmailForTraineeByRefAndType(String traineeId,
       TisReferenceType tisReferenceType, String refId, NotificationType notificationType) {
-    List<History> history = repository.findAllByRecipient_IdOrderBySentAtDesc(traineeId);
 
-    return history.stream()
-        .filter(h -> h.recipient().type().equals(EMAIL))
-        .filter(h -> h.status().equals(SENT))
-        .filter(h -> h.tisReference().id().equals(refId)
-            && h.tisReference().type().equals(tisReferenceType))
-        .filter(h -> h.type().equals(notificationType))
-        .toList();
+    History.RecipientInfo recipient = new History.RecipientInfo(traineeId, EMAIL, null);
+    History.TisReferenceInfo referenceInfo = new History.TisReferenceInfo(tisReferenceType, refId);
+    History history = History.builder()
+        .recipient(recipient)
+        .tisReference(referenceInfo)
+        .type(notificationType)
+        .status(SENT)
+        .build();
+
+    Example<History> example = Example.of(history);
+
+    Sort sort = Sort.by("sentAt").descending();
+    return repository.findAll(example, sort);
   }
 
   /**

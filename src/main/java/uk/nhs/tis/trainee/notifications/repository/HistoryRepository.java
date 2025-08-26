@@ -30,6 +30,7 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.data.mongodb.repository.Query;
 import org.springframework.data.mongodb.repository.Update;
+import org.springframework.data.repository.query.QueryByExampleExecutor;
 import org.springframework.stereotype.Repository;
 import uk.nhs.tis.trainee.notifications.model.History;
 import uk.nhs.tis.trainee.notifications.model.NotificationStatus;
@@ -40,7 +41,7 @@ import uk.nhs.tis.trainee.notifications.model.ObjectIdWrapper;
  */
 @Repository
 public interface HistoryRepository extends
-    MongoRepository<History, ObjectId> {
+    MongoRepository<History, ObjectId>, QueryByExampleExecutor<History> {
 
   /**
    * Get a list of the IDs of all matching history items.
