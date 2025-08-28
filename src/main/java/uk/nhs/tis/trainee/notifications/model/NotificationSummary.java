@@ -1,0 +1,51 @@
+/*
+ * The MIT License (MIT)
+ *
+ * Copyright 2025 Crown Copyright (Health Education England)
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
+ * associated documentation files (the "Software"), to deal in the Software without restriction,
+ * including without limitation the rights to use, copy, modify, merge, publish, distribute,
+ * sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all copies or
+ * substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT
+ * NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+ * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
+ * DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ */
+
+package uk.nhs.tis.trainee.notifications.model;
+
+import java.time.LocalDate;
+import lombok.Builder;
+
+/**
+ * A record representing a summary of a notification.
+ *
+ * @param jobName             The name of the job associated with the notification.
+ * @param startDate           The start date of the notification.
+ * @param tisReferenceInfo    The TIS reference information associated with the notification.
+ * @param unnecessaryReminder Indicates if the notification is an unnecessary reminder.
+ */
+@Builder
+public record NotificationSummary(String jobName, LocalDate startDate,
+                                  History.TisReferenceInfo tisReferenceInfo,
+                                  boolean unnecessaryReminder) {
+
+  /**
+   * Creates a NotificationSummary with unnecessaryReminder set to false.
+   *
+   * @param jobName          The name of the job.
+   * @param startDate        The start date of the notification.
+   * @param tisReferenceInfo The TIS reference information.
+   */
+  public NotificationSummary(String jobName, LocalDate startDate,
+      History.TisReferenceInfo tisReferenceInfo) {
+    this(jobName, startDate, tisReferenceInfo, false);
+  }
+}

@@ -38,6 +38,8 @@ import java.util.Optional;
 import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
 import org.bson.types.ObjectId;
+import org.springframework.data.domain.Example;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import uk.nhs.tis.trainee.notifications.dto.HistoryDto;
 import uk.nhs.tis.trainee.notifications.mapper.HistoryMapper;
@@ -228,6 +230,33 @@ public class HistoryService {
         .dropWhile(h -> h.sentAt().isAfter(Instant.now()))
         .map(this::toDto)
         .toList();
+  }
+
+  /**
+   * Find sent email notification for the given Trainee by reference and type from DB.
+   *
+   * @param traineeId        The ID of the trainee to get notifications for.
+   * @param tisReferenceType The reference type of the object.
+   * @param refId            The reference ID of the TisReferenceType.
+   * @param notificationType The notification Type of the notification.
+   * @return The found notifications, empty if none found.
+   */
+  public List<History> findAllSentEmailForTraineeByRefAndType(String traineeId,
+      TisReferenceType tisReferenceType, String refId, NotificationType notificationType) {
+
+    History.RecipientInfo recipient = new History.RecipientInfo(traineeId, EMAIL, null);
+    History.TisReferenceInfo referenceInfo = new History.TisReferenceInfo(tisReferenceType, refId);
+    History history = History.builder()
+        .recipient(recipient)
+        .tisReference(referenceInfo)
+        .type(notificationType)
+        .status(SENT)
+        .build();
+
+    Example<History> example = Example.of(history);
+
+    Sort sort = Sort.by("sentAt").descending();
+    return repository.findAll(example, sort);
   }
 
   /**

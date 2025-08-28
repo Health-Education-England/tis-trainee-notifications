@@ -104,9 +104,13 @@ application:
       email: v1.0.0
     programme-updated-week-1:
       email: v1.0.0
+    programme-updated-week-2:
+      email: v1.0.0
     programme-updated-week-4:
       email: v1.0.0
     programme-updated-week-8:
+      email: v1.0.0
+    programme-updated-week-12:
       email: v1.0.0
     sponsorship:
       in-app: v1.0.0
@@ -118,7 +122,7 @@ com:
   amazonaws:
     xray:
       emitters:
-        daemon-address: ${AWS_XRAY_DAEMON_ADDRESS:}
+        daemon-address: ${AWS_XRAY_DAEMON_ADDRESS:suppress-errors}
       strategy:
         tracing-name: ${AWS_XRAY_TRACING_NAME:tis-trainee-notifications-${application.environment}}
 
@@ -184,6 +188,8 @@ service:
     port: ${TRAINEE_DETAILS_PORT:8203}
     url: http://${service.trainee.host}:${service.trainee.port}/trainee
   reference:
-    host: ${TRAINEE_REFERENCE_HOST:localhost}
     port: ${TRAINEE_REFERENCE_PORT:8205}
     url: http://${service.trainee.host}:${service.reference.port}/reference
+  actions:
+    port: ${TRAINEE_ACTIONS_PORT:8212}
+    url: http://${service.trainee.host}:${service.actions.port}/actions

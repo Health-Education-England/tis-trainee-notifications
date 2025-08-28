@@ -33,6 +33,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 import static uk.nhs.tis.trainee.notifications.matcher.InstantCloseTo.closeTo;
 import static uk.nhs.tis.trainee.notifications.model.MessageType.EMAIL;
@@ -42,7 +43,9 @@ import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.SCHEDULE
 import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.SENT;
 import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.UNREAD;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.COJ_CONFIRMATION;
+import static uk.nhs.tis.trainee.notifications.model.NotificationType.PLACEMENT_UPDATED_WEEK_12;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_CREATED;
+import static uk.nhs.tis.trainee.notifications.model.TisReferenceType.PLACEMENT;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -59,6 +62,8 @@ import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.EnumSource.Mode;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.ArgumentCaptor;
+import org.springframework.data.domain.Example;
+import org.springframework.data.domain.Sort;
 import uk.nhs.tis.trainee.notifications.dto.HistoryDto;
 import uk.nhs.tis.trainee.notifications.mapper.HistoryMapper;
 import uk.nhs.tis.trainee.notifications.mapper.HistoryMapperImpl;
@@ -85,14 +90,14 @@ class HistoryServiceTest {
   private static final String TEMPLATE_VERSION = "v1.2.3";
   private static final Map<String, Object> TEMPLATE_VARIABLES = Map.of("key1", "value1");
 
-  private static final TisReferenceType TIS_REFERENCE_TYPE = TisReferenceType.PLACEMENT;
+  private static final TisReferenceType TIS_REFERENCE_TYPE = PLACEMENT;
   private static final String TIS_REFERENCE_ID = UUID.randomUUID().toString();
 
   private HistoryService service;
   private HistoryRepository repository;
   private TemplateService templateService;
   private EventBroadcastService eventBroadcastService;
-  private HistoryMapper mapper = new HistoryMapperImpl();
+  private final HistoryMapper mapper = new HistoryMapperImpl();
 
   @BeforeEach
   void setUp() {
@@ -641,6 +646,36 @@ class HistoryServiceTest {
     assertThat("Unexpected history contact.", historyDto1.contact(), is(TRAINEE_CONTACT));
     assertThat("Unexpected history sent at.", historyDto1.sentAt(), is(Instant.MIN));
     assertThat("Unexpected history read at.", historyDto1.readAt(), is(Instant.MAX));
+  }
+
+  @Test
+  void shouldFindNoSentHistoryForTraineeRefAndTypeWhenNotificationsNotExist() {
+    when(repository.findAllByRecipient_IdOrderBySentAtDesc(TRAINEE_ID)).thenReturn(List.of());
+
+    List<History> history = service.findAllSentEmailForTraineeByRefAndType(
+        TRAINEE_ID, TIS_REFERENCE_TYPE, TIS_REFERENCE_ID, PROGRAMME_CREATED);
+
+    assertThat("Unexpected history count.", history.size(), is(0));
+  }
+
+  @Test
+  void shouldFindAndSortSentHistoryForTraineeRefAndType() {
+    TisReferenceInfo tisReferenceInfo = new TisReferenceInfo(TIS_REFERENCE_TYPE, TIS_REFERENCE_ID);
+    History.RecipientInfo recipient = new History.RecipientInfo(TRAINEE_ID, EMAIL, null);
+    History historyExample = History.builder()
+        .recipient(recipient)
+        .tisReference(tisReferenceInfo)
+        .type(PLACEMENT_UPDATED_WEEK_12)
+        .status(SENT)
+        .build();
+    Example<History> example = Example.of(historyExample);
+    Sort sort = Sort.by("sentAt").descending();
+
+    service.findAllSentEmailForTraineeByRefAndType(TRAINEE_ID, TIS_REFERENCE_TYPE, TIS_REFERENCE_ID,
+        PLACEMENT_UPDATED_WEEK_12);
+
+    verify(repository).findAll(example, sort);
+    verifyNoMoreInteractions(repository);
   }
 
   @Test

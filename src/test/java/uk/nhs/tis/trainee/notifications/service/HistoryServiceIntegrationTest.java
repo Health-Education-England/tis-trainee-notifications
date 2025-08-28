@@ -39,7 +39,9 @@ import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.SCHEDULE
 import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.SENT;
 import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.UNREAD;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.FORM_UPDATED;
+import static uk.nhs.tis.trainee.notifications.model.NotificationType.PLACEMENT_UPDATED_WEEK_12;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_DAY_ONE;
+import static uk.nhs.tis.trainee.notifications.model.TisReferenceType.PROGRAMME_MEMBERSHIP;
 
 import io.awspring.cloud.sqs.operations.SqsTemplate;
 import java.time.Duration;
@@ -485,6 +487,89 @@ class HistoryServiceIntegrationTest {
         history.tisReference().type(), is(TisReferenceType.PLACEMENT));
     assertThat("Unexpected tis reference id at.",
         history.tisReference().id(), is(TIS_REFERENCE_ID));
+  }
+
+  @Test
+  void shouldFindSentHistoryForTraineeRefAndTypeWhenSentNotificationsExist() {
+    RecipientInfo recipientInfo = new RecipientInfo(TRAINEE_ID, EMAIL, TRAINEE_CONTACT);
+    TemplateInfo templateInfo = new TemplateInfo(TEMPLATE_NAME, TEMPLATE_VERSION,
+        TEMPLATE_VARIABLES);
+    TisReferenceInfo tisReferenceInfo = new TisReferenceInfo(TIS_REFERENCE_TYPE, TIS_REFERENCE_ID);
+
+    ObjectId id1 = ObjectId.get();
+    History history1 = new History(id1, tisReferenceInfo, PLACEMENT_UPDATED_WEEK_12, recipientInfo,
+        templateInfo, null, SENT_AT, READ_AT, SENT, null, null);
+    service.save(history1);
+
+    //not sent
+    ObjectId id2 = ObjectId.get();
+    History history2 = new History(id2, tisReferenceInfo, PLACEMENT_UPDATED_WEEK_12, recipientInfo,
+        templateInfo, null, null, null, SCHEDULED, null, null);
+    service.save(history2);
+
+    //not same ref type
+    ObjectId id3 = ObjectId.get();
+    TisReferenceInfo tisReferenceInfo2
+        = new TisReferenceInfo(PROGRAMME_MEMBERSHIP, TIS_REFERENCE_ID);
+    History history3 = new History(id3, tisReferenceInfo2, PLACEMENT_UPDATED_WEEK_12, recipientInfo,
+        templateInfo, null, SENT_AT, READ_AT, SENT, null, null);
+    service.save(history3);
+
+    //not same ref
+    ObjectId id4 = ObjectId.get();
+    TisReferenceInfo tisReferenceInfo3
+        = new TisReferenceInfo(TIS_REFERENCE_TYPE, "other id");
+    History history4 = new History(id4, tisReferenceInfo3, PLACEMENT_UPDATED_WEEK_12, recipientInfo,
+        templateInfo, null, SENT_AT, READ_AT, SENT, null, null);
+    service.save(history4);
+
+    List<History> history = service.findAllSentEmailForTraineeByRefAndType(
+        TRAINEE_ID, TIS_REFERENCE_TYPE, TIS_REFERENCE_ID, PLACEMENT_UPDATED_WEEK_12);
+
+    assertThat("Unexpected history count.", history.size(), is(1));
+
+    History returnedHistory1 = history.get(0);
+    assertThat("Unexpected history id.", returnedHistory1.id(), is(id1));
+    TisReferenceInfo referenceInfo2 = history.get(0).tisReference();
+    assertThat("Unexpected history TIS reference type.", referenceInfo2.type(),
+        is(TIS_REFERENCE_TYPE));
+    assertThat("Unexpected history TIS reference id.", referenceInfo2.id(),
+        is(TIS_REFERENCE_ID));
+    assertThat("Unexpected history sent at.", returnedHistory1.sentAt(), is(SENT_AT));
+    assertThat("Unexpected history read at.", returnedHistory1.readAt(), is(READ_AT));
+  }
+
+  @Test
+  void shouldSortSentHistoryForTraineeRefAndTypeWhenSentNotificationsExist() {
+    RecipientInfo recipientInfo = new RecipientInfo(TRAINEE_ID, EMAIL, TRAINEE_CONTACT);
+    TemplateInfo templateInfo = new TemplateInfo(TEMPLATE_NAME, TEMPLATE_VERSION,
+        TEMPLATE_VARIABLES);
+    TisReferenceInfo tisReferenceInfo = new TisReferenceInfo(TIS_REFERENCE_TYPE, TIS_REFERENCE_ID);
+
+    Instant after = SENT_AT.plus(Duration.ofDays(1));
+    ObjectId id0 = ObjectId.get();
+    History history0 = new History(id0, tisReferenceInfo, PLACEMENT_UPDATED_WEEK_12, recipientInfo,
+        templateInfo, null, SENT_AT, READ_AT, SENT, null, null);
+    service.save(history0);
+
+    ObjectId id1 = ObjectId.get();
+    History history1 = new History(id1, tisReferenceInfo, PLACEMENT_UPDATED_WEEK_12, recipientInfo,
+        templateInfo, null, after, READ_AT, SENT, null, null);
+    service.save(history1);
+
+    ObjectId id2 = ObjectId.get();
+    History history2 = new History(id2, tisReferenceInfo, PLACEMENT_UPDATED_WEEK_12, recipientInfo,
+        templateInfo, null, SENT_AT, READ_AT, SENT, null, null);
+    service.save(history2);
+
+    List<History> history = service.findAllSentEmailForTraineeByRefAndType(
+        TRAINEE_ID, TIS_REFERENCE_TYPE, TIS_REFERENCE_ID, PLACEMENT_UPDATED_WEEK_12);
+
+    assertThat("Unexpected history count.", history.size(), is(3));
+
+    History returnedHistory1 = history.get(0);
+    assertThat("Unexpected history id.", returnedHistory1.id(), is(id1));
+    assertThat("Unexpected history sent at.", returnedHistory1.sentAt(), is(after));
   }
 
   @Test

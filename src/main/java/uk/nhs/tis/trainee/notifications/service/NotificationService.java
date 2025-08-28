@@ -69,6 +69,7 @@ import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 import software.amazon.awssdk.services.cognitoidentityprovider.model.UserNotFoundException;
 import uk.nhs.tis.trainee.notifications.config.TemplateVersionsProperties;
+import uk.nhs.tis.trainee.notifications.dto.ActionDto;
 import uk.nhs.tis.trainee.notifications.dto.UserDetails;
 import uk.nhs.tis.trainee.notifications.model.History;
 import uk.nhs.tis.trainee.notifications.model.History.TisReferenceInfo;
@@ -76,6 +77,7 @@ import uk.nhs.tis.trainee.notifications.model.LocalOfficeContact;
 import uk.nhs.tis.trainee.notifications.model.LocalOfficeContactType;
 import uk.nhs.tis.trainee.notifications.model.MessageType;
 import uk.nhs.tis.trainee.notifications.model.NotificationStatus;
+import uk.nhs.tis.trainee.notifications.model.NotificationSummary;
 import uk.nhs.tis.trainee.notifications.model.NotificationType;
 import uk.nhs.tis.trainee.notifications.model.Placement;
 import uk.nhs.tis.trainee.notifications.model.ProgrammeMembership;
@@ -87,15 +89,15 @@ import uk.nhs.tis.trainee.notifications.model.ProgrammeMembership;
 @Component
 public class NotificationService implements Job {
 
-  protected static final String API_GET_OWNER_CONTACT
-      = "/api/local-office-contact-by-lo-name/{localOfficeName}";
-  protected static final String DEFAULT_NO_CONTACT_MESSAGE
-      = "your local office";
+  protected static final String DEFAULT_NO_CONTACT_MESSAGE = "your local office";
   protected static final List<String> DUMMY_USER_ROLES = List.of("Placeholder", "Dummy Record");
+  protected static final String JOB_RESULT_STATUS = "status";
 
   public static final String API_TRAINEE_DETAILS = "/api/trainee-profile/account-details/{tisId}";
   public static final String API_TRAINEE_LOCAL_OFFICE_CONTACTS
       = "/api/trainee-profile/local-office-contacts/{tisId}/{contactTypeName}";
+  public static final String API_GET_OWNER_CONTACT
+      = "/api/local-office-contact-by-lo-name/{localOfficeName}";
   private static final String TRIGGER_ID_PREFIX = "trigger-";
   public static final long ONE_DAY_IN_SECONDS = 24 * 60 * 60L;
 
@@ -112,6 +114,7 @@ public class NotificationService implements Job {
 
   private final EmailService emailService;
   private final HistoryService historyService;
+  private final ProgrammeMembershipActionsService programmeMembershipActionService;
   private final RestTemplate restTemplate;
   private final TemplateVersionsProperties templateVersions;
   private final String serviceUrl;
@@ -122,7 +125,7 @@ public class NotificationService implements Job {
   private final String timezone;
   protected final Integer immediateNotificationDelayMinutes;
 
-  private Random random;
+  private final Random random;
 
   /**
    * Initialise the Notification Service.
@@ -140,6 +143,7 @@ public class NotificationService implements Job {
    * @param notificationsWhitelist     The whitelist of (tester) trainee TIS IDs.
    */
   public NotificationService(EmailService emailService, HistoryService historyService,
+      ProgrammeMembershipActionsService programmeMembershipActionService,
       RestTemplate restTemplate, Scheduler scheduler,
       MessagingControllerService messagingControllerService,
       TemplateVersionsProperties templateVersions,
@@ -150,6 +154,7 @@ public class NotificationService implements Job {
       @Value("${application.timezone}") String timezone) {
     this.emailService = emailService;
     this.historyService = historyService;
+    this.programmeMembershipActionService = programmeMembershipActionService;
     this.restTemplate = restTemplate;
     this.scheduler = scheduler;
     this.templateVersions = templateVersions;
@@ -163,24 +168,21 @@ public class NotificationService implements Job {
   }
 
   /**
-   * Process a job now.
+   * Process a job immediately, sending the notification if appropriate.
    *
    * @param jobKey     The descriptive job identifier.
    * @param jobDetails The job details.
-   * @return the result map with status details if successful.
+   * @return The result map with status details if successful.
    */
   public Map<String, String> executeNow(String jobKey, JobDataMap jobDetails) {
-    String jobName = "";
     Map<String, String> result = new HashMap<>();
+    NotificationSummary notificationSummary = NotificationSummary.builder().build();
 
     // get job details according to notification type
     String personId = jobDetails.getString(PERSON_ID_FIELD);
 
-    TisReferenceInfo tisReferenceInfo = null;
-    LocalDate startDate = null;
-
     // Enrich User Account and Local Office details to jobDetails
-    jobDetails = enrichJobDetails(jobDetails);
+    enrichJobDetails(jobDetails);
 
     UserDetails userTraineeDetails = getTraineeDetails(personId);
     UserDetails userCognitoAccountDetails = getCognitoAccountDetails(userTraineeDetails.email());
@@ -189,25 +191,34 @@ public class NotificationService implements Job {
     NotificationType notificationType =
         NotificationType.valueOf(jobDetails.get(TEMPLATE_NOTIFICATION_TYPE_FIELD).toString());
 
-    //only consider sending programme-created mails; ignore the programme-updated-* notifications
-    if (notificationType == NotificationType.PROGRAMME_CREATED
-        || notificationType == NotificationType.PROGRAMME_DAY_ONE) {
 
-      jobName = jobDetails.getString(ProgrammeMembershipService.PROGRAMME_NAME_FIELD);
-      startDate = (LocalDate) jobDetails.get(ProgrammeMembershipService.START_DATE_FIELD);
-      tisReferenceInfo = new TisReferenceInfo(PROGRAMME_MEMBERSHIP,
-          jobDetails.get(ProgrammeMembershipService.TIS_ID_FIELD).toString());
+    if (NotificationType.getActiveProgrammeUpdateNotificationTypes().contains(notificationType)) {
+      String programmeId = jobDetails.getString(TIS_ID_FIELD);
+      Set<ActionDto> actions = programmeMembershipActionService.getActions(personId, programmeId);
+      programmeMembershipActionService.addActionsToJobMap(jobDetails, actions);
+      notificationSummary = programmeMembershipActionService.getNotificationSummary(jobDetails);
 
     } else if (notificationType == NotificationType.PLACEMENT_UPDATED_WEEK_12
         || notificationType == NotificationType.PLACEMENT_ROLLOUT_2024_CORRECTION) {
 
-      jobName = jobDetails.getString(PlacementService.PLACEMENT_TYPE_FIELD);
-      startDate = (LocalDate) jobDetails.get(PlacementService.START_DATE_FIELD);
-      tisReferenceInfo = new TisReferenceInfo(PLACEMENT,
+      String jobName = jobDetails.getString(PlacementService.PLACEMENT_TYPE_FIELD);
+      LocalDate startDate = (LocalDate) jobDetails.get(PlacementService.START_DATE_FIELD);
+      History.TisReferenceInfo tisReferenceInfo = new TisReferenceInfo(PLACEMENT,
           jobDetails.get(PlacementService.TIS_ID_FIELD).toString());
+      notificationSummary = new NotificationSummary(jobName, startDate, tisReferenceInfo);
     }
 
-    if (tisReferenceInfo != null) {
+    if (notificationSummary.unnecessaryReminder()) {
+      log.info("Skipping unnecessary reminder for {} notification for {} ({}, starting {}) "
+              + "to {}",
+          jobKey,
+          jobDetails.getString(TIS_ID_FIELD), notificationSummary.jobName(),
+          notificationSummary.startDate(), userAccountDetails.email());
+      result.put(JOB_RESULT_STATUS, "skipped unnecessary reminder");
+      return result;
+    }
+
+    if (notificationSummary.tisReferenceInfo() != null) {
       if (userAccountDetails != null) {
         Optional<String> templateVersion = templateVersions.getTemplateVersion(notificationType,
             EMAIL);
@@ -216,22 +227,22 @@ public class NotificationService implements Job {
           throw new IllegalArgumentException(
               "No email template version found for notification type '{}'.");
         }
-
         try {
-
           emailService.sendMessage(personId, userAccountDetails.email(), notificationType,
-              templateVersion.get(), jobDetails.getWrappedMap(), tisReferenceInfo,
-              !shouldActuallySendEmail(notificationType, personId, tisReferenceInfo.id()));
+              templateVersion.get(), jobDetails.getWrappedMap(),
+              notificationSummary.tisReferenceInfo(),
+              !shouldActuallySendEmail(
+                  notificationType, personId, notificationSummary.tisReferenceInfo().id()));
         } catch (MessagingException e) {
           throw new RuntimeException(e);
         }
 
         log.info("Executed {} notification for {} ({}, starting {}) to {} using template {}",
             jobKey,
-            jobDetails.getString(TIS_ID_FIELD), jobName, startDate, userAccountDetails.email(),
-            templateVersion.get());
+            jobDetails.getString(TIS_ID_FIELD), notificationSummary.jobName(),
+            notificationSummary.startDate(), userAccountDetails.email(), templateVersion.get());
         Instant processedOn = Instant.now();
-        result.put("status", "sent " + processedOn.toString());
+        result.put(JOB_RESULT_STATUS, "sent " + processedOn.toString());
       } else {
         log.info("No notification could be sent, no TSS details found for tisId {}", personId);
       }
@@ -249,7 +260,7 @@ public class NotificationService implements Job {
     String jobKey = jobExecutionContext.getJobDetail().getKey().toString();
     JobDataMap jobDetails = jobExecutionContext.getJobDetail().getJobDataMap();
     Map<String, String> result = executeNow(jobKey, jobDetails);
-    if (result.get("status") != null) {
+    if (result.get(JOB_RESULT_STATUS) != null) {
       jobExecutionContext.setResult(result);
     }
   }
@@ -434,6 +445,7 @@ public class NotificationService implements Job {
     }
 
     jobDetails.putIfAbsent("isValidGmc", isValidGmc(jobDetails.getString("gmcNumber")));
+
     return jobDetails;
   }
 
@@ -450,9 +462,7 @@ public class NotificationService implements Job {
     boolean actuallySendEmail = false; // default to log email only
     boolean inWhitelist = notificationsWhitelist.contains(personId);
 
-    //only consider sending programme-created mails; ignore the programme-updated-* notifications
-    if (notificationType == NotificationType.PROGRAMME_CREATED
-        || notificationType == NotificationType.PROGRAMME_DAY_ONE) {
+    if (NotificationType.getActiveProgrammeUpdateNotificationTypes().contains(notificationType)) {
 
       ProgrammeMembership minimalPm = new ProgrammeMembership();
       minimalPm.setPersonId(personId);
@@ -493,8 +503,7 @@ public class NotificationService implements Job {
 
     // get TIS Reference Info
     TisReferenceInfo tisReferenceInfo = null;
-    if (notificationType == NotificationType.PROGRAMME_CREATED
-        || notificationType == NotificationType.PROGRAMME_DAY_ONE) {
+    if (NotificationType.getActiveProgrammeUpdateNotificationTypes().contains(notificationType)) {
       tisReferenceInfo = new TisReferenceInfo(PROGRAMME_MEMBERSHIP,
           jobDetails.get(ProgrammeMembershipService.TIS_ID_FIELD).toString());
     } else if (notificationType == NotificationType.PLACEMENT_UPDATED_WEEK_12) {
@@ -517,7 +526,8 @@ public class NotificationService implements Job {
     History.TemplateInfo templateInfo = new History.TemplateInfo(notificationType.getTemplateName(),
         templateVersion.get(), jobDetails.getWrappedMap());
 
-    // Only save when notificationType is correct and in Pilot/Rollout
+    // Only save when notificationType is correct and in Pilot/Rollout. We ignore the completion
+    // status of programme actions since these could change before the notification is sent.
     if (tisReferenceInfo != null
         && shouldActuallySendEmail(notificationType, personId, tisReferenceInfo.id())) {
 
@@ -617,7 +627,6 @@ public class NotificationService implements Job {
    * @param templateVariables The template variables.
    * @param templateVersion   The template version.
    * @param notificationType  The notification type (template type).
-   *
    * @return The set of distinct email addresses to which the mail was sent (or logged) in
    *         alphabetic order.
    * @throws MessagingException If the email(s) could not be sent.
