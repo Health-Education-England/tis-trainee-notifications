@@ -228,7 +228,7 @@ public class NotificationService implements Job {
         try {
           boolean justLogEmail = !shouldActuallySendEmail(
               notificationType, personId, notificationSummary.tisReferenceInfo().id())
-              ||notificationSummary.unnecessaryReminder();
+              || notificationSummary.unnecessaryReminder();
           emailService.sendMessage(personId, userAccountDetails.email(), notificationType,
               templateVersion.get(), jobDetails.getWrappedMap(),
               notificationSummary.tisReferenceInfo(), justLogEmail);
@@ -591,8 +591,7 @@ public class NotificationService implements Job {
       LocalOfficeContactType contactType) {
     try {
       ParameterizedTypeReference<Set<LocalOfficeContact>> loContactListListType
-          = new ParameterizedTypeReference<>() {
-      };
+          = new ParameterizedTypeReference<>() {};
       Set<LocalOfficeContact> localOfficeContacts =
           restTemplate.exchange(serviceUrl + API_TRAINEE_LOCAL_OFFICE_CONTACTS,
                   HttpMethod.GET, null, loContactListListType,
@@ -628,7 +627,7 @@ public class NotificationService implements Job {
    * @param templateVersion   The template version.
    * @param notificationType  The notification type (template type).
    * @return The set of distinct email addresses to which the mail was sent (or logged) in
-   *     alphabetic order.
+   *         alphabetic order.
    * @throws MessagingException If the email(s) could not be sent.
    */
   public Set<String> sendLocalOfficeMail(UserDetails traineeDetails, String traineeId,
@@ -658,7 +657,7 @@ public class NotificationService implements Job {
       }
     } else {
       log.warn("{} local office notification not processed for trainee {}: no local office "
-          + "contacts.", notificationType, traineeId);
+              + "contacts.", notificationType, traineeId);
     }
     return sentTo;
   }
