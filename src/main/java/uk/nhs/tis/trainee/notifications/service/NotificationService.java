@@ -214,8 +214,6 @@ public class NotificationService implements Job {
           jobKey,
           jobDetails.getString(TIS_ID_FIELD), notificationSummary.jobName(),
           notificationSummary.startDate(), userAccountDetails.email());
-      result.put(JOB_RESULT_STATUS, "skipped unnecessary reminder");
-      return result;
     }
 
     if (notificationSummary.tisReferenceInfo() != null) {
@@ -228,11 +226,12 @@ public class NotificationService implements Job {
               "No email template version found for notification type '{}'.");
         }
         try {
+          boolean justLogEmail = !shouldActuallySendEmail(
+              notificationType, personId, notificationSummary.tisReferenceInfo().id())
+              ||notificationSummary.unnecessaryReminder();
           emailService.sendMessage(personId, userAccountDetails.email(), notificationType,
               templateVersion.get(), jobDetails.getWrappedMap(),
-              notificationSummary.tisReferenceInfo(),
-              !shouldActuallySendEmail(
-                  notificationType, personId, notificationSummary.tisReferenceInfo().id()));
+              notificationSummary.tisReferenceInfo(), justLogEmail);
         } catch (MessagingException e) {
           throw new RuntimeException(e);
         }
@@ -592,7 +591,8 @@ public class NotificationService implements Job {
       LocalOfficeContactType contactType) {
     try {
       ParameterizedTypeReference<Set<LocalOfficeContact>> loContactListListType
-          = new ParameterizedTypeReference<>() {};
+          = new ParameterizedTypeReference<>() {
+      };
       Set<LocalOfficeContact> localOfficeContacts =
           restTemplate.exchange(serviceUrl + API_TRAINEE_LOCAL_OFFICE_CONTACTS,
                   HttpMethod.GET, null, loContactListListType,
@@ -628,7 +628,7 @@ public class NotificationService implements Job {
    * @param templateVersion   The template version.
    * @param notificationType  The notification type (template type).
    * @return The set of distinct email addresses to which the mail was sent (or logged) in
-   *         alphabetic order.
+   *     alphabetic order.
    * @throws MessagingException If the email(s) could not be sent.
    */
   public Set<String> sendLocalOfficeMail(UserDetails traineeDetails, String traineeId,
@@ -658,7 +658,7 @@ public class NotificationService implements Job {
       }
     } else {
       log.warn("{} local office notification not processed for trainee {}: no local office "
-              + "contacts.", notificationType, traineeId);
+          + "contacts.", notificationType, traineeId);
     }
     return sentTo;
   }
@@ -684,7 +684,6 @@ public class NotificationService implements Job {
    * @param templateVariables The template variables.
    * @param templateVersion   The template version.
    * @param notificationType  The notification type (template type).
-   *
    * @throws MessagingException If the email could not be sent.
    */
   public void sendTraineeMail(String traineeId, String traineeEmail,
