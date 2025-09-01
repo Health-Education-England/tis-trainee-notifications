@@ -214,8 +214,6 @@ public class NotificationService implements Job {
           jobKey,
           jobDetails.getString(TIS_ID_FIELD), notificationSummary.jobName(),
           notificationSummary.startDate(), userAccountDetails.email());
-      result.put(JOB_RESULT_STATUS, "skipped unnecessary reminder");
-      return result;
     }
 
     if (notificationSummary.tisReferenceInfo() != null) {
@@ -228,11 +226,12 @@ public class NotificationService implements Job {
               "No email template version found for notification type '{}'.");
         }
         try {
+          boolean justLogEmail = !shouldActuallySendEmail(
+              notificationType, personId, notificationSummary.tisReferenceInfo().id())
+              || notificationSummary.unnecessaryReminder();
           emailService.sendMessage(personId, userAccountDetails.email(), notificationType,
               templateVersion.get(), jobDetails.getWrappedMap(),
-              notificationSummary.tisReferenceInfo(),
-              !shouldActuallySendEmail(
-                  notificationType, personId, notificationSummary.tisReferenceInfo().id()));
+              notificationSummary.tisReferenceInfo(), justLogEmail);
         } catch (MessagingException e) {
           throw new RuntimeException(e);
         }
@@ -684,7 +683,6 @@ public class NotificationService implements Job {
    * @param templateVariables The template variables.
    * @param templateVersion   The template version.
    * @param notificationType  The notification type (template type).
-   *
    * @throws MessagingException If the email could not be sent.
    */
   public void sendTraineeMail(String traineeId, String traineeEmail,

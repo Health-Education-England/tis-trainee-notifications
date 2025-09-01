@@ -641,7 +641,7 @@ class NotificationServiceTest {
   @ParameterizedTest
   @EnumSource(value = NotificationType.class,
       names = {"PROGRAMME_UPDATED_WEEK_12", "PROGRAMME_UPDATED_WEEK_4", "PROGRAMME_UPDATED_WEEK_2"})
-  void shouldSkipProgrammeReminderEmailWhenNoIncompleteActions(NotificationType notificationType)
+  void shouldLogProgrammeReminderEmailWhenNoIncompleteActions(NotificationType notificationType)
       throws MessagingException {
     programmeJobDetails.getJobDataMap().put(TEMPLATE_NOTIFICATION_TYPE_FIELD, notificationType);
     when(jobExecutionContext.getJobDetail()).thenReturn(programmeJobDetails);
@@ -658,8 +658,8 @@ class NotificationServiceTest {
 
     service.execute(jobExecutionContext);
 
-    verify(emailService, never())
-        .sendMessage(any(), any(), any(), any(), any(), any(), anyBoolean());
+    verify(emailService)
+        .sendMessage(any(), any(), any(), any(), any(), any(), eq(true));
     verify(jobExecutionContext).setResult(any());
   }
 
