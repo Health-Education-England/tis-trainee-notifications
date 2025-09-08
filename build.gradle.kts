@@ -69,7 +69,7 @@ dependencies {
 
   testImplementation("org.springframework.boot:spring-boot-starter-test")
   testImplementation("org.springframework.cloud:spring-cloud-starter-bootstrap")
-  testImplementation("com.playtika.testcontainers:embedded-redis:3.1.15")
+  testImplementation("com.playtika.testcontainers:embedded-redis:3.1.16")
   testImplementation("com.h2database:h2")
 
   testImplementation("org.springframework.boot:spring-boot-testcontainers")
