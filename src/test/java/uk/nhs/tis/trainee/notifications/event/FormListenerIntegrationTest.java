@@ -237,8 +237,8 @@ class FormListenerIntegrationTest {
     Element nextSteps = content.getElementById(FORM_SUBMITTED).children().get(1);
     assertThat("Unexpected element tag.", nextSteps.tagName(), is("p"));
     assertThat("Unexpected next steps.", nextSteps.text(),
-        is("Please find attached a PDF of your signed FormR, you can access this at any " +
-            "time by visiting TIS Self-Service."));
+        is("Please find attached a PDF of your signed FormR, you can access this at any "
+            + "time by visiting TIS Self-Service."));
 
     Elements nextStepsLinks = nextSteps.getElementsByTag("a");
     assertThat("Unexpected next steps link count.", nextStepsLinks.size(), is(1));
