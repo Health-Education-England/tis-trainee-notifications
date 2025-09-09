@@ -33,6 +33,7 @@ import java.util.Map;
  * @param formType       The form type (e.g. formr-a, formr-b).
  * @param eventDate      The date and time the form was updated.
  * @param formContentDto The form content map of fields and values.
+ * @param pdf            The stored file representation of the form PDF.
  */
 public record FormUpdateEvent(
     String formName,
@@ -40,7 +41,27 @@ public record FormUpdateEvent(
     String traineeId,
     String formType,
     Instant eventDate,
-    Map<String, Object> formContentDto
+    Map<String, Object> formContentDto,
+    StoredFile pdf
 ) {
+
+  /**
+   * Overloaded constructor to allow for null pdf.
+   *
+   * @param formName       The name of the form in cloud storage.
+   * @param lifecycleState The lifecycle state of the form (e.g. SUBMITTED).
+   * @param traineeId      The id of the person who submitted the form.
+   * @param formType       The form type (e.g. formr-a, formr-b).
+   * @param eventDate      The date and time the form was updated.
+   * @param formContentDto The form content map of fields and values.
+   */
+  public FormUpdateEvent(String formName,
+                         String lifecycleState,
+                         String traineeId,
+                         String formType,
+                         Instant eventDate,
+                         Map<String, Object> formContentDto) {
+    this(formName, lifecycleState, traineeId, formType, eventDate, formContentDto, null);
+  }
 
 }
