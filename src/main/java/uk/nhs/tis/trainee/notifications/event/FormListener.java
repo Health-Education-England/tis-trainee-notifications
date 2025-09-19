@@ -30,6 +30,7 @@ import java.util.HashMap;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.stereotype.Component;
 import uk.nhs.tis.trainee.notifications.dto.FormPublishedEvent;
 import uk.nhs.tis.trainee.notifications.dto.FormUpdateEvent;
@@ -91,12 +92,18 @@ public class FormListener {
    * @throws MessagingException If the message could not be sent.
    */
   @SqsListener("${application.queues.form-published}")
-  public void handleFormPublished(FormPublishedEvent event) throws MessagingException {
+  public void handleFormPublished(FormPublishedEvent event, @Header("form_type") String formType)
+      throws MessagingException {
     log.info("Handling submitted Form published event {}.", event);
 
     Map<String, Object> templateVariables = new HashMap<>();
     templateVariables.put("formName", event.formId() + ".json");
-    templateVariables.put("formType", event.form().formType()); //not in json, do we need two queues?
+    if (formType.equalsIgnoreCase("FORMR_PARTA")) {
+      formType = "formr-a";
+    } else if (formType.equalsIgnoreCase("FORMR_PARTB")) {
+      formType = "formr-b";
+    }
+    templateVariables.put("formType", formType);
     templateVariables.put("lifecycleState", event.form().lifecycleState());
     templateVariables.put("eventDate", event.form().submissionDate());
 
