@@ -55,8 +55,10 @@ application:
       email: v1.0.0
     email-updated-old:
       email: v1.0.0
+    form-submitted:
+      email: v1.0.0
     form-updated:
-      email: v1.1.0
+      email: v1.0.0
     gmc-rejected-lo:
       email: v1.0.0
     gmc-rejected-trainee:

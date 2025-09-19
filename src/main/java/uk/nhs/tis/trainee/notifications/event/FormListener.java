@@ -21,6 +21,7 @@
 
 package uk.nhs.tis.trainee.notifications.event;
 
+import static uk.nhs.tis.trainee.notifications.model.NotificationType.FORM_SUBMITTED;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.FORM_UPDATED;
 
 import io.awspring.cloud.sqs.annotation.SqsListener;
@@ -100,7 +101,7 @@ public class FormListener {
     templateVariables.put("eventDate", event.form().submissionDate());
 
     String traineeId = event.traineeId();
-    emailService.sendMessageToExistingUser(traineeId, FORM_UPDATED, templateVersion,
+    emailService.sendMessageToExistingUser(traineeId, FORM_SUBMITTED, templateVersion,
         templateVariables, null, event.pdf());
     log.info("Submitted form published notification sent for trainee {}.", traineeId);
   }
