@@ -41,6 +41,7 @@ public enum NotificationType {
   E_PORTFOLIO("e-portfolio"),
   EMAIL_UPDATED_NEW("email-updated-new"),
   EMAIL_UPDATED_OLD("email-updated-old"),
+  FORM_SUBMITTED("form-submitted"),
   FORM_UPDATED("form-updated"),
   GMC_REJECTED_LO("gmc-rejected-lo"),
   GMC_REJECTED_TRAINEE("gmc-rejected-trainee"),

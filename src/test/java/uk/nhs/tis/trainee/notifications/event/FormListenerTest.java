@@ -39,6 +39,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import uk.nhs.tis.trainee.notifications.dto.FormUpdateEvent;
+import uk.nhs.tis.trainee.notifications.dto.StoredFile;
 import uk.nhs.tis.trainee.notifications.service.EmailService;
 
 class FormListenerTest {
@@ -65,7 +66,7 @@ class FormListenerTest {
   @Test
   void shouldThrowExceptionWhenFormUpdatedAndSendingFails() throws MessagingException {
     doThrow(MessagingException.class).when(emailService)
-        .sendMessageToExistingUser(any(), any(), any(), any(), any());
+        .sendMessageToExistingUser(any(), any(), any(), any(), any(), any());
 
     FormUpdateEvent event = new FormUpdateEvent(FORM_NAME, FORM_LIFECYCLE_STATE, PERSON_ID,
         FORM_TYPE, FORM_UPDATED_AT, FORM_CONTENT);
@@ -80,7 +81,8 @@ class FormListenerTest {
 
     listener.handleFormUpdate(event);
 
-    verify(emailService).sendMessageToExistingUser(eq(PERSON_ID), any(), any(), any(), any());
+    verify(emailService).sendMessageToExistingUser(
+        eq(PERSON_ID), any(), any(), any(), any(), any());
   }
 
   @Test
@@ -90,7 +92,8 @@ class FormListenerTest {
 
     listener.handleFormUpdate(event);
 
-    verify(emailService).sendMessageToExistingUser(any(), eq(FORM_UPDATED), any(), any(), any());
+    verify(emailService).sendMessageToExistingUser(
+        any(), eq(FORM_UPDATED), any(), any(), any(), any());
   }
 
   @Test
@@ -100,7 +103,7 @@ class FormListenerTest {
 
     listener.handleFormUpdate(event);
 
-    verify(emailService).sendMessageToExistingUser(any(), any(), eq(VERSION), any(), any());
+    verify(emailService).sendMessageToExistingUser(any(), any(), eq(VERSION), any(), any(), any());
   }
 
   @Test
@@ -112,7 +115,7 @@ class FormListenerTest {
 
     ArgumentCaptor<Map<String, Object>> templateVarsCaptor = ArgumentCaptor.captor();
     verify(emailService).sendMessageToExistingUser(any(), any(), any(),
-        templateVarsCaptor.capture(), any());
+        templateVarsCaptor.capture(), any(), any());
 
     Map<String, Object> templateVariables = templateVarsCaptor.getValue();
     assertThat("Unexpected form name.", templateVariables.get("formName"), is(FORM_NAME));
@@ -127,7 +130,7 @@ class FormListenerTest {
 
     ArgumentCaptor<Map<String, Object>> templateVarsCaptor = ArgumentCaptor.captor();
     verify(emailService).sendMessageToExistingUser(any(), any(), any(),
-        templateVarsCaptor.capture(), any());
+        templateVarsCaptor.capture(), any(), any());
 
     Map<String, Object> templateVariables = templateVarsCaptor.getValue();
     assertThat("Unexpected lifecycle state.", templateVariables.get("lifecycleState"),
@@ -143,7 +146,7 @@ class FormListenerTest {
 
     ArgumentCaptor<Map<String, Object>> templateVarsCaptor = ArgumentCaptor.captor();
     verify(emailService).sendMessageToExistingUser(any(), any(), any(),
-        templateVarsCaptor.capture(), any());
+        templateVarsCaptor.capture(), any(), any());
 
     Map<String, Object> templateVariables = templateVarsCaptor.getValue();
     assertThat("Unexpected form type.", templateVariables.get("formType"), is(FORM_TYPE));
@@ -158,10 +161,29 @@ class FormListenerTest {
 
     ArgumentCaptor<Map<String, Object>> templateVarsCaptor = ArgumentCaptor.captor();
     verify(emailService).sendMessageToExistingUser(any(), any(), any(),
-        templateVarsCaptor.capture(), any());
+        templateVarsCaptor.capture(), any(), any());
 
     Map<String, Object> templateVariables = templateVarsCaptor.getValue();
     assertThat("Unexpected form updated at.", templateVariables.get("eventDate"),
         is(FORM_UPDATED_AT));
+  }
+
+  @Test
+  void shouldIncludePdfWhenFormUpdated() throws MessagingException {
+    StoredFile pdf = new StoredFile(PERSON_ID + "/formr_parta/abc.pdf", "test.pdf");
+    FormUpdateEvent event = new FormUpdateEvent(FORM_NAME, FORM_LIFECYCLE_STATE, PERSON_ID,
+        FORM_TYPE, FORM_UPDATED_AT, FORM_CONTENT, pdf);
+
+    listener.handleFormUpdate(event);
+
+    ArgumentCaptor<StoredFile> templateVarsCaptor = ArgumentCaptor.captor();
+    verify(emailService).sendMessageToExistingUser(any(), any(), any(),
+        any(), any(), templateVarsCaptor.capture());
+
+    StoredFile templateVariables = templateVarsCaptor.getValue();
+    assertThat("Unexpected form attached pdf bucket.", templateVariables.bucket(),
+        is(PERSON_ID + "/formr_parta/abc.pdf"));
+    assertThat("Unexpected form attached pdf file.", templateVariables.key(),
+        is("test.pdf"));
   }
 }
