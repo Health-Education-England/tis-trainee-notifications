@@ -24,6 +24,7 @@ application:
     coj-published: ${COJ_PUBLISHED_QUEUE}
     contact-details-updated: ${CONTACT_DETAILS_UPDATED_QUEUE}
     email-event: ${EMAIL_EVENT_QUEUE}
+    form-published: ${FORM_PUBLISHED_QUEUE}
     form-updated: ${FORM_UPDATED_QUEUE}
     gmc-rejected: ${GMC_REJECTED_QUEUE}
     gmc-updated: ${GMC_UPDATED_QUEUE}

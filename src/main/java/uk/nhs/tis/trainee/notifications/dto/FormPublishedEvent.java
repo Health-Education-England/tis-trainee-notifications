@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright 2023 Crown Copyright (Health Education England)
+ * Copyright 2025 Crown Copyright (Health Education England)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
  * associated documentation files (the "Software"), to deal in the Software without restriction,
@@ -21,26 +21,32 @@
 
 package uk.nhs.tis.trainee.notifications.dto;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import java.time.Instant;
-import java.util.Map;
+import java.time.LocalDateTime;
 
 /**
- * A Form update event.
+ * A Conditions of Joining published event.
  *
- * @param formName       The name of the form in cloud storage.
- * @param lifecycleState The lifecycle state of the form (e.g. SUBMITTED).
- * @param traineeId      The id of the person who submitted the form.
- * @param formType       The form type (e.g. formr-a, formr-b).
- * @param eventDate      The date and time the form was updated.
- * @param formContentDto The form content map of fields and values.
+ * @param personId            The person associated with the Conditions of joining.
+ * @param conditionsOfJoining The Conditions of Joining.
  */
-public record FormUpdateEvent(
-    String formName,
-    String lifecycleState,
-    String traineeId,
-    String formType,
-    Instant eventDate,
-    Map<String, Object> formContentDto
-) {
+public record FormPublishedEvent(
 
+    String traineeId,
+    @JsonAlias("id")
+    String formId,
+    FormR form,
+    StoredFile pdf) {
+
+  /**
+   * FormR details.
+   *
+   * @param syncedAt The timestamp for the signed Conditions of Joining being received.
+   */
+  @JsonIgnoreProperties(ignoreUnknown = true)
+  public record FormR( String name, String formType, String lifecycleState,
+                       LocalDateTime submissionDate) {;
+  }
 }

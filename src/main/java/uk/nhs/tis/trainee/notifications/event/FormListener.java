@@ -30,6 +30,7 @@ import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
+import uk.nhs.tis.trainee.notifications.dto.FormPublishedEvent;
 import uk.nhs.tis.trainee.notifications.dto.FormUpdateEvent;
 import uk.nhs.tis.trainee.notifications.service.EmailService;
 
@@ -64,6 +65,12 @@ public class FormListener {
   public void handleFormUpdate(FormUpdateEvent event) throws MessagingException {
     log.info("Handling form update event {}.", event);
 
+    if (event.lifecycleState().equalsIgnoreCase("SUBMITTED")) {
+      log.info("Ignoring form update event {} with lifecycle state {} since it will be handled by "
+              + "handleFormPublished().", event, event.lifecycleState());
+      return;
+    }
+
     Map<String, Object> templateVariables = new HashMap<>();
     templateVariables.put("formName", event.formName());
     templateVariables.put("formType", event.formType());
@@ -72,7 +79,29 @@ public class FormListener {
 
     String traineeId = event.traineeId();
     emailService.sendMessageToExistingUser(traineeId, FORM_UPDATED, templateVersion,
-        templateVariables, null, event.pdf());
+        templateVariables, null);
     log.info("Form updated notification sent for trainee {}.", traineeId);
+  }
+
+  /**
+   * Handle submitted Form published events.
+   *
+   * @param event The Form event.
+   * @throws MessagingException If the message could not be sent.
+   */
+  @SqsListener("${application.queues.form-published}")
+  public void handleFormPublished(FormPublishedEvent event) throws MessagingException {
+    log.info("Handling submitted Form published event {}.", event);
+
+    Map<String, Object> templateVariables = new HashMap<>();
+    templateVariables.put("formName", event.formId() + ".json");
+    templateVariables.put("formType", event.form().formType()); //not in json, do we need two queues?
+    templateVariables.put("lifecycleState", event.form().lifecycleState());
+    templateVariables.put("eventDate", event.form().submissionDate());
+
+    String traineeId = event.traineeId();
+    emailService.sendMessageToExistingUser(traineeId, FORM_UPDATED, templateVersion,
+        templateVariables, null, event.pdf());
+    log.info("Submitted form published notification sent for trainee {}.", traineeId);
   }
 }
