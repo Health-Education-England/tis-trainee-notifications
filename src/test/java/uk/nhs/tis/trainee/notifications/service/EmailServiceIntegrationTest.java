@@ -731,7 +731,7 @@ class EmailServiceIntegrationTest {
 
     Map<String, Object> templateVariables = new HashMap<>();
     templateVariables.put("lifecycleState", "SUBMITTED");
-    templateVariables.put("eventDate", LocalDateTime.of(2025,9,1,10,0));
+    templateVariables.put("eventDate", LocalDateTime.of(2025, 9, 1, 10, 0));
     service.sendMessageToExistingUser(PERSON_ID, FORM_SUBMITTED, TEMPLATE_VERSION,
         templateVariables, null);
 
@@ -755,7 +755,7 @@ class EmailServiceIntegrationTest {
 
     Map<String, Object> templateVariables = new HashMap<>();
     templateVariables.put("lifecycleState", "unexpected state");
-    templateVariables.put("eventDate", LocalDateTime.of(2025,9,1,10,0));
+    templateVariables.put("eventDate", LocalDateTime.of(2025, 9, 1, 10, 0));
     service.sendMessageToExistingUser(PERSON_ID, FORM_SUBMITTED, TEMPLATE_VERSION,
         templateVariables, null);
 
