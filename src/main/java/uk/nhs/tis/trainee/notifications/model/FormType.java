@@ -25,11 +25,14 @@ package uk.nhs.tis.trainee.notifications.model;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 
+/**
+ * A list of form types that may be used in notifications.
+ */
 @Getter
 @AllArgsConstructor
 public enum FormType {
   FORMR_PARTA("formr-a"),
   FORMR_PARTB("formr-b");
 
-  private final String formTypeUrlPath;
+  private final String formTypeUrlPath; // The URL path segment for the form type
 }

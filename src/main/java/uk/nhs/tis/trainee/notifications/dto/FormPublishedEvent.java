@@ -34,7 +34,6 @@ import java.time.LocalDateTime;
  * @param pdf       The reference to the stored PDF.
  */
 public record FormPublishedEvent(
-
     String traineeId,
     @JsonAlias("id")
     String formId,
@@ -50,10 +49,9 @@ public record FormPublishedEvent(
    */
   @JsonIgnoreProperties(ignoreUnknown = true)
   public record FormR(
-
       String id,
       String lifecycleState,
-      LocalDateTime submissionDate) {;
+      LocalDateTime submissionDate) {
 
   }
 }
