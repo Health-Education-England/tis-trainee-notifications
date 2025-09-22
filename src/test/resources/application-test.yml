@@ -10,6 +10,7 @@ application:
     coj-published: dummy-value
     contact-details-updated: dummy-value
     email-event: dummy-value
+    form-published: dummy-value
     form-updated: dummy-value
     gmc-rejected: dummy-value
     gmc-updated: dummy-value

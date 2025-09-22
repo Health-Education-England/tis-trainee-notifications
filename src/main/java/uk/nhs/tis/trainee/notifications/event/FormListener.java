@@ -34,6 +34,7 @@ import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.stereotype.Component;
 import uk.nhs.tis.trainee.notifications.dto.FormPublishedEvent;
 import uk.nhs.tis.trainee.notifications.dto.FormUpdateEvent;
+import uk.nhs.tis.trainee.notifications.model.FormType;
 import uk.nhs.tis.trainee.notifications.service.EmailService;
 
 /**
@@ -67,7 +68,8 @@ public class FormListener {
   public void handleFormUpdate(FormUpdateEvent event) throws MessagingException {
     log.info("Handling form update event {}.", event);
 
-    if (event.lifecycleState().equalsIgnoreCase("SUBMITTED")) {
+    if (event.lifecycleState() != null
+        && event.lifecycleState().equalsIgnoreCase("SUBMITTED")) {
       log.info("Ignoring form update event {} with lifecycle state {} since it will be handled by "
               + "handleFormPublished().", event, event.lifecycleState());
       return;
@@ -92,18 +94,13 @@ public class FormListener {
    * @throws MessagingException If the message could not be sent.
    */
   @SqsListener("${application.queues.form-published}")
-  public void handleFormPublished(FormPublishedEvent event, @Header("form_type") String formType)
+  public void handleFormPublished(FormPublishedEvent event, @Header("form_type") FormType formType)
       throws MessagingException {
     log.info("Handling submitted Form published event {}.", event);
 
     Map<String, Object> templateVariables = new HashMap<>();
     templateVariables.put("formName", event.formId() + ".json");
-    if (formType.equalsIgnoreCase("FORMR_PARTA")) {
-      formType = "formr-a";
-    } else if (formType.equalsIgnoreCase("FORMR_PARTB")) {
-      formType = "formr-b";
-    }
-    templateVariables.put("formType", formType);
+    templateVariables.put("formType", formType.getFormTypeUrlPath());
     templateVariables.put("lifecycleState", event.form().lifecycleState());
     templateVariables.put("eventDate", event.form().submissionDate());
 
