@@ -23,6 +23,7 @@ package uk.nhs.tis.trainee.notifications.service;
 
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.not;
+import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.emptyOrNullString;
 import static org.mockito.Mockito.verify;
@@ -31,6 +32,7 @@ import static uk.nhs.tis.trainee.notifications.event.GmcListener.FAMILY_NAME_FIE
 import static uk.nhs.tis.trainee.notifications.event.GmcListener.GIVEN_NAME_FIELD;
 import static uk.nhs.tis.trainee.notifications.event.GmcListener.GMC_STATUS_FIELD;
 import static uk.nhs.tis.trainee.notifications.event.GmcListener.TRAINEE_ID_FIELD;
+import static uk.nhs.tis.trainee.notifications.model.NotificationType.FORM_SUBMITTED;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.GMC_REJECTED_LO;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.GMC_REJECTED_TRAINEE;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.GMC_UPDATED;
@@ -52,6 +54,7 @@ import jakarta.mail.Session;
 import jakarta.mail.internet.MimeMessage;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.Map;
@@ -721,15 +724,64 @@ class EmailServiceIntegrationTest {
         is(true));
   }
 
+  @Test
+  void shouldIncludeSubmittedFormWordingWhenSubmittedForm() throws Exception {
+    when(userAccountService.getUserDetailsById(USER_ID)).thenReturn(
+        new UserDetails(true, RECIPIENT, null, null, null, GMC));
+
+    Map<String, Object> templateVariables = new HashMap<>();
+    templateVariables.put("lifecycleState", "SUBMITTED");
+    templateVariables.put("eventDate", LocalDateTime.of(2025, 9, 1, 10, 0));
+    service.sendMessageToExistingUser(PERSON_ID, FORM_SUBMITTED, TEMPLATE_VERSION,
+        templateVariables, null);
+
+    ArgumentCaptor<MimeMessage> messageCaptor = ArgumentCaptor.captor();
+    verify(mailSender).send(messageCaptor.capture());
+
+    MimeMessage message = messageCaptor.getValue();
+    Document content = Jsoup.parse((String) message.getContent());
+    Element body = content.body();
+
+    String submittedContents = Objects.requireNonNull(body.getElementById("SUBMITTED")).text();
+    assertThat("Unexpected submitted content.", submittedContents.contains("We want to "
+        + "inform you that your local NHS England office has received your FormR on 01 September "
+        + "2025"), is(true));
+  }
+
+  @Test
+  void shouldNotIncludeSubmittedFormWordingWhenNotSubmittedForm() throws Exception {
+    when(userAccountService.getUserDetailsById(USER_ID)).thenReturn(
+        new UserDetails(true, RECIPIENT, null, null, null, GMC));
+
+    Map<String, Object> templateVariables = new HashMap<>();
+    templateVariables.put("lifecycleState", "unexpected state");
+    templateVariables.put("eventDate", LocalDateTime.of(2025, 9, 1, 10, 0));
+    service.sendMessageToExistingUser(PERSON_ID, FORM_SUBMITTED, TEMPLATE_VERSION,
+        templateVariables, null);
+
+    ArgumentCaptor<MimeMessage> messageCaptor = ArgumentCaptor.captor();
+    verify(mailSender).send(messageCaptor.capture());
+
+    MimeMessage message = messageCaptor.getValue();
+    Document content = Jsoup.parse((String) message.getContent());
+    Element body = content.body();
+
+    assertThat("Unexpected submitted element.", body.getElementById("SUBMITTED"),
+        nullValue());
+    String otherContents = Objects.requireNonNull(body.getElementById("OTHER")).text();
+    assertThat("Unexpected other content.", otherContents.contains("We want to "
+        + "inform you that your FormR has been updated on 01 September 2025"), is(true));
+  }
+
   int getGreetingElementIndex(NotificationType notificationType) {
     return switch (notificationType) {
       case PLACEMENT_UPDATED_WEEK_12, PLACEMENT_ROLLOUT_2024_CORRECTION, PROGRAMME_CREATED,
            PROGRAMME_DAY_ONE, PROGRAMME_UPDATED_WEEK_12, PROGRAMME_UPDATED_WEEK_4,
            PROGRAMME_UPDATED_WEEK_2, EMAIL_UPDATED_NEW, EMAIL_UPDATED_OLD, COJ_CONFIRMATION,
-           CREDENTIAL_REVOKED, FORM_UPDATED, GMC_UPDATED, GMC_REJECTED_LO, GMC_REJECTED_TRAINEE,
-           LTFT_ADMIN_UNSUBMITTED, LTFT_APPROVED, LTFT_APPROVED_TPD, LTFT_UPDATED, LTFT_SUBMITTED,
-           LTFT_SUBMITTED_TPD, LTFT_UNSUBMITTED, LTFT_WITHDRAWN, LTFT_REJECTED,
-           LTFT_REJECTED_TPD -> 1;
+           CREDENTIAL_REVOKED, FORM_SUBMITTED, FORM_UPDATED, GMC_UPDATED, GMC_REJECTED_LO,
+           GMC_REJECTED_TRAINEE, LTFT_ADMIN_UNSUBMITTED, LTFT_APPROVED, LTFT_APPROVED_TPD,
+           LTFT_UPDATED, LTFT_SUBMITTED, LTFT_SUBMITTED_TPD, LTFT_UNSUBMITTED, LTFT_WITHDRAWN,
+           LTFT_REJECTED, LTFT_REJECTED_TPD -> 1;
       default -> 0;
     };
   }

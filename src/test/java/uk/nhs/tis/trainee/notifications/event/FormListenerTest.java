@@ -33,12 +33,18 @@ import static uk.nhs.tis.trainee.notifications.model.NotificationType.FORM_UPDAT
 
 import jakarta.mail.MessagingException;
 import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.mockito.ArgumentCaptor;
+import uk.nhs.tis.trainee.notifications.dto.FormPublishedEvent;
 import uk.nhs.tis.trainee.notifications.dto.FormUpdateEvent;
+import uk.nhs.tis.trainee.notifications.dto.StoredFile;
+import uk.nhs.tis.trainee.notifications.model.FormType;
 import uk.nhs.tis.trainee.notifications.service.EmailService;
 
 class FormListenerTest {
@@ -49,7 +55,7 @@ class FormListenerTest {
   private static final Instant FORM_UPDATED_AT = Instant.now();
 
   private static final String FORM_NAME = "123.json";
-  private static final String FORM_LIFECYCLE_STATE = "SUBMITTED";
+  private static final String FORM_LIFECYCLE_STATE = "DRAFT";
   private static final String FORM_TYPE = "form-type";
   private static final Map<String, Object> FORM_CONTENT = new HashMap<>();
 
@@ -163,5 +169,25 @@ class FormListenerTest {
     Map<String, Object> templateVariables = templateVarsCaptor.getValue();
     assertThat("Unexpected form updated at.", templateVariables.get("eventDate"),
         is(FORM_UPDATED_AT));
+  }
+
+  @ParameterizedTest
+  @EnumSource(value = FormType.class)
+  void shouldIncludePdfWhenSubmittedFormPdfPublished(FormType formType) throws MessagingException {
+    StoredFile pdf = new StoredFile("bucket", "test.pdf");
+    FormPublishedEvent event = new FormPublishedEvent(PERSON_ID, "abc",
+        new FormPublishedEvent.FormR("abc", "SUBMITTED", LocalDateTime.MIN), pdf);
+
+    listener.handleFormPublished(event, formType);
+
+    ArgumentCaptor<StoredFile> templateVarsCaptor = ArgumentCaptor.captor();
+    verify(emailService).sendMessageToExistingUser(any(), any(), any(),
+        any(), any(), templateVarsCaptor.capture());
+
+    StoredFile templateVariables = templateVarsCaptor.getValue();
+    assertThat("Unexpected form attached pdf bucket.", templateVariables.bucket(),
+        is("bucket"));
+    assertThat("Unexpected form attached pdf file.", templateVariables.key(),
+        is("test.pdf"));
   }
 }

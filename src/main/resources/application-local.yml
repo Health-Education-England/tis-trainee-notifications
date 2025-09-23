@@ -11,6 +11,7 @@ application:
     contact-details-updated: ${local.sqs-path}/tis-trainee-notifications-local-contact-details-updated
     email-failure: ${local.sqs-path}/tis-trainee-notifications-local-email-failure
     email-event: ${local.sqs-path}/tis-trainee-notifications-local-email-failure
+    form-published: ${local.sqs-path}/tis-trainee-notifications-local-form-published
     form-updated: ${local.sqs-path}/tis-trainee-notifications-local-form-updated
     gmc-rejected: ${local.sqs-path}/tis-trainee-notifications-local-gmc-rejected
     gmc-updated: ${local.sqs-path}/tis-trainee-notifications-local-gmc-updated

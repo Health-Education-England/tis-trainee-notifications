@@ -21,22 +21,35 @@
 
 package uk.nhs.tis.trainee.notifications.event;
 
+import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.notNullValue;
+import static org.hamcrest.CoreMatchers.startsWith;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
+import static org.springframework.http.MediaType.APPLICATION_PDF_VALUE;
+import static org.springframework.http.MediaType.MULTIPART_MIXED_VALUE;
+import static org.springframework.http.MediaType.MULTIPART_RELATED_VALUE;
+import static org.springframework.http.MediaType.TEXT_HTML_VALUE;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.FORM_UPDATED;
 
+import io.awspring.cloud.s3.S3Resource;
 import io.awspring.cloud.s3.S3Template;
+import jakarta.activation.DataHandler;
 import jakarta.mail.MessagingException;
 import jakarta.mail.Session;
 import jakarta.mail.internet.MimeMessage;
+import jakarta.mail.internet.MimeMultipart;
+import java.io.ByteArrayInputStream;
 import java.net.URI;
 import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
@@ -48,6 +61,7 @@ import org.jsoup.select.Elements;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -58,8 +72,11 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.test.context.ActiveProfiles;
+import uk.nhs.tis.trainee.notifications.dto.FormPublishedEvent;
 import uk.nhs.tis.trainee.notifications.dto.FormUpdateEvent;
+import uk.nhs.tis.trainee.notifications.dto.StoredFile;
 import uk.nhs.tis.trainee.notifications.dto.UserDetails;
+import uk.nhs.tis.trainee.notifications.model.FormType;
 import uk.nhs.tis.trainee.notifications.model.History;
 import uk.nhs.tis.trainee.notifications.model.History.RecipientInfo;
 import uk.nhs.tis.trainee.notifications.model.History.TemplateInfo;
@@ -86,6 +103,7 @@ class FormListenerIntegrationTest {
   private static final String APP_DOMAIN = "https://local.notifications.com";
   private static final String NEXT_STEPS_LINK = APP_DOMAIN + "/form-type";
 
+  private static final String FORM_ID = "123";
   private static final String FORM_NAME = "123.json";
   private static final String FORM_SUBMITTED = "SUBMITTED";
   private static final String FORM_UNSUBMITTED = "UNSUBMITTED";
@@ -186,8 +204,7 @@ class FormListenerIntegrationTest {
   }
 
   @Test
-  void shouldSendFullyTailoredFormSubmittedNotificationWhenAllTemplateVariablesAvailable()
-      throws Exception {
+  void shouldNotSendFormSubmittedGenericUpdateNotification() throws Exception {
     FormUpdateEvent event = new FormUpdateEvent(FORM_NAME, FORM_SUBMITTED, PERSON_ID,
         FORM_TYPE, FORM_UPDATED_AT, FORM_CONTENT);
     when(userAccountService.getUserDetailsById(USER_ID)).thenReturn(
@@ -195,43 +212,59 @@ class FormListenerIntegrationTest {
 
     listener.handleFormUpdate(event);
 
+    verifyNoInteractions(mailSender);
+  }
+
+  @ParameterizedTest
+  @EnumSource(value = FormType.class)
+  void shouldSendMultipartFormSubmittedNotificationWhenPdfAvailable(FormType formType)
+      throws Exception {
+    S3Resource s3Resource = mock(S3Resource.class);
+    when(s3Resource.getFilename()).thenReturn("file.pdf");
+    when(s3Resource.contentType()).thenReturn(APPLICATION_PDF_VALUE);
+    when(s3Resource.getContentAsByteArray()).thenReturn("test".getBytes());
+    when(s3Template.download("my-bucket", "my-key.pdf")).thenReturn(s3Resource);
+
+    StoredFile pdf = new StoredFile("my-bucket", "my-key.pdf");
+    FormPublishedEvent event = new FormPublishedEvent(PERSON_ID,
+        FORM_ID, new FormPublishedEvent.FormR(FORM_ID, FORM_SUBMITTED, LocalDateTime.MIN), pdf);
+    when(userAccountService.getUserDetailsById(USER_ID)).thenReturn(
+        new UserDetails(true, EMAIL, TITLE, FAMILY_NAME, GIVEN_NAME, GMC));
+
+    listener.handleFormPublished(event, formType);
+
     ArgumentCaptor<MimeMessage> messageCaptor = ArgumentCaptor.captor();
     verify(mailSender).send(messageCaptor.capture());
 
     MimeMessage message = messageCaptor.getValue();
-    Document content = Jsoup.parse((String) message.getContent());
+    assertThat("Unexpected content java type.", message.getContent(),
+        instanceOf(MimeMultipart.class));
 
-    Elements bodyChildren = content.body().children();
+    MimeMultipart mixedContent = (MimeMultipart) message.getContent();
+    assertThat("Unexpected content type.", mixedContent.getContentType(),
+        startsWith(MULTIPART_MIXED_VALUE));
+    assertThat("Unexpected content part count.", mixedContent.getCount(), is(2));
+
+    MimeMultipart relatedContent = (MimeMultipart) mixedContent.getBodyPart(0).getContent();
+    assertThat("Unexpected content type.", relatedContent.getContentType(),
+        startsWith(MULTIPART_RELATED_VALUE));
+    assertThat("Unexpected content part count.", relatedContent.getCount(), is(1));
+
+    DataHandler content = relatedContent.getBodyPart(0).getDataHandler();
+    assertThat("Unexpected content type.", content.getContentType(), startsWith(TEXT_HTML_VALUE));
+    Document document = Jsoup.parse((String) content.getContent());
+    Elements bodyChildren = document.body().children();
     assertThat("Unexpected body children count.", bodyChildren.size(), is(5));
 
-    Element logo = bodyChildren.get(0);
-    assertThat("Unexpected element tag.", logo.tagName(), is("div"));
+    DataHandler attachment = mixedContent.getBodyPart(1).getDataHandler();
+    assertThat("Unexpected attachment type.", attachment.getContentType(),
+        is(APPLICATION_PDF_VALUE));
+    assertThat("Unexpected attachment name.", attachment.getName(), is("file.pdf"));
 
-    Element greeting = bodyChildren.get(1);
-    assertThat("Unexpected greeting.", greeting.text(), is("Dear Dr Gilliam,"));
-
-    Element disclaimer = bodyChildren.get(4);
-    assertThat("Unexpected disclaimer.", disclaimer.text(), is(DEFAULT_DISCLAIMER));
-
-    assertThat("Unexpected missing event content.", content.getElementById(FORM_SUBMITTED),
-        notNullValue());
-
-    Element eventDetail = content.getElementById(FORM_SUBMITTED).children().get(0);
-    assertThat("Unexpected element tag.", eventDetail.tagName(), is("p"));
-    assertThat("Unexpected event detail.", eventDetail.text(),
-        is("We want to inform you that your local NHS England office has received your FormR "
-            + "on 01 August 2023."));
-
-    Element nextSteps = content.getElementById(FORM_SUBMITTED).children().get(1);
-    assertThat("Unexpected element tag.", nextSteps.tagName(), is("p"));
-    assertThat("Unexpected next steps.", nextSteps.text(),
-        is("You can access your PDF signed FormR by visiting TIS Self-Service."));
-
-    Elements nextStepsLinks = nextSteps.getElementsByTag("a");
-    assertThat("Unexpected next steps link count.", nextStepsLinks.size(), is(1));
-    Element tssLink = nextStepsLinks.get(0);
-    assertThat("Unexpected next steps link.", tssLink.attr("href"),
-        is(NEXT_STEPS_LINK));
+    Object attachmentContent = attachment.getContent();
+    assertThat("Unexpected attachment.", attachmentContent, instanceOf(ByteArrayInputStream.class));
+    assertThat("Unexpected attachment content.",
+        ((ByteArrayInputStream) attachmentContent).readAllBytes(), is("test".getBytes()));
   }
 
   @Test
@@ -332,7 +365,7 @@ class FormListenerIntegrationTest {
 
   @Test
   void shouldStoreFormUpdatedNotificationHistoryWhenMessageSent() throws MessagingException {
-    FormUpdateEvent event = new FormUpdateEvent(FORM_NAME, FORM_SUBMITTED, PERSON_ID,
+    FormUpdateEvent event = new FormUpdateEvent(FORM_NAME, FORM_UNSUBMITTED, PERSON_ID,
         FORM_TYPE, FORM_UPDATED_AT, FORM_CONTENT);
     when(userAccountService.getUserDetailsById(USER_ID)).thenReturn(
         new UserDetails(true, EMAIL, TITLE, FAMILY_NAME, GIVEN_NAME, GMC));
@@ -361,7 +394,7 @@ class FormListenerIntegrationTest {
     assertThat("Unexpected template variable count.", storedVariables.size(), is(8));
     assertThat("Unexpected template variable.", storedVariables.get("familyName"), is(FAMILY_NAME));
     assertThat("Unexpected template variable.", storedVariables.get("lifecycleState"),
-        is(FORM_SUBMITTED));
+        is(FORM_UNSUBMITTED));
     assertThat("Unexpected template variable.", storedVariables.get("formType"), is(FORM_TYPE));
     assertThat("Unexpected template variable.", storedVariables.get("formName"), is(FORM_NAME));
     assertThat("Unexpected template variable.", storedVariables.get("eventDate"),

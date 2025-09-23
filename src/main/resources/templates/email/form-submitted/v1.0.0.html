@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+    <title>Form Submitted</title>
+</head>
+<body>
+<h1>Email Message</h1>
+<h2>Subject</h2>
+<th:block th:fragment="subject">Your FormR has been submitted</th:block>
+<h2>Content</h2>
+<th:block th:fragment="content">
+    <div th:replace="fragments/retry/v1.0.0 :: retry(${originallySentOn})"></div>
+    <div style="text-align:right"><img style="margin-right:25px; height:100px" src='https://trainee.tis.nhs.uk/nhse-logo.png' alt="NHS England logo"/></div>
+    <p th:replace="~{fragments/greeting/v1.0.0 :: greeting(${familyName})}"></p>
+    <span th:switch="${lifecycleState}">
+
+        <span th:case="'SUBMITTED'" id="SUBMITTED">
+            <p>We want to inform you that your local NHS England office has received your FormR<span
+            th:text="${eventDate}? | on ${#temporals.format(eventDate, 'dd MMMM yyyy')}| : _"></span>.</p>
+            <p>Please find attached a PDF of your signed FormR, you can access this at any time by visiting
+            <a th:href="${not #strings.isEmpty(domain)}? @{{domain}/{formType}(domain=${domain},formType=${formType})} : _">TIS
+            Self-Service</a>.</p>
+        </span>
+
+        <span th:case="*" id="OTHER">
+            <p>We want to inform you that your FormR has been updated<span
+            th:text="${eventDate}? | on ${#temporals.format(eventDate, 'dd MMMM yyyy')}| : _"></span>.</p>
+            <p>If this is unexpected then please contact your local NHS England office for further details.</p>
+        </span>
+
+    </span>
+    <div th:replace="fragments/disclaimer/v1.0.0 :: body"></div>
+</th:block>
+</body>
+</html>
