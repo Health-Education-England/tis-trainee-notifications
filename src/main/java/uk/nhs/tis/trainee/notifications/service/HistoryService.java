@@ -354,13 +354,10 @@ public class HistoryService {
   private HistoryDto toDto(History history) {
     String subject = null;
     NotificationStatus status = history.status();
+    subject = rebuildMessage(history, Set.of("subject")).orElse("");
 
-    if (history.recipient().type() == IN_APP) {
-      subject = rebuildMessage(history, Set.of("subject")).orElse("");
-
-      if (history.sentAt().isAfter(Instant.now())) {
-        status = SCHEDULED;
-      }
+    if (history.recipient().type() == IN_APP && history.sentAt().isAfter(Instant.now())) {
+      status = SCHEDULED;
     }
 
     if (subject == null || subject.isEmpty()) {

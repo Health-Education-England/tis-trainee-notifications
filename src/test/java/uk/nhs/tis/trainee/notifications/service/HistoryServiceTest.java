@@ -22,6 +22,7 @@
 package uk.nhs.tis.trainee.notifications.service;
 
 import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.CoreMatchers.sameInstance;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -187,6 +188,12 @@ class HistoryServiceTest {
     History foundHistory = new History(notificationId, tisReferenceInfo, COJ_CONFIRMATION,
         recipientInfo, templateInfo, null, Instant.MIN, Instant.MAX, null, null, null);
 
+    String templatePath = "email/test/template/v1.2.3";
+    when(templateService.getTemplatePath(EMAIL, TEMPLATE_NAME, TEMPLATE_VERSION)).thenReturn(
+        templatePath);
+    when(templateService.process(templatePath, Set.of("subject"), TEMPLATE_VARIABLES)).thenReturn(
+        "Test Subject");
+
     when(repository.findById(notificationId)).thenReturn(Optional.of(foundHistory));
     when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
@@ -204,7 +211,7 @@ class HistoryServiceTest {
     assertThat("Unexpected TIS reference.", history.tisReference(), is(tisReferenceInfo));
     assertThat("Unexpected type.", history.type(), is(EMAIL));
     assertThat("Unexpected subject.", history.subject(), is(COJ_CONFIRMATION));
-    assertThat("Unexpected subject.", history.subjectText(), nullValue());
+    assertThat("Unexpected subject.", history.subjectText(), is("Test Subject"));
     assertThat("Unexpected contact.", history.contact(), is(TRAINEE_CONTACT));
     assertThat("Unexpected sent at.", history.sentAt(), is(Instant.MIN));
     assertThat("Unexpected read at.", history.readAt(), is(Instant.MAX));
@@ -213,7 +220,8 @@ class HistoryServiceTest {
     verify(eventBroadcastService).publishNotificationsEvent(historyPublished.capture());
 
     History historyPublishedValue = historyPublished.getValue();
-    assertThat("Unexpected history published.", mapper.toDto(historyPublishedValue),
+    HistoryDto publishedDto = mapper.toDto(historyPublishedValue, "Test Subject");
+    assertThat("Unexpected history published.", publishedDto,
         is(history));
   }
 
@@ -325,6 +333,12 @@ class HistoryServiceTest {
     History foundHistory = new History(notificationId, tisReferenceInfo, COJ_CONFIRMATION,
         recipientInfo, templateInfo, null, Instant.MIN, Instant.MAX, null, null, null);
 
+    String templatePath = "email/test/template/v1.2.3";
+    when(templateService.getTemplatePath(EMAIL, TEMPLATE_NAME, TEMPLATE_VERSION)).thenReturn(
+        templatePath);
+    when(templateService.process(templatePath, Set.of("subject"), TEMPLATE_VARIABLES)).thenReturn(
+        "Test Subject");
+
     when(repository.findByIdAndRecipient_Id(notificationId, TRAINEE_ID)).thenReturn(
         Optional.of(foundHistory));
     when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
@@ -342,7 +356,7 @@ class HistoryServiceTest {
     assertThat("Unexpected TIS reference.", history.tisReference(), is(tisReferenceInfo));
     assertThat("Unexpected type.", history.type(), is(EMAIL));
     assertThat("Unexpected subject.", history.subject(), is(COJ_CONFIRMATION));
-    assertThat("Unexpected subject text.", history.subjectText(), nullValue());
+    assertThat("Unexpected subject text.", history.subjectText(), is("Test Subject"));
     assertThat("Unexpected contact.", history.contact(), is(TRAINEE_CONTACT));
     assertThat("Unexpected sent at.", history.sentAt(), is(Instant.MIN));
     assertThat("Unexpected read at.", history.readAt(), is(Instant.MAX));
@@ -351,8 +365,8 @@ class HistoryServiceTest {
     verify(eventBroadcastService).publishNotificationsEvent(historyPublished.capture());
 
     History historyPublishedValue = historyPublished.getValue();
-    assertThat("Unexpected history published.", mapper.toDto(historyPublishedValue),
-        is(history));
+    HistoryDto publishedDto = mapper.toDto(historyPublishedValue, "Test Subject");
+    assertThat("Unexpected history published.", publishedDto, is(history));
   }
 
   @ParameterizedTest
@@ -866,6 +880,12 @@ class HistoryServiceTest {
     History history1 = new History(id1, tisReferenceInfo, notificationType, recipientInfo,
         templateInfo, null, Instant.MIN, Instant.MAX, SENT, null, null);
 
+    String templatePath = "email/test/template/v1.2.3";
+    when(templateService.getTemplatePath(EMAIL, TEMPLATE_NAME, TEMPLATE_VERSION)).thenReturn(
+        templatePath);
+    when(templateService.process(templatePath, Set.of("subject"), TEMPLATE_VARIABLES)).thenReturn(
+        "Test Subject");
+
     when(repository.findAllByRecipient_IdOrderBySentAtDesc(TRAINEE_ID)).thenReturn(
         List.of(history1));
 
@@ -874,7 +894,7 @@ class HistoryServiceTest {
     assertThat("Unexpected history count.", historyDtos.size(), is(1));
 
     HistoryDto historyDto = historyDtos.get(0);
-    assertThat("Unexpected history subject text.", historyDto.subjectText(), nullValue());
+    assertThat("Unexpected history subject text.", historyDto.subjectText(), notNullValue());
   }
 
   @ParameterizedTest
@@ -1071,14 +1091,21 @@ class HistoryServiceTest {
         recipientInfo, templateInfo, null, Instant.now(), null, UNREAD, null, null,
         existingTimestamp);
 
+    String templatePath = "email/test/template/v1.2.3";
+    when(templateService.getTemplatePath(EMAIL, TEMPLATE_NAME, TEMPLATE_VERSION)).thenReturn(
+        templatePath);
+    when(templateService.process(templatePath, Set.of("subject"), TEMPLATE_VARIABLES)).thenReturn(
+        "Test Subject");
+
     when(repository.findById(notificationId)).thenReturn(Optional.of(foundHistory));
     when(repository.updateStatusIfNewer(notificationId, olderTimestamp, SENT, null)).thenReturn(0);
 
     Optional<HistoryDto> updatedHistory = service.updateStatus(NOTIFICATION_ID, SENT, null,
         olderTimestamp);
+    HistoryDto expectedHistory = mapper.toDto(foundHistory, "Test Subject");
 
     assertThat("Unexpected updated history.", updatedHistory,
-        is(Optional.of(mapper.toDto(foundHistory))));
+        is(Optional.of(expectedHistory)));
     verify(repository, never()).save(any());
     verify(repository).updateStatusIfNewer(notificationId, olderTimestamp, SENT, null);
     verifyNoInteractions(eventBroadcastService);
@@ -1104,6 +1131,12 @@ class HistoryServiceTest {
         recipientInfo, templateInfo, null, Instant.now(), null, SENT, statusDetail, null,
         newerTimestamp);
 
+    String templatePath = "email/test/template/v1.2.3";
+    when(templateService.getTemplatePath(EMAIL, TEMPLATE_NAME, TEMPLATE_VERSION)).thenReturn(
+        templatePath);
+    when(templateService.process(templatePath, Set.of("subject"), TEMPLATE_VARIABLES)).thenReturn(
+        "Test Subject");
+
     when(repository.findById(notificationId)).thenReturn(Optional.of(foundHistory));
     when(repository.updateStatusIfNewer(notificationId, newerTimestamp, SENT, statusDetail))
         .thenReturn(1);
@@ -1111,9 +1144,10 @@ class HistoryServiceTest {
 
     Optional<HistoryDto> result = service.updateStatus(NOTIFICATION_ID, SENT, statusDetail,
         newerTimestamp);
+    HistoryDto expectedHistory = mapper.toDto(updatedHistory, "Test Subject");
 
     assertThat("Unexpected updated history.", result,
-        is(Optional.of(mapper.toDto(updatedHistory))));
+        is(Optional.of(expectedHistory)));
     verify(repository, never()).save(any());
     verify(repository).updateStatusIfNewer(notificationId, newerTimestamp, SENT, statusDetail);
     verify(eventBroadcastService).publishNotificationsEvent(updatedHistory);
