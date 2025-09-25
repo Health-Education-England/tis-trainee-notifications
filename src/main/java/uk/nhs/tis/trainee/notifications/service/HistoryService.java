@@ -141,9 +141,9 @@ public class HistoryService {
   /**
    * Update the status of a notification, ensuring no retrograde event-driven changes.
    *
-   * @param history The notification history to update.
-   * @param status  The new status.
-   * @param detail  The detail of the status.
+   * @param history   The notification history to update.
+   * @param status    The new status.
+   * @param detail    The detail of the status.
    * @param timestamp The timestamp of the status update, if it is event-driven.
    * @return The updated notification history, or empty if not found.
    */
@@ -273,9 +273,9 @@ public class HistoryService {
   /**
    * Find all scheduled notifications for the given Trainee from DB.
    *
-   * @param traineeId The ID of the trainee to get notifications for.
+   * @param traineeId        The ID of the trainee to get notifications for.
    * @param tisReferenceType The reference type of the object.
-   * @param refId The reference ID of the TisReferenceType.
+   * @param refId            The reference ID of the TisReferenceType.
    * @return The found notifications, empty if none found.
    */
   public List<History> findAllScheduledForTrainee(
@@ -294,9 +294,9 @@ public class HistoryService {
   /**
    * Find scheduled email notification for the given Trainee by reference and type from DB.
    *
-   * @param traineeId The ID of the trainee to get notifications for.
+   * @param traineeId        The ID of the trainee to get notifications for.
    * @param tisReferenceType The reference type of the object.
-   * @param refId The reference ID of the TisReferenceType.
+   * @param refId            The reference ID of the TisReferenceType.
    * @param notificationType The notification Type of the notification.
    * @return The found notifications, empty if none found.
    */
@@ -316,9 +316,9 @@ public class HistoryService {
   /**
    * Find latest scheduled email notification for the given Trainee by reference and type from DB.
    *
-   * @param traineeId The ID of the trainee to get notifications for.
+   * @param traineeId        The ID of the trainee to get notifications for.
    * @param tisReferenceType The reference type of the object.
-   * @param refId The reference ID of the TisReferenceType.
+   * @param refId            The reference ID of the TisReferenceType.
    * @param notificationType The notification Type of the notification.
    * @return The found notifications, empty if none found.
    */
@@ -335,7 +335,7 @@ public class HistoryService {
   /**
    * Delete notification history by history ID and trainee ID.
    *
-   * @param id The object ID of the history to delete.
+   * @param id        The object ID of the history to delete.
    * @param traineeId The ID of the trainee to get notifications for.
    */
   public void deleteHistoryForTrainee(ObjectId id, String traineeId) {
@@ -445,6 +445,6 @@ public class HistoryService {
       this.save(h.withRecipient(newRecipient));
     });
     log.info("Moved {} notification histories from trainee [{}] to trainee [{}]",
-       histories.size(), fromTraineeId, toTraineeId);
+        histories.size(), fromTraineeId, toTraineeId);
   }
 }
