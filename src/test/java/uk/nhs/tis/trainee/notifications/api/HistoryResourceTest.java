@@ -22,8 +22,10 @@
 package uk.nhs.tis.trainee.notifications.api;
 
 import static org.hamcrest.Matchers.hasSize;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -157,5 +159,19 @@ class HistoryResourceTest {
         .andExpect(status().isOk())
         .andExpect(content().contentType(MediaType.TEXT_HTML))
         .andExpect(content().string(message));
+  }
+
+  @Test
+  void shouldMoveNotificationsFromOneTraineeToAnother() throws Exception {
+    String fromTraineeId = "123";
+    String toTraineeId = "456";
+
+    mockMvc.perform(patch("/api/history/move/{fromTraineeId}/to/{toTraineeId}",
+            fromTraineeId, toTraineeId))
+        .andExpect(status().isOk())
+        .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+        .andExpect(jsonPath("$").value(true));
+
+    verify(service).moveNotifications(fromTraineeId, toTraineeId);
   }
 }

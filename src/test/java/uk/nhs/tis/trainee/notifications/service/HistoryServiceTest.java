@@ -31,6 +31,7 @@ import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
@@ -45,6 +46,7 @@ import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.UNREAD;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.COJ_CONFIRMATION;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PLACEMENT_UPDATED_WEEK_12;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_CREATED;
+import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_DAY_ONE;
 import static uk.nhs.tis.trainee.notifications.model.TisReferenceType.PLACEMENT;
 
 import java.time.Duration;
@@ -1115,5 +1117,65 @@ class HistoryServiceTest {
     verify(repository, never()).save(any());
     verify(repository).updateStatusIfNewer(notificationId, newerTimestamp, SENT, statusDetail);
     verify(eventBroadcastService).publishNotificationsEvent(updatedHistory);
+  }
+
+  @Test
+  void shouldNotMoveNotificationsWhenNoHistoryExists() {
+    when(repository.findAllByRecipient_IdOrderBySentAtDesc("oldId")).thenReturn(List.of());
+
+    service.moveNotifications("oldId", "newId");
+
+    verify(repository).findAllByRecipient_IdOrderBySentAtDesc("oldId");
+    verifyNoMoreInteractions(repository);
+    verifyNoInteractions(eventBroadcastService);
+  }
+
+  @Test
+  void shouldMoveNotificationsWhenHistoryExists() {
+    RecipientInfo oldRecipient = new RecipientInfo("oldId", EMAIL, "old@test.com");
+    RecipientInfo newRecipient = new RecipientInfo("newId", EMAIL, "old@test.com");
+    TemplateInfo templateInfo = new TemplateInfo(TEMPLATE_NAME, TEMPLATE_VERSION,
+        TEMPLATE_VARIABLES);
+    TisReferenceInfo tisReferenceInfo = new TisReferenceInfo(TIS_REFERENCE_TYPE, TIS_REFERENCE_ID);
+
+    ObjectId id1 = ObjectId.get();
+    History history1 = new History(id1, tisReferenceInfo, PROGRAMME_CREATED, oldRecipient,
+        templateInfo, null, Instant.MIN, Instant.MAX, SENT, null, null);
+
+    ObjectId id2 = ObjectId.get();
+    History history2 = new History(id2, tisReferenceInfo, PROGRAMME_DAY_ONE, oldRecipient,
+        templateInfo, null, Instant.now(), null, UNREAD, null, null);
+
+    History updatedHistory1 = new History(id1, tisReferenceInfo, PROGRAMME_CREATED, newRecipient,
+        templateInfo, null, Instant.MIN, Instant.MAX, SENT, null, null);
+    History updatedHistory2 = new History(id2, tisReferenceInfo, PROGRAMME_DAY_ONE, newRecipient,
+        templateInfo, null, Instant.now(), null, UNREAD, null, null);
+
+    when(repository.findAllByRecipient_IdOrderBySentAtDesc("oldId"))
+        .thenReturn(List.of(history1, history2));
+    when(repository.save(any()))
+        .thenReturn(updatedHistory1)
+        .thenReturn(updatedHistory2);
+
+    service.moveNotifications("oldId", "newId");
+
+    ArgumentCaptor<History> savedHistoryCaptor = ArgumentCaptor.forClass(History.class);
+    verify(repository, times(2)).save(savedHistoryCaptor.capture());
+
+    List<History> savedHistories = savedHistoryCaptor.getAllValues();
+    assertThat("Unexpected number of saved histories.", savedHistories.size(), is(2));
+
+    History savedHistory1 = savedHistories.get(0);
+    assertThat("Unexpected recipient ID.", savedHistory1.recipient().id(), is("newId"));
+    assertThat("Unexpected history details.", savedHistory1.withRecipient(oldRecipient),
+        is(history1));
+
+    History savedHistory2 = savedHistories.get(1);
+    assertThat("Unexpected recipient ID.", savedHistory2.recipient().id(), is("newId"));
+    assertThat("Unexpected history details.", savedHistory2.withRecipient(oldRecipient),
+        is(history2));
+
+    verify(eventBroadcastService).publishNotificationsEvent(updatedHistory1);
+    verify(eventBroadcastService).publishNotificationsEvent(updatedHistory2);
   }
 }

@@ -424,4 +424,27 @@ public class HistoryService {
     String message = templateService.process(templatePath, selectors, templateInfo.variables());
     return Optional.of(message);
   }
+
+  /**
+   * Move all notifications from one trainee to another. Assumes that fromTraineeId and toTraineeId
+   * are valid. The updated notifications are broadcast as events.
+   *
+   * @param fromTraineeId The trainee ID to move notifications from.
+   * @param toTraineeId   The trainee ID to move notifications to.
+   */
+  public void moveNotifications(String fromTraineeId, String toTraineeId) {
+    List<History> histories = findAllHistoryForTrainee(fromTraineeId);
+
+    histories.forEach(h -> {
+      log.info("Moving notification history [{}] from trainee [{}] to trainee [{}]",
+          h.id(), fromTraineeId, toTraineeId);
+      // note recipient email address is not changed,
+      // neither is any other part of the notification (e.g. template.personId)
+      History.RecipientInfo newRecipient
+          = new History.RecipientInfo(toTraineeId, h.recipient().type(), h.recipient().contact());
+      this.save(h.withRecipient(newRecipient));
+    });
+    log.info("Moved {} notification histories from trainee [{}] to trainee [{}]",
+       histories.size(), fromTraineeId, toTraineeId);
+  }
 }
