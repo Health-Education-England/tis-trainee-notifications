@@ -39,6 +39,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.regex.Pattern;
+import java.util.concurrent.atomic.AtomicReference;
 import lombok.extern.slf4j.Slf4j;
 import org.bson.types.ObjectId;
 import org.springframework.data.domain.Example;
@@ -479,8 +480,10 @@ public class HistoryService {
    *
    * @param fromTraineeId The trainee ID to move notifications from.
    * @param toTraineeId   The trainee ID to move notifications to.
+   * @return The number of notifications moved.
    */
-  public void moveNotifications(String fromTraineeId, String toTraineeId) {
+  public Integer moveNotifications(String fromTraineeId, String toTraineeId) {
+    AtomicReference<Integer> movedCount = new AtomicReference<>(0);
     List<History> histories = findAllHistoryForTrainee(fromTraineeId);
 
     histories.forEach(h -> {
@@ -491,9 +494,11 @@ public class HistoryService {
       History.RecipientInfo newRecipient
           = new History.RecipientInfo(toTraineeId, h.recipient().type(), h.recipient().contact());
       this.save(h.withRecipient(newRecipient));
+      movedCount.getAndSet(movedCount.get() + 1);
     });
     log.info("Moved {} notification histories from trainee [{}] to trainee [{}]",
-        histories.size(), fromTraineeId, toTraineeId);
+        movedCount, fromTraineeId, toTraineeId);
+    return movedCount.get();
   }
 
   /**

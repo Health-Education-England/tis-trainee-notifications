@@ -169,8 +169,7 @@ class HistoryResourceTest {
     mockMvc.perform(patch("/api/history/move/{fromTraineeId}/to/{toTraineeId}",
             fromTraineeId, toTraineeId))
         .andExpect(status().isOk())
-        .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-        .andExpect(jsonPath("$").value(true));
+        .andExpect(content().string("0"));
 
     verify(service).moveNotifications(fromTraineeId, toTraineeId);
   }

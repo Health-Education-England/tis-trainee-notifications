@@ -826,7 +826,7 @@ class HistoryServiceIntegrationTest {
     List<History> beforeMove = service.findAllHistoryForTrainee(fromTraineeId);
     assertThat("Unexpected notifications before move.", beforeMove.size(), is(2));
 
-    service.moveNotifications(fromTraineeId, toTraineeId);
+    Integer movedCount = service.moveNotifications(fromTraineeId, toTraineeId);
 
     // Verify notifications moved correctly
     List<History> afterMoveFrom = service.findAllHistoryForTrainee(fromTraineeId);
@@ -859,6 +859,7 @@ class HistoryServiceIntegrationTest {
     }
     assertThat("Unexpected number of events with old trainee ID.", withOldId, is(2));
     assertThat("Unexpected number of events with new trainee ID.", withNewId, is(2));
+    assertThat("Unexpected moved count.", movedCount, is(2));
   }
 
   @Test
@@ -866,7 +867,7 @@ class HistoryServiceIntegrationTest {
     String fromTraineeId = "empty";
     String toTraineeId = "target";
 
-    service.moveNotifications(fromTraineeId, toTraineeId);
+    Integer movedCount = service.moveNotifications(fromTraineeId, toTraineeId);
 
     List<History> afterMoveFrom = service.findAllHistoryForTrainee(fromTraineeId);
     List<History> afterMoveTo = service.findAllHistoryForTrainee(toTraineeId);
@@ -875,6 +876,7 @@ class HistoryServiceIntegrationTest {
         afterMoveFrom.size(), is(0));
     assertThat("Unexpected notifications for target trainee.",
         afterMoveTo.size(), is(0));
+    assertThat("Unexpected moved count.", movedCount, is(0));
   }
 
   /**

@@ -90,12 +90,12 @@ public class HistoryResource {
    * @return True if the notifications were moved.
    */
   @PatchMapping("/move/{fromTraineeId}/to/{toTraineeId}")
-  public ResponseEntity<Boolean> moveNotifications(@PathVariable String fromTraineeId,
+  public ResponseEntity<Integer> moveNotifications(@PathVariable String fromTraineeId,
       @PathVariable String toTraineeId) {
     log.info("Request to move notifications from trainee {} to trainee {}",
         fromTraineeId, toTraineeId);
 
-    service.moveNotifications(fromTraineeId, toTraineeId);
-    return ResponseEntity.ok(true);
+    Integer movedNotifications = service.moveNotifications(fromTraineeId, toTraineeId);
+    return ResponseEntity.ok(movedNotifications);
   }
 }
