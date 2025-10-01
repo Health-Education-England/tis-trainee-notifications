@@ -29,7 +29,10 @@ import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.hamcrest.Matchers.hasItems;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.nullValue;
+import static org.hamcrest.Matchers.oneOf;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static uk.nhs.tis.trainee.notifications.TestContainerConfiguration.MONGODB;
 import static uk.nhs.tis.trainee.notifications.model.MessageType.EMAIL;
 import static uk.nhs.tis.trainee.notifications.model.MessageType.IN_APP;
@@ -59,6 +62,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
@@ -72,6 +76,7 @@ import uk.nhs.tis.trainee.notifications.model.History;
 import uk.nhs.tis.trainee.notifications.model.History.RecipientInfo;
 import uk.nhs.tis.trainee.notifications.model.History.TemplateInfo;
 import uk.nhs.tis.trainee.notifications.model.History.TisReferenceInfo;
+import uk.nhs.tis.trainee.notifications.model.MessageType;
 import uk.nhs.tis.trainee.notifications.model.NotificationType;
 import uk.nhs.tis.trainee.notifications.model.ObjectIdWrapper;
 import uk.nhs.tis.trainee.notifications.model.TisReferenceType;
@@ -802,5 +807,88 @@ class HistoryServiceIntegrationTest {
         is("Update with new timestamp"));
     assertThat("Unexpected status timestamp", updatedHistory.get().latestStatusEventAt(),
         is(updateTimestamp.truncatedTo(ChronoUnit.MILLIS)));
+  }
+
+  @Test
+  void shouldMoveNotificationsFromOneTraineeToAnother() {
+    String fromTraineeId = "40";
+    String toTraineeId = "50";
+    History history1 = getBasicHistory(fromTraineeId, "old@test.com", EMAIL,
+        NotificationType.PROGRAMME_CREATED, Instant.now());
+    History history2 = getBasicHistory(fromTraineeId, "old@test.com", IN_APP,
+        NotificationType.PROGRAMME_DAY_ONE, Instant.now());
+
+    // Save initial notifications for fromTrainee
+    service.save(history1);
+    service.save(history2);
+
+    // Move notifications
+    List<History> beforeMove = service.findAllHistoryForTrainee(fromTraineeId);
+    assertThat("Unexpected notifications before move.", beforeMove.size(), is(2));
+
+    service.moveNotifications(fromTraineeId, toTraineeId);
+
+    // Verify notifications moved correctly
+    List<History> afterMoveFrom = service.findAllHistoryForTrainee(fromTraineeId);
+    List<History> afterMoveTo = service.findAllHistoryForTrainee(toTraineeId);
+
+    assertThat("Unexpected notifications for source trainee.",
+        afterMoveFrom.size(), is(0));
+    assertThat("Unexpected notifications for target trainee.",
+        afterMoveTo.size(), is(2));
+
+    for (History h : afterMoveTo) {
+      assertThat("Unexpected recipient ID.", h.recipient().id(), is(toTraineeId));
+      assertThat("Unexpected recipient email.", h.recipient().contact(), is("old@test.com"));
+      assertThat("Unexpected recipient type.", h.recipient().type(), is(oneOf(EMAIL, IN_APP)));
+    }
+
+    ArgumentCaptor<History> eventCaptor = ArgumentCaptor.captor();
+    verify(eventBroadcastService, times(2 + 2)) // +2 for the initial saves
+        .publishNotificationsEvent(eventCaptor.capture());
+    List<History> capturedEvents = eventCaptor.getAllValues();
+    assertThat("Unexpected number of events published.", capturedEvents.size(), is(4));
+    int withOldId = 0;
+    int withNewId = 0;
+    for (History event : capturedEvents) {
+      if (event.recipient().id().equals(fromTraineeId)) {
+        withOldId++;
+      } else if (event.recipient().id().equals(toTraineeId)) {
+        withNewId++;
+      }
+    }
+    assertThat("Unexpected number of events with old trainee ID.", withOldId, is(2));
+    assertThat("Unexpected number of events with new trainee ID.", withNewId, is(2));
+  }
+
+  @Test
+  void shouldHandleEmptyNotificationsWhenMoving() {
+    String fromTraineeId = "empty";
+    String toTraineeId = "target";
+
+    service.moveNotifications(fromTraineeId, toTraineeId);
+
+    List<History> afterMoveFrom = service.findAllHistoryForTrainee(fromTraineeId);
+    List<History> afterMoveTo = service.findAllHistoryForTrainee(toTraineeId);
+
+    assertThat("Unexpected notifications for source trainee.",
+        afterMoveFrom.size(), is(0));
+    assertThat("Unexpected notifications for target trainee.",
+        afterMoveTo.size(), is(0));
+  }
+
+  /**
+   * Helper method to create a basic History object for testing.
+   */
+  private History getBasicHistory(String traineeId, String contact, MessageType type,
+      NotificationType notificationType, Instant sentAt) {
+    return History.builder()
+        .id(new ObjectId())
+        .recipient(new History.RecipientInfo(traineeId, type, contact))
+        .type(notificationType)
+        .template(new History.TemplateInfo("template", "1.0", Map.of()))
+        .sentAt(sentAt)
+        .status(SENT)
+        .build();
   }
 }

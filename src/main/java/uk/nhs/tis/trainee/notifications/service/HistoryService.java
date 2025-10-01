@@ -141,9 +141,9 @@ public class HistoryService {
   /**
    * Update the status of a notification, ensuring no retrograde event-driven changes.
    *
-   * @param history The notification history to update.
-   * @param status  The new status.
-   * @param detail  The detail of the status.
+   * @param history   The notification history to update.
+   * @param status    The new status.
+   * @param detail    The detail of the status.
    * @param timestamp The timestamp of the status update, if it is event-driven.
    * @return The updated notification history, or empty if not found.
    */
@@ -273,9 +273,9 @@ public class HistoryService {
   /**
    * Find all scheduled notifications for the given Trainee from DB.
    *
-   * @param traineeId The ID of the trainee to get notifications for.
+   * @param traineeId        The ID of the trainee to get notifications for.
    * @param tisReferenceType The reference type of the object.
-   * @param refId The reference ID of the TisReferenceType.
+   * @param refId            The reference ID of the TisReferenceType.
    * @return The found notifications, empty if none found.
    */
   public List<History> findAllScheduledForTrainee(
@@ -294,9 +294,9 @@ public class HistoryService {
   /**
    * Find scheduled email notification for the given Trainee by reference and type from DB.
    *
-   * @param traineeId The ID of the trainee to get notifications for.
+   * @param traineeId        The ID of the trainee to get notifications for.
    * @param tisReferenceType The reference type of the object.
-   * @param refId The reference ID of the TisReferenceType.
+   * @param refId            The reference ID of the TisReferenceType.
    * @param notificationType The notification Type of the notification.
    * @return The found notifications, empty if none found.
    */
@@ -316,9 +316,9 @@ public class HistoryService {
   /**
    * Find latest scheduled email notification for the given Trainee by reference and type from DB.
    *
-   * @param traineeId The ID of the trainee to get notifications for.
+   * @param traineeId        The ID of the trainee to get notifications for.
    * @param tisReferenceType The reference type of the object.
-   * @param refId The reference ID of the TisReferenceType.
+   * @param refId            The reference ID of the TisReferenceType.
    * @param notificationType The notification Type of the notification.
    * @return The found notifications, empty if none found.
    */
@@ -335,7 +335,7 @@ public class HistoryService {
   /**
    * Delete notification history by history ID and trainee ID.
    *
-   * @param id The object ID of the history to delete.
+   * @param id        The object ID of the history to delete.
    * @param traineeId The ID of the trainee to get notifications for.
    */
   public void deleteHistoryForTrainee(ObjectId id, String traineeId) {
@@ -423,5 +423,28 @@ public class HistoryService {
         templateInfo.version());
     String message = templateService.process(templatePath, selectors, templateInfo.variables());
     return Optional.of(message);
+  }
+
+  /**
+   * Move all notifications from one trainee to another. Assumes that fromTraineeId and toTraineeId
+   * are valid. The updated notifications are broadcast as events.
+   *
+   * @param fromTraineeId The trainee ID to move notifications from.
+   * @param toTraineeId   The trainee ID to move notifications to.
+   */
+  public void moveNotifications(String fromTraineeId, String toTraineeId) {
+    List<History> histories = findAllHistoryForTrainee(fromTraineeId);
+
+    histories.forEach(h -> {
+      log.info("Moving notification history [{}] from trainee [{}] to trainee [{}]",
+          h.id(), fromTraineeId, toTraineeId);
+      // note recipient email address is not changed,
+      // neither is any other part of the notification (e.g. template.personId)
+      History.RecipientInfo newRecipient
+          = new History.RecipientInfo(toTraineeId, h.recipient().type(), h.recipient().contact());
+      this.save(h.withRecipient(newRecipient));
+    });
+    log.info("Moved {} notification histories from trainee [{}] to trainee [{}]",
+        histories.size(), fromTraineeId, toTraineeId);
   }
 }

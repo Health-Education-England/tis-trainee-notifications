@@ -25,6 +25,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import lombok.Builder;
+import lombok.With;
 import org.bson.types.ObjectId;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
@@ -52,6 +53,7 @@ public record History(
     ObjectId id,
     TisReferenceInfo tisReference,
     NotificationType type,
+    @With
     RecipientInfo recipient,
     TemplateInfo template,
     List<StoredFile> attachments,
