@@ -21,8 +21,13 @@
 
 package uk.nhs.tis.trainee.notifications.api;
 
+import static org.hamcrest.Matchers.aMapWithSize;
 import static org.hamcrest.Matchers.hasSize;
+import static org.hamcrest.Matchers.is;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
+import static org.springframework.http.MediaType.APPLICATION_JSON;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
@@ -38,6 +43,7 @@ import static uk.nhs.tis.trainee.notifications.model.NotificationType.CREDENTIAL
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.FORM_UPDATED;
 
 import java.time.Instant;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -50,6 +56,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
@@ -101,19 +108,25 @@ class TraineeHistoryResourceTest {
   }
 
   @Test
-  void shouldReturnEmptyArrayWhenNoTraineeHistoryFound() throws Exception {
-    when(service.findAllForTrainee(TRAINEE_ID)).thenReturn(List.of());
+  void shouldReturnNoSummariesWhenNoTraineeHistoryFound() throws Exception {
+    when(service.findAllSentInPageForTrainee(eq(TRAINEE_ID), any(), any())).thenReturn(
+        new PageImpl<>(Collections.emptyList()));
 
     mockMvc.perform(get("/api/history/trainee")
             .header(HttpHeaders.AUTHORIZATION, TestJwtUtil.generateTokenForTisId(TRAINEE_ID)))
         .andExpect(status().isOk())
-        .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-        .andExpect(jsonPath("$").isArray())
-        .andExpect(jsonPath("$").isEmpty());
+        .andExpect(content().contentType(APPLICATION_JSON))
+        .andExpect(jsonPath("$.content").isArray())
+        .andExpect(jsonPath("$.content", hasSize(0)))
+        .andExpect(jsonPath("$.page", aMapWithSize(4)))
+        .andExpect(jsonPath("$.page.size", is(0)))
+        .andExpect(jsonPath("$.page.number", is(0)))
+        .andExpect(jsonPath("$.page.totalElements", is(0)))
+        .andExpect(jsonPath("$.page.totalPages", is(1)));
   }
 
   @Test
-  void shouldReturnTraineeHistoryArrayWhenHistoryFound() throws Exception {
+  void shouldReturnPagedTraineeHistoryArrayWhenHistoryFound() throws Exception {
     TisReferenceInfo tisReferenceProgramme
         = new TisReferenceInfo(TisReferenceType.PROGRAMME_MEMBERSHIP, TIS_REFERENCE_ID);
     TisReferenceInfo tisReferenceForm
@@ -125,48 +138,48 @@ class TraineeHistoryResourceTest {
     HistoryDto history3 = new HistoryDto("3", tisReferenceForm, EMAIL, FORM_UPDATED,
         null, TRAINEE_CONTACT_3, Instant.MAX, Instant.MIN, FAILED, "Additional detail");
 
-    when(service.findAllSentForTrainee(TRAINEE_ID)).thenReturn(
-        List.of(history1, history2, history3));
+    when(service.findAllSentInPageForTrainee(eq(TRAINEE_ID), any(), any())).thenReturn(
+        new PageImpl<>(List.of(history1, history2, history3)));
 
     mockMvc.perform(get("/api/history/trainee")
             .header(HttpHeaders.AUTHORIZATION, TestJwtUtil.generateTokenForTisId(TRAINEE_ID)))
         .andExpect(status().isOk())
         .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-        .andExpect(jsonPath("$").isArray())
-        .andExpect(jsonPath("$", hasSize(3)))
-        .andExpect(jsonPath("$[0].id").value("1"))
-        .andExpect(jsonPath("$[0].tisReference.id").value(TIS_REFERENCE_ID))
-        .andExpect(jsonPath("$[0].tisReference.type")
+        .andExpect(jsonPath("$.content").isArray())
+        .andExpect(jsonPath("$.content", hasSize(3)))
+        .andExpect(jsonPath("$.content[0].id").value("1"))
+        .andExpect(jsonPath("$.content[0].tisReference.id").value(TIS_REFERENCE_ID))
+        .andExpect(jsonPath("$.content[0].tisReference.type")
             .value(TisReferenceType.PROGRAMME_MEMBERSHIP.toString()))
-        .andExpect(jsonPath("$[0].type").value(EMAIL.toString()))
-        .andExpect(jsonPath("$[0].subject").value(COJ_CONFIRMATION.toString()))
-        .andExpect(jsonPath("$[0].contact").value(TRAINEE_CONTACT_1))
-        .andExpect(jsonPath("$[0].sentAt").value(Instant.MIN.toString()))
-        .andExpect(jsonPath("$[0].readAt").value(Instant.MAX.toString()))
-        .andExpect(jsonPath("$[0].status").value(SENT.toString()))
-        .andExpect(jsonPath("$[0].statusDetail").doesNotExist())
-        .andExpect(jsonPath("$[1].id").value("2"))
-        .andExpect(jsonPath("$[1].tisReference.id").value(TIS_REFERENCE_ID))
-        .andExpect(jsonPath("$[1].tisReference.type")
+        .andExpect(jsonPath("$.content[0].type").value(EMAIL.toString()))
+        .andExpect(jsonPath("$.content[0].subject").value(COJ_CONFIRMATION.toString()))
+        .andExpect(jsonPath("$.content[0].contact").value(TRAINEE_CONTACT_1))
+        .andExpect(jsonPath("$.content[0].sentAt").value(Instant.MIN.toString()))
+        .andExpect(jsonPath("$.content[0].readAt").value(Instant.MAX.toString()))
+        .andExpect(jsonPath("$.content[0].status").value(SENT.toString()))
+        .andExpect(jsonPath("$.content[0].statusDetail").doesNotExist())
+        .andExpect(jsonPath("$.content[1].id").value("2"))
+        .andExpect(jsonPath("$.content[1].tisReference.id").value(TIS_REFERENCE_ID))
+        .andExpect(jsonPath("$.content[1].tisReference.type")
             .value(TisReferenceType.PROGRAMME_MEMBERSHIP.toString()))
-        .andExpect(jsonPath("$[1].type").value(EMAIL.toString()))
-        .andExpect(jsonPath("$[1].subject").value(CREDENTIAL_REVOKED.toString()))
-        .andExpect(jsonPath("$[1].contact").value(TRAINEE_CONTACT_2))
-        .andExpect(jsonPath("$[1].sentAt").value(Instant.EPOCH.toString()))
-        .andExpect(jsonPath("$[1].readAt").value(Instant.EPOCH.toString()))
-        .andExpect(jsonPath("$[1].status").value(FAILED.toString()))
-        .andExpect(jsonPath("$[1].statusDetail").doesNotExist())
-        .andExpect(jsonPath("$[2].id").value("3"))
-        .andExpect(jsonPath("$[2].tisReference.id").value(TIS_REFERENCE_ID))
-        .andExpect(jsonPath("$[2].tisReference.type")
+        .andExpect(jsonPath("$.content[1].type").value(EMAIL.toString()))
+        .andExpect(jsonPath("$.content[1].subject").value(CREDENTIAL_REVOKED.toString()))
+        .andExpect(jsonPath("$.content[1].contact").value(TRAINEE_CONTACT_2))
+        .andExpect(jsonPath("$.content[1].sentAt").value(Instant.EPOCH.toString()))
+        .andExpect(jsonPath("$.content[1].readAt").value(Instant.EPOCH.toString()))
+        .andExpect(jsonPath("$.content[1].status").value(FAILED.toString()))
+        .andExpect(jsonPath("$.content[1].statusDetail").doesNotExist())
+        .andExpect(jsonPath("$.content[2].id").value("3"))
+        .andExpect(jsonPath("$.content[2].tisReference.id").value(TIS_REFERENCE_ID))
+        .andExpect(jsonPath("$.content[2].tisReference.type")
             .value(TisReferenceType.FORMR_PARTA.toString()))
-        .andExpect(jsonPath("$[2].type").value(EMAIL.toString()))
-        .andExpect(jsonPath("$[2].subject").value(FORM_UPDATED.toString()))
-        .andExpect(jsonPath("$[2].contact").value(TRAINEE_CONTACT_3))
-        .andExpect(jsonPath("$[2].sentAt").value(Instant.MAX.toString()))
-        .andExpect(jsonPath("$[2].readAt").value(Instant.MIN.toString()))
-        .andExpect(jsonPath("$[2].status").value(FAILED.toString()))
-        .andExpect(jsonPath("$[2].statusDetail").value("Additional detail"));
+        .andExpect(jsonPath("$.content[2].type").value(EMAIL.toString()))
+        .andExpect(jsonPath("$.content[2].subject").value(FORM_UPDATED.toString()))
+        .andExpect(jsonPath("$.content[2].contact").value(TRAINEE_CONTACT_3))
+        .andExpect(jsonPath("$.content[2].sentAt").value(Instant.MAX.toString()))
+        .andExpect(jsonPath("$.content[2].readAt").value(Instant.MIN.toString()))
+        .andExpect(jsonPath("$.content[2].status").value(FAILED.toString()))
+        .andExpect(jsonPath("$.content[2].statusDetail").value("Additional detail"));
   }
 
   @Test

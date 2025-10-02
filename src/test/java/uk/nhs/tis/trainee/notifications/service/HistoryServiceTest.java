@@ -26,9 +26,12 @@ import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.CoreMatchers.sameInstance;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.hasItem;
+import static org.hamcrest.Matchers.hasSize;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyMap;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -45,6 +48,7 @@ import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.SCHEDULE
 import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.SENT;
 import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.UNREAD;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.COJ_CONFIRMATION;
+import static uk.nhs.tis.trainee.notifications.model.NotificationType.FORM_UPDATED;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PLACEMENT_UPDATED_WEEK_12;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_CREATED;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_DAY_ONE;
@@ -57,16 +61,24 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import org.bson.Document;
 import org.bson.types.ObjectId;
+import org.hamcrest.Matchers;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.EnumSource.Mode;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.ArgumentCaptor;
 import org.springframework.data.domain.Example;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.query.Query;
 import uk.nhs.tis.trainee.notifications.dto.HistoryDto;
 import uk.nhs.tis.trainee.notifications.mapper.HistoryMapper;
 import uk.nhs.tis.trainee.notifications.mapper.HistoryMapperImpl;
@@ -101,14 +113,16 @@ class HistoryServiceTest {
   private TemplateService templateService;
   private EventBroadcastService eventBroadcastService;
   private final HistoryMapper mapper = new HistoryMapperImpl();
+  private MongoTemplate mongoTemplate;
 
   @BeforeEach
   void setUp() {
     repository = mock(HistoryRepository.class);
     templateService = mock(TemplateService.class);
     eventBroadcastService = mock(EventBroadcastService.class);
+    mongoTemplate = mock(MongoTemplate.class);
     service = new HistoryService(repository, templateService, eventBroadcastService,
-        mapper);
+        mapper, mongoTemplate);
   }
 
   @ParameterizedTest
@@ -662,6 +676,180 @@ class HistoryServiceTest {
     assertThat("Unexpected history contact.", historyDto1.contact(), is(TRAINEE_CONTACT));
     assertThat("Unexpected history sent at.", historyDto1.sentAt(), is(Instant.MIN));
     assertThat("Unexpected history read at.", historyDto1.readAt(), is(Instant.MAX));
+  }
+
+  @Test
+  void shouldGetPagedHistorySummaries() {
+    RecipientInfo recipientInfo = new RecipientInfo(TRAINEE_ID, EMAIL, TRAINEE_CONTACT);
+    TemplateInfo templateInfo = new TemplateInfo(TEMPLATE_NAME, TEMPLATE_VERSION,
+        TEMPLATE_VARIABLES);
+    TisReferenceInfo tisReferenceInfo = new TisReferenceInfo(TIS_REFERENCE_TYPE, TIS_REFERENCE_ID);
+
+    ObjectId id1 = ObjectId.get();
+    History history1 = new History(id1, tisReferenceInfo, FORM_UPDATED, recipientInfo,
+        templateInfo, null, Instant.MIN, Instant.MAX, SENT, null, null);
+
+    ObjectId id2 = ObjectId.get();
+    Instant timeNow = Instant.now();
+    History history2 = new History(id2, tisReferenceInfo, FORM_UPDATED, recipientInfo,
+        templateInfo, null, timeNow, Instant.MIN, SENT, null, null);
+
+    ObjectId id3 = ObjectId.get();
+    History history3 = new History(id3, tisReferenceInfo, FORM_UPDATED, recipientInfo,
+        templateInfo, null, Instant.MAX, Instant.MIN, SENT, null, null);
+
+    ArgumentCaptor<Query> queryCaptor = ArgumentCaptor.captor();
+    when(mongoTemplate.find(queryCaptor.capture(), eq(History.class))).thenReturn(
+        List.of(history1, history2, history3));
+    when(mongoTemplate.count(queryCaptor.capture(), eq(History.class))).thenReturn(3L);
+    when(templateService.getTemplatePath(EMAIL, templateInfo.name(), templateInfo.version()))
+        .thenReturn("path");
+    when(templateService.process(anyString(), any(), (Map<String, Object>) any()))
+        .thenReturn("subject text");
+
+    Page<HistoryDto> dtos = service.findAllSentInPageForTrainee(TRAINEE_ID, Map.of(),
+        PageRequest.of(1, 1));
+
+    assertThat("Unexpected total elements.", dtos.getTotalElements(), Matchers.is(3L));
+    assertThat("Unexpected total pages.", dtos.getTotalPages(), Matchers.is(3));
+    assertThat("Unexpected pageable.", dtos.getPageable().isPaged(), Matchers.is(true));
+    assertThat("Unexpected page number.", dtos.getPageable().getPageNumber(), Matchers.is(1));
+    assertThat("Unexpected page size.", dtos.getPageable().getPageSize(), Matchers.is(1));
+
+    List<Query> queries = queryCaptor.getAllValues();
+    assertThat("Unexpected limited flag.", queries.get(0).isLimited(), Matchers.is(true));
+    assertThat("Unexpected limit.", queries.get(0).getLimit(), Matchers.is(1));
+    assertThat("Unexpected skip.", queries.get(0).getSkip(), Matchers.is(1L));
+
+    // The second query is the count, which is unpaged.
+    assertThat("Unexpected limited flag.", queries.get(1).isLimited(), Matchers.is(false));
+    assertThat("Unexpected limit.", queries.get(1).getLimit(), Matchers.is(0));
+    assertThat("Unexpected skip.", queries.get(1).getSkip(), Matchers.is(-1L));
+  }
+
+  @Test
+  void shouldGetUnpagedHistorySummaries() {
+    RecipientInfo recipientInfo = new RecipientInfo(TRAINEE_ID, EMAIL, TRAINEE_CONTACT);
+    TemplateInfo templateInfo = new TemplateInfo(TEMPLATE_NAME, TEMPLATE_VERSION,
+        TEMPLATE_VARIABLES);
+    TisReferenceInfo tisReferenceInfo = new TisReferenceInfo(TIS_REFERENCE_TYPE, TIS_REFERENCE_ID);
+
+    ObjectId id1 = ObjectId.get();
+    History history1 = new History(id1, tisReferenceInfo, FORM_UPDATED, recipientInfo,
+        templateInfo, null, Instant.MIN, Instant.MAX, SENT, null, null);
+
+    ObjectId id2 = ObjectId.get();
+    Instant timeNow = Instant.now();
+    History history2 = new History(id2, tisReferenceInfo, FORM_UPDATED, recipientInfo,
+        templateInfo, null, timeNow, Instant.MIN, SENT, null, null);
+
+    ObjectId id3 = ObjectId.get();
+    History history3 = new History(id3, tisReferenceInfo, FORM_UPDATED, recipientInfo,
+        templateInfo, null, Instant.MAX, Instant.MIN, SENT, null, null);
+
+    ArgumentCaptor<Query> queryCaptor = ArgumentCaptor.captor();
+    when(mongoTemplate.find(queryCaptor.capture(), eq(History.class))).thenReturn(
+        List.of(history1, history2, history3));
+    when(mongoTemplate.find(queryCaptor.capture(), eq(History.class))).thenReturn(
+        List.of(history1, history2, history3));
+    when(mongoTemplate.count(queryCaptor.capture(), eq(History.class))).thenReturn(3L);
+    when(templateService.getTemplatePath(EMAIL, templateInfo.name(), templateInfo.version()))
+        .thenReturn("path");
+    when(templateService.process(anyString(), any(), (Map<String, Object>) any()))
+        .thenReturn("subject text");
+
+    Page<HistoryDto> dtos = service.findAllSentInPageForTrainee(TRAINEE_ID, Map.of(),
+        Pageable.unpaged());
+
+    assertThat("Unexpected total elements.", dtos.getTotalElements(), Matchers.is(3L));
+    assertThat("Unexpected total pages.", dtos.getTotalPages(), Matchers.is(1));
+    assertThat("Unexpected pageable.", dtos.getPageable().isPaged(), Matchers.is(false));
+
+    Query query = queryCaptor.getValue();
+    assertThat("Unexpected limited flag.", query.isLimited(), Matchers.is(false));
+    assertThat("Unexpected limit.", query.getLimit(), Matchers.is(0));
+    assertThat("Unexpected skip.", query.getSkip(), Matchers.is(0L));
+
+    verify(mongoTemplate, never()).count(any(), eq(History.class));
+  }
+
+  @Test
+  void shouldIncludeOnlySentWhenGettingHistorySummaries() {
+    service.findAllSentInPageForTrainee(TRAINEE_ID, Map.of(), PageRequest.of(1, 1));
+
+    ArgumentCaptor<Query> queryCaptor = ArgumentCaptor.captor();
+    verify(mongoTemplate).find(queryCaptor.capture(), eq(History.class));
+    verify(mongoTemplate).count(queryCaptor.capture(), eq(History.class));
+
+    queryCaptor.getAllValues().forEach(query -> {
+      Document queryObject = query.getQueryObject();
+      assertThat("Unexpected filter count.", queryObject.keySet(), hasSize(2));
+
+      Document sentAtFilter = queryObject.get("sentAt", Document.class);
+      assertThat("Unexpected filter key count.", sentAtFilter.keySet(), hasSize(1));
+      assertThat("Unexpected filter key.", sentAtFilter.keySet(), hasItem("$lt"));
+      assertThat("Unexpected filter value.", sentAtFilter.get("$lt"), Matchers.notNullValue());
+    });
+  }
+
+  @Test
+  void shouldIncludeOnlyHistoriesOfTheTraineeWhenGettingHistorySummaries() {
+    service.findAllSentInPageForTrainee(TRAINEE_ID, Map.of(), PageRequest.of(1, 1));
+
+    ArgumentCaptor<Query> queryCaptor = ArgumentCaptor.captor();
+    verify(mongoTemplate).find(queryCaptor.capture(), eq(History.class));
+    verify(mongoTemplate).count(queryCaptor.capture(), eq(History.class));
+
+    queryCaptor.getAllValues().forEach(query -> {
+      Document queryObject = query.getQueryObject();
+      assertThat("Unexpected filter count.", queryObject.keySet(), hasSize(2));
+      assertThat("Unexpected filter value.", queryObject.get("recipient.id"), is(TRAINEE_ID));
+    });
+  }
+
+  @Test
+  void shouldApplyFiltersWhenGettingHistorySummaries() {
+    service.findAllSentInPageForTrainee(TRAINEE_ID, Map.of(
+        "type", "filterValue1",
+        "status", "filterValue2"
+    ), PageRequest.of(1, 1));
+
+    ArgumentCaptor<Query> queryCaptor = ArgumentCaptor.captor();
+    verify(mongoTemplate).find(queryCaptor.capture(), eq(History.class));
+    verify(mongoTemplate).count(queryCaptor.capture(), eq(History.class));
+
+    queryCaptor.getAllValues().forEach(query -> {
+      Document queryObject = query.getQueryObject();
+      assertThat("Unexpected filter count.", queryObject.keySet(), hasSize(4));
+      assertThat("Unexpected type filter value.", queryObject.get("recipient.type"),
+          is("filterValue1"));
+      assertThat("Unexpected status filter value.", queryObject.get("status"),
+          is("filterValue2"));
+    });
+  }
+
+  @ParameterizedTest
+  @CsvSource(delimiter = '|', textBlock = """
+      status | status
+      subject | type
+      sentAt | sentAt
+      contact | recipient.contact
+      """)
+  void shouldApplySortWhenGettingUnpagedHistorySummaries(String external, String internal) {
+    service.findAllSentInPageForTrainee(TRAINEE_ID, Map.of(),
+        Pageable.unpaged(Sort.by(Sort.Order.asc(external))));
+
+    ArgumentCaptor<Query> queryCaptor = ArgumentCaptor.captor();
+    verify(mongoTemplate).find(queryCaptor.capture(), eq(History.class));
+
+    Query query = queryCaptor.getValue();
+    assertThat("Unexpected sorted flag.", query.isSorted(), Matchers.is(true));
+
+    Document sortObject = query.getSortObject();
+    assertThat("Unexpected sort count.", sortObject.keySet(), hasSize(1));
+    assertThat("Unexpected sort direction.", sortObject.get(internal), Matchers.is(1));
+
+    verify(mongoTemplate, never()).count(any(), eq(History.class));
   }
 
   @Test
