@@ -55,6 +55,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import org.bson.types.ObjectId;
+import org.hamcrest.Matchers;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
@@ -826,7 +827,10 @@ class HistoryServiceIntegrationTest {
     List<History> beforeMove = service.findAllHistoryForTrainee(fromTraineeId);
     assertThat("Unexpected notifications before move.", beforeMove.size(), is(2));
 
-    Integer movedCount = service.moveNotifications(fromTraineeId, toTraineeId);
+    Map<String, Integer> movedStats = service.moveNotifications(fromTraineeId, toTraineeId);
+
+    Map<String, Integer> expectedMap = Map.of("notification", 2);
+    assertThat("Unexpected moved form count.", movedStats, Matchers.is(expectedMap));
 
     // Verify notifications moved correctly
     List<History> afterMoveFrom = service.findAllHistoryForTrainee(fromTraineeId);
@@ -859,7 +863,6 @@ class HistoryServiceIntegrationTest {
     }
     assertThat("Unexpected number of events with old trainee ID.", withOldId, is(2));
     assertThat("Unexpected number of events with new trainee ID.", withNewId, is(2));
-    assertThat("Unexpected moved count.", movedCount, is(2));
   }
 
   @Test
@@ -867,7 +870,10 @@ class HistoryServiceIntegrationTest {
     String fromTraineeId = "empty";
     String toTraineeId = "target";
 
-    Integer movedCount = service.moveNotifications(fromTraineeId, toTraineeId);
+    Map<String, Integer> movedStats = service.moveNotifications(fromTraineeId, toTraineeId);
+
+    Map<String, Integer> expectedMap = Map.of("notification", 0);
+    assertThat("Unexpected moved form count.", movedStats, Matchers.is(expectedMap));
 
     List<History> afterMoveFrom = service.findAllHistoryForTrainee(fromTraineeId);
     List<History> afterMoveTo = service.findAllHistoryForTrainee(toTraineeId);
@@ -876,7 +882,6 @@ class HistoryServiceIntegrationTest {
         afterMoveFrom.size(), is(0));
     assertThat("Unexpected notifications for target trainee.",
         afterMoveTo.size(), is(0));
-    assertThat("Unexpected moved count.", movedCount, is(0));
   }
 
   /**

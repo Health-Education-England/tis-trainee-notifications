@@ -22,6 +22,7 @@
 package uk.nhs.tis.trainee.notifications.api;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
@@ -90,12 +91,12 @@ public class HistoryResource {
    * @return True if the notifications were moved.
    */
   @PatchMapping("/move/{fromTraineeId}/to/{toTraineeId}")
-  public ResponseEntity<Integer> moveNotifications(@PathVariable String fromTraineeId,
+  public ResponseEntity<Map<String, Integer>> moveNotifications(@PathVariable String fromTraineeId,
       @PathVariable String toTraineeId) {
     log.info("Request to move notifications from trainee {} to trainee {}",
         fromTraineeId, toTraineeId);
 
-    Integer movedNotifications = service.moveNotifications(fromTraineeId, toTraineeId);
+    Map<String, Integer> movedNotifications = service.moveNotifications(fromTraineeId, toTraineeId);
     return ResponseEntity.ok(movedNotifications);
   }
 }

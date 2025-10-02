@@ -1382,12 +1382,14 @@ class HistoryServiceTest {
   void shouldNotMoveNotificationsWhenNoHistoryExists() {
     when(repository.findAllByRecipient_IdOrderBySentAtDesc("oldId")).thenReturn(List.of());
 
-    Integer movedCount = service.moveNotifications("oldId", "newId");
+    Map<String, Integer> movedStats = service.moveNotifications("oldId", "newId");
+
+    Map<String, Integer> expectedMap = Map.of("notification", 0);
+    assertThat("Unexpected moved form count.", movedStats, Matchers.is(expectedMap));
 
     verify(repository).findAllByRecipient_IdOrderBySentAtDesc("oldId");
     verifyNoMoreInteractions(repository);
     verifyNoInteractions(eventBroadcastService);
-    assertThat("Unexpected moved count.", movedCount, is(0));
   }
 
   @Test
@@ -1417,7 +1419,10 @@ class HistoryServiceTest {
         .thenReturn(updatedHistory1)
         .thenReturn(updatedHistory2);
 
-    Integer movedCount = service.moveNotifications("oldId", "newId");
+    Map<String, Integer> movedStats = service.moveNotifications("oldId", "newId");
+
+    Map<String, Integer> expectedMap = Map.of("notification", 2);
+    assertThat("Unexpected moved form count.", movedStats, Matchers.is(expectedMap));
 
     ArgumentCaptor<History> savedHistoryCaptor = ArgumentCaptor.forClass(History.class);
     verify(repository, times(2)).save(savedHistoryCaptor.capture());
@@ -1437,6 +1442,5 @@ class HistoryServiceTest {
 
     verify(eventBroadcastService).publishNotificationsEvent(updatedHistory1);
     verify(eventBroadcastService).publishNotificationsEvent(updatedHistory2);
-    assertThat("Unexpected moved count.", movedCount, is(2));
   }
 }

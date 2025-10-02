@@ -482,12 +482,12 @@ public class HistoryService {
    * @param toTraineeId   The trainee ID to move notifications to.
    * @return The number of notifications moved.
    */
-  public Integer moveNotifications(String fromTraineeId, String toTraineeId) {
+  public Map<String, Integer> moveNotifications(String fromTraineeId, String toTraineeId) {
     AtomicReference<Integer> movedCount = new AtomicReference<>(0);
     List<History> histories = findAllHistoryForTrainee(fromTraineeId);
 
     histories.forEach(h -> {
-      log.info("Moving notification history [{}] from trainee [{}] to trainee [{}]",
+      log.debug("Moving notification history [{}] from trainee [{}] to trainee [{}]",
           h.id(), fromTraineeId, toTraineeId);
       // note recipient email address is not changed,
       // neither is any other part of the notification (e.g. template.personId)
@@ -498,7 +498,7 @@ public class HistoryService {
     });
     log.info("Moved {} notification histories from trainee [{}] to trainee [{}]",
         movedCount, fromTraineeId, toTraineeId);
-    return movedCount.get();
+    return Map.of("notification", movedCount.get());
   }
 
   /**
