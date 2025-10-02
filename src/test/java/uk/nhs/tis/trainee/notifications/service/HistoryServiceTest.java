@@ -1384,7 +1384,7 @@ class HistoryServiceTest {
     Map<String, Integer> movedStats = service.moveNotifications("oldId", "newId");
 
     Map<String, Integer> expectedMap = Map.of("notification", 0);
-    assertThat("Unexpected moved form count.", movedStats, is(expectedMap));
+    assertThat("Unexpected moved notification count.", movedStats, is(expectedMap));
 
     verify(repository).findAllByRecipient_IdOrderBySentAtDesc("oldId");
     verifyNoMoreInteractions(repository);
@@ -1421,7 +1421,7 @@ class HistoryServiceTest {
     Map<String, Integer> movedStats = service.moveNotifications("oldId", "newId");
 
     Map<String, Integer> expectedMap = Map.of("notification", 2);
-    assertThat("Unexpected moved form count.", movedStats, is(expectedMap));
+    assertThat("Unexpected moved notification count.", movedStats, is(expectedMap));
 
     ArgumentCaptor<History> savedHistoryCaptor = ArgumentCaptor.forClass(History.class);
     verify(repository, times(2)).save(savedHistoryCaptor.capture());

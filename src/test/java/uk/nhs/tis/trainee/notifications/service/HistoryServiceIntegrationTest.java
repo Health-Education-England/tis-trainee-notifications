@@ -830,7 +830,7 @@ class HistoryServiceIntegrationTest {
     Map<String, Integer> movedStats = service.moveNotifications(fromTraineeId, toTraineeId);
 
     Map<String, Integer> expectedMap = Map.of("notification", 2);
-    assertThat("Unexpected moved form count.", movedStats, Matchers.is(expectedMap));
+    assertThat("Unexpected moved notification count.", movedStats, Matchers.is(expectedMap));
 
     // Verify notifications moved correctly
     List<History> afterMoveFrom = service.findAllHistoryForTrainee(fromTraineeId);
@@ -873,7 +873,7 @@ class HistoryServiceIntegrationTest {
     Map<String, Integer> movedStats = service.moveNotifications(fromTraineeId, toTraineeId);
 
     Map<String, Integer> expectedMap = Map.of("notification", 0);
-    assertThat("Unexpected moved form count.", movedStats, Matchers.is(expectedMap));
+    assertThat("Unexpected moved notification count.", movedStats, Matchers.is(expectedMap));
 
     List<History> afterMoveFrom = service.findAllHistoryForTrainee(fromTraineeId);
     List<History> afterMoveTo = service.findAllHistoryForTrainee(toTraineeId);
