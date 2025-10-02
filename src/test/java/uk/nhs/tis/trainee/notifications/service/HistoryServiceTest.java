@@ -26,6 +26,8 @@ import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.CoreMatchers.sameInstance;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.hasSize;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -56,6 +58,7 @@ import static uk.nhs.tis.trainee.notifications.model.TisReferenceType.PLACEMENT;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -850,6 +853,40 @@ class HistoryServiceTest {
     assertThat("Unexpected sort direction.", sortObject.get(internal), Matchers.is(1));
 
     verify(mongoTemplate, never()).count(any(), eq(History.class));
+  }
+
+  @Test
+  void shouldApplySearchFiltersWhenGettingHistorySummaries() {
+    service.findAllSentInPageForTrainee(TRAINEE_ID, Map.of(
+        "keyword", "filterValue"
+    ), PageRequest.of(1, 1));
+
+    ArgumentCaptor<Query> queryCaptor = ArgumentCaptor.captor();
+    verify(mongoTemplate).find(queryCaptor.capture(), eq(History.class));
+    verify(mongoTemplate).count(queryCaptor.capture(), eq(History.class));
+
+    queryCaptor.getAllValues().forEach(query -> {
+      Document queryObject = query.getQueryObject();
+      assertThat("Unexpected filter key.", queryObject.keySet(), hasItem("$or"));
+
+      List<Document> keywordFilter = queryObject.get("$or", List.class);
+      assertThat("Unexpected filter value count.", keywordFilter, hasSize(4));
+
+      Set<String> searchFields = Set.of("status", "type", "sentAt", "recipient.contact");
+      Set<String> foundFields = new HashSet<>();
+
+      for (Document filter : keywordFilter) {
+        for (String key : searchFields) {
+          if (filter.containsKey(key) && filter.get(key) != null) {
+            foundFields.add(key);
+            assertThat("Status filter value mismatch.", filter.get(key).toString(),
+                containsString("filterValue"));
+          }
+        }
+      }
+      // make sure all search fields are included
+      assertThat("Missing filters for some fields.", foundFields, equalTo(searchFields));
+    });
   }
 
   @Test

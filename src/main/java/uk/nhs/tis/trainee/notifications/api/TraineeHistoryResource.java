@@ -89,9 +89,7 @@ public class TraineeHistoryResource {
 
     log.info("Retrieving notification history for trainee {}.", traineeId);
     Page<HistoryDto> historyPage = service.findAllSentInPageForTrainee(traineeId, params, pageable);
-    if (historyPage != null) {
-      log.info("Found {} notifications for trainee {}.", historyPage.getTotalElements(), traineeId);
-    }
+    log.info("Found {} notifications for trainee {}.", historyPage.getTotalElements(), traineeId);
     return ResponseEntity.ok(new PagedModel<>(historyPage));
   }
 
