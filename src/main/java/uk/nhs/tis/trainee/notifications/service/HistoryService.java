@@ -480,7 +480,7 @@ public class HistoryService {
    *
    * @param fromTraineeId The trainee ID to move notifications from.
    * @param toTraineeId   The trainee ID to move notifications to.
-   * @return The number of notifications moved.
+   * @return The map of the number of notifications moved.
    */
   public Map<String, Integer> moveNotifications(String fromTraineeId, String toTraineeId) {
     AtomicReference<Integer> movedCount = new AtomicReference<>(0);

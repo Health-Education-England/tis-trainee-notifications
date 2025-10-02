@@ -88,7 +88,7 @@ public class HistoryResource {
    *
    * @param fromTraineeId The TIS ID of the trainee to move notifications from.
    * @param toTraineeId   The TIS ID of the trainee to move notifications to.
-   * @return True if the notifications were moved.
+   * @return Map of the count of notifications moved.
    */
   @PatchMapping("/move/{fromTraineeId}/to/{toTraineeId}")
   public ResponseEntity<Map<String, Integer>> moveNotifications(@PathVariable String fromTraineeId,
