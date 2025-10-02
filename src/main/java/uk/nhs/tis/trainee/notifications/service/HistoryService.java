@@ -73,6 +73,18 @@ public class HistoryService {
       EMAIL, Set.of(FAILED, PENDING, SENT),
       IN_APP, Set.of(ARCHIVED, READ, SCHEDULED, UNREAD)
   );
+  private static final String STATUS_PROPERTY = "status";
+  private static final String SUBJECT_PROPERTY = "subject";
+  private static final String SENTAT_PROPERTY = "sentAt";
+  private static final String CONTACT_PROPERTY = "contact";
+  private static final String TYPE_PROPERTY = "type";
+  private static final String STATUS_FIELD = "status";
+  private static final String SUBJECT_FIELD = "subject";
+  private static final String SENTAT_FIELD = "sentAt";
+  private static final String CONTACT_FIELD = "recipient.contact";
+  private static final String TYPE_FIELD = "type";
+  private static final String RECIPIENT_TYPE_FIELD = "recipient.type";
+  private static final String RECIPIENT_ID_FIELD = "recipient.id";
 
   private final HistoryRepository repository;
   private final TemplateService templateService;
@@ -294,7 +306,7 @@ public class HistoryService {
 
     Example<History> example = Example.of(history);
 
-    Sort sort = Sort.by("sentAt").descending();
+    Sort sort = Sort.by(SENTAT_FIELD).descending();
     return repository.findAll(example, sort);
   }
 
@@ -393,7 +405,7 @@ public class HistoryService {
   private HistoryDto toDto(History history) {
     String subject = null;
     NotificationStatus status = history.status();
-    subject = rebuildMessage(history, Set.of("subject")).orElse("");
+    subject = rebuildMessage(history, Set.of(SUBJECT_FIELD)).orElse("");
 
     if (history.recipient().type() == IN_APP && history.sentAt().isAfter(Instant.now())) {
       status = SCHEDULED;
@@ -498,17 +510,17 @@ public class HistoryService {
         ? Sort.by(pageable.getSort().stream()
         .map(order -> {
           String property = switch (order.getProperty()) {
-            case "status" -> "status";
-            case "subject" -> "type";
-            case "sentAt" -> "sentAt";
-            case "contact" -> "recipient.contact";
+            case STATUS_PROPERTY -> STATUS_FIELD;
+            case SUBJECT_PROPERTY -> TYPE_FIELD;
+            case SENTAT_PROPERTY -> SENTAT_FIELD;
+            case CONTACT_PROPERTY -> CONTACT_FIELD;
             default -> null;
           };
           return property == null ? null : order.withProperty(property);
         })
         .filter(Objects::nonNull)
         .toList())
-        : Sort.by(Sort.Order.desc("sentAt")); // default sort by sentAt descending
+        : Sort.by(Sort.Order.desc(SENTAT_FIELD)); // default sort by sentAt descending
 
     Query query;
 
@@ -522,17 +534,17 @@ public class HistoryService {
     }
 
     // Restrict results to the user's traineeId.
-    query.addCriteria(Criteria.where("recipient.id").is(traineeId));
+    query.addCriteria(Criteria.where(RECIPIENT_ID_FIELD).is(traineeId));
     // Restrict results with sentAt before
-    query.addCriteria(Criteria.where("sentAt").lt(Instant.now()));
+    query.addCriteria(Criteria.where(SENTAT_FIELD).lt(Instant.now()));
 
     // Handle fix-value filters.
     filterParams.entrySet().stream()
         .filter(e -> e.getValue() != null && !e.getValue().isBlank())
         .map(e -> {
           String property = switch (e.getKey()) {
-            case "type" -> "recipient.type";
-            case "status" -> "status";
+            case TYPE_PROPERTY -> RECIPIENT_TYPE_FIELD;
+            case STATUS_PROPERTY -> STATUS_FIELD;
             default -> null;
           };
           return property == null ? null : new AbstractMap.SimpleEntry<>(property, e.getValue());
@@ -555,10 +567,10 @@ public class HistoryService {
     if (keyword != null && !keyword.isBlank()) {
       String pattern = ".*" + Pattern.quote(keyword) + ".*";
       query.addCriteria(new Criteria().orOperator(
-          Criteria.where("status").regex(pattern, "i"),
-          Criteria.where("type").regex(pattern, "i"),
-          Criteria.where("sentAt").regex(pattern, "i"),
-          Criteria.where("recipient.contact").regex(pattern, "i")
+          Criteria.where(STATUS_FIELD).regex(pattern, "i"),
+          Criteria.where(TYPE_FIELD).regex(pattern, "i"),
+          Criteria.where(SENTAT_FIELD).regex(pattern, "i"),
+          Criteria.where(CONTACT_FIELD).regex(pattern, "i")
       ));
     }
 

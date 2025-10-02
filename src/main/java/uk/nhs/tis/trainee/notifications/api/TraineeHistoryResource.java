@@ -79,7 +79,7 @@ public class TraineeHistoryResource {
       @RequestHeader(HttpHeaders.AUTHORIZATION) String token,
       @RequestParam(required = false) Map<String, String> params,
       @PageableDefault(size = Integer.MAX_VALUE, sort = "sentAt",
-          direction = Sort.Direction.ASC) Pageable pageable) {
+          direction = Sort.Direction.DESC) Pageable pageable) {
     log.info("Retrieving notification history for the authorized trainee.");
     String traineeId = getTraineeId(token);
 
