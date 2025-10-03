@@ -713,21 +713,21 @@ class HistoryServiceTest {
     Page<HistoryDto> dtos = service.findAllSentInPageForTrainee(TRAINEE_ID, Map.of(),
         PageRequest.of(1, 1));
 
-    assertThat("Unexpected total elements.", dtos.getTotalElements(), Matchers.is(3L));
-    assertThat("Unexpected total pages.", dtos.getTotalPages(), Matchers.is(3));
-    assertThat("Unexpected pageable.", dtos.getPageable().isPaged(), Matchers.is(true));
-    assertThat("Unexpected page number.", dtos.getPageable().getPageNumber(), Matchers.is(1));
-    assertThat("Unexpected page size.", dtos.getPageable().getPageSize(), Matchers.is(1));
+    assertThat("Unexpected total elements.", dtos.getTotalElements(), is(3L));
+    assertThat("Unexpected total pages.", dtos.getTotalPages(), is(3));
+    assertThat("Unexpected pageable.", dtos.getPageable().isPaged(), is(true));
+    assertThat("Unexpected page number.", dtos.getPageable().getPageNumber(), is(1));
+    assertThat("Unexpected page size.", dtos.getPageable().getPageSize(), is(1));
 
     List<Query> queries = queryCaptor.getAllValues();
-    assertThat("Unexpected limited flag.", queries.get(0).isLimited(), Matchers.is(true));
-    assertThat("Unexpected limit.", queries.get(0).getLimit(), Matchers.is(1));
-    assertThat("Unexpected skip.", queries.get(0).getSkip(), Matchers.is(1L));
+    assertThat("Unexpected limited flag.", queries.get(0).isLimited(), is(true));
+    assertThat("Unexpected limit.", queries.get(0).getLimit(), is(1));
+    assertThat("Unexpected skip.", queries.get(0).getSkip(), is(1L));
 
     // The second query is the count, which is unpaged.
-    assertThat("Unexpected limited flag.", queries.get(1).isLimited(), Matchers.is(false));
-    assertThat("Unexpected limit.", queries.get(1).getLimit(), Matchers.is(0));
-    assertThat("Unexpected skip.", queries.get(1).getSkip(), Matchers.is(-1L));
+    assertThat("Unexpected limited flag.", queries.get(1).isLimited(), is(false));
+    assertThat("Unexpected limit.", queries.get(1).getLimit(), is(0));
+    assertThat("Unexpected skip.", queries.get(1).getSkip(), is(-1L));
   }
 
   @Test
@@ -764,14 +764,14 @@ class HistoryServiceTest {
     Page<HistoryDto> dtos = service.findAllSentInPageForTrainee(TRAINEE_ID, Map.of(),
         Pageable.unpaged());
 
-    assertThat("Unexpected total elements.", dtos.getTotalElements(), Matchers.is(3L));
-    assertThat("Unexpected total pages.", dtos.getTotalPages(), Matchers.is(1));
-    assertThat("Unexpected pageable.", dtos.getPageable().isPaged(), Matchers.is(false));
+    assertThat("Unexpected total elements.", dtos.getTotalElements(), is(3L));
+    assertThat("Unexpected total pages.", dtos.getTotalPages(), is(1));
+    assertThat("Unexpected pageable.", dtos.getPageable().isPaged(), is(false));
 
     Query query = queryCaptor.getValue();
-    assertThat("Unexpected limited flag.", query.isLimited(), Matchers.is(false));
-    assertThat("Unexpected limit.", query.getLimit(), Matchers.is(0));
-    assertThat("Unexpected skip.", query.getSkip(), Matchers.is(0L));
+    assertThat("Unexpected limited flag.", query.isLimited(), is(false));
+    assertThat("Unexpected limit.", query.getLimit(), is(0));
+    assertThat("Unexpected skip.", query.getSkip(), is(0L));
 
     verify(mongoTemplate, never()).count(any(), eq(History.class));
   }
@@ -846,11 +846,11 @@ class HistoryServiceTest {
     verify(mongoTemplate).find(queryCaptor.capture(), eq(History.class));
 
     Query query = queryCaptor.getValue();
-    assertThat("Unexpected sorted flag.", query.isSorted(), Matchers.is(true));
+    assertThat("Unexpected sorted flag.", query.isSorted(), is(true));
 
     Document sortObject = query.getSortObject();
     assertThat("Unexpected sort count.", sortObject.keySet(), hasSize(1));
-    assertThat("Unexpected sort direction.", sortObject.get(internal), Matchers.is(1));
+    assertThat("Unexpected sort direction.", sortObject.get(internal), is(1));
 
     verify(mongoTemplate, never()).count(any(), eq(History.class));
   }
