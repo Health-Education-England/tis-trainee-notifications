@@ -22,12 +22,18 @@
 package uk.nhs.tis.trainee.notifications.service;
 
 import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.CoreMatchers.sameInstance;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.hasItem;
+import static org.hamcrest.Matchers.hasSize;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyMap;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -44,6 +50,7 @@ import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.SCHEDULE
 import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.SENT;
 import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.UNREAD;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.COJ_CONFIRMATION;
+import static uk.nhs.tis.trainee.notifications.model.NotificationType.FORM_UPDATED;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PLACEMENT_UPDATED_WEEK_12;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_CREATED;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_DAY_ONE;
@@ -51,21 +58,30 @@ import static uk.nhs.tis.trainee.notifications.model.TisReferenceType.PLACEMENT;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import org.bson.Document;
 import org.bson.types.ObjectId;
+import org.hamcrest.Matchers;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.EnumSource.Mode;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.ArgumentCaptor;
 import org.springframework.data.domain.Example;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.query.Query;
 import uk.nhs.tis.trainee.notifications.dto.HistoryDto;
 import uk.nhs.tis.trainee.notifications.mapper.HistoryMapper;
 import uk.nhs.tis.trainee.notifications.mapper.HistoryMapperImpl;
@@ -100,14 +116,16 @@ class HistoryServiceTest {
   private TemplateService templateService;
   private EventBroadcastService eventBroadcastService;
   private final HistoryMapper mapper = new HistoryMapperImpl();
+  private MongoTemplate mongoTemplate;
 
   @BeforeEach
   void setUp() {
     repository = mock(HistoryRepository.class);
     templateService = mock(TemplateService.class);
     eventBroadcastService = mock(EventBroadcastService.class);
+    mongoTemplate = mock(MongoTemplate.class);
     service = new HistoryService(repository, templateService, eventBroadcastService,
-        mapper);
+        mapper, mongoTemplate);
   }
 
   @ParameterizedTest
@@ -187,6 +205,12 @@ class HistoryServiceTest {
     History foundHistory = new History(notificationId, tisReferenceInfo, COJ_CONFIRMATION,
         recipientInfo, templateInfo, null, Instant.MIN, Instant.MAX, null, null, null);
 
+    String templatePath = "email/test/template/v1.2.3";
+    when(templateService.getTemplatePath(EMAIL, TEMPLATE_NAME, TEMPLATE_VERSION)).thenReturn(
+        templatePath);
+    when(templateService.process(templatePath, Set.of("subject"), TEMPLATE_VARIABLES)).thenReturn(
+        "Test Subject");
+
     when(repository.findById(notificationId)).thenReturn(Optional.of(foundHistory));
     when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
@@ -204,7 +228,7 @@ class HistoryServiceTest {
     assertThat("Unexpected TIS reference.", history.tisReference(), is(tisReferenceInfo));
     assertThat("Unexpected type.", history.type(), is(EMAIL));
     assertThat("Unexpected subject.", history.subject(), is(COJ_CONFIRMATION));
-    assertThat("Unexpected subject.", history.subjectText(), nullValue());
+    assertThat("Unexpected subject.", history.subjectText(), is("Test Subject"));
     assertThat("Unexpected contact.", history.contact(), is(TRAINEE_CONTACT));
     assertThat("Unexpected sent at.", history.sentAt(), is(Instant.MIN));
     assertThat("Unexpected read at.", history.readAt(), is(Instant.MAX));
@@ -213,7 +237,8 @@ class HistoryServiceTest {
     verify(eventBroadcastService).publishNotificationsEvent(historyPublished.capture());
 
     History historyPublishedValue = historyPublished.getValue();
-    assertThat("Unexpected history published.", mapper.toDto(historyPublishedValue),
+    HistoryDto publishedDto = mapper.toDto(historyPublishedValue, "Test Subject");
+    assertThat("Unexpected history published.", publishedDto,
         is(history));
   }
 
@@ -325,6 +350,12 @@ class HistoryServiceTest {
     History foundHistory = new History(notificationId, tisReferenceInfo, COJ_CONFIRMATION,
         recipientInfo, templateInfo, null, Instant.MIN, Instant.MAX, null, null, null);
 
+    String templatePath = "email/test/template/v1.2.3";
+    when(templateService.getTemplatePath(EMAIL, TEMPLATE_NAME, TEMPLATE_VERSION)).thenReturn(
+        templatePath);
+    when(templateService.process(templatePath, Set.of("subject"), TEMPLATE_VARIABLES)).thenReturn(
+        "Test Subject");
+
     when(repository.findByIdAndRecipient_Id(notificationId, TRAINEE_ID)).thenReturn(
         Optional.of(foundHistory));
     when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
@@ -342,7 +373,7 @@ class HistoryServiceTest {
     assertThat("Unexpected TIS reference.", history.tisReference(), is(tisReferenceInfo));
     assertThat("Unexpected type.", history.type(), is(EMAIL));
     assertThat("Unexpected subject.", history.subject(), is(COJ_CONFIRMATION));
-    assertThat("Unexpected subject text.", history.subjectText(), nullValue());
+    assertThat("Unexpected subject text.", history.subjectText(), is("Test Subject"));
     assertThat("Unexpected contact.", history.contact(), is(TRAINEE_CONTACT));
     assertThat("Unexpected sent at.", history.sentAt(), is(Instant.MIN));
     assertThat("Unexpected read at.", history.readAt(), is(Instant.MAX));
@@ -351,8 +382,8 @@ class HistoryServiceTest {
     verify(eventBroadcastService).publishNotificationsEvent(historyPublished.capture());
 
     History historyPublishedValue = historyPublished.getValue();
-    assertThat("Unexpected history published.", mapper.toDto(historyPublishedValue),
-        is(history));
+    HistoryDto publishedDto = mapper.toDto(historyPublishedValue, "Test Subject");
+    assertThat("Unexpected history published.", publishedDto, is(history));
   }
 
   @ParameterizedTest
@@ -651,6 +682,214 @@ class HistoryServiceTest {
   }
 
   @Test
+  void shouldGetPagedHistorySummaries() {
+    RecipientInfo recipientInfo = new RecipientInfo(TRAINEE_ID, EMAIL, TRAINEE_CONTACT);
+    TemplateInfo templateInfo = new TemplateInfo(TEMPLATE_NAME, TEMPLATE_VERSION,
+        TEMPLATE_VARIABLES);
+    TisReferenceInfo tisReferenceInfo = new TisReferenceInfo(TIS_REFERENCE_TYPE, TIS_REFERENCE_ID);
+
+    ObjectId id1 = ObjectId.get();
+    History history1 = new History(id1, tisReferenceInfo, FORM_UPDATED, recipientInfo,
+        templateInfo, null, Instant.MIN, Instant.MAX, SENT, null, null);
+
+    ObjectId id2 = ObjectId.get();
+    Instant timeNow = Instant.now();
+    History history2 = new History(id2, tisReferenceInfo, FORM_UPDATED, recipientInfo,
+        templateInfo, null, timeNow, Instant.MIN, SENT, null, null);
+
+    ObjectId id3 = ObjectId.get();
+    History history3 = new History(id3, tisReferenceInfo, FORM_UPDATED, recipientInfo,
+        templateInfo, null, Instant.MAX, Instant.MIN, SENT, null, null);
+
+    ArgumentCaptor<Query> queryCaptor = ArgumentCaptor.captor();
+    when(mongoTemplate.find(queryCaptor.capture(), eq(History.class))).thenReturn(
+        List.of(history1, history2, history3));
+    when(mongoTemplate.count(queryCaptor.capture(), eq(History.class))).thenReturn(3L);
+    when(templateService.getTemplatePath(EMAIL, templateInfo.name(), templateInfo.version()))
+        .thenReturn("path");
+    when(templateService.process(anyString(), any(), (Map<String, Object>) any()))
+        .thenReturn("subject text");
+
+    Page<HistoryDto> dtos = service.findAllSentInPageForTrainee(TRAINEE_ID, Map.of(),
+        PageRequest.of(1, 1));
+
+    assertThat("Unexpected total elements.", dtos.getTotalElements(), is(3L));
+    assertThat("Unexpected total pages.", dtos.getTotalPages(), is(3));
+    assertThat("Unexpected pageable.", dtos.getPageable().isPaged(), is(true));
+    assertThat("Unexpected page number.", dtos.getPageable().getPageNumber(), is(1));
+    assertThat("Unexpected page size.", dtos.getPageable().getPageSize(), is(1));
+
+    List<Query> queries = queryCaptor.getAllValues();
+    assertThat("Unexpected limited flag.", queries.get(0).isLimited(), is(true));
+    assertThat("Unexpected limit.", queries.get(0).getLimit(), is(1));
+    assertThat("Unexpected skip.", queries.get(0).getSkip(), is(1L));
+
+    // The second query is the count, which is unpaged.
+    assertThat("Unexpected limited flag.", queries.get(1).isLimited(), is(false));
+    assertThat("Unexpected limit.", queries.get(1).getLimit(), is(0));
+    assertThat("Unexpected skip.", queries.get(1).getSkip(), is(-1L));
+  }
+
+  @Test
+  void shouldGetUnpagedHistorySummaries() {
+    RecipientInfo recipientInfo = new RecipientInfo(TRAINEE_ID, EMAIL, TRAINEE_CONTACT);
+    TemplateInfo templateInfo = new TemplateInfo(TEMPLATE_NAME, TEMPLATE_VERSION,
+        TEMPLATE_VARIABLES);
+    TisReferenceInfo tisReferenceInfo = new TisReferenceInfo(TIS_REFERENCE_TYPE, TIS_REFERENCE_ID);
+
+    ObjectId id1 = ObjectId.get();
+    History history1 = new History(id1, tisReferenceInfo, FORM_UPDATED, recipientInfo,
+        templateInfo, null, Instant.MIN, Instant.MAX, SENT, null, null);
+
+    ObjectId id2 = ObjectId.get();
+    Instant timeNow = Instant.now();
+    History history2 = new History(id2, tisReferenceInfo, FORM_UPDATED, recipientInfo,
+        templateInfo, null, timeNow, Instant.MIN, SENT, null, null);
+
+    ObjectId id3 = ObjectId.get();
+    History history3 = new History(id3, tisReferenceInfo, FORM_UPDATED, recipientInfo,
+        templateInfo, null, Instant.MAX, Instant.MIN, SENT, null, null);
+
+    ArgumentCaptor<Query> queryCaptor = ArgumentCaptor.captor();
+    when(mongoTemplate.find(queryCaptor.capture(), eq(History.class))).thenReturn(
+        List.of(history1, history2, history3));
+    when(mongoTemplate.find(queryCaptor.capture(), eq(History.class))).thenReturn(
+        List.of(history1, history2, history3));
+    when(mongoTemplate.count(queryCaptor.capture(), eq(History.class))).thenReturn(3L);
+    when(templateService.getTemplatePath(EMAIL, templateInfo.name(), templateInfo.version()))
+        .thenReturn("path");
+    when(templateService.process(anyString(), any(), (Map<String, Object>) any()))
+        .thenReturn("subject text");
+
+    Page<HistoryDto> dtos = service.findAllSentInPageForTrainee(TRAINEE_ID, Map.of(),
+        Pageable.unpaged());
+
+    assertThat("Unexpected total elements.", dtos.getTotalElements(), is(3L));
+    assertThat("Unexpected total pages.", dtos.getTotalPages(), is(1));
+    assertThat("Unexpected pageable.", dtos.getPageable().isPaged(), is(false));
+
+    Query query = queryCaptor.getValue();
+    assertThat("Unexpected limited flag.", query.isLimited(), is(false));
+    assertThat("Unexpected limit.", query.getLimit(), is(0));
+    assertThat("Unexpected skip.", query.getSkip(), is(0L));
+
+    verify(mongoTemplate, never()).count(any(), eq(History.class));
+  }
+
+  @Test
+  void shouldIncludeOnlySentWhenGettingHistorySummaries() {
+    service.findAllSentInPageForTrainee(TRAINEE_ID, Map.of(), PageRequest.of(1, 1));
+
+    ArgumentCaptor<Query> queryCaptor = ArgumentCaptor.captor();
+    verify(mongoTemplate).find(queryCaptor.capture(), eq(History.class));
+    verify(mongoTemplate).count(queryCaptor.capture(), eq(History.class));
+
+    queryCaptor.getAllValues().forEach(query -> {
+      Document queryObject = query.getQueryObject();
+      assertThat("Unexpected filter count.", queryObject.keySet(), hasSize(2));
+
+      Document sentAtFilter = queryObject.get("sentAt", Document.class);
+      assertThat("Unexpected filter key count.", sentAtFilter.keySet(), hasSize(1));
+      assertThat("Unexpected filter key.", sentAtFilter.keySet(), hasItem("$lt"));
+      assertThat("Unexpected filter value.", sentAtFilter.get("$lt"), Matchers.notNullValue());
+    });
+  }
+
+  @Test
+  void shouldIncludeOnlyHistoriesOfTheTraineeWhenGettingHistorySummaries() {
+    service.findAllSentInPageForTrainee(TRAINEE_ID, Map.of(), PageRequest.of(1, 1));
+
+    ArgumentCaptor<Query> queryCaptor = ArgumentCaptor.captor();
+    verify(mongoTemplate).find(queryCaptor.capture(), eq(History.class));
+    verify(mongoTemplate).count(queryCaptor.capture(), eq(History.class));
+
+    queryCaptor.getAllValues().forEach(query -> {
+      Document queryObject = query.getQueryObject();
+      assertThat("Unexpected filter count.", queryObject.keySet(), hasSize(2));
+      assertThat("Unexpected filter value.", queryObject.get("recipient.id"), is(TRAINEE_ID));
+    });
+  }
+
+  @Test
+  void shouldApplyFiltersWhenGettingHistorySummaries() {
+    service.findAllSentInPageForTrainee(TRAINEE_ID, Map.of(
+        "type", "filterValue1",
+        "status", "filterValue2"
+    ), PageRequest.of(1, 1));
+
+    ArgumentCaptor<Query> queryCaptor = ArgumentCaptor.captor();
+    verify(mongoTemplate).find(queryCaptor.capture(), eq(History.class));
+    verify(mongoTemplate).count(queryCaptor.capture(), eq(History.class));
+
+    queryCaptor.getAllValues().forEach(query -> {
+      Document queryObject = query.getQueryObject();
+      assertThat("Unexpected filter count.", queryObject.keySet(), hasSize(4));
+      assertThat("Unexpected type filter value.", queryObject.get("recipient.type"),
+          is("filterValue1"));
+      assertThat("Unexpected status filter value.", queryObject.get("status"),
+          is("filterValue2"));
+    });
+  }
+
+  @ParameterizedTest
+  @CsvSource(delimiter = '|', textBlock = """
+      status | status
+      subject | type
+      sentAt | sentAt
+      contact | recipient.contact
+      """)
+  void shouldApplySortWhenGettingUnpagedHistorySummaries(String external, String internal) {
+    service.findAllSentInPageForTrainee(TRAINEE_ID, Map.of(),
+        Pageable.unpaged(Sort.by(Sort.Order.asc(external))));
+
+    ArgumentCaptor<Query> queryCaptor = ArgumentCaptor.captor();
+    verify(mongoTemplate).find(queryCaptor.capture(), eq(History.class));
+
+    Query query = queryCaptor.getValue();
+    assertThat("Unexpected sorted flag.", query.isSorted(), is(true));
+
+    Document sortObject = query.getSortObject();
+    assertThat("Unexpected sort count.", sortObject.keySet(), hasSize(1));
+    assertThat("Unexpected sort direction.", sortObject.get(internal), is(1));
+
+    verify(mongoTemplate, never()).count(any(), eq(History.class));
+  }
+
+  @Test
+  void shouldApplySearchFiltersWhenGettingHistorySummaries() {
+    service.findAllSentInPageForTrainee(TRAINEE_ID, Map.of(
+        "keyword", "filterValue"
+    ), PageRequest.of(1, 1));
+
+    ArgumentCaptor<Query> queryCaptor = ArgumentCaptor.captor();
+    verify(mongoTemplate).find(queryCaptor.capture(), eq(History.class));
+    verify(mongoTemplate).count(queryCaptor.capture(), eq(History.class));
+
+    queryCaptor.getAllValues().forEach(query -> {
+      Document queryObject = query.getQueryObject();
+      assertThat("Unexpected filter key.", queryObject.keySet(), hasItem("$or"));
+
+      List<Document> keywordFilter = queryObject.get("$or", List.class);
+      assertThat("Unexpected filter value count.", keywordFilter, hasSize(4));
+
+      Set<String> searchFields = Set.of("status", "type", "sentAt", "recipient.contact");
+      Set<String> foundFields = new HashSet<>();
+
+      for (Document filter : keywordFilter) {
+        for (String key : searchFields) {
+          if (filter.containsKey(key) && filter.get(key) != null) {
+            foundFields.add(key);
+            assertThat("Status filter value mismatch.", filter.get(key).toString(),
+                containsString("filterValue"));
+          }
+        }
+      }
+      // make sure all search fields are included
+      assertThat("Missing filters for some fields.", foundFields, equalTo(searchFields));
+    });
+  }
+
+  @Test
   void shouldFindNoSentHistoryForTraineeRefAndTypeWhenNotificationsNotExist() {
     when(repository.findAllByRecipient_IdOrderBySentAtDesc(TRAINEE_ID)).thenReturn(List.of());
 
@@ -866,6 +1105,12 @@ class HistoryServiceTest {
     History history1 = new History(id1, tisReferenceInfo, notificationType, recipientInfo,
         templateInfo, null, Instant.MIN, Instant.MAX, SENT, null, null);
 
+    String templatePath = "email/test/template/v1.2.3";
+    when(templateService.getTemplatePath(EMAIL, TEMPLATE_NAME, TEMPLATE_VERSION)).thenReturn(
+        templatePath);
+    when(templateService.process(templatePath, Set.of("subject"), TEMPLATE_VARIABLES)).thenReturn(
+        "Test Subject");
+
     when(repository.findAllByRecipient_IdOrderBySentAtDesc(TRAINEE_ID)).thenReturn(
         List.of(history1));
 
@@ -874,7 +1119,7 @@ class HistoryServiceTest {
     assertThat("Unexpected history count.", historyDtos.size(), is(1));
 
     HistoryDto historyDto = historyDtos.get(0);
-    assertThat("Unexpected history subject text.", historyDto.subjectText(), nullValue());
+    assertThat("Unexpected history subject text.", historyDto.subjectText(), notNullValue());
   }
 
   @ParameterizedTest
@@ -1071,14 +1316,21 @@ class HistoryServiceTest {
         recipientInfo, templateInfo, null, Instant.now(), null, UNREAD, null, null,
         existingTimestamp);
 
+    String templatePath = "email/test/template/v1.2.3";
+    when(templateService.getTemplatePath(EMAIL, TEMPLATE_NAME, TEMPLATE_VERSION)).thenReturn(
+        templatePath);
+    when(templateService.process(templatePath, Set.of("subject"), TEMPLATE_VARIABLES)).thenReturn(
+        "Test Subject");
+
     when(repository.findById(notificationId)).thenReturn(Optional.of(foundHistory));
     when(repository.updateStatusIfNewer(notificationId, olderTimestamp, SENT, null)).thenReturn(0);
 
     Optional<HistoryDto> updatedHistory = service.updateStatus(NOTIFICATION_ID, SENT, null,
         olderTimestamp);
+    HistoryDto expectedHistory = mapper.toDto(foundHistory, "Test Subject");
 
     assertThat("Unexpected updated history.", updatedHistory,
-        is(Optional.of(mapper.toDto(foundHistory))));
+        is(Optional.of(expectedHistory)));
     verify(repository, never()).save(any());
     verify(repository).updateStatusIfNewer(notificationId, olderTimestamp, SENT, null);
     verifyNoInteractions(eventBroadcastService);
@@ -1104,6 +1356,12 @@ class HistoryServiceTest {
         recipientInfo, templateInfo, null, Instant.now(), null, SENT, statusDetail, null,
         newerTimestamp);
 
+    String templatePath = "email/test/template/v1.2.3";
+    when(templateService.getTemplatePath(EMAIL, TEMPLATE_NAME, TEMPLATE_VERSION)).thenReturn(
+        templatePath);
+    when(templateService.process(templatePath, Set.of("subject"), TEMPLATE_VARIABLES)).thenReturn(
+        "Test Subject");
+
     when(repository.findById(notificationId)).thenReturn(Optional.of(foundHistory));
     when(repository.updateStatusIfNewer(notificationId, newerTimestamp, SENT, statusDetail))
         .thenReturn(1);
@@ -1111,9 +1369,10 @@ class HistoryServiceTest {
 
     Optional<HistoryDto> result = service.updateStatus(NOTIFICATION_ID, SENT, statusDetail,
         newerTimestamp);
+    HistoryDto expectedHistory = mapper.toDto(updatedHistory, "Test Subject");
 
     assertThat("Unexpected updated history.", result,
-        is(Optional.of(mapper.toDto(updatedHistory))));
+        is(Optional.of(expectedHistory)));
     verify(repository, never()).save(any());
     verify(repository).updateStatusIfNewer(notificationId, newerTimestamp, SENT, statusDetail);
     verify(eventBroadcastService).publishNotificationsEvent(updatedHistory);

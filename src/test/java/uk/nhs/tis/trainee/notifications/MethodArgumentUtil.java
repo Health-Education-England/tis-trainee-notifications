@@ -49,7 +49,8 @@ public class MethodArgumentUtil {
    * @throws IOException If the template files could not be traversed.
    */
   public static Stream<Arguments> getEmailTemplateTypeAndVersions() throws IOException {
-    File emailRoot = ResourceUtils.getFile(CLASSPATH_URL_PREFIX + "templates/email/");
+    String resourcePath = "src/main/resources/templates/email";
+    File emailRoot = ResourceUtils.getFile(resourcePath);
     List<Arguments> arguments = new ArrayList<>();
 
     for (NotificationType type : NotificationType.values()) {

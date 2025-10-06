@@ -26,9 +26,14 @@ import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.READ;
 import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.UNREAD;
 
 import java.io.IOException;
-import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
+import org.springframework.data.web.PagedModel;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -37,6 +42,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import uk.nhs.tis.trainee.notifications.api.util.AuthTokenUtil;
 import uk.nhs.tis.trainee.notifications.dto.HistoryDto;
@@ -69,8 +75,11 @@ public class TraineeHistoryResource {
    * @return The found history, may be empty.
    */
   @GetMapping
-  ResponseEntity<List<HistoryDto>> getTraineeHistory(
-      @RequestHeader(HttpHeaders.AUTHORIZATION) String token) {
+  ResponseEntity<PagedModel<HistoryDto>> getTraineeHistory(
+      @RequestHeader(HttpHeaders.AUTHORIZATION) String token,
+      @RequestParam(required = false) Map<String, String> params,
+      @PageableDefault(size = Integer.MAX_VALUE, sort = "sentAt",
+          direction = Sort.Direction.DESC) Pageable pageable) {
     log.info("Retrieving notification history for the authorized trainee.");
     String traineeId = getTraineeId(token);
 
@@ -79,9 +88,9 @@ public class TraineeHistoryResource {
     }
 
     log.info("Retrieving notification history for trainee {}.", traineeId);
-    List<HistoryDto> history = service.findAllSentForTrainee(traineeId);
-    log.info("Found {} notifications for trainee {}.", history.size(), traineeId);
-    return ResponseEntity.ok(history);
+    Page<HistoryDto> historyPage = service.findAllSentInPageForTrainee(traineeId, params, pageable);
+    log.info("Found {} notifications for trainee {}.", historyPage.getTotalElements(), traineeId);
+    return ResponseEntity.ok(new PagedModel<>(historyPage));
   }
 
   /**

@@ -32,14 +32,24 @@ import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.SENT;
 import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.UNREAD;
 
 import java.time.Instant;
+import java.util.AbstractMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.regex.Pattern;
 import lombok.extern.slf4j.Slf4j;
 import org.bson.types.ObjectId;
 import org.springframework.data.domain.Example;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.query.Criteria;
+import org.springframework.data.mongodb.core.query.Query;
+import org.springframework.data.support.PageableExecutionUtils;
 import org.springframework.stereotype.Service;
 import uk.nhs.tis.trainee.notifications.dto.HistoryDto;
 import uk.nhs.tis.trainee.notifications.mapper.HistoryMapper;
@@ -63,11 +73,24 @@ public class HistoryService {
       EMAIL, Set.of(FAILED, PENDING, SENT),
       IN_APP, Set.of(ARCHIVED, READ, SCHEDULED, UNREAD)
   );
+  private static final String STATUS_PROPERTY = "status";
+  private static final String SUBJECT_PROPERTY = "subject";
+  private static final String SENTAT_PROPERTY = "sentAt";
+  private static final String CONTACT_PROPERTY = "contact";
+  private static final String TYPE_PROPERTY = "type";
+  private static final String STATUS_FIELD = "status";
+  private static final String SUBJECT_FIELD = "subject";
+  private static final String SENTAT_FIELD = "sentAt";
+  private static final String CONTACT_FIELD = "recipient.contact";
+  private static final String TYPE_FIELD = "type";
+  private static final String RECIPIENT_TYPE_FIELD = "recipient.type";
+  private static final String RECIPIENT_ID_FIELD = "recipient.id";
 
   private final HistoryRepository repository;
   private final TemplateService templateService;
   private final EventBroadcastService eventBroadcastService;
   private final HistoryMapper mapper;
+  private final MongoTemplate mongoTemplate;
 
   /**
    * Create an instance of the history service.
@@ -77,11 +100,13 @@ public class HistoryService {
    * @param mapper          The mapper between History data types.
    */
   public HistoryService(HistoryRepository repository, TemplateService templateService,
-      EventBroadcastService eventBroadcastService, HistoryMapper mapper) {
+      EventBroadcastService eventBroadcastService, HistoryMapper mapper,
+      MongoTemplate mongoTemplate) {
     this.repository = repository;
     this.templateService = templateService;
     this.eventBroadcastService = eventBroadcastService;
     this.mapper = mapper;
+    this.mongoTemplate = mongoTemplate;
   }
 
   /**
@@ -233,6 +258,32 @@ public class HistoryService {
   }
 
   /**
+   * Return page of all sent historic notifications for the given Trainee.
+   *
+   * @param traineeId The ID of the trainee to get notifications for.
+   * @return The found notifications, empty if none found.
+   */
+  public Page<HistoryDto> findAllSentInPageForTrainee(String traineeId,
+                                                      Map<String, String> filterParams,
+                                                      Pageable pageable) {
+    Query query = buildHistoryFilteredQuery(traineeId, filterParams, pageable);
+    List<History> historyList = mongoTemplate.find(query, History.class);
+    Page<History> historyPage = PageableExecutionUtils.getPage(historyList, pageable,
+        () -> mongoTemplate.count(Query.of(query).limit(-1).skip(-1), History.class));
+
+    if (pageable.isPaged()) {
+      log.info("Found {} total notifications, returning page {} of {}",
+          historyPage.getTotalElements(),
+          pageable.getPageNumber(),
+          historyPage.getTotalPages());
+    } else {
+      log.info("Found {} total notifications, returning all results",
+          historyPage.getTotalElements());
+    }
+    return historyPage.map(this::toDto);
+  }
+
+  /**
    * Find sent email notification for the given Trainee by reference and type from DB.
    *
    * @param traineeId        The ID of the trainee to get notifications for.
@@ -255,7 +306,7 @@ public class HistoryService {
 
     Example<History> example = Example.of(history);
 
-    Sort sort = Sort.by("sentAt").descending();
+    Sort sort = Sort.by(SENTAT_FIELD).descending();
     return repository.findAll(example, sort);
   }
 
@@ -354,13 +405,10 @@ public class HistoryService {
   private HistoryDto toDto(History history) {
     String subject = null;
     NotificationStatus status = history.status();
+    subject = rebuildMessage(history, Set.of(SUBJECT_FIELD)).orElse("");
 
-    if (history.recipient().type() == IN_APP) {
-      subject = rebuildMessage(history, Set.of("subject")).orElse("");
-
-      if (history.sentAt().isAfter(Instant.now())) {
-        status = SCHEDULED;
-      }
+    if (history.recipient().type() == IN_APP && history.sentAt().isAfter(Instant.now())) {
+      status = SCHEDULED;
     }
 
     if (subject == null || subject.isEmpty()) {
@@ -446,5 +494,86 @@ public class HistoryService {
     });
     log.info("Moved {} notification histories from trainee [{}] to trainee [{}]",
         histories.size(), fromTraineeId, toTraineeId);
+  }
+
+  /**
+   * Build a notification filtered query, which applies notification type filters.
+   *
+   * @param filterParams The user-supplied filters to apply, unsupported fields will be dropped.
+   * @param pageable     The paging and sorting to apply to the query.
+   * @return The build query.
+   */
+  private Query buildHistoryFilteredQuery(String traineeId, Map<String, String> filterParams,
+                                          Pageable pageable) {
+    // Translate sort field(s).
+    Sort sort = pageable.getSort().isSorted()
+        ? Sort.by(pageable.getSort().stream()
+        .map(order -> {
+          String property = switch (order.getProperty()) {
+            case STATUS_PROPERTY -> STATUS_FIELD;
+            case SUBJECT_PROPERTY -> TYPE_FIELD;
+            case SENTAT_PROPERTY -> SENTAT_FIELD;
+            case CONTACT_PROPERTY -> CONTACT_FIELD;
+            default -> null;
+          };
+          return property == null ? null : order.withProperty(property);
+        })
+        .filter(Objects::nonNull)
+        .toList())
+        : Sort.by(Sort.Order.desc(SENTAT_FIELD)); // default sort by sentAt descending
+
+    Query query;
+
+    if (pageable.isUnpaged()) {
+      query = new Query().with(sort);
+    } else {
+      // Add ID sort to ensure consistent pagination when values are duplicated.
+      sort = sort.and(Sort.by("id"));
+      pageable = PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(), sort);
+      query = new Query().with(pageable);
+    }
+
+    // Restrict results to the user's traineeId.
+    query.addCriteria(Criteria.where(RECIPIENT_ID_FIELD).is(traineeId));
+    // Restrict results with sentAt before
+    query.addCriteria(Criteria.where(SENTAT_FIELD).lt(Instant.now()));
+
+    // Handle fix-value filters.
+    filterParams.entrySet().stream()
+        .filter(e -> e.getValue() != null && !e.getValue().isBlank())
+        .map(e -> {
+          String property = switch (e.getKey()) {
+            case TYPE_PROPERTY -> RECIPIENT_TYPE_FIELD;
+            case STATUS_PROPERTY -> STATUS_FIELD;
+            default -> null;
+          };
+          return property == null ? null : new AbstractMap.SimpleEntry<>(property, e.getValue());
+        })
+        .filter(Objects::nonNull)
+        .forEach(e -> {
+          String key = e.getKey();
+          String value = e.getValue();
+
+          if (value.contains(",")) {
+            String[] values = value.split(",");
+            query.addCriteria(Criteria.where(key).in((Object[]) values));
+          } else {
+            query.addCriteria(Criteria.where(key).is(value));
+          }
+        });
+
+    // Handle search filter on multiple fields.
+    String keyword = filterParams.get("keyword");
+    if (keyword != null && !keyword.isBlank()) {
+      String pattern = ".*" + Pattern.quote(keyword) + ".*";
+      query.addCriteria(new Criteria().orOperator(
+          Criteria.where(STATUS_FIELD).regex(pattern, "i"),
+          Criteria.where(TYPE_FIELD).regex(pattern, "i"),
+          Criteria.where(SENTAT_FIELD).regex(pattern, "i"),
+          Criteria.where(CONTACT_FIELD).regex(pattern, "i")
+      ));
+    }
+
+    return query;
   }
 }

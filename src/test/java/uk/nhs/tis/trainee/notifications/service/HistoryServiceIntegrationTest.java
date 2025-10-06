@@ -92,8 +92,8 @@ class HistoryServiceIntegrationTest {
 
   private static final ObjectId NOTIFICATION_ID = ObjectId.get();
 
-  private static final String TEMPLATE_NAME = "email/test-template";
-  private static final String TEMPLATE_VERSION = "v1.2.3";
+  private static final String TEMPLATE_NAME = "ltft-updated";
+  private static final String TEMPLATE_VERSION = "v1.0.0";
   private static final Map<String, Object> TEMPLATE_VARIABLES = Map.of(
       "key1", "value1",
       "key2", "value2",
