@@ -790,7 +790,7 @@ class HistoryServiceTest {
       Document sentAtFilter = queryObject.get("sentAt", Document.class);
       assertThat("Unexpected filter key count.", sentAtFilter.keySet(), hasSize(1));
       assertThat("Unexpected filter key.", sentAtFilter.keySet(), hasItem("$lt"));
-      assertThat("Unexpected filter value.", sentAtFilter.get("$lt"), Matchers.notNullValue());
+      assertThat("Unexpected filter value.", sentAtFilter.get("$lt"), notNullValue());
     });
   }
 
