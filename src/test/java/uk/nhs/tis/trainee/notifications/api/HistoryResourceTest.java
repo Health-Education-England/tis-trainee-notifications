@@ -38,6 +38,7 @@ import static uk.nhs.tis.trainee.notifications.model.NotificationType.FORM_UPDAT
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import org.bson.types.ObjectId;
@@ -166,11 +167,13 @@ class HistoryResourceTest {
     String fromTraineeId = "123";
     String toTraineeId = "456";
 
+    Map<String, Integer> serviceResponse = Map.of("dummy", 1);
+    when(service.moveNotifications(fromTraineeId, toTraineeId)).thenReturn(serviceResponse);
+
     mockMvc.perform(patch("/api/history/move/{fromTraineeId}/to/{toTraineeId}",
             fromTraineeId, toTraineeId))
         .andExpect(status().isOk())
-        .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-        .andExpect(jsonPath("$").value(true));
+        .andExpect(content().string("{\"dummy\":1}"));
 
     verify(service).moveNotifications(fromTraineeId, toTraineeId);
   }

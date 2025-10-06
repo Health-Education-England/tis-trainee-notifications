@@ -66,7 +66,6 @@ import java.util.Set;
 import java.util.UUID;
 import org.bson.Document;
 import org.bson.types.ObjectId;
-import org.hamcrest.Matchers;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -791,7 +790,7 @@ class HistoryServiceTest {
       Document sentAtFilter = queryObject.get("sentAt", Document.class);
       assertThat("Unexpected filter key count.", sentAtFilter.keySet(), hasSize(1));
       assertThat("Unexpected filter key.", sentAtFilter.keySet(), hasItem("$lt"));
-      assertThat("Unexpected filter value.", sentAtFilter.get("$lt"), Matchers.notNullValue());
+      assertThat("Unexpected filter value.", sentAtFilter.get("$lt"), notNullValue());
     });
   }
 
@@ -1382,7 +1381,10 @@ class HistoryServiceTest {
   void shouldNotMoveNotificationsWhenNoHistoryExists() {
     when(repository.findAllByRecipient_IdOrderBySentAtDesc("oldId")).thenReturn(List.of());
 
-    service.moveNotifications("oldId", "newId");
+    Map<String, Integer> movedStats = service.moveNotifications("oldId", "newId");
+
+    Map<String, Integer> expectedMap = Map.of("notification", 0);
+    assertThat("Unexpected moved notification count.", movedStats, is(expectedMap));
 
     verify(repository).findAllByRecipient_IdOrderBySentAtDesc("oldId");
     verifyNoMoreInteractions(repository);
@@ -1416,7 +1418,10 @@ class HistoryServiceTest {
         .thenReturn(updatedHistory1)
         .thenReturn(updatedHistory2);
 
-    service.moveNotifications("oldId", "newId");
+    Map<String, Integer> movedStats = service.moveNotifications("oldId", "newId");
+
+    Map<String, Integer> expectedMap = Map.of("notification", 2);
+    assertThat("Unexpected moved notification count.", movedStats, is(expectedMap));
 
     ArgumentCaptor<History> savedHistoryCaptor = ArgumentCaptor.forClass(History.class);
     verify(repository, times(2)).save(savedHistoryCaptor.capture());

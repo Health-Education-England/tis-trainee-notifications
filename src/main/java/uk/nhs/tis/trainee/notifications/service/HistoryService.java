@@ -39,6 +39,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.regex.Pattern;
+import java.util.concurrent.atomic.AtomicReference;
 import lombok.extern.slf4j.Slf4j;
 import org.bson.types.ObjectId;
 import org.springframework.data.domain.Example;
@@ -479,21 +480,25 @@ public class HistoryService {
    *
    * @param fromTraineeId The trainee ID to move notifications from.
    * @param toTraineeId   The trainee ID to move notifications to.
+   * @return The map of the number of notifications moved.
    */
-  public void moveNotifications(String fromTraineeId, String toTraineeId) {
+  public Map<String, Integer> moveNotifications(String fromTraineeId, String toTraineeId) {
+    AtomicReference<Integer> movedCount = new AtomicReference<>(0);
     List<History> histories = findAllHistoryForTrainee(fromTraineeId);
 
     histories.forEach(h -> {
-      log.info("Moving notification history [{}] from trainee [{}] to trainee [{}]",
+      log.debug("Moving notification history [{}] from trainee [{}] to trainee [{}]",
           h.id(), fromTraineeId, toTraineeId);
       // note recipient email address is not changed,
       // neither is any other part of the notification (e.g. template.personId)
       History.RecipientInfo newRecipient
           = new History.RecipientInfo(toTraineeId, h.recipient().type(), h.recipient().contact());
       this.save(h.withRecipient(newRecipient));
+      movedCount.getAndSet(movedCount.get() + 1);
     });
     log.info("Moved {} notification histories from trainee [{}] to trainee [{}]",
-        histories.size(), fromTraineeId, toTraineeId);
+        movedCount, fromTraineeId, toTraineeId);
+    return Map.of("notification", movedCount.get());
   }
 
   /**
