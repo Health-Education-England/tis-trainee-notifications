@@ -21,12 +21,10 @@
 
 package uk.nhs.tis.trainee.notifications.repository;
 
-import jakarta.transaction.Transactional;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import org.bson.types.ObjectId;
-import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.data.mongodb.repository.Query;
 import org.springframework.data.mongodb.repository.Update;
@@ -99,8 +97,6 @@ public interface HistoryRepository extends
    * @return The number of updated documents (zero if no matching object or if new status
    *         update is older than the existing one).
    */
-  @Modifying
-  @Transactional
   @Query("{ '_id': ?0, "
       + "'$or': [ { 'latestStatusEventAt': null }, { 'latestStatusEventAt': { '$lte': ?1 } } ] }")
   @Update("{ '$set': { 'status': ?2, 'statusDetail': ?3, 'latestStatusEventAt': ?1 } }")

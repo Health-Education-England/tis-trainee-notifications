@@ -29,5 +29,4 @@ import org.testcontainers.utility.DockerImageName;
 public class TestContainerConfiguration {
 
   public static final DockerImageName MONGODB = DockerImageName.parse("mongo:5");
-  public static final DockerImageName MYSQL = DockerImageName.parse("mysql:8.2");
 }

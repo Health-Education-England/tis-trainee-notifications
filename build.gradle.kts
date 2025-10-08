@@ -34,7 +34,6 @@ dependencies {
   implementation("org.springframework.boot:spring-boot-starter-actuator")
   implementation("org.springframework.boot:spring-boot-starter-data-mongodb")
   implementation("org.springframework.boot:spring-boot-starter-data-redis")
-  implementation("org.springframework.boot:spring-boot-starter-data-jpa")
   implementation("org.springframework.boot:spring-boot-starter-mail")
   implementation("org.springframework.boot:spring-boot-starter-thymeleaf")
   implementation("org.springframework.boot:spring-boot-starter-web")
@@ -47,10 +46,6 @@ dependencies {
   implementation("io.awspring.cloud:spring-cloud-aws-starter-sqs")
   implementation("software.amazon.awssdk:cognitoidentityprovider")
   implementation(libs.bundles.aws.xray)
-
-  implementation("com.mysql:mysql-connector-j")
-  implementation("org.flywaydb:flyway-core")
-  implementation("org.flywaydb:flyway-mysql")
 
   // Lombok
   compileOnly("org.projectlombok:lombok")
@@ -69,13 +64,11 @@ dependencies {
   testImplementation("org.springframework.boot:spring-boot-starter-test")
   testImplementation("org.springframework.cloud:spring-cloud-starter-bootstrap")
   testImplementation("com.playtika.testcontainers:embedded-redis:3.1.16")
-  testImplementation("com.h2database:h2")
 
   testImplementation("org.springframework.boot:spring-boot-testcontainers")
   testImplementation("org.testcontainers:junit-jupiter")
   testImplementation("org.testcontainers:localstack")
   testImplementation("org.testcontainers:mongodb")
-  testImplementation("org.testcontainers:mysql")
   testImplementation("org.awaitility:awaitility")
 
   testImplementation(libs.jsoup)
