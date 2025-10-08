@@ -813,7 +813,6 @@ class HistoryServiceIntegrationTest {
   @Test
   void shouldMoveNotificationsFromOneTraineeToAnother() {
     String fromTraineeId = "40";
-    String toTraineeId = "50";
     History history1 = getBasicHistory(fromTraineeId, "old@test.com", EMAIL,
         NotificationType.PROGRAMME_CREATED, Instant.now());
     History history2 = getBasicHistory(fromTraineeId, "old@test.com", IN_APP,
@@ -827,6 +826,7 @@ class HistoryServiceIntegrationTest {
     List<History> beforeMove = service.findAllHistoryForTrainee(fromTraineeId);
     assertThat("Unexpected notifications before move.", beforeMove.size(), is(2));
 
+    String toTraineeId = "50";
     Map<String, Integer> movedStats = service.moveNotifications(fromTraineeId, toTraineeId);
 
     Map<String, Integer> expectedMap = Map.of("notification", 2);

@@ -21,12 +21,18 @@
 
 package uk.nhs.tis.trainee.notifications.repository;
 
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.is;
 import static uk.nhs.tis.trainee.notifications.TestContainerConfiguration.MYSQL;
 
 import io.awspring.cloud.s3.S3Template;
 import io.awspring.cloud.sqs.operations.SqsTemplate;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
@@ -80,5 +86,26 @@ class FlywayMigrationsTest implements TestExecutionListener {
   @Test
   void validateFlywayMigrations() {
     flyway.validate();
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {
+      "QRTZ_FIRED_TRIGGERS",
+      "QRTZ_PAUSED_TRIGGER_GRPS",
+      "QRTZ_SCHEDULER_STATE",
+      "QRTZ_LOCKS",
+      "QRTZ_SIMPLE_TRIGGERS",
+      "QRTZ_SIMPROP_TRIGGERS",
+      "QRTZ_CRON_TRIGGERS",
+      "QRTZ_BLOB_TRIGGERS",
+      "QRTZ_TRIGGERS",
+      "QRTZ_JOB_DETAILS",
+      "QRTZ_CALENDARS"
+  })
+  void shouldHaveDroppedQuartzTablesAfterAllMigrationsRun(String tableName) throws SQLException {
+    try (var connection = mySqlContainer.createConnection("")) {
+      ResultSet tables = connection.getMetaData().getTables(null, null, tableName, null);
+      assertThat("Unexpected table found.", tables.first(), is(false));
+    }
   }
 }

@@ -44,7 +44,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.regex.Pattern;
 import lombok.extern.slf4j.Slf4j;
-import org.quartz.JobDataMap;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
@@ -160,12 +159,11 @@ public class ResendGoogleMailFailures {
    */
   private boolean scheduleEmail(History failure) {
     Map<String, Object> templateVariables = failure.template().variables();
-    JobDataMap jobData = new JobDataMap(templateVariables);
     String jobId = "%s-%s".formatted(failure.type(), failure.tisReference().id());
 
     try {
-      notificationService.removeNotification(jobId);
-      notificationService.scheduleNotification(jobId, jobData, Date.from(Instant.now()), WINDOW);
+      notificationService.scheduleNotification(jobId, templateVariables, Date.from(Instant.now()),
+          WINDOW);
       return true;
     } catch (Exception e) {
       log.error("Failed to schedule notification retry.", e);

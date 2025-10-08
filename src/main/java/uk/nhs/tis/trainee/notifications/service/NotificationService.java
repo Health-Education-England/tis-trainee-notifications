@@ -21,8 +21,6 @@
 
 package uk.nhs.tis.trainee.notifications.service;
 
-import static org.quartz.JobBuilder.newJob;
-import static org.quartz.TriggerBuilder.newTrigger;
 import static uk.nhs.tis.trainee.notifications.model.HrefType.ABSOLUTE_URL;
 import static uk.nhs.tis.trainee.notifications.model.HrefType.NON_HREF;
 import static uk.nhs.tis.trainee.notifications.model.HrefType.PROTOCOL_EMAIL;
@@ -53,14 +51,6 @@ import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.bson.types.ObjectId;
-import org.quartz.Job;
-import org.quartz.JobDataMap;
-import org.quartz.JobDetail;
-import org.quartz.JobExecutionContext;
-import org.quartz.JobKey;
-import org.quartz.Scheduler;
-import org.quartz.SchedulerException;
-import org.quartz.Trigger;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpMethod;
@@ -87,7 +77,7 @@ import uk.nhs.tis.trainee.notifications.model.ProgrammeMembership;
  */
 @Slf4j
 @Component
-public class NotificationService implements Job {
+public class NotificationService {
 
   protected static final String DEFAULT_NO_CONTACT_MESSAGE = "your local office";
   protected static final List<String> DUMMY_USER_ROLES = List.of("Placeholder", "Dummy Record");
@@ -119,7 +109,6 @@ public class NotificationService implements Job {
   private final TemplateVersionsProperties templateVersions;
   private final String serviceUrl;
   private final String referenceUrl;
-  private final Scheduler scheduler;
   private final MessagingControllerService messagingControllerService;
   private final List<String> notificationsWhitelist;
   private final String timezone;
@@ -132,7 +121,6 @@ public class NotificationService implements Job {
    *
    * @param emailService               The Email Service to use.
    * @param restTemplate               The REST template.
-   * @param scheduler                  The messaging scheduler.
    * @param messagingControllerService The messaging controller service to control whether to
    *                                   dispatch messages.
    * @param templateVersions           The notification template versions.
@@ -144,8 +132,7 @@ public class NotificationService implements Job {
    */
   public NotificationService(EmailService emailService, HistoryService historyService,
       ProgrammeMembershipActionsService programmeMembershipActionService,
-      RestTemplate restTemplate, Scheduler scheduler,
-      MessagingControllerService messagingControllerService,
+      RestTemplate restTemplate, MessagingControllerService messagingControllerService,
       TemplateVersionsProperties templateVersions,
       @Value("${service.trainee.url}") String serviceUrl,
       @Value("${service.reference.url}") String referenceUrl,
@@ -156,7 +143,6 @@ public class NotificationService implements Job {
     this.historyService = historyService;
     this.programmeMembershipActionService = programmeMembershipActionService;
     this.restTemplate = restTemplate;
-    this.scheduler = scheduler;
     this.templateVersions = templateVersions;
     this.serviceUrl = serviceUrl;
     this.referenceUrl = referenceUrl;
@@ -174,14 +160,15 @@ public class NotificationService implements Job {
    * @param jobDetails The job details.
    * @return The result map with status details if successful.
    */
-  public Map<String, String> executeNow(String jobKey, JobDataMap jobDetails) {
+  public Map<String, String> executeNow(String jobKey, Map<String, Object> jobDetails) {
     Map<String, String> result = new HashMap<>();
     NotificationSummary notificationSummary = NotificationSummary.builder().build();
 
     // get job details according to notification type
-    String personId = jobDetails.getString(PERSON_ID_FIELD);
+    String personId = (String) jobDetails.get(PERSON_ID_FIELD);
 
     // Enrich User Account and Local Office details to jobDetails
+    // TODO: refactor to avoid the duplicate calls to getTraineeDetails and getCognitoAccountDetails
     enrichJobDetails(jobDetails);
 
     UserDetails userTraineeDetails = getTraineeDetails(personId);
@@ -191,9 +178,8 @@ public class NotificationService implements Job {
     NotificationType notificationType =
         NotificationType.valueOf(jobDetails.get(TEMPLATE_NOTIFICATION_TYPE_FIELD).toString());
 
-
     if (NotificationType.getActiveProgrammeUpdateNotificationTypes().contains(notificationType)) {
-      String programmeId = jobDetails.getString(TIS_ID_FIELD);
+      String programmeId = (String) jobDetails.get(TIS_ID_FIELD);
       Set<ActionDto> actions = programmeMembershipActionService.getActions(personId, programmeId);
       programmeMembershipActionService.addActionsToJobMap(jobDetails, actions);
       notificationSummary = programmeMembershipActionService.getNotificationSummary(jobDetails);
@@ -201,7 +187,7 @@ public class NotificationService implements Job {
     } else if (notificationType == NotificationType.PLACEMENT_UPDATED_WEEK_12
         || notificationType == NotificationType.PLACEMENT_ROLLOUT_2024_CORRECTION) {
 
-      String jobName = jobDetails.getString(PlacementService.PLACEMENT_TYPE_FIELD);
+      String jobName = (String) jobDetails.get(PlacementService.PLACEMENT_TYPE_FIELD);
       LocalDate startDate = (LocalDate) jobDetails.get(PlacementService.START_DATE_FIELD);
       History.TisReferenceInfo tisReferenceInfo = new TisReferenceInfo(PLACEMENT,
           jobDetails.get(PlacementService.TIS_ID_FIELD).toString());
@@ -212,7 +198,7 @@ public class NotificationService implements Job {
       log.info("Skipping unnecessary reminder for {} notification for {} ({}, starting {}) "
               + "to {}",
           jobKey,
-          jobDetails.getString(TIS_ID_FIELD), notificationSummary.jobName(),
+          jobDetails.get(TIS_ID_FIELD), notificationSummary.jobName(),
           notificationSummary.startDate(), userAccountDetails.email());
     }
 
@@ -230,15 +216,14 @@ public class NotificationService implements Job {
               notificationType, personId, notificationSummary.tisReferenceInfo().id())
               || notificationSummary.unnecessaryReminder();
           emailService.sendMessage(personId, userAccountDetails.email(), notificationType,
-              templateVersion.get(), jobDetails.getWrappedMap(),
-              notificationSummary.tisReferenceInfo(), justLogEmail);
+              templateVersion.get(), jobDetails, notificationSummary.tisReferenceInfo(),
+              justLogEmail);
         } catch (MessagingException e) {
           throw new RuntimeException(e);
         }
 
         log.info("Executed {} notification for {} ({}, starting {}) to {} using template {}",
-            jobKey,
-            jobDetails.getString(TIS_ID_FIELD), notificationSummary.jobName(),
+            jobKey, jobDetails.get(TIS_ID_FIELD), notificationSummary.jobName(),
             notificationSummary.startDate(), userAccountDetails.email(), templateVersion.get());
         Instant processedOn = Instant.now();
         result.put(JOB_RESULT_STATUS, "sent " + processedOn.toString());
@@ -250,48 +235,17 @@ public class NotificationService implements Job {
   }
 
   /**
-   * Execute a given scheduled notification job.
-   *
-   * @param jobExecutionContext The job execution context.
-   */
-  @Override
-  public void execute(JobExecutionContext jobExecutionContext) {
-    String jobKey = jobExecutionContext.getJobDetail().getKey().toString();
-    JobDataMap jobDetails = jobExecutionContext.getJobDetail().getJobDataMap();
-    Map<String, String> result = executeNow(jobKey, jobDetails);
-    if (result.get(JOB_RESULT_STATUS) != null) {
-      jobExecutionContext.setResult(result);
-    }
-  }
-
-  /**
    * Schedule a notification.
    *
    * @param jobId      The job id. This must be unique for programme membership / placement and
    *                   notification milestone.
    * @param jobDataMap The map of job data.
    * @param when       The date to schedule the notification to be sent.
-   * @throws SchedulerException if the job could not be scheduled.
    */
-  private void scheduleNotification(String jobId, JobDataMap jobDataMap, Date when)
-      throws SchedulerException {
-    // schedule notification in Scheduler
-    JobDetail job = newJob(NotificationService.class)
-        .withIdentity(jobId)
-        .usingJobData(jobDataMap)
-        .storeDurably(false)
-        .build();
-
-    Trigger trigger = newTrigger()
-        .withIdentity(TRIGGER_ID_PREFIX + jobId)
-        .startAt(when)
-        .build();
-
-    Date scheduledDate = scheduler.scheduleJob(job, trigger);
-    log.info("Notification for {} scheduled for {}", jobId, scheduledDate);
-
+  private void scheduleNotification(String jobId, Map<String, Object> jobDataMap, Date when) {
     // save SCHEDULED history in DB
     saveScheduleHistory(jobDataMap, when);
+    log.info("Notification for {} scheduled for {}", jobId, when);
   }
 
   /**
@@ -302,29 +256,12 @@ public class NotificationService implements Job {
    * @param jobDataMap      The map of job data.
    * @param when            The date to schedule the notification to be sent.
    * @param windowInSeconds The randomised window in seconds.
-   * @throws SchedulerException if the job could not be scheduled.
    */
-  public void scheduleNotification(String jobId, JobDataMap jobDataMap, Date when,
-      long windowInSeconds) throws SchedulerException {
+  public void scheduleNotification(String jobId, Map<String, Object> jobDataMap, Date when,
+      long windowInSeconds) {
     long randomOffset = random.nextLong(windowInSeconds + 1);
     Date randomisedWhen = Date.from(when.toInstant().plusSeconds(randomOffset));
     scheduleNotification(jobId, jobDataMap, randomisedWhen);
-  }
-
-  /**
-   * Remove a scheduled notification if it exists.
-   *
-   * @param jobId The job id key to remove.
-   * @throws SchedulerException if the scheduler failed in its duties (non-existent jobs do not
-   *                            trigger this exception).
-   */
-  public void removeNotification(String jobId) throws SchedulerException {
-    JobKey jobKey = new JobKey(jobId);
-    // Delete the job and unschedule its triggers.
-    // We do not simply remove the trigger, since a replacement job may have different data
-    // (e.g. programme name).
-    scheduler.deleteJob(jobKey);
-    log.info("Removed any stale notification scheduled for {}", jobId);
   }
 
   /**
@@ -412,8 +349,8 @@ public class NotificationService implements Job {
    *
    * @param jobDetails The job details.
    */
-  protected JobDataMap enrichJobDetails(JobDataMap jobDetails) {
-    String personId = jobDetails.getString(PERSON_ID_FIELD);
+  protected Map<String, Object> enrichJobDetails(Map<String, Object> jobDetails) {
+    String personId = (String) jobDetails.get(PERSON_ID_FIELD);
     UserDetails userTraineeDetails = getTraineeDetails(personId);
 
     if (userTraineeDetails == null) {
@@ -423,7 +360,7 @@ public class NotificationService implements Job {
     }
     UserDetails userCognitoAccountDetails = getCognitoAccountDetails(userTraineeDetails.email());
 
-    String owner = jobDetails.getString(TEMPLATE_OWNER_FIELD);
+    String owner = (String) jobDetails.get(TEMPLATE_OWNER_FIELD);
     List<Map<String, String>> ownerContactList = getOwnerContactList(owner);
     String contact = getOwnerContact(ownerContactList, LocalOfficeContactType.ONBOARDING_SUPPORT,
         LocalOfficeContactType.TSS_SUPPORT);
@@ -443,7 +380,7 @@ public class NotificationService implements Job {
       jobDetails.putIfAbsent("gmcNumber", userAccountDetails.gmcNumber());
     }
 
-    jobDetails.putIfAbsent("isValidGmc", isValidGmc(jobDetails.getString("gmcNumber")));
+    jobDetails.putIfAbsent("isValidGmc", isValidGmc((String) jobDetails.get("gmcNumber")));
 
     return jobDetails;
   }
@@ -493,10 +430,10 @@ public class NotificationService implements Job {
    *
    * @param jobDetails The job details.
    */
-  public void saveScheduleHistory(JobDataMap jobDetails, Date when) {
+  public void saveScheduleHistory(Map<String, Object> jobDetails, Date when) {
     jobDetails = enrichJobDetails(jobDetails);
 
-    String personId = jobDetails.getString(PERSON_ID_FIELD);
+    String personId = (String) jobDetails.get(PERSON_ID_FIELD);
     NotificationType notificationType =
         NotificationType.valueOf(jobDetails.get(TEMPLATE_NOTIFICATION_TYPE_FIELD).toString());
 
@@ -512,7 +449,7 @@ public class NotificationService implements Job {
 
     // get Recipient Info
     History.RecipientInfo recipientInfo = new History.RecipientInfo(
-        personId, EMAIL, jobDetails.getString("email"));
+        personId, EMAIL, (String) jobDetails.get("email"));
 
     Optional<String> templateVersion = templateVersions.getTemplateVersion(notificationType,
         EMAIL);
@@ -523,7 +460,7 @@ public class NotificationService implements Job {
     }
 
     History.TemplateInfo templateInfo = new History.TemplateInfo(notificationType.getTemplateName(),
-        templateVersion.get(), jobDetails.getWrappedMap());
+        templateVersion.get(), jobDetails);
 
     // Only save when notificationType is correct and in Pilot/Rollout. We ignore the completion
     // status of programme actions since these could change before the notification is sent.
@@ -657,7 +594,7 @@ public class NotificationService implements Job {
       }
     } else {
       log.warn("{} local office notification not processed for trainee {}: no local office "
-              + "contacts.", notificationType, traineeId);
+          + "contacts.", notificationType, traineeId);
     }
     return sentTo;
   }

@@ -27,9 +27,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import io.awspring.cloud.s3.S3Template;
 import io.awspring.cloud.sqs.operations.SqsTemplate;
 import org.junit.jupiter.api.Test;
-import org.quartz.Scheduler;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.autoconfigure.quartz.QuartzAutoConfiguration;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.ApplicationContext;
@@ -42,12 +40,6 @@ class TisTraineeNotificationsApplicationTest {
 
   @MockBean
   private MongoCollectionConfiguration mongoConfiguration;
-
-  @MockBean
-  private QuartzAutoConfiguration quartzConfiguration;
-
-  @MockBean
-  private Scheduler scheduler;
 
   @MockBean
   private S3Template s3Template;

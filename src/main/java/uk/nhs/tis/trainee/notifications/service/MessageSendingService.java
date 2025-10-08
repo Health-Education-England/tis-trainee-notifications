@@ -41,7 +41,6 @@ import java.util.Optional;
 import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
 import org.bson.types.ObjectId;
-import org.quartz.JobDataMap;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessagingException;
@@ -111,10 +110,9 @@ public class MessageSendingService {
       return;
     }
 
-    // TODO: Quartz job handlers re-used for consistency, to be refactored when Quartz removed.
     String jobKey = "OUTBOX_" + notificationId;
-    JobDataMap jobDataMap = new JobDataMap(history.template().variables());
-    Map<String, String> result = notificationService.executeNow(jobKey, jobDataMap);
+    Map<String, String> result = notificationService.executeNow(jobKey,
+        history.template().variables());
     String resultStatus = result.get("status");
 
     if (resultStatus != null && resultStatus.startsWith("sent ")) {

@@ -46,8 +46,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
-import org.quartz.JobDataMap;
-import org.quartz.SchedulerException;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import uk.nhs.tis.trainee.notifications.dto.HistoryDto;
@@ -179,13 +177,9 @@ public class PlacementService {
    * Set up notifications for an updated placement.
    *
    * @param placement The updated placement.
-   * @throws SchedulerException if any one of the notification jobs could not be scheduled.
    */
-  public void addNotifications(Placement placement)
-      throws SchedulerException {
-
+  public void addNotifications(Placement placement) {
     //first delete any stale notifications
-    deleteNotificationsFromScheduler(placement);
     deleteScheduledNotificationsFromDb(placement);
 
     boolean isExcluded = isExcluded(placement);
@@ -198,20 +192,6 @@ public class PlacementService {
       createDirectNotifications(placement, notificationsRecorded);
       createInAppNotifications(placement, notificationsRecorded);
     }
-  }
-
-  /**
-   * Remove notifications for a placement from scheduler.
-   *
-   * @param placement The placement.
-   * @throws SchedulerException if any one of the notification jobs could not be removed.
-   */
-  public void deleteNotificationsFromScheduler(Placement placement)
-      throws SchedulerException {
-    String jobId = PLACEMENT_UPDATED_WEEK_12 + "-" + placement.getTisId();
-    notificationService.removeNotification(jobId); //remove existing notification if it exists
-    String jobId2 = PLACEMENT_ROLLOUT_2024_CORRECTION + "-" + placement.getTisId();
-    notificationService.removeNotification(jobId2); //remove existing notification if it exists
   }
 
   /**
@@ -239,12 +219,11 @@ public class PlacementService {
    * @param notificationsRecorded Notification types and their recorded event.
    */
   private void createDirectNotifications(Placement placement,
-      Map<NotificationType, NotificationEvent> notificationsRecorded)
-      throws SchedulerException {
+      Map<NotificationType, NotificationEvent> notificationsRecorded) {
 
     LocalDate startDate = placement.getStartDate();
 
-    JobDataMap jobDataMap = new JobDataMap();
+    Map<String, Object> jobDataMap = new HashMap<>();
     jobDataMap.put(TIS_ID_FIELD, placement.getTisId());
     jobDataMap.put(PERSON_ID_FIELD, placement.getPersonId());
     jobDataMap.put(START_DATE_FIELD, placement.getStartDate());
@@ -267,12 +246,7 @@ public class PlacementService {
       // their name and email address, and the contact details of the owner LO, not now.
 
       String jobId = PLACEMENT_UPDATED_WEEK_12 + "-" + placement.getTisId();
-      try {
-        notificationService.scheduleNotification(jobId, jobDataMap, when, ONE_DAY_IN_SECONDS);
-      } catch (SchedulerException e) {
-        log.error("Failed to schedule notification {}: {}", jobId, e.toString());
-        throw (e); //to allow message to be requeue-ed
-      }
+      notificationService.scheduleNotification(jobId, jobDataMap, when, ONE_DAY_IN_SECONDS);
     }
 
     boolean shouldScheduleRolloutCorrection
@@ -284,13 +258,8 @@ public class PlacementService {
       jobDataMap.put(TEMPLATE_NOTIFICATION_TYPE_FIELD, PLACEMENT_ROLLOUT_2024_CORRECTION);
 
       String jobId = PLACEMENT_ROLLOUT_2024_CORRECTION + "-" + placement.getTisId();
-      try {
-        Date sendInMinute = Date.from(Instant.now().plus(1, ChronoUnit.MINUTES));
-        notificationService.scheduleNotification(jobId, jobDataMap, sendInMinute, 0L);
-      } catch (SchedulerException e) {
-        log.error("Failed to schedule notification {}: {}", jobId, e.toString());
-        throw (e); //to allow message to be requeue-ed
-      }
+      Date sendInMinute = Date.from(Instant.now().plus(1, ChronoUnit.MINUTES));
+      notificationService.scheduleNotification(jobId, jobDataMap, sendInMinute, 0L);
     }
   }
 

@@ -23,7 +23,6 @@ package uk.nhs.tis.trainee.notifications.event;
 
 import io.awspring.cloud.sqs.annotation.SqsListener;
 import lombok.extern.slf4j.Slf4j;
-import org.quartz.SchedulerException;
 import org.springframework.stereotype.Component;
 import uk.nhs.tis.trainee.notifications.dto.ProgrammeMembershipEvent;
 import uk.nhs.tis.trainee.notifications.mapper.ProgrammeMembershipMapper;
@@ -57,8 +56,7 @@ public class ProgrammeMembershipListener {
    * @param event The program membership event.
    */
   @SqsListener("${application.queues.programme-membership-updated}")
-  public void handleProgrammeMembershipUpdate(ProgrammeMembershipEvent event)
-      throws SchedulerException {
+  public void handleProgrammeMembershipUpdate(ProgrammeMembershipEvent event) {
     log.info("Handling programme membership update event {}.", event);
     if (event.recrd() != null && event.recrd().getData() != null) {
       ProgrammeMembership programmeMembership = mapper.toEntity(event.recrd().getData());
@@ -74,13 +72,11 @@ public class ProgrammeMembershipListener {
    * @param event The program membership event.
    */
   @SqsListener("${application.queues.programme-membership-deleted}")
-  public void handleProgrammeMembershipDelete(ProgrammeMembershipEvent event)
-      throws SchedulerException {
+  public void handleProgrammeMembershipDelete(ProgrammeMembershipEvent event) {
     log.info("Handling programme membership delete event {}.", event);
     if (event.recrd() != null && event.recrd().getData() != null) {
       ProgrammeMembership programmeMembership = mapper.toEntity(event.recrd().getData());
       programmeMembership.setTisId(event.tisId());
-      programmeMembershipService.deleteNotificationsFromScheduler(programmeMembership);
       programmeMembershipService.deleteScheduledNotificationsFromDb(programmeMembership);
     } else {
       log.info("Ignoring non programme membership delete event: {}", event);
