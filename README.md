@@ -96,6 +96,19 @@ gradlew bootBuildImage
 ## Versioning
 This project uses [Semantic Versioning](semver.org).
 
+### Migration
+
+#### v3.0.0
+MySQL is no longer required to run the Notification Service, as the Quartz
+scheduler has been replaced with a MongoDB/cronjob based scheduler.
+
+No specific migration steps are required, but database infrastructure and
+configuration may be made redundant if not required by other services.
+
+However, it recommended to upgrade to `v2.18.0` as an intermediate step if
+you want the Quartz tables to be automatically deleted. If upgrading direct to
+`v3.0.0`, permanent removal of the Quartz data/tables will be a manual process.
+
 ## License
 This project is license under [The MIT License (MIT)](LICENSE).
 
