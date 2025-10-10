@@ -32,11 +32,3 @@ spring:
         static: aws-global
       sqs:
         enabled: false
-  datasource:
-    type: com.zaxxer.hikari.HikariDataSource
-    url: jdbc:h2:mem:test;DB_CLOSE_DELAY=-1;IGNORECASE=TRUE;MODE=MySQL
-    name:
-    username: sa
-    password:
-  flyway:
-    url: ${spring.datasource.url}

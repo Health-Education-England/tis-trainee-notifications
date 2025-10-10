@@ -151,25 +151,6 @@ spring:
         enabled: ${REDIS_SSL:false}
       username: ${REDIS_USERNAME:default}
       password: ${REDIS_PASSWORD:password}
-  datasource:
-    driver: com.mysql.jdbc.Driver
-    url: jdbc:mysql://${MYSQL_HOST:localhost}:${MYSQL_PORT:3306}/notifications?useUnicode=true&characterEncoding=utf8&useSSL=${MYSQL_SSL:false}
-    username: ${MYSQL_USER:root}
-    password: ${MYSQL_PASSWORD:}
-  flyway:
-    baseline-version: 1 # version to start migration
-    baseline-on-migrate: true
-    fail-on-missing-locations: false # Check that migration scripts location exists
-    clean-on-validation-error: false
-    init-sqls: # SQL statements to execute to initialize a connection immediately after obtaining it.
-    locations: classpath:db/migration
-    out-of-order: true
-    password: ${spring.datasource.password}
-    schemas: notifications
-    sql-migration-prefix: V
-    url: jdbc:mysql://${MYSQL_HOST:localhost}:${MYSQL_PORT:3306}?useUnicode=true&characterEncoding=utf8&useSSL=${MYSQL_SSL:false}
-    user: ${spring.datasource.username}
-    enabled: true
 
 service:
   trainee:
