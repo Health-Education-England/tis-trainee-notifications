@@ -22,13 +22,11 @@
 package uk.nhs.tis.trainee.notifications.api;
 
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -81,22 +79,5 @@ public class HistoryResource {
 
     return message.map(msg -> ResponseEntity.ok().contentType(MediaType.TEXT_HTML).body(msg))
         .orElseGet(() -> ResponseEntity.notFound().build());
-  }
-
-  /**
-   * Move all notifications from one trainee to another.
-   *
-   * @param fromTraineeId The TIS ID of the trainee to move notifications from.
-   * @param toTraineeId   The TIS ID of the trainee to move notifications to.
-   * @return Map of the count of notifications moved.
-   */
-  @PatchMapping("/move/{fromTraineeId}/to/{toTraineeId}")
-  public ResponseEntity<Map<String, Integer>> moveNotifications(@PathVariable String fromTraineeId,
-      @PathVariable String toTraineeId) {
-    log.info("Request to move notifications from trainee {} to trainee {}",
-        fromTraineeId, toTraineeId);
-
-    Map<String, Integer> movedNotifications = service.moveNotifications(fromTraineeId, toTraineeId);
-    return ResponseEntity.ok(movedNotifications);
   }
 }

@@ -1381,10 +1381,7 @@ class HistoryServiceTest {
   void shouldNotMoveNotificationsWhenNoHistoryExists() {
     when(repository.findAllByRecipient_IdOrderBySentAtDesc("oldId")).thenReturn(List.of());
 
-    Map<String, Integer> movedStats = service.moveNotifications("oldId", "newId");
-
-    Map<String, Integer> expectedMap = Map.of("notification", 0);
-    assertThat("Unexpected moved notification count.", movedStats, is(expectedMap));
+    service.moveNotifications("oldId", "newId");
 
     verify(repository).findAllByRecipient_IdOrderBySentAtDesc("oldId");
     verifyNoMoreInteractions(repository);
@@ -1418,10 +1415,7 @@ class HistoryServiceTest {
         .thenReturn(updatedHistory1)
         .thenReturn(updatedHistory2);
 
-    Map<String, Integer> movedStats = service.moveNotifications("oldId", "newId");
-
-    Map<String, Integer> expectedMap = Map.of("notification", 2);
-    assertThat("Unexpected moved notification count.", movedStats, is(expectedMap));
+    service.moveNotifications("oldId", "newId");
 
     ArgumentCaptor<History> savedHistoryCaptor = ArgumentCaptor.forClass(History.class);
     verify(repository, times(2)).save(savedHistoryCaptor.capture());
