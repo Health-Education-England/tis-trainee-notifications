@@ -21,6 +21,7 @@ application:
     placement-deleted: dummy-value
     programme-membership-updated: dummy-value
     programme-membership-deleted: dummy-value
+    profile-move: dummy-value
 
 mongock:
   enabled: false

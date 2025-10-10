@@ -55,7 +55,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import org.bson.types.ObjectId;
-import org.hamcrest.Matchers;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
@@ -827,10 +826,7 @@ class HistoryServiceIntegrationTest {
     assertThat("Unexpected notifications before move.", beforeMove.size(), is(2));
 
     String toTraineeId = "50";
-    Map<String, Integer> movedStats = service.moveNotifications(fromTraineeId, toTraineeId);
-
-    Map<String, Integer> expectedMap = Map.of("notification", 2);
-    assertThat("Unexpected moved notification count.", movedStats, Matchers.is(expectedMap));
+    service.moveNotifications(fromTraineeId, toTraineeId);
 
     // Verify notifications moved correctly
     List<History> afterMoveFrom = service.findAllHistoryForTrainee(fromTraineeId);
@@ -870,10 +866,7 @@ class HistoryServiceIntegrationTest {
     String fromTraineeId = "empty";
     String toTraineeId = "target";
 
-    Map<String, Integer> movedStats = service.moveNotifications(fromTraineeId, toTraineeId);
-
-    Map<String, Integer> expectedMap = Map.of("notification", 0);
-    assertThat("Unexpected moved notification count.", movedStats, Matchers.is(expectedMap));
+    service.moveNotifications(fromTraineeId, toTraineeId);
 
     List<History> afterMoveFrom = service.findAllHistoryForTrainee(fromTraineeId);
     List<History> afterMoveTo = service.findAllHistoryForTrainee(toTraineeId);

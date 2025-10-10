@@ -22,10 +22,8 @@
 package uk.nhs.tis.trainee.notifications.api;
 
 import static org.hamcrest.Matchers.hasSize;
-import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -38,7 +36,6 @@ import static uk.nhs.tis.trainee.notifications.model.NotificationType.FORM_UPDAT
 
 import java.time.Instant;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import org.bson.types.ObjectId;
@@ -160,21 +157,5 @@ class HistoryResourceTest {
         .andExpect(status().isOk())
         .andExpect(content().contentType(MediaType.TEXT_HTML))
         .andExpect(content().string(message));
-  }
-
-  @Test
-  void shouldMoveNotificationsFromOneTraineeToAnother() throws Exception {
-    String fromTraineeId = "123";
-    String toTraineeId = "456";
-
-    Map<String, Integer> serviceResponse = Map.of("dummy", 1);
-    when(service.moveNotifications(fromTraineeId, toTraineeId)).thenReturn(serviceResponse);
-
-    mockMvc.perform(patch("/api/history/move/{fromTraineeId}/to/{toTraineeId}",
-            fromTraineeId, toTraineeId))
-        .andExpect(status().isOk())
-        .andExpect(content().string("{\"dummy\":1}"));
-
-    verify(service).moveNotifications(fromTraineeId, toTraineeId);
   }
 }

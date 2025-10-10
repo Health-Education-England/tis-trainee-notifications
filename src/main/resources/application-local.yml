@@ -22,6 +22,7 @@ application:
     placement-updated: ${local.sqs-path}/tis-trainee-notifications-local-placement-updated
     programme-membership-deleted: ${local.sqs-path}/tis-trainee-notifications-local-programme-membership-deleted
     programme-membership-updated: ${local.sqs-path}/tis-trainee-notifications-local-programme-membership-updated
+    profile-move: ${local.sqs-path}/tis-trainee-notifications-local-profile-move
   schedules:
     send-scheduled-emails: "*/30 * * * * *"
   sns:
