@@ -37,7 +37,7 @@ import uk.nhs.tis.trainee.notifications.service.HistoryService;
 /**
  * Test for {@link ProfileMoveListener}.
  */
-public class ProfileMoveListenerTest {
+class ProfileMoveListenerTest {
   private static final String FROM_TRAINEE_ID = UUID.randomUUID().toString();
   private static final String TO_TRAINEE_ID = UUID.randomUUID().toString();
 
