@@ -113,7 +113,7 @@ class ProfileMoveListenerIntegrationTest {
   }
 
   @Test
-  void shouldMoveAllActionsWhenProfileMove() throws JsonProcessingException {
+  void shouldMoveAllNotificationHistoriesWhenProfileMove() throws JsonProcessingException {
     ObjectId id1 = ObjectId.get();
     History.RecipientInfo recipient1 = new History.RecipientInfo(FROM_TRAINEE_ID, EMAIL,
         "from@email.com");
