@@ -23,7 +23,6 @@ package uk.nhs.tis.trainee.notifications.event;
 
 import io.awspring.cloud.sqs.annotation.SqsListener;
 import lombok.extern.slf4j.Slf4j;
-import org.quartz.SchedulerException;
 import org.springframework.stereotype.Component;
 import uk.nhs.tis.trainee.notifications.dto.PlacementEvent;
 import uk.nhs.tis.trainee.notifications.mapper.PlacementMapper;
@@ -46,7 +45,7 @@ public class PlacementListener {
    * @param placementService The placement service.
    */
   public PlacementListener(PlacementService placementService,
-                           PlacementMapper mapper) {
+      PlacementMapper mapper) {
     this.placementService = placementService;
     this.mapper = mapper;
   }
@@ -57,8 +56,7 @@ public class PlacementListener {
    * @param event The placement event.
    */
   @SqsListener("${application.queues.placement-updated}")
-  public void handlePlacementUpdate(PlacementEvent event)
-      throws SchedulerException {
+  public void handlePlacementUpdate(PlacementEvent event) {
     log.info("Handling placement update event {}.", event);
     if (event.recrd() != null && event.recrd().getData() != null) {
       Placement placement = mapper.toEntity(event.recrd().getData());
@@ -74,13 +72,11 @@ public class PlacementListener {
    * @param event The placement event.
    */
   @SqsListener("${application.queues.placement-deleted}")
-  public void handlePlacementDelete(PlacementEvent event)
-      throws SchedulerException {
+  public void handlePlacementDelete(PlacementEvent event) {
     log.info("Handling placement delete event {}.", event);
     if (event.recrd() != null && event.recrd().getData() != null) {
       Placement placement = mapper.toEntity(event.recrd().getData());
       placement.setTisId(event.tisId()); //delete messages used to have empty record data
-      placementService.deleteNotificationsFromScheduler(placement);
       placementService.deleteScheduledNotificationsFromDb(placement);
     } else {
       log.info("Ignoring non placement delete event: {}", event);

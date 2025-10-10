@@ -64,7 +64,6 @@ import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
-import org.quartz.JobDataMap;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageHeaders;
 import org.springframework.messaging.MessagingException;
@@ -143,15 +142,15 @@ class MessageSendingServiceTest {
     ObjectIdWrapper notificationIdWrapper = new ObjectIdWrapper(NOTIFICATION_ID);
     service.sendScheduled(notificationIdWrapper);
 
-    ArgumentCaptor<JobDataMap> jobDataCaptor = ArgumentCaptor.captor();
+    ArgumentCaptor<Map<String, Object>> jobDataCaptor = ArgumentCaptor.captor();
     verify(notificationService).executeNow(eq("OUTBOX_" + NOTIFICATION_ID),
         jobDataCaptor.capture());
 
-    JobDataMap jobData = jobDataCaptor.getValue();
+    Map<String, Object> jobData = jobDataCaptor.getValue();
     assertThat("Unexpected job data count.", jobData.keySet(), hasSize(3));
-    assertThat("Unexpected job data.", jobData.getString("key1"), is("value1"));
-    assertThat("Unexpected job data.", jobData.getBoolean("key2"), is(true));
-    assertThat("Unexpected job data.", jobData.getInt("key3"), is(123));
+    assertThat("Unexpected job data.", jobData.get("key1"), is("value1"));
+    assertThat("Unexpected job data.", jobData.get("key2"), is(true));
+    assertThat("Unexpected job data.", jobData.get("key3"), is(123));
   }
 
   @ParameterizedTest

@@ -36,7 +36,6 @@ import java.util.Set;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import lombok.extern.slf4j.Slf4j;
-import org.quartz.JobDataMap;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpMethod;
@@ -55,6 +54,7 @@ import uk.nhs.tis.trainee.notifications.model.ProgrammeActionType;
 @Slf4j
 @Component
 public class ProgrammeMembershipActionsService {
+
   public static final String TEMPLATE_WELCOME_NOTIFICATION_DATE_FIELD = "welcomeSendDate";
   public static final String TEMPLATE_NOTIFICATION_TYPE_FIELD = "notificationType";
 
@@ -104,7 +104,7 @@ public class ProgrammeMembershipActionsService {
    * @param jobDataMap The job data map to populate with programme actions.
    * @param actions    The set of actions associated with the person and programme.
    */
-  public void addActionsToJobMap(@Nonnull JobDataMap jobDataMap, Set<ActionDto> actions) {
+  public void addActionsToJobMap(@Nonnull Map<String, Object> jobDataMap, Set<ActionDto> actions) {
     NotificationType notificationType = NotificationType.valueOf(
         jobDataMap.get(TEMPLATE_NOTIFICATION_TYPE_FIELD).toString());
 
@@ -119,10 +119,10 @@ public class ProgrammeMembershipActionsService {
    * @param jobDataMap The job data map containing programme notification details.
    * @return A NotificationSummary object.
    */
-  public NotificationSummary getNotificationSummary(@Nonnull JobDataMap jobDataMap) {
+  public NotificationSummary getNotificationSummary(@Nonnull Map<String, Object> jobDataMap) {
     boolean unnecessaryReminder = false;
-    String programmeId = jobDataMap.getString(TIS_ID_FIELD);
-    String jobName = jobDataMap.getString(PROGRAMME_NAME_FIELD);
+    String programmeId = (String) jobDataMap.get(TIS_ID_FIELD);
+    String jobName = (String) jobDataMap.get(PROGRAMME_NAME_FIELD);
     LocalDate startDate = (LocalDate) jobDataMap.get(START_DATE_FIELD);
     NotificationType notificationType
         = NotificationType.valueOf(jobDataMap.get(TEMPLATE_NOTIFICATION_TYPE_FIELD).toString());
@@ -140,9 +140,10 @@ public class ProgrammeMembershipActionsService {
    *
    * @param jobDataMap The job data map to populate.
    */
-  private void addProgrammeReminderDetailsToJobMap(JobDataMap jobDataMap, Set<ActionDto> actions) {
-    String programmeId = jobDataMap.getString(TIS_ID_FIELD);
-    String personId = jobDataMap.getString(PERSON_ID_FIELD);
+  private void addProgrammeReminderDetailsToJobMap(Map<String, Object> jobDataMap,
+      Set<ActionDto> actions) {
+    String programmeId = (String) jobDataMap.get(TIS_ID_FIELD);
+    String personId = (String) jobDataMap.get(PERSON_ID_FIELD);
     List<History> welcomeNotification = historyService.findAllSentEmailForTraineeByRefAndType(
         personId, PROGRAMME_MEMBERSHIP, programmeId, PROGRAMME_CREATED);
     if (welcomeNotification == null || welcomeNotification.isEmpty()) {
@@ -176,9 +177,9 @@ public class ProgrammeMembershipActionsService {
    * @param jobDataMap The job data map to check.
    * @return true if there are any incomplete actions, false otherwise.
    */
-  private boolean hasIncompleteProgrammeActions(@Nonnull JobDataMap jobDataMap) {
+  private boolean hasIncompleteProgrammeActions(@Nonnull Map<String, Object> jobDataMap) {
     for (ProgrammeActionType actionType : ProgrammeActionType.values()) {
-      if (!jobDataMap.getBoolean(actionType.toString())) {
+      if (!(boolean) jobDataMap.get(actionType.toString())) {
         return true; // Found an incomplete action
       }
     }
@@ -190,7 +191,6 @@ public class ProgrammeMembershipActionsService {
    *
    * @param actionType The action type to check for completion.
    * @param actions    The set of actions to check within.
-   *
    * @return true if the action is complete, and false if not. Null if the action type is not found.
    */
   @Nullable

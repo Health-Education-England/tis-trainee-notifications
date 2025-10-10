@@ -170,20 +170,6 @@ spring:
     url: jdbc:mysql://${MYSQL_HOST:localhost}:${MYSQL_PORT:3306}?useUnicode=true&characterEncoding=utf8&useSSL=${MYSQL_SSL:false}
     user: ${spring.datasource.username}
     enabled: true
-  quartz:
-    # TODO: Quartz is disabled to avoid conflicts, pending refactoring for removal.
-    auto-startup: false
-    job-store-type: jdbc
-    jdbc:
-      initialize-schema: never
-    jobStore:
-      useProperties: true
-    properties:
-      org.quartz:
-        scheduler:
-          instanceId: AUTO
-        jobStore:
-          isClustered: true
 
 service:
   trainee:

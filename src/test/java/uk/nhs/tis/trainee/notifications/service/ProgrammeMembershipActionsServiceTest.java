@@ -50,6 +50,7 @@ import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipServic
 
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -60,7 +61,6 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.ValueSource;
-import org.quartz.JobDataMap;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
@@ -85,7 +85,7 @@ class ProgrammeMembershipActionsServiceTest {
   private static final LocalDate START_DATE = LocalDate.now().plusYears(1);
   private static final NotificationType NOTIFICATION_TYPE = PROGRAMME_UPDATED_WEEK_12;
 
-  private JobDataMap jobDataMap;
+  private Map<String, Object> jobDataMap;
   private RestTemplate restTemplate;
   private HistoryService historyService;
   private ProgrammeMembershipActionsService service;
@@ -95,7 +95,7 @@ class ProgrammeMembershipActionsServiceTest {
 
   @BeforeEach
   void setUp() {
-    jobDataMap = new JobDataMap(Map.of("tisId", TIS_ID,
+    jobDataMap = new HashMap<>(Map.of("tisId", TIS_ID,
         "notificationType", NOTIFICATION_TYPE,
         "personId", PERSON_ID,
         "programmeName", "programme-name",

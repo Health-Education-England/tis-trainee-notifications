@@ -78,7 +78,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.mockito.ArgumentCaptor;
-import org.quartz.Scheduler;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -183,9 +182,6 @@ class ProgrammeMembershipListenerIntegrationTest {
 
   @MockBean
   private S3Template s3Template;
-
-  @MockBean
-  Scheduler scheduler;
 
   @MockBean
   private RestTemplate restTemplate;

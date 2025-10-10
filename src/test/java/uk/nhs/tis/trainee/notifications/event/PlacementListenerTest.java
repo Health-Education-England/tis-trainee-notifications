@@ -35,7 +35,6 @@ import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
-import org.quartz.SchedulerException;
 import uk.nhs.tis.trainee.notifications.dto.PlacementEvent;
 import uk.nhs.tis.trainee.notifications.dto.RecordDto;
 import uk.nhs.tis.trainee.notifications.mapper.PlacementMapper;
@@ -77,7 +76,7 @@ class PlacementListenerTest {
   }
 
   @Test
-  void shouldAddNotifications() throws SchedulerException {
+  void shouldAddNotifications() {
     PlacementEvent event = buildPlacementEvent();
 
     listener.handlePlacementUpdate(event);
@@ -86,7 +85,7 @@ class PlacementListenerTest {
   }
 
   @Test
-  void shouldDeleteNotifications() throws SchedulerException {
+  void shouldDeleteNotifications() {
     PlacementEvent event = buildPlacementEvent();
     Placement placementToDelete = new Placement();
 
@@ -96,7 +95,6 @@ class PlacementListenerTest {
 
     listener.handlePlacementDelete(event);
 
-    verify(placementService).deleteNotificationsFromScheduler(placementCaptor.capture());
     verify(placementService).deleteScheduledNotificationsFromDb(placementCaptor.capture());
 
     Placement placement = placementCaptor.getValue();

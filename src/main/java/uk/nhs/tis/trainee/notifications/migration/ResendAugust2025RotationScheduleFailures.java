@@ -35,7 +35,6 @@ import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
-import org.quartz.JobDataMap;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
@@ -105,12 +104,11 @@ public class ResendAugust2025RotationScheduleFailures {
    */
   private boolean scheduleEmail(History missedSchedule) {
     Map<String, Object> templateVariables = missedSchedule.template().variables();
-    JobDataMap jobData = new JobDataMap(templateVariables);
     String jobId = "%s-%s".formatted(missedSchedule.type(), missedSchedule.tisReference().id());
 
     try {
-      notificationService.removeNotification(jobId);
-      notificationService.scheduleNotification(jobId, jobData, Date.from(Instant.now()), WINDOW);
+      notificationService.scheduleNotification(jobId, templateVariables, Date.from(Instant.now()),
+          WINDOW);
       return true;
     } catch (Exception e) {
       log.error("Failed to schedule notification retry.", e);

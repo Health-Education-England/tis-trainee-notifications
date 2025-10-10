@@ -49,8 +49,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
-import org.quartz.JobDataMap;
-import org.quartz.SchedulerException;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import uk.nhs.tis.trainee.notifications.dto.UserDetails;
@@ -210,13 +208,9 @@ public class ProgrammeMembershipService {
    * Set up notifications for an updated programme membership.
    *
    * @param programmeMembership The updated programme membership.
-   * @throws SchedulerException if any one of the notification jobs could not be scheduled.
    */
-  public void addNotifications(ProgrammeMembership programmeMembership)
-      throws SchedulerException {
-
+  public void addNotifications(ProgrammeMembership programmeMembership) {
     //first delete any stale notifications
-    deleteNotificationsFromScheduler(programmeMembership);
     deleteScheduledNotificationsFromDb(programmeMembership);
 
     boolean isExcluded = isExcluded(programmeMembership);
@@ -240,11 +234,11 @@ public class ProgrammeMembershipService {
    * @param notificationsAlreadySent Previously sent notifications.
    */
   private void createDirectProgrammeNotifications(ProgrammeMembership programmeMembership,
-      Map<NotificationType, History> notificationsAlreadySent) throws SchedulerException {
+      Map<NotificationType, History> notificationsAlreadySent) {
 
     // Note the status of the trainee will be retrieved when the job is executed, as will
     // their name and email address and LO contact details.
-    JobDataMap jobDataMap = new JobDataMap();
+    Map<String, Object> jobDataMap = new HashMap<>();
     addStandardProgrammeDetailsToJobMap(jobDataMap, programmeMembership);
 
     for (NotificationType notificationType
@@ -270,7 +264,7 @@ public class ProgrammeMembershipService {
    * @param jobDataMap          The job data map to populate.
    * @param programmeMembership The programme membership to extract details from.
    */
-  private void addStandardProgrammeDetailsToJobMap(JobDataMap jobDataMap,
+  private void addStandardProgrammeDetailsToJobMap(Map<String, Object> jobDataMap,
       ProgrammeMembership programmeMembership) {
     jobDataMap.put(TIS_ID_FIELD, programmeMembership.getTisId());
     jobDataMap.put(PERSON_ID_FIELD, programmeMembership.getPersonId());
@@ -293,14 +287,14 @@ public class ProgrammeMembershipService {
    * @param programmeMembership      The programme membership to consider.
    * @param notificationsAlreadySent The notifications already sent for this entity.
    * @return The date when the notification should be scheduled, or null if it should be sent
-   *         immediately.
+   *     immediately.
    */
   private Date whenScheduleProgrammeNotification(
       NotificationType notificationType, ProgrammeMembership programmeMembership,
       Map<NotificationType, History> notificationsAlreadySent) {
     if (notificationType == PROGRAMME_CREATED) {
       return whenScheduleDeferredNotification(PROGRAMME_CREATED, programmeMembership,
-              notificationsAlreadySent);
+          notificationsAlreadySent);
     } else {
       Integer daysBeforeStart = getDaysBeforeStartForNotification(notificationType);
       if (programmeMembership.getStartDate().minusDays(daysBeforeStart)
@@ -310,13 +304,13 @@ public class ProgrammeMembershipService {
       }
       // Otherwise, schedule for the deadline.
       return Date.from(programmeMembership.getStartDate().minusDays(daysBeforeStart)
-              .atStartOfDay(timezone).toInstant());
+          .atStartOfDay(timezone).toInstant());
     }
   }
 
   private void doScheduleProgrammeNotification(NotificationType notificationType,
-      ProgrammeMembership programmeMembership, JobDataMap jobDataMap,
-      Map<NotificationType, History> notificationsAlreadySent) throws SchedulerException {
+      ProgrammeMembership programmeMembership, Map<String, Object> jobDataMap,
+      Map<NotificationType, History> notificationsAlreadySent) {
     String jobId = notificationType + "-" + jobDataMap.get(TIS_ID_FIELD);
     Date scheduleWhen = whenScheduleProgrammeNotification(notificationType,
         programmeMembership, notificationsAlreadySent);
@@ -449,22 +443,6 @@ public class ProgrammeMembershipService {
               scheduleWhen.toInstant());
         }
       }
-    }
-  }
-
-  /**
-   * Remove notifications for a programme membership from scheduler.
-   *
-   * @param programmeMembership The programme membership.
-   * @throws SchedulerException if any one of the notification jobs could not be removed.
-   */
-  public void deleteNotificationsFromScheduler(ProgrammeMembership programmeMembership)
-      throws SchedulerException {
-
-    for (NotificationType milestone : NotificationType.getProgrammeUpdateNotificationTypes()) {
-
-      String jobId = milestone.toString() + "-" + programmeMembership.getTisId();
-      notificationService.removeNotification(jobId); //remove existing notification if it exists
     }
   }
 

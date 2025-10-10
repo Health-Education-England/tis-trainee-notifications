@@ -24,11 +24,8 @@ package uk.nhs.tis.trainee.notifications.migration;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
-import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -48,8 +45,6 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
-import org.quartz.JobDataMap;
-import org.quartz.SchedulerException;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import uk.nhs.tis.trainee.notifications.matcher.DateCloseTo;
 import uk.nhs.tis.trainee.notifications.model.History;
@@ -85,48 +80,7 @@ class ResendAugust2025RotationScheduleFailuresTest {
 
   @ParameterizedTest
   @EnumSource(NotificationType.class)
-  void shouldNotInterruptMigrationForExceptions(NotificationType type) throws SchedulerException {
-    ObjectId historyId = ObjectId.get();
-    History failure = History.builder()
-        .id(historyId)
-        .type(type)
-        .tisReference(new TisReferenceInfo(PLACEMENT, REFERENCE_ID))
-        .recipient(new RecipientInfo(TRAINEE_ID, EMAIL, TRAINEE_EMAIL))
-        .template(new TemplateInfo("template-name", "v1.2.3", Map.of()))
-        .build();
-    when(mongoTemplate.find(any(), eq(History.class))).thenReturn(List.of(failure));
-
-    doThrow(SchedulerException.class).when(notificationService)
-        .scheduleNotification(any(), any(), any(), anyLong());
-
-    assertDoesNotThrow(() -> migrator.migrate());
-  }
-
-  @ParameterizedTest
-  @EnumSource(NotificationType.class)
-  void shouldNotRemoveNotificationsWhenResendFails(NotificationType type)
-      throws SchedulerException {
-    ObjectId historyId = ObjectId.get();
-    History failure = History.builder()
-        .id(historyId)
-        .type(type)
-        .tisReference(new TisReferenceInfo(PLACEMENT, REFERENCE_ID))
-        .recipient(new RecipientInfo(TRAINEE_ID, EMAIL, TRAINEE_EMAIL))
-        .template(new TemplateInfo("template-name", "v1.2.3", Map.of()))
-        .build();
-    when(mongoTemplate.find(any(), eq(History.class))).thenReturn(List.of(failure));
-
-    doThrow(SchedulerException.class).when(notificationService)
-        .scheduleNotification(any(), any(), any(), anyLong());
-
-    migrator.migrate();
-
-    verifyNoInteractions(historyService);
-  }
-
-  @ParameterizedTest
-  @EnumSource(NotificationType.class)
-  void shouldMigrateScheduledEmails(NotificationType type) throws SchedulerException {
+  void shouldMigrateScheduledEmails(NotificationType type) {
     ObjectId historyId = ObjectId.get();
     History failure = History.builder()
         .id(historyId)
@@ -143,14 +97,13 @@ class ResendAugust2025RotationScheduleFailuresTest {
     migrator.migrate();
 
     String jobId = type + "-" + REFERENCE_ID;
-    verify(notificationService).removeNotification(jobId);
 
-    ArgumentCaptor<JobDataMap> jobDataCaptor = ArgumentCaptor.captor();
+    ArgumentCaptor<Map<String, Object>> jobDataCaptor = ArgumentCaptor.captor();
     ArgumentCaptor<Date> whenCaptor = ArgumentCaptor.captor();
     verify(notificationService).scheduleNotification(eq(jobId), jobDataCaptor.capture(),
         whenCaptor.capture(), eq(86400L));
 
-    JobDataMap jobData = jobDataCaptor.getValue();
+    Map<String, Object> jobData = jobDataCaptor.getValue();
     assertThat("Unexpected job data count.", jobData.keySet(), hasSize(2));
     assertThat("Unexpected job data.", jobData.get("key1"), is("value1"));
     assertThat("Unexpected job data.", jobData.get("key2"), is("value2"));

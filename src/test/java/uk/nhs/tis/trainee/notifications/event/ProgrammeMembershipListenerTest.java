@@ -32,7 +32,6 @@ import java.util.HashMap;
 import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.quartz.SchedulerException;
 import uk.nhs.tis.trainee.notifications.dto.ProgrammeMembershipEvent;
 import uk.nhs.tis.trainee.notifications.dto.RecordDto;
 import uk.nhs.tis.trainee.notifications.mapper.ProgrammeMembershipMapper;
@@ -76,7 +75,7 @@ class ProgrammeMembershipListenerTest {
   }
 
   @Test
-  void shouldAddNotifications() throws SchedulerException {
+  void shouldAddNotifications() {
     ProgrammeMembershipEvent event = buildPmEvent();
 
     listener.handleProgrammeMembershipUpdate(event);
@@ -85,7 +84,7 @@ class ProgrammeMembershipListenerTest {
   }
 
   @Test
-  void shouldDeleteNotifications() throws SchedulerException {
+  void shouldDeleteNotifications() {
     Map<String, String> dataMap = new HashMap<>();
     dataMap.put("personId", PERSON_ID);
     RecordDto data = new RecordDto();
@@ -101,8 +100,6 @@ class ProgrammeMembershipListenerTest {
 
     listener.handleProgrammeMembershipDelete(event);
 
-    verify(programmeMembershipService).deleteNotificationsFromScheduler(
-        expectedProgrammeMembership);
     verify(programmeMembershipService).deleteScheduledNotificationsFromDb(
         expectedProgrammeMembership);
   }
