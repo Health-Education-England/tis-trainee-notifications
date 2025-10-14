@@ -480,9 +480,8 @@ public class HistoryService {
    *
    * @param fromTraineeId The trainee ID to move notifications from.
    * @param toTraineeId   The trainee ID to move notifications to.
-   * @return The map of the number of notifications moved.
    */
-  public Map<String, Integer> moveNotifications(String fromTraineeId, String toTraineeId) {
+  public void moveNotifications(String fromTraineeId, String toTraineeId) {
     AtomicReference<Integer> movedCount = new AtomicReference<>(0);
     List<History> histories = findAllHistoryForTrainee(fromTraineeId);
 
@@ -498,7 +497,6 @@ public class HistoryService {
     });
     log.info("Moved {} notification histories from trainee [{}] to trainee [{}]",
         movedCount, fromTraineeId, toTraineeId);
-    return Map.of("notification", movedCount.get());
   }
 
   /**
