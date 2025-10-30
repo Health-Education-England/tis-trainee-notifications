@@ -53,6 +53,7 @@ import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.support.PageableExecutionUtils;
 import org.springframework.stereotype.Service;
 import uk.nhs.tis.trainee.notifications.dto.HistoryDto;
+import uk.nhs.tis.trainee.notifications.dto.HistoryMessageDto;
 import uk.nhs.tis.trainee.notifications.mapper.HistoryMapper;
 import uk.nhs.tis.trainee.notifications.model.History;
 import uk.nhs.tis.trainee.notifications.model.History.TemplateInfo;
@@ -265,8 +266,7 @@ public class HistoryService {
    * @return The found notifications, empty if none found.
    */
   public Page<HistoryDto> findAllSentInPageForTrainee(String traineeId,
-                                                      Map<String, String> filterParams,
-                                                      Pageable pageable) {
+      Map<String, String> filterParams, Pageable pageable) {
     Query query = buildHistoryFilteredQuery(traineeId, filterParams, pageable);
     List<History> historyList = mongoTemplate.find(query, History.class);
     Page<History> historyPage = PageableExecutionUtils.getPage(historyList, pageable,
@@ -396,7 +396,6 @@ public class HistoryService {
     log.info("Removed notification history {} for {}", id, traineeId);
   }
 
-
   /**
    * Convert a history entity to an equivalent DTO, handles in-app subject text.
    *
@@ -437,13 +436,43 @@ public class HistoryService {
   }
 
   /**
-   * Rebuild the message for a given trainee's notification.
+   * Rebuild the full message for a given trainee's notification.
    *
    * @param traineeId      The ID of the trainee.
    * @param notificationId The ID of the notification.
    * @return The rebuilt message, or empty if the notification was not found.
    */
-  public Optional<String> rebuildMessage(String traineeId, String notificationId) {
+  public Optional<HistoryMessageDto> rebuildMessageFull(String traineeId, String notificationId) {
+    Optional<History> optionalHistory = repository.findByIdAndRecipient_Id(
+        new ObjectId(notificationId), traineeId);
+
+    if (optionalHistory.isEmpty()) {
+      log.info("Notification {} was not found for trainee {}.", notificationId, traineeId);
+      return Optional.empty();
+    }
+
+    History history = optionalHistory.get();
+    Optional<String> subject = rebuildMessage(history, Set.of("subject"));
+    Optional<String> content = rebuildMessage(history, Set.of("content"));
+
+    if (subject.orElse("").isBlank() || content.orElse("").isBlank()) {
+      log.warn(
+          "Subject and/or Content not found for notification {}, will return empty result.",
+          notificationId);
+      return Optional.empty();
+    }
+
+    return Optional.of(new HistoryMessageDto(subject.get(), content.get(), history.sentAt()));
+  }
+
+  /**
+   * Rebuild the message content for a given trainee's notification.
+   *
+   * @param traineeId      The ID of the trainee.
+   * @param notificationId The ID of the notification.
+   * @return The rebuilt message content, or empty if the notification was not found.
+   */
+  public Optional<String> rebuildMessageContent(String traineeId, String notificationId) {
     Optional<History> optionalHistory = repository.findByIdAndRecipient_Id(
         new ObjectId(notificationId), traineeId);
 
@@ -507,7 +536,7 @@ public class HistoryService {
    * @return The build query.
    */
   private Query buildHistoryFilteredQuery(String traineeId, Map<String, String> filterParams,
-                                          Pageable pageable) {
+      Pageable pageable) {
     // Translate sort field(s).
     Sort sort = pageable.getSort().isSorted()
         ? Sort.by(pageable.getSort().stream()
