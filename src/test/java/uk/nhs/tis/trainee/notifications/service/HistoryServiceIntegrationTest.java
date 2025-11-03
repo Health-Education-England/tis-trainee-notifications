@@ -735,7 +735,8 @@ class HistoryServiceIntegrationTest {
   }
 
   @ParameterizedTest
-  @MethodSource("uk.nhs.tis.trainee.notifications.MethodArgumentUtil#getEmailTemplateTypeAndVersions")
+  @MethodSource(
+      "uk.nhs.tis.trainee.notifications.MethodArgumentUtil#getEmailTemplateTypeAndVersions")
   void shouldRebuildEmailFullMessageForTraineeWhenNotificationFound(
       NotificationType notificationType, String version) {
     RecipientInfo recipientInfo = new RecipientInfo(TRAINEE_ID, EMAIL, TRAINEE_CONTACT);
@@ -770,7 +771,8 @@ class HistoryServiceIntegrationTest {
   }
 
   @ParameterizedTest
-  @MethodSource("uk.nhs.tis.trainee.notifications.MethodArgumentUtil#getInAppTemplateTypeAndVersions")
+  @MethodSource(
+      "uk.nhs.tis.trainee.notifications.MethodArgumentUtil#getInAppTemplateTypeAndVersions")
   void shouldRebuildInAppFullMessageForTraineeWhenNotificationFound(
       NotificationType notificationType, String version) {
     RecipientInfo recipientInfo = new RecipientInfo(TRAINEE_ID, IN_APP, TRAINEE_CONTACT);

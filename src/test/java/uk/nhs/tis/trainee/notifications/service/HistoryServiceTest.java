@@ -1252,16 +1252,15 @@ class HistoryServiceTest {
     when(templateService.getTemplatePath(messageType, TEMPLATE_NAME, TEMPLATE_VERSION)).thenReturn(
         templatePath);
 
-    when(templateService.process(eq(templatePath), eq(Set.of("subject")), eq(TEMPLATE_VARIABLES)))
+    when(templateService.process(templatePath, Set.of("subject"), TEMPLATE_VARIABLES))
         .thenReturn("");
 
     String message = """
         <html>
           <p>Rebuilt message</p>
         </html>""";
-    when(templateService.process(eq(templatePath), eq(Set.of("content")),
-        eq(TEMPLATE_VARIABLES))).thenReturn(
-        message);
+    when(templateService.process(templatePath, Set.of("content"), TEMPLATE_VARIABLES))
+        .thenReturn(message);
 
     Optional<HistoryMessageDto> rebuiltMessage = service.rebuildMessageFull(TRAINEE_ID,
         NOTIFICATION_ID);
@@ -1287,10 +1286,10 @@ class HistoryServiceTest {
     when(templateService.getTemplatePath(messageType, TEMPLATE_NAME, TEMPLATE_VERSION)).thenReturn(
         templatePath);
 
-    when(templateService.process(eq(templatePath), eq(Set.of("subject")), eq(TEMPLATE_VARIABLES)))
+    when(templateService.process(templatePath, Set.of("subject"), TEMPLATE_VARIABLES))
         .thenReturn("Rebuilt Subject");
 
-    when(templateService.process(eq(templatePath), eq(Set.of("content")), eq(TEMPLATE_VARIABLES)))
+    when(templateService.process(templatePath, Set.of("content"), TEMPLATE_VARIABLES))
         .thenReturn("");
 
     Optional<HistoryMessageDto> rebuiltMessage = service.rebuildMessageFull(TRAINEE_ID,
@@ -1318,16 +1317,15 @@ class HistoryServiceTest {
     when(templateService.getTemplatePath(messageType, TEMPLATE_NAME, TEMPLATE_VERSION)).thenReturn(
         templatePath);
 
-    when(templateService.process(eq(templatePath), eq(Set.of("subject")), eq(TEMPLATE_VARIABLES)))
+    when(templateService.process(templatePath, Set.of("subject"), TEMPLATE_VARIABLES))
         .thenReturn("Rebuilt Subject");
 
     String message = """
         <html>
           <p>Rebuilt message</p>
         </html>""";
-    when(templateService.process(eq(templatePath), eq(Set.of("content")),
-        eq(TEMPLATE_VARIABLES))).thenReturn(
-        message);
+    when(templateService.process(templatePath, Set.of("content"), TEMPLATE_VARIABLES))
+        .thenReturn(message);
 
     Optional<HistoryMessageDto> rebuiltMessage = service.rebuildMessageFull(TRAINEE_ID,
         NOTIFICATION_ID);
@@ -1373,8 +1371,8 @@ class HistoryServiceTest {
         <html>
           <p>Rebuilt message</p>
         </html>""";
-    when(templateService.process(eq(templatePath), any(), eq(TEMPLATE_VARIABLES))).thenReturn(
-        message);
+    when(templateService.process(eq(templatePath), any(), eq(TEMPLATE_VARIABLES)))
+        .thenReturn(message);
 
     Optional<String> rebuiltMessage = service.rebuildMessageContent(TRAINEE_ID, NOTIFICATION_ID);
 
