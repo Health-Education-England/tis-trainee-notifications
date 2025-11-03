@@ -53,6 +53,7 @@ import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.support.PageableExecutionUtils;
 import org.springframework.stereotype.Service;
 import uk.nhs.tis.trainee.notifications.dto.HistoryDto;
+import uk.nhs.tis.trainee.notifications.dto.HistoryMessageDto;
 import uk.nhs.tis.trainee.notifications.mapper.HistoryMapper;
 import uk.nhs.tis.trainee.notifications.model.History;
 import uk.nhs.tis.trainee.notifications.model.History.TemplateInfo;
@@ -70,22 +71,29 @@ import uk.nhs.tis.trainee.notifications.repository.HistoryRepository;
 @Service
 public class HistoryService {
 
+  private static final String LOG_NOTIFICATION_NOT_FOUND = "Notification {} was not found.";
+  private static final String LOG_NOTIFICATION_NOT_FOUND_TRAINEE =
+      "Notification {} was not found for trainee {}.";
+
   private static final Map<MessageType, Set<NotificationStatus>> VALID_STATUSES = Map.of(
       EMAIL, Set.of(FAILED, PENDING, SENT),
       IN_APP, Set.of(ARCHIVED, READ, SCHEDULED, UNREAD)
   );
   private static final String STATUS_PROPERTY = "status";
   private static final String SUBJECT_PROPERTY = "subject";
-  private static final String SENTAT_PROPERTY = "sentAt";
+  private static final String SENT_AT_PROPERTY = "sentAt";
   private static final String CONTACT_PROPERTY = "contact";
   private static final String TYPE_PROPERTY = "type";
   private static final String STATUS_FIELD = "status";
   private static final String SUBJECT_FIELD = "subject";
-  private static final String SENTAT_FIELD = "sentAt";
+  private static final String SENT_AT_FIELD = "sentAt";
   private static final String CONTACT_FIELD = "recipient.contact";
   private static final String TYPE_FIELD = "type";
   private static final String RECIPIENT_TYPE_FIELD = "recipient.type";
   private static final String RECIPIENT_ID_FIELD = "recipient.id";
+
+  private static final String SELECTOR_SUBJECT = "subject";
+  private static final String SELECTOR_CONTENT = "content";
 
   private final HistoryRepository repository;
   private final TemplateService templateService;
@@ -136,7 +144,7 @@ public class HistoryService {
     Optional<History> optionalHistory = repository.findById(new ObjectId(notificationId));
 
     if (optionalHistory.isEmpty()) {
-      log.info("Notification {} was not found.", notificationId);
+      log.info(LOG_NOTIFICATION_NOT_FOUND, notificationId);
       return Optional.empty();
     }
 
@@ -157,7 +165,7 @@ public class HistoryService {
         new ObjectId(notificationId), traineeId);
 
     if (optionalHistory.isEmpty()) {
-      log.info("Notification {} was not found for trainee {}.", notificationId, traineeId);
+      log.info(LOG_NOTIFICATION_NOT_FOUND_TRAINEE, notificationId, traineeId);
       return Optional.empty();
     }
 
@@ -265,8 +273,7 @@ public class HistoryService {
    * @return The found notifications, empty if none found.
    */
   public Page<HistoryDto> findAllSentInPageForTrainee(String traineeId,
-                                                      Map<String, String> filterParams,
-                                                      Pageable pageable) {
+      Map<String, String> filterParams, Pageable pageable) {
     Query query = buildHistoryFilteredQuery(traineeId, filterParams, pageable);
     List<History> historyList = mongoTemplate.find(query, History.class);
     Page<History> historyPage = PageableExecutionUtils.getPage(historyList, pageable,
@@ -307,7 +314,7 @@ public class HistoryService {
 
     Example<History> example = Example.of(history);
 
-    Sort sort = Sort.by(SENTAT_FIELD).descending();
+    Sort sort = Sort.by(SENT_AT_FIELD).descending();
     return repository.findAll(example, sort);
   }
 
@@ -396,7 +403,6 @@ public class HistoryService {
     log.info("Removed notification history {} for {}", id, traineeId);
   }
 
-
   /**
    * Convert a history entity to an equivalent DTO, handles in-app subject text.
    *
@@ -404,19 +410,69 @@ public class HistoryService {
    * @return The mapped HistoryDto.
    */
   private HistoryDto toDto(History history) {
-    String subject = null;
     NotificationStatus status = history.status();
-    subject = rebuildMessage(history, Set.of(SUBJECT_FIELD)).orElse("");
+    String subject = rebuildMessage(history, Set.of(SUBJECT_FIELD)).orElse("");
 
     if (history.recipient().type() == IN_APP && history.sentAt().isAfter(Instant.now())) {
       status = SCHEDULED;
     }
 
-    if (subject == null || subject.isEmpty()) {
+    if (subject.isEmpty()) {
       return mapper.toDto(history, status);
     } else {
       return mapper.toDto(history, subject, status);
     }
+  }
+
+  /**
+   * Rebuild the full message for a given trainee's notification.
+   *
+   * @param traineeId      The ID of the trainee.
+   * @param notificationId The ID of the notification.
+   * @return The rebuilt message, or empty if the notification was not found.
+   */
+  public Optional<HistoryMessageDto> rebuildMessageFull(String traineeId, String notificationId) {
+    Optional<History> optionalHistory = repository.findByIdAndRecipient_Id(
+        new ObjectId(notificationId), traineeId);
+
+    if (optionalHistory.isEmpty()) {
+      log.info(LOG_NOTIFICATION_NOT_FOUND_TRAINEE, notificationId, traineeId);
+      return Optional.empty();
+    }
+
+    History history = optionalHistory.get();
+    Optional<String> subject = rebuildMessage(history, Set.of(SELECTOR_SUBJECT));
+    Optional<String> content = rebuildMessage(history, Set.of(SELECTOR_CONTENT));
+
+    if (subject.orElse("").isBlank() || content.orElse("").isBlank()) {
+      log.warn(
+          "Subject and/or Content not found for notification {}, will return empty result.",
+          notificationId);
+      return Optional.empty();
+    }
+
+    return Optional.of(new HistoryMessageDto(subject.get(), content.get(), history.sentAt()));
+  }
+
+  /**
+   * Rebuild the message content for a given trainee's notification.
+   *
+   * @param traineeId      The ID of the trainee.
+   * @param notificationId The ID of the notification.
+   * @return The rebuilt message content, or empty if the notification was not found.
+   */
+  public Optional<String> rebuildMessageContent(String traineeId, String notificationId) {
+    Optional<History> optionalHistory = repository.findByIdAndRecipient_Id(
+        new ObjectId(notificationId), traineeId);
+
+    if (optionalHistory.isEmpty()) {
+      log.info(LOG_NOTIFICATION_NOT_FOUND_TRAINEE, notificationId, traineeId);
+      return Optional.empty();
+    }
+
+    History history = optionalHistory.get();
+    Set<String> selectors = history.recipient().type() == IN_APP ? Set.of(SELECTOR_CONTENT) : Set.of();
+    return rebuildMessage(history, selectors);
   }
 
   /**
@@ -429,32 +485,11 @@ public class HistoryService {
     Optional<History> optionalHistory = repository.findById(new ObjectId(notificationId));
 
     if (optionalHistory.isEmpty()) {
-      log.info("Notification {} was not found.", notificationId);
+      log.info(LOG_NOTIFICATION_NOT_FOUND, notificationId);
       return Optional.empty();
     }
 
     return rebuildMessage(optionalHistory.get(), Set.of());
-  }
-
-  /**
-   * Rebuild the message for a given trainee's notification.
-   *
-   * @param traineeId      The ID of the trainee.
-   * @param notificationId The ID of the notification.
-   * @return The rebuilt message, or empty if the notification was not found.
-   */
-  public Optional<String> rebuildMessage(String traineeId, String notificationId) {
-    Optional<History> optionalHistory = repository.findByIdAndRecipient_Id(
-        new ObjectId(notificationId), traineeId);
-
-    if (optionalHistory.isEmpty()) {
-      log.info("Notification {} was not found for trainee {}.", notificationId, traineeId);
-      return Optional.empty();
-    }
-
-    History history = optionalHistory.get();
-    Set<String> selectors = history.recipient().type() == IN_APP ? Set.of("content") : Set.of();
-    return rebuildMessage(history, selectors);
   }
 
   /**
@@ -507,7 +542,7 @@ public class HistoryService {
    * @return The build query.
    */
   private Query buildHistoryFilteredQuery(String traineeId, Map<String, String> filterParams,
-                                          Pageable pageable) {
+      Pageable pageable) {
     // Translate sort field(s).
     Sort sort = pageable.getSort().isSorted()
         ? Sort.by(pageable.getSort().stream()
@@ -515,7 +550,7 @@ public class HistoryService {
           String property = switch (order.getProperty()) {
             case STATUS_PROPERTY -> STATUS_FIELD;
             case SUBJECT_PROPERTY -> TYPE_FIELD;
-            case SENTAT_PROPERTY -> SENTAT_FIELD;
+            case SENT_AT_PROPERTY -> SENT_AT_FIELD;
             case CONTACT_PROPERTY -> CONTACT_FIELD;
             default -> null;
           };
@@ -523,7 +558,7 @@ public class HistoryService {
         })
         .filter(Objects::nonNull)
         .toList())
-        : Sort.by(Sort.Order.desc(SENTAT_FIELD)); // default sort by sentAt descending
+        : Sort.by(Sort.Order.desc(SENT_AT_FIELD)); // default sort by sentAt descending
 
     Query query;
 
@@ -539,7 +574,7 @@ public class HistoryService {
     // Restrict results to the user's traineeId.
     query.addCriteria(Criteria.where(RECIPIENT_ID_FIELD).is(traineeId));
     // Restrict results with sentAt before
-    query.addCriteria(Criteria.where(SENTAT_FIELD).lt(Instant.now()));
+    query.addCriteria(Criteria.where(SENT_AT_FIELD).lt(Instant.now()));
 
     // Handle fix-value filters.
     filterParams.entrySet().stream()
@@ -572,7 +607,7 @@ public class HistoryService {
       query.addCriteria(new Criteria().orOperator(
           Criteria.where(STATUS_FIELD).regex(pattern, "i"),
           Criteria.where(TYPE_FIELD).regex(pattern, "i"),
-          Criteria.where(SENTAT_FIELD).regex(pattern, "i"),
+          Criteria.where(SENT_AT_FIELD).regex(pattern, "i"),
           Criteria.where(CONTACT_FIELD).regex(pattern, "i")
       ));
     }

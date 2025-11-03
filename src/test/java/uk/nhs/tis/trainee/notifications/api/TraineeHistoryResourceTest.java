@@ -26,8 +26,11 @@ import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
+import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
+import static org.springframework.http.MediaType.TEXT_HTML;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
@@ -51,6 +54,7 @@ import org.bson.types.ObjectId;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.EmptySource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -63,6 +67,7 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import uk.nhs.tis.trainee.notifications.TestJwtUtil;
 import uk.nhs.tis.trainee.notifications.dto.HistoryDto;
+import uk.nhs.tis.trainee.notifications.dto.HistoryMessageDto;
 import uk.nhs.tis.trainee.notifications.model.History.TisReferenceInfo;
 import uk.nhs.tis.trainee.notifications.model.NotificationStatus;
 import uk.nhs.tis.trainee.notifications.model.TisReferenceType;
@@ -202,28 +207,73 @@ class TraineeHistoryResourceTest {
         .andExpect(status().isBadRequest());
   }
 
-  @Test
-  void shouldReturnNotFoundWhenNoNotificationMessageFound() throws Exception {
-    when(service.rebuildMessage(TRAINEE_ID, NOTIFICATION_ID)).thenReturn(Optional.empty());
+  @ParameterizedTest
+  @ValueSource(strings = "text/html")
+  @EmptySource
+  void shouldReturnNotFoundWhenNoNotificationMessageFound(String accept) throws Exception {
+    when(service.rebuildMessageContent(TRAINEE_ID, NOTIFICATION_ID)).thenReturn(Optional.empty());
 
     mockMvc.perform(get("/api/history/trainee/message/{notificationId}", NOTIFICATION_ID)
-            .header(HttpHeaders.AUTHORIZATION, TestJwtUtil.generateTokenForTisId(TRAINEE_ID)))
+            .header(HttpHeaders.AUTHORIZATION, TestJwtUtil.generateTokenForTisId(TRAINEE_ID))
+            .header(HttpHeaders.ACCEPT, accept))
         .andExpect(status().isNotFound());
+
+    verify(service).rebuildMessageContent(any(), any());
   }
 
   @Test
-  void shouldReturnRebuiltMessageWhenNotificationFound() throws Exception {
+  void shouldReturnNotFoundWhenNoNotificationMessageFoundAndAcceptJson() throws Exception {
+    when(service.rebuildMessageFull(TRAINEE_ID, NOTIFICATION_ID)).thenReturn(Optional.empty());
+
+    mockMvc.perform(get("/api/history/trainee/message/{notificationId}", NOTIFICATION_ID)
+            .header(HttpHeaders.AUTHORIZATION, TestJwtUtil.generateTokenForTisId(TRAINEE_ID))
+            .header(HttpHeaders.ACCEPT, APPLICATION_JSON_VALUE))
+        .andExpect(status().isNotFound());
+
+    verify(service).rebuildMessageFull(any(), any());
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = "text/html")
+  @EmptySource
+  void shouldReturnRebuiltMessageHtmlWhenNotificationFound(String accept) throws Exception {
     String message = """
         <html>
           <p>Rebuilt message</p>
         </html>""";
-    when(service.rebuildMessage(TRAINEE_ID, NOTIFICATION_ID)).thenReturn(Optional.of(message));
+    when(service.rebuildMessageContent(TRAINEE_ID, NOTIFICATION_ID)).thenReturn(
+        Optional.of(message));
 
     mockMvc.perform(get("/api/history/trainee/message/{notificationId}", NOTIFICATION_ID)
-            .header(HttpHeaders.AUTHORIZATION, TestJwtUtil.generateTokenForTisId(TRAINEE_ID)))
+            .header(HttpHeaders.AUTHORIZATION, TestJwtUtil.generateTokenForTisId(TRAINEE_ID))
+            .header(HttpHeaders.ACCEPT, accept))
         .andExpect(status().isOk())
-        .andExpect(content().contentType(MediaType.TEXT_HTML))
+        .andExpect(content().contentType(TEXT_HTML))
         .andExpect(content().string(message));
+
+    verify(service).rebuildMessageContent(any(), any());
+  }
+
+  @Test
+  void shouldReturnRebuiltMessageJsonWhenNotificationFoundAndAcceptJson() throws Exception {
+    String content = """
+        <html>
+          <p>Rebuilt message</p>
+        </html>""";
+    Instant sentAt = Instant.now().minusSeconds(60);
+    HistoryMessageDto message = new HistoryMessageDto("Rebuilt Subject", content, sentAt);
+    when(service.rebuildMessageFull(TRAINEE_ID, NOTIFICATION_ID)).thenReturn(Optional.of(message));
+
+    mockMvc.perform(get("/api/history/trainee/message/{notificationId}", NOTIFICATION_ID)
+            .header(HttpHeaders.AUTHORIZATION, TestJwtUtil.generateTokenForTisId(TRAINEE_ID))
+            .header(HttpHeaders.ACCEPT, APPLICATION_JSON_VALUE))
+        .andExpect(status().isOk())
+        .andExpect(content().contentType(APPLICATION_JSON))
+        .andExpect(jsonPath("$.subject", is("Rebuilt Subject")))
+        .andExpect(jsonPath("$.content", is(content)))
+        .andExpect(jsonPath("$.sentAt", is(sentAt.toString())));
+
+    verify(service).rebuildMessageFull(any(), any());
   }
 
   @ParameterizedTest

@@ -25,9 +25,11 @@ import static org.hamcrest.CoreMatchers.either;
 import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.emptyOrNullString;
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.hamcrest.Matchers.hasItems;
 import static org.hamcrest.Matchers.hasSize;
+import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.nullValue;
 import static org.hamcrest.Matchers.oneOf;
 import static org.mockito.ArgumentMatchers.any;
@@ -72,6 +74,7 @@ import org.testcontainers.containers.MongoDBContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import uk.nhs.tis.trainee.notifications.dto.HistoryDto;
+import uk.nhs.tis.trainee.notifications.dto.HistoryMessageDto;
 import uk.nhs.tis.trainee.notifications.model.History;
 import uk.nhs.tis.trainee.notifications.model.History.RecipientInfo;
 import uk.nhs.tis.trainee.notifications.model.History.TemplateInfo;
@@ -653,8 +656,8 @@ class HistoryServiceIntegrationTest {
   }
 
   @Test
-  void shouldNotRebuildMessageForTraineeWhenNotificationNotFound() {
-    Optional<String> message = service.rebuildMessage(TRAINEE_ID, ObjectId.get().toString());
+  void shouldNotRebuildMessageContentForTraineeWhenNotificationNotFound() {
+    Optional<String> message = service.rebuildMessageContent(TRAINEE_ID, ObjectId.get().toString());
 
     assertThat("Unexpected message.", message, is(Optional.empty()));
   }
@@ -662,8 +665,8 @@ class HistoryServiceIntegrationTest {
   @ParameterizedTest
   @MethodSource(
       "uk.nhs.tis.trainee.notifications.MethodArgumentUtil#getEmailTemplateTypeAndVersions")
-  void shouldRebuildEmailMessageForTraineeWhenNotificationFound(NotificationType notificationType,
-      String version) {
+  void shouldRebuildEmailMessageContentForTraineeWhenNotificationFound(
+      NotificationType notificationType, String version) {
     RecipientInfo recipientInfo = new RecipientInfo(TRAINEE_ID, EMAIL, TRAINEE_CONTACT);
     TemplateInfo templateInfo = new TemplateInfo(notificationType.getTemplateName(), version,
         TEMPLATE_VARIABLES);
@@ -673,7 +676,8 @@ class HistoryServiceIntegrationTest {
         recipientInfo, templateInfo, null, Instant.now(), Instant.now(), SENT, null, null);
     service.save(history);
 
-    Optional<String> message = service.rebuildMessage(TRAINEE_ID, NOTIFICATION_ID.toString());
+    Optional<String> message = service.rebuildMessageContent(TRAINEE_ID,
+        NOTIFICATION_ID.toString());
 
     assertThat("Unexpected message presence.", message.isPresent(), is(true));
 
@@ -696,8 +700,8 @@ class HistoryServiceIntegrationTest {
   @ParameterizedTest
   @MethodSource(
       "uk.nhs.tis.trainee.notifications.MethodArgumentUtil#getInAppTemplateTypeAndVersions")
-  void shouldRebuildInAppMessageForTraineeWhenNotificationFound(NotificationType notificationType,
-      String version) {
+  void shouldRebuildInAppMessageContentForTraineeWhenNotificationFound(
+      NotificationType notificationType, String version) {
     RecipientInfo recipientInfo = new RecipientInfo(TRAINEE_ID, IN_APP, TRAINEE_CONTACT);
     TemplateInfo templateInfo = new TemplateInfo(notificationType.getTemplateName(), version,
         TEMPLATE_VARIABLES);
@@ -707,7 +711,8 @@ class HistoryServiceIntegrationTest {
         recipientInfo, templateInfo, null, Instant.now(), Instant.now(), UNREAD, null, null);
     service.save(history);
 
-    Optional<String> message = service.rebuildMessage(TRAINEE_ID, NOTIFICATION_ID.toString());
+    Optional<String> message = service.rebuildMessageContent(TRAINEE_ID,
+        NOTIFICATION_ID.toString());
 
     assertThat("Unexpected message presence.", message.isPresent(), is(true));
 
@@ -719,6 +724,86 @@ class HistoryServiceIntegrationTest {
     body.children().forEach(
         contentNode -> assertThat("Unexpected node type.", contentNode.tagName(),
             either(is("p")).or(is("ul"))));
+  }
+
+  @Test
+  void shouldNotRebuildFullMessageForTraineeWhenNotificationNotFound() {
+    Optional<HistoryMessageDto> message = service.rebuildMessageFull(TRAINEE_ID,
+        ObjectId.get().toString());
+
+    assertThat("Unexpected message.", message, is(Optional.empty()));
+  }
+
+  @ParameterizedTest
+  @MethodSource(
+      "uk.nhs.tis.trainee.notifications.MethodArgumentUtil#getEmailTemplateTypeAndVersions")
+  void shouldRebuildEmailFullMessageForTraineeWhenNotificationFound(
+      NotificationType notificationType, String version) {
+    RecipientInfo recipientInfo = new RecipientInfo(TRAINEE_ID, EMAIL, TRAINEE_CONTACT);
+    TemplateInfo templateInfo = new TemplateInfo(notificationType.getTemplateName(), version,
+        TEMPLATE_VARIABLES);
+    TisReferenceInfo tisReferenceInfo = new TisReferenceInfo(TIS_REFERENCE_TYPE, TIS_REFERENCE_ID);
+
+    Instant sentAt = Instant.now().minusSeconds(60);
+    History history = new History(NOTIFICATION_ID, tisReferenceInfo, notificationType,
+        recipientInfo, templateInfo, null, sentAt, Instant.now(), UNREAD, null, null);
+    service.save(history);
+
+    Optional<HistoryMessageDto> message = service.rebuildMessageFull(TRAINEE_ID,
+        NOTIFICATION_ID.toString());
+
+    assertThat("Unexpected message presence.", message.isPresent(), is(true));
+    HistoryMessageDto messageDto = message.get();
+
+    assertThat("Unexpected subject.", messageDto.subject(), not(emptyOrNullString()));
+
+    Document content = Jsoup.parse(messageDto.content());
+    Element body = content.body();
+
+    assertThat("Unexpected child count.", body.childNodeSize(), greaterThanOrEqualTo(1));
+
+    Element contentWrapper = body.children().get(0);
+    assertThat("Unexpected element tag.", contentWrapper.tagName(),
+        either(is("div")).or(is("p")));
+
+    assertThat("Unexpected sent at timestamp.", messageDto.sentAt(),
+        is(sentAt.truncatedTo(ChronoUnit.MILLIS)));
+  }
+
+  @ParameterizedTest
+  @MethodSource(
+      "uk.nhs.tis.trainee.notifications.MethodArgumentUtil#getInAppTemplateTypeAndVersions")
+  void shouldRebuildInAppFullMessageForTraineeWhenNotificationFound(
+      NotificationType notificationType, String version) {
+    RecipientInfo recipientInfo = new RecipientInfo(TRAINEE_ID, IN_APP, TRAINEE_CONTACT);
+    TemplateInfo templateInfo = new TemplateInfo(notificationType.getTemplateName(), version,
+        TEMPLATE_VARIABLES);
+    TisReferenceInfo tisReferenceInfo = new TisReferenceInfo(TIS_REFERENCE_TYPE, TIS_REFERENCE_ID);
+
+    Instant sentAt = Instant.now().minusSeconds(60);
+    History history = new History(NOTIFICATION_ID, tisReferenceInfo, notificationType,
+        recipientInfo, templateInfo, null, sentAt, Instant.now(), UNREAD, null, null);
+    service.save(history);
+
+    Optional<HistoryMessageDto> message = service.rebuildMessageFull(TRAINEE_ID,
+        NOTIFICATION_ID.toString());
+
+    assertThat("Unexpected message presence.", message.isPresent(), is(true));
+    HistoryMessageDto messageDto = message.get();
+
+    assertThat("Unexpected subject.", messageDto.subject(), not(emptyOrNullString()));
+
+    Document content = Jsoup.parse(messageDto.content());
+    Element body = content.body();
+
+    assertThat("Unexpected child count.", body.childNodeSize(), greaterThanOrEqualTo(1));
+
+    body.children().forEach(
+        contentNode -> assertThat("Unexpected node type.", contentNode.tagName(),
+            either(is("p")).or(is("ul"))));
+
+    assertThat("Unexpected sent at timestamp.", messageDto.sentAt(),
+        is(sentAt.truncatedTo(ChronoUnit.MILLIS)));
   }
 
   @Test

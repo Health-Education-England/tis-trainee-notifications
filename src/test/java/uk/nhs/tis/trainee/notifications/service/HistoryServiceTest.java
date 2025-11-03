@@ -82,6 +82,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Query;
 import uk.nhs.tis.trainee.notifications.dto.HistoryDto;
+import uk.nhs.tis.trainee.notifications.dto.HistoryMessageDto;
 import uk.nhs.tis.trainee.notifications.mapper.HistoryMapper;
 import uk.nhs.tis.trainee.notifications.mapper.HistoryMapperImpl;
 import uk.nhs.tis.trainee.notifications.model.History;
@@ -1223,10 +1224,10 @@ class HistoryServiceTest {
   }
 
   @Test
-  void shouldNotRebuildMessageForTraineeWhenNotificationNotFound() {
+  void shouldNotRebuildFullMessageForTraineeWhenNotificationNotFound() {
     when(repository.findByIdAndRecipient_Id(any(), any())).thenReturn(Optional.empty());
 
-    Optional<String> message = service.rebuildMessage(TRAINEE_ID, NOTIFICATION_ID);
+    Optional<HistoryMessageDto> message = service.rebuildMessageFull(TRAINEE_ID, NOTIFICATION_ID);
 
     assertThat("Unexpected message.", message, is(Optional.empty()));
 
@@ -1235,7 +1236,122 @@ class HistoryServiceTest {
 
   @ParameterizedTest
   @MethodSource("uk.nhs.tis.trainee.notifications.MethodArgumentUtil#getTemplateCombinations")
-  void shouldRebuildMessageForTraineeWhenNotificationFound(MessageType messageType,
+  void shouldNotRebuildFullMessageForTraineeWhenNotificationSubjectMissing(MessageType messageType,
+      NotificationType notificationType) {
+    ObjectId notificationId = new ObjectId(NOTIFICATION_ID);
+    RecipientInfo recipientInfo = new RecipientInfo(TRAINEE_ID, messageType, TRAINEE_CONTACT);
+    TemplateInfo templateInfo = new TemplateInfo(TEMPLATE_NAME, TEMPLATE_VERSION,
+        TEMPLATE_VARIABLES);
+    TisReferenceInfo tisReferenceInfo = new TisReferenceInfo(TIS_REFERENCE_TYPE, TIS_REFERENCE_ID);
+
+    History history = new History(notificationId, tisReferenceInfo, notificationType, recipientInfo,
+        templateInfo, null, Instant.now(), Instant.now(), SENT, null, null);
+    when(repository.findByIdAndRecipient_Id(any(), any())).thenReturn(Optional.of(history));
+
+    String templatePath = "type/test/template/v1.2.3";
+    when(templateService.getTemplatePath(messageType, TEMPLATE_NAME, TEMPLATE_VERSION)).thenReturn(
+        templatePath);
+
+    when(templateService.process(templatePath, Set.of("subject"), TEMPLATE_VARIABLES))
+        .thenReturn("");
+
+    String message = """
+        <html>
+          <p>Rebuilt message</p>
+        </html>""";
+    when(templateService.process(templatePath, Set.of("content"), TEMPLATE_VARIABLES))
+        .thenReturn(message);
+
+    Optional<HistoryMessageDto> rebuiltMessage = service.rebuildMessageFull(TRAINEE_ID,
+        NOTIFICATION_ID);
+
+    assertThat("Unexpected message.", rebuiltMessage, is(Optional.empty()));
+  }
+
+  @ParameterizedTest
+  @MethodSource("uk.nhs.tis.trainee.notifications.MethodArgumentUtil#getTemplateCombinations")
+  void shouldNotRebuildFullMessageForTraineeWhenNotificationContentMissing(MessageType messageType,
+      NotificationType notificationType) {
+    ObjectId notificationId = new ObjectId(NOTIFICATION_ID);
+    RecipientInfo recipientInfo = new RecipientInfo(TRAINEE_ID, messageType, TRAINEE_CONTACT);
+    TemplateInfo templateInfo = new TemplateInfo(TEMPLATE_NAME, TEMPLATE_VERSION,
+        TEMPLATE_VARIABLES);
+    TisReferenceInfo tisReferenceInfo = new TisReferenceInfo(TIS_REFERENCE_TYPE, TIS_REFERENCE_ID);
+
+    History history = new History(notificationId, tisReferenceInfo, notificationType, recipientInfo,
+        templateInfo, null, Instant.now(), Instant.now(), SENT, null, null);
+    when(repository.findByIdAndRecipient_Id(any(), any())).thenReturn(Optional.of(history));
+
+    String templatePath = "type/test/template/v1.2.3";
+    when(templateService.getTemplatePath(messageType, TEMPLATE_NAME, TEMPLATE_VERSION)).thenReturn(
+        templatePath);
+
+    when(templateService.process(templatePath, Set.of("subject"), TEMPLATE_VARIABLES))
+        .thenReturn("Rebuilt Subject");
+
+    when(templateService.process(templatePath, Set.of("content"), TEMPLATE_VARIABLES))
+        .thenReturn("");
+
+    Optional<HistoryMessageDto> rebuiltMessage = service.rebuildMessageFull(TRAINEE_ID,
+        NOTIFICATION_ID);
+
+    assertThat("Unexpected message.", rebuiltMessage, is(Optional.empty()));
+  }
+
+  @ParameterizedTest
+  @MethodSource("uk.nhs.tis.trainee.notifications.MethodArgumentUtil#getTemplateCombinations")
+  void shouldRebuildFullMessageForTraineeWhenNotificationFound(MessageType messageType,
+      NotificationType notificationType) {
+    ObjectId notificationId = new ObjectId(NOTIFICATION_ID);
+    RecipientInfo recipientInfo = new RecipientInfo(TRAINEE_ID, messageType, TRAINEE_CONTACT);
+    TemplateInfo templateInfo = new TemplateInfo(TEMPLATE_NAME, TEMPLATE_VERSION,
+        TEMPLATE_VARIABLES);
+    TisReferenceInfo tisReferenceInfo = new TisReferenceInfo(TIS_REFERENCE_TYPE, TIS_REFERENCE_ID);
+
+    Instant sentAt = Instant.now().minusSeconds(60);
+    History history = new History(notificationId, tisReferenceInfo, notificationType, recipientInfo,
+        templateInfo, null, sentAt, Instant.now(), SENT, null, null);
+    when(repository.findByIdAndRecipient_Id(any(), any())).thenReturn(Optional.of(history));
+
+    String templatePath = "type/test/template/v1.2.3";
+    when(templateService.getTemplatePath(messageType, TEMPLATE_NAME, TEMPLATE_VERSION)).thenReturn(
+        templatePath);
+
+    when(templateService.process(templatePath, Set.of("subject"), TEMPLATE_VARIABLES))
+        .thenReturn("Rebuilt Subject");
+
+    String message = """
+        <html>
+          <p>Rebuilt message</p>
+        </html>""";
+    when(templateService.process(templatePath, Set.of("content"), TEMPLATE_VARIABLES))
+        .thenReturn(message);
+
+    Optional<HistoryMessageDto> rebuiltMessage = service.rebuildMessageFull(TRAINEE_ID,
+        NOTIFICATION_ID);
+
+    assertThat("Unexpected message presence.", rebuiltMessage.isPresent(), is(true));
+
+    HistoryMessageDto historyMessageDto = rebuiltMessage.get();
+    assertThat("Unexpected subject.", historyMessageDto.subject(), is("Rebuilt Subject"));
+    assertThat("Unexpected content.", historyMessageDto.content(), is(message));
+    assertThat("Unexpected sent at.", historyMessageDto.sentAt(), is(sentAt));
+  }
+
+  @Test
+  void shouldNotRebuildMessageContentForTraineeWhenNotificationNotFound() {
+    when(repository.findByIdAndRecipient_Id(any(), any())).thenReturn(Optional.empty());
+
+    Optional<String> message = service.rebuildMessageContent(TRAINEE_ID, NOTIFICATION_ID);
+
+    assertThat("Unexpected message.", message, is(Optional.empty()));
+
+    verifyNoInteractions(templateService);
+  }
+
+  @ParameterizedTest
+  @MethodSource("uk.nhs.tis.trainee.notifications.MethodArgumentUtil#getTemplateCombinations")
+  void shouldRebuildMessageContentForTraineeWhenNotificationFound(MessageType messageType,
       NotificationType notificationType) {
     ObjectId notificationId = new ObjectId(NOTIFICATION_ID);
     RecipientInfo recipientInfo = new RecipientInfo(TRAINEE_ID, messageType, TRAINEE_CONTACT);
@@ -1255,10 +1371,10 @@ class HistoryServiceTest {
         <html>
           <p>Rebuilt message</p>
         </html>""";
-    when(templateService.process(eq(templatePath), any(), eq(TEMPLATE_VARIABLES))).thenReturn(
-        message);
+    when(templateService.process(eq(templatePath), any(), eq(TEMPLATE_VARIABLES)))
+        .thenReturn(message);
 
-    Optional<String> rebuiltMessage = service.rebuildMessage(TRAINEE_ID, NOTIFICATION_ID);
+    Optional<String> rebuiltMessage = service.rebuildMessageContent(TRAINEE_ID, NOTIFICATION_ID);
 
     assertThat("Unexpected message presence.", rebuiltMessage.isPresent(), is(true));
     assertThat("Unexpected message.", rebuiltMessage.get(), is(message));
@@ -1266,7 +1382,7 @@ class HistoryServiceTest {
 
   @ParameterizedTest
   @EnumSource(NotificationType.class)
-  void shouldRebuildMessageForTraineeWithContentSelectorWhenInAppNotificationFound(
+  void shouldRebuildMessageContentForTraineeWithContentSelectorWhenInAppNotificationFound(
       NotificationType notificationType) {
     ObjectId notificationId = new ObjectId(NOTIFICATION_ID);
     RecipientInfo recipientInfo = new RecipientInfo(null, IN_APP, null);
@@ -1277,14 +1393,14 @@ class HistoryServiceTest {
     when(repository.findByIdAndRecipient_Id(any(), any())).thenReturn(Optional.of(history));
     when(templateService.process(any(), any(), eq(TEMPLATE_VARIABLES))).thenReturn("");
 
-    service.rebuildMessage(TRAINEE_ID, NOTIFICATION_ID);
+    service.rebuildMessageContent(TRAINEE_ID, NOTIFICATION_ID);
 
     verify(templateService).process(any(), eq(Set.of("content")), anyMap());
   }
 
   @ParameterizedTest
   @EnumSource(NotificationType.class)
-  void shouldRebuildMessageForTraineeWithNoSelectorWhenEmailNotificationFound(
+  void shouldRebuildMessageContentForTraineeWithNoSelectorWhenEmailNotificationFound(
       NotificationType notificationType) {
     ObjectId notificationId = new ObjectId(NOTIFICATION_ID);
     RecipientInfo recipientInfo = new RecipientInfo(null, EMAIL, null);
@@ -1295,7 +1411,7 @@ class HistoryServiceTest {
     when(repository.findByIdAndRecipient_Id(any(), any())).thenReturn(Optional.of(history));
     when(templateService.process(any(), any(), eq(TEMPLATE_VARIABLES))).thenReturn("");
 
-    service.rebuildMessage(TRAINEE_ID, NOTIFICATION_ID);
+    service.rebuildMessageContent(TRAINEE_ID, NOTIFICATION_ID);
 
     verify(templateService).process(any(), eq(Set.of()), anyMap());
   }

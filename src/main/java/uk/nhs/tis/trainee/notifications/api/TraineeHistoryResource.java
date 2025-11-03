@@ -46,6 +46,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import uk.nhs.tis.trainee.notifications.api.util.AuthTokenUtil;
 import uk.nhs.tis.trainee.notifications.dto.HistoryDto;
+import uk.nhs.tis.trainee.notifications.dto.HistoryMessageDto;
 import uk.nhs.tis.trainee.notifications.service.HistoryService;
 
 /**
@@ -100,9 +101,10 @@ public class TraineeHistoryResource {
    * @param token          The authorization token from the request header.
    * @return The found notification.
    */
-  @GetMapping("/message/{notificationId}")
-  ResponseEntity<String> getHistoricalMessage(@PathVariable String notificationId,
-      @RequestHeader(HttpHeaders.AUTHORIZATION) String token) {
+  @GetMapping(path = "/message/{notificationId}")
+  ResponseEntity<?> getHistoricalMessage(@PathVariable String notificationId,
+      @RequestHeader(HttpHeaders.AUTHORIZATION) String token,
+      @RequestHeader(value = HttpHeaders.ACCEPT, required = false) String acceptHeader) {
     log.info("Retrieving notification message for the authorized trainee.");
     String traineeId = getTraineeId(token);
 
@@ -110,9 +112,15 @@ public class TraineeHistoryResource {
       return ResponseEntity.badRequest().build();
     }
 
-    log.info("Rebuilding message for notification {}.", notificationId);
-    Optional<String> message = service.rebuildMessage(traineeId, notificationId);
+    if (acceptHeader != null && acceptHeader.equals(MediaType.APPLICATION_JSON_VALUE)) {
+      log.info("Rebuilding full message for notification {}.", notificationId);
+      Optional<HistoryMessageDto> message = service.rebuildMessageFull(traineeId, notificationId);
 
+      return ResponseEntity.of(message);
+    }
+
+    log.info("Rebuilding message content for notification {}.", notificationId);
+    Optional<String> message = service.rebuildMessageContent(traineeId, notificationId);
     return message.map(msg -> ResponseEntity.ok().contentType(MediaType.TEXT_HTML).body(msg))
         .orElseGet(() -> ResponseEntity.notFound().build());
   }
