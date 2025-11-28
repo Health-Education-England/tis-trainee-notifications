@@ -10,7 +10,7 @@ plugins {
 }
 
 group = "uk.nhs.tis.trainee"
-version = "3.1.0"
+version = "3.2.0"
 
 configurations {
   compileOnly {
