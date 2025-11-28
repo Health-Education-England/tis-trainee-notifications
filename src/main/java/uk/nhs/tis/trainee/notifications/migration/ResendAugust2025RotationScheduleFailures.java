@@ -21,6 +21,7 @@
 
 package uk.nhs.tis.trainee.notifications.migration;
 
+import static java.time.ZoneOffset.UTC;
 import static uk.nhs.tis.trainee.notifications.model.MessageType.EMAIL;
 import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.SCHEDULED;
 
@@ -76,8 +77,8 @@ public class ResendAugust2025RotationScheduleFailures {
         .addCriteria(Criteria.where("recipient.type").is(EMAIL))
         .addCriteria(Criteria.where("status").is(SCHEDULED))
         .addCriteria(Criteria.where("sentAt")
-            .gte(LocalDate.of(2025, 5, 1))
-            .lt(LocalDate.now(ZoneOffset.UTC))
+            .gte(Instant.parse("2025-05-01T00:00:00Z"))
+            .lt(LocalDate.now(UTC).atStartOfDay(UTC).toInstant())
         );
 
     List<History> missedSchedules = mongoTemplate.find(query, History.class);

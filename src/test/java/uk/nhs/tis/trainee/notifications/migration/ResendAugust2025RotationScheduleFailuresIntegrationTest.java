@@ -129,7 +129,6 @@ class ResendAugust2025RotationScheduleFailuresIntegrationTest {
 
   @Test
   void shouldFindBySentAt() {
-    TimeZone.setDefault(TimeZone.getTimeZone("UTC"));
     createMissedSchedule(null, null, Instant.parse("2025-04-30T23:59:59Z"));
     createMissedSchedule(null, null, Instant.parse("2025-05-01T00:00:00Z"));
     createMissedSchedule(null, null, Instant.now()
