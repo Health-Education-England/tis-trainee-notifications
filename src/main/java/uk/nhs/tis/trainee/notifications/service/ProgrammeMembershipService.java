@@ -184,7 +184,12 @@ public class ProgrammeMembershipService {
 
     Set<NotificationType> notificationTypes = new HashSet<>(
         NotificationType.getProgrammeUpdateNotificationTypes());
-    notificationTypes.addAll(NotificationType.getProgrammeInAppNotificationTypes());
+    notificationTypes.add(DEFERRAL);
+    notificationTypes.add(E_PORTFOLIO);
+    notificationTypes.add(INDEMNITY_INSURANCE);
+    notificationTypes.add(LTFT);
+    notificationTypes.add(SPONSORSHIP);
+    notificationTypes.add(DAY_ONE);
 
     for (NotificationType milestone : notificationTypes) {
       Optional<History> sentItem = correspondence.stream()
@@ -209,7 +214,6 @@ public class ProgrammeMembershipService {
     deleteScheduledNotificationsFromDb(programmeMembership);
 
     boolean isExcluded = isExcluded(programmeMembership);
-    //TODO: currently excludes based on programme start date, POG needs to be based on programme end date
     log.info("Programme membership {}: excluded {}.", programmeMembership.getTisId(), isExcluded);
 
     if (!isExcluded) {
