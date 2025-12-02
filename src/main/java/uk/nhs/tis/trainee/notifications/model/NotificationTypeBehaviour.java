@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright 2023 Crown Copyright (Health Education England)
+ * Copyright 2025 Crown Copyright (Health Education England)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
  * associated documentation files (the "Software"), to deal in the Software without restriction,
@@ -17,23 +17,28 @@
  * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
  * DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ *
  */
 
 package uk.nhs.tis.trainee.notifications.model;
 
-/**
- * An enumeration of possible TIS reference (core entity) types.
- */
-public enum TisReferenceType {
+import lombok.AllArgsConstructor;
+import lombok.Getter;
 
-  PLACEMENT,
-  PROGRAMME_MEMBERSHIP,
-  FORMR_PARTA,
-  FORMR_PARTB,
-  LTFT,
-  PERSON,
-  COJ,
-  GMC,
-  FORM, //generic, deprecated
-  ACCOUNT //TSS-specific, not TIS :/
+/**
+ * The behaviour configuration for a notification type.
+ */
+@Getter
+@AllArgsConstructor
+public class NotificationTypeBehaviour {
+  NotificationType notificationType;         // the type of notification
+  MessageType messageType;                   // the type of message (e.g., email, in-app)
+  TisReferenceType referenceType;            // TIS entity this notification type is associated with
+  boolean isActive;                          // if new notifications can be created of this type
+  boolean isReminder;                        // if this notification type is a reminder
+  AnchorReferenceState anchorReferenceState; // which state to anchor the reminders against
+  Integer daysBeforeAnchorToSend;            // days before anchor to send reminder
+
+  //consider: canResend, resendIfDeferral?
+
 }
