@@ -22,18 +22,24 @@
 package uk.nhs.tis.trainee.notifications.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import java.time.LocalDate;
 
 /**
  * A Programme membership's Curriculum.
  *
  * @param curriculumSubType   The Curriculum subtype.
  * @param curriculumSpecialty The Curriculum specialty.
+ * @param curriculumSpecialtyBlockIndemnity Whether the specialty is part of blocks indemnity.
+ * @param curriculumEndDate  The Curriculum end date.
+ * @param curriculumEligibleForPeriodOfGrace Whether the Curriculum is eligible for POG.
  */
 @JsonIgnoreProperties(ignoreUnknown = true)
 public record Curriculum(
     String curriculumSubType,
     String curriculumSpecialty,
-    boolean curriculumSpecialtyBlockIndemnity
+    boolean curriculumSpecialtyBlockIndemnity,
+    LocalDate curriculumEndDate,
+    Boolean curriculumEligibleForPeriodOfGrace
 ) {
 
 }
