@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <title>Less Than Full Time</title>
+  </head>
+  <body>
+    <h1>In-App Notification</h1>
+    <h2>Subject</h2>
+    <th:block th:fragment="subject">Less Than Full Time</th:block>
+    <h2>Content</h2>
+    <th:block th:fragment="content">
+      <p>
+        This notification pertains to the following programme
+        <th:block th:text="${not #strings.isEmpty(programmeName)} ? ${programmeName} : _"
+          >(programme name missing)</th:block
+        >
+        starting on
+        <th:block th:text="${startDate} ? |${#temporals.format(startDate, 'dd MMMM yyyy')}| : _"
+          >(start date missing)</th:block
+        >.
+      </p>
+      <p>
+        If you already know the programme that you have been allocated to and wish to apply to work
+        LTFT (Less than Full Time), then please submit your application as soon as possible to
+        ensure that there is no delay in notifying your employer.
+      </p>
+      <p>
+        To meet national guidance, all Changing hours (LTFT) applications must be submitted <b>a minimum of 16 weeks before your LTFT start date or before the next rotation change dependent on local NHS England office processes</b>.
+      </p>
+      <p>
+        This allows Trusts the required <b>12 weeks’ notice</b> under the Code of Practice, giving them time to make rota changes, update work schedules, and ensure your placement is appropriately planned.
+      </p>
+      <p>
+        If you are currently awaiting final allocation, then we advise that you submit your
+        application as soon as your programme is confirmed.
+        <th:block: th:switch="${localOfficeContactType}">
+          <th:block th:case="NON_HREF"
+            >Contact your local office for information on LTFT.</th:block
+          >
+          <th:block th:case="*"
+            >Please click on the following link for details on application process.
+            <a
+              th:href="${localOfficeContactType} == 'email' ?
+              |mailto:${localOfficeContact}?subject=Less Than Full Time - GMC: ${not #strings.isEmpty(gmcNumber) ? gmcNumber : 'unknown'}, Prog No: ${not #strings.isEmpty(programmeNumber) ? programmeNumber : 'unknown'}|
+              : ${localOfficeContact}"
+              th:text="${localOfficeContact}"
+              th:target="_blank"
+            ></a
+          ></th:block>
+        </th:block:>
+      </p>
+    </th:block>
+  </body>
+</html>
