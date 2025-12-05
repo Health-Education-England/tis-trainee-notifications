@@ -28,6 +28,7 @@ import static uk.nhs.tis.trainee.notifications.model.NotificationType.E_PORTFOLI
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.INDEMNITY_INSURANCE;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.LTFT;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_CREATED;
+import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_POG_MONTH_12;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.SPONSORSHIP;
 import static uk.nhs.tis.trainee.notifications.model.TisReferenceType.PROGRAMME_MEMBERSHIP;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.ONE_DAY_IN_SECONDS;
@@ -72,6 +73,7 @@ public class ProgrammeMembershipService {
   public static final String PROGRAMME_NAME_FIELD = "programmeName";
   public static final String PROGRAMME_NUMBER_FIELD = "programmeNumber";
   public static final String START_DATE_FIELD = "startDate";
+  public static final String END_DATE_FIELD = "endDate";
   public static final String BLOCK_INDEMNITY_FIELD = "hasBlockIndemnity";
   public static final String LOCAL_OFFICE_CONTACT_FIELD = "localOfficeContact";
   public static final String LOCAL_OFFICE_CONTACT_TYPE_FIELD = "localOfficeContactType";
@@ -169,6 +171,11 @@ public class ProgrammeMembershipService {
     return !hasMedicalSubType || hasExcludedSpecialty;
   }
 
+  public boolean isExcludedPog(ProgrammeMembership programmeMembership) {
+    LocalDate endDate = programmeMembership.getEndDate();
+    return endDate == null || endDate.isBefore(LocalDate.now(timezone));
+  }
+
   /**
    * Get a map of notification types and the most recent one that was sent for a given trainee and
    * programme membership from the notification history.
@@ -184,12 +191,7 @@ public class ProgrammeMembershipService {
 
     Set<NotificationType> notificationTypes = new HashSet<>(
         NotificationType.getProgrammeUpdateNotificationTypes());
-    notificationTypes.add(DEFERRAL);
-    notificationTypes.add(E_PORTFOLIO);
-    notificationTypes.add(INDEMNITY_INSURANCE);
-    notificationTypes.add(LTFT);
-    notificationTypes.add(SPONSORSHIP);
-    notificationTypes.add(DAY_ONE);
+    notificationTypes.addAll(NotificationType.getProgrammeInAppNotificationTypes());
 
     for (NotificationType milestone : notificationTypes) {
       Optional<History> sentItem = correspondence.stream()
@@ -216,13 +218,25 @@ public class ProgrammeMembershipService {
     boolean isExcluded = isExcluded(programmeMembership);
     log.info("Programme membership {}: excluded {}.", programmeMembership.getTisId(), isExcluded);
 
-    if (!isExcluded) {
-      Map<NotificationType, History> notificationsAlreadySent
-          = getLatestNotificationsSent(programmeMembership.getPersonId(),
-          programmeMembership.getTisId());
+    Map<NotificationType, History> notificationsAlreadySent = null;
 
+    if (!isExcluded) {
+      notificationsAlreadySent = getLatestNotificationsSent(programmeMembership.getPersonId(),
+          programmeMembership.getTisId());
       createDirectProgrammeNotifications(programmeMembership, notificationsAlreadySent);
       createInAppNotifications(programmeMembership, notificationsAlreadySent);
+    }
+
+    boolean isExcludedPog = isExcludedPog(programmeMembership);
+    log.info("Programme membership {}: excluded POG {}.", programmeMembership.getTisId(),
+        isExcludedPog);
+    if (!isExcludedPog) {
+      if (notificationsAlreadySent == null) {
+        //getLatestNotificationsSent is expensive, so only call it if we need to
+        notificationsAlreadySent = getLatestNotificationsSent(programmeMembership.getPersonId(),
+            programmeMembership.getTisId());
+      }
+      createDirectProgrammePogNotifications(programmeMembership, notificationsAlreadySent);
     }
   }
 
@@ -253,6 +267,37 @@ public class ProgrammeMembershipService {
         jobDataMap.put(TEMPLATE_NOTIFICATION_TYPE_FIELD, notificationType);
 
         doScheduleProgrammeNotification(notificationType, programmeMembership, jobDataMap,
+            notificationsAlreadySent);
+      }
+    }
+  }
+
+  /**
+   * Create "direct" programme notifications for POG, such as email, which may be scheduled for a
+   * future date/time.
+   *
+   * @param programmeMembership      The updated programme membership.
+   * @param notificationsAlreadySent Previously sent notifications.
+   */
+  private void createDirectProgrammePogNotifications(ProgrammeMembership programmeMembership,
+      Map<NotificationType, History> notificationsAlreadySent) {
+    // Note the status of the trainee will be retrieved when the job is executed, as will
+    // their name and email address and LO contact details.
+    Map<String, Object> jobDataMap = new HashMap<>();
+    addStandardProgrammeDetailsToJobMap(jobDataMap, programmeMembership);
+
+    for (NotificationType notificationType
+        : NotificationType.getProgrammePogNotificationTypes()) {
+
+      boolean shouldSchedule = shouldSchedulePogNotification(notificationType, programmeMembership,
+          notificationsAlreadySent);
+      if (shouldSchedule) {
+        log.info("Processing POG notification {} for {}.", notificationType,
+            programmeMembership.getTisId());
+
+        jobDataMap.put(TEMPLATE_NOTIFICATION_TYPE_FIELD, notificationType);
+
+        doScheduleProgrammePogNotification(notificationType, programmeMembership, jobDataMap,
             notificationsAlreadySent);
       }
     }
@@ -308,11 +353,58 @@ public class ProgrammeMembershipService {
     }
   }
 
+  /**
+   * Determine when a programme POG notification should be scheduled.
+   *
+   * @param notificationType         The type of notification to schedule.
+   * @param programmeMembership      The programme membership to consider.
+   * @param notificationsAlreadySent The notifications already sent for this entity.
+   * @return The date when the notification should be scheduled, or null if it should be sent
+   *     immediately.
+   */
+  private Date whenScheduleProgrammePogNotification(
+      NotificationType notificationType, ProgrammeMembership programmeMembership,
+      Map<NotificationType, History> notificationsAlreadySent) {
+
+      Integer daysBeforeEnd = getDaysBeforeEndForNotification(notificationType);
+      //TODO: use curriculum info to determine 12 month POG timing, not endDate
+      if (programmeMembership.getEndDate().minusDays(daysBeforeEnd)
+          .isBefore(LocalDate.now(timezone).plusDays(1))) {
+        // If the deadline for this notification type is today or in the past, send immediately.
+        return null;
+      }
+      // Otherwise, schedule for the deadline.
+      return Date.from(programmeMembership.getEndDate().minusDays(daysBeforeEnd)
+          .atStartOfDay(timezone).toInstant());
+
+  }
+
   private void doScheduleProgrammeNotification(NotificationType notificationType,
       ProgrammeMembership programmeMembership, Map<String, Object> jobDataMap,
       Map<NotificationType, History> notificationsAlreadySent) {
     String jobId = notificationType + "-" + jobDataMap.get(TIS_ID_FIELD);
     Date scheduleWhen = whenScheduleProgrammeNotification(notificationType,
+        programmeMembership, notificationsAlreadySent);
+    if (scheduleWhen == null) {
+      notificationService.executeNow(jobId, jobDataMap);
+    } else {
+      notificationService.scheduleNotification(jobId, jobDataMap, scheduleWhen, ONE_DAY_IN_SECONDS);
+    }
+  }
+
+  /**
+   * Schedule a programme POG notification.
+   *
+   * @param notificationType         The type of POG notification to schedule.
+   * @param programmeMembership      The programme membership.
+   * @param jobDataMap               The job data map.
+   * @param notificationsAlreadySent The notifications already sent for this entity.
+   */
+  private void doScheduleProgrammePogNotification(NotificationType notificationType,
+      ProgrammeMembership programmeMembership, Map<String, Object> jobDataMap,
+      Map<NotificationType, History> notificationsAlreadySent) {
+    String jobId = notificationType + "-" + jobDataMap.get(TIS_ID_FIELD);
+    Date scheduleWhen = whenScheduleProgrammePogNotification(notificationType,
         programmeMembership, notificationsAlreadySent);
     if (scheduleWhen == null) {
       notificationService.executeNow(jobId, jobDataMap);
@@ -499,6 +591,35 @@ public class ProgrammeMembershipService {
   }
 
   /**
+   * Helper function to determine whether a POG notification should be scheduled.
+   *
+   * @param notificationType         The notification type.
+   * @param programmeMembership      The updated programme membership to consider.
+   * @param notificationsAlreadySent The notifications already sent for this entity.
+   * @return true if it should be scheduled, false otherwise.
+   */
+  protected boolean shouldSchedulePogNotification(NotificationType notificationType,
+      ProgrammeMembership programmeMembership,
+      Map<NotificationType, History> notificationsAlreadySent) {
+
+    //only resend extension notifications
+    if (notificationsAlreadySent.containsKey(notificationType)) {
+      History lastSent = notificationsAlreadySent.get(notificationType);
+      LocalDate oldEndDate = getProgrammeEndDate(lastSent);
+      boolean isExtension = oldEndDate != null
+          && programmeMembership.getStartDate() != null
+          && oldEndDate.plusDays(DEFERRAL_IF_MORE_THAN_DAYS)
+          .isBefore(programmeMembership.getEndDate());
+      log.info("Programme membership {} is extension: {} (old end date {}, new end date {})",
+          programmeMembership.getTisId(), isExtension, oldEndDate,
+          programmeMembership.getStartDate());
+      return isExtension;
+    }
+
+    return true; //send new notifications, or missed ones TODO: confirm business logic
+  }
+
+  /**
    * Helper function to determine when a deferred notification should be scheduled.
    *
    * @param notificationType         The notification type.
@@ -551,6 +672,27 @@ public class ProgrammeMembershipService {
   }
 
   /**
+   * Get the programme end date from a saved history item.
+   *
+   * @param history The history to inspect.
+   * @return The programme end date, or null if it is missing or unparseable.
+   */
+  private LocalDate getProgrammeEndDate(History history) {
+    if (history.template() != null
+        && history.template().variables() != null
+        && history.template().variables().get(END_DATE_FIELD) != null) {
+      //to be extendable, a programme-related notification must include the END_DATE_FIELD
+      try {
+        return (LocalDate) history.template().variables().get(END_DATE_FIELD);
+      } catch (Exception e) {
+        log.error("Error: unparseable endDate in history (should be a LocalDate): '{}'",
+            history.template().variables().get(END_DATE_FIELD));
+      }
+    }
+    return null;
+  }
+
+  /**
    * Get the RO name from RO first name and last name.
    *
    * @param responsibleOfficer The details of the responsible officer.
@@ -584,5 +726,19 @@ public class ProgrammeMembershipService {
       case PROGRAMME_UPDATED_WEEK_0 -> 0;
       default -> null; //not applicable
     };
+  }
+
+  /**
+   * Get the number of days before the programme end date that a notification should be sent.
+   *
+   * @param notificationType The notification type to check.
+   * @return The number of days before the end date to send the notification, or null if not
+   *         applicable.
+   */
+  public Integer getDaysBeforeEndForNotification(NotificationType notificationType) {
+    if (notificationType == PROGRAMME_POG_MONTH_12) {
+      return 365;
+    }
+    return null; //not applicable
   }
 }
