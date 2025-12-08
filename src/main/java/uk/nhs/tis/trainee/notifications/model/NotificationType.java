@@ -87,8 +87,7 @@ public enum NotificationType {
       PROGRAMME_UPDATED_WEEK_2,
       PROGRAMME_UPDATED_WEEK_1,
       PROGRAMME_UPDATED_WEEK_0,
-      PROGRAMME_CREATED,
-      PROGRAMME_POG_MONTH_12);
+      PROGRAMME_CREATED);
 
   /**
    * The set of currently active Programme Updated email notification types.

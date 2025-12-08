@@ -74,7 +74,7 @@ public class ProgrammeMembershipService {
   public static final String PROGRAMME_NAME_FIELD = "programmeName";
   public static final String PROGRAMME_NUMBER_FIELD = "programmeNumber";
   public static final String START_DATE_FIELD = "startDate";
-  public static final String END_DATE_FIELD = "endDate";
+  public static final String CCT_DATE_FIELD = "cctDate";
   public static final String BLOCK_INDEMNITY_FIELD = "hasBlockIndemnity";
   public static final String LOCAL_OFFICE_CONTACT_FIELD = "localOfficeContact";
   public static final String LOCAL_OFFICE_CONTACT_TYPE_FIELD = "localOfficeContactType";
@@ -180,6 +180,8 @@ public class ProgrammeMembershipService {
    */
   public LocalDate getProgrammeCctDate(ProgrammeMembership programmeMembership) {
     return programmeMembership.getCurricula().stream()
+        .filter(c -> c.curriculumEligibleForPeriodOfGrace() != null
+            && c.curriculumEligibleForPeriodOfGrace())
         .map(Curriculum::curriculumEndDate)
         .filter(Objects::nonNull)
         .max(LocalDate::compareTo)
@@ -212,6 +214,7 @@ public class ProgrammeMembershipService {
 
     Set<NotificationType> notificationTypes = new HashSet<>(
         NotificationType.getProgrammeUpdateNotificationTypes());
+    notificationTypes.addAll(NotificationType.getProgrammePogNotificationTypes());
     notificationTypes.addAll(NotificationType.getProgrammeInAppNotificationTypes());
 
     for (NotificationType milestone : notificationTypes) {
@@ -388,15 +391,14 @@ public class ProgrammeMembershipService {
       Map<NotificationType, History> notificationsAlreadySent) {
 
       Integer daysBeforeEnd = getDaysBeforeEndForNotification(notificationType);
-      //TODO: use curriculum info to determine 12 month POG timing, not endDate
-      if (programmeMembership.getEndDate().minusDays(daysBeforeEnd)
+      LocalDate cctDate = getProgrammeCctDate(programmeMembership);
+      if (cctDate.minusDays(daysBeforeEnd)
           .isBefore(LocalDate.now(timezone).plusDays(1))) {
         // If the deadline for this notification type is today or in the past, send immediately.
         return null;
       }
       // Otherwise, schedule for the deadline.
-      return Date.from(programmeMembership.getEndDate().minusDays(daysBeforeEnd)
-          .atStartOfDay(timezone).toInstant());
+      return Date.from(cctDate.minusDays(daysBeforeEnd).atStartOfDay(timezone).toInstant());
 
   }
 
@@ -626,14 +628,14 @@ public class ProgrammeMembershipService {
     //only resend extension notifications
     if (notificationsAlreadySent.containsKey(notificationType)) {
       History lastSent = notificationsAlreadySent.get(notificationType);
-      LocalDate oldEndDate = getProgrammeEndDate(lastSent);
-      boolean isExtension = oldEndDate != null
+      LocalDate oldCctDate = getProgrammeCctDate(lastSent);
+      LocalDate newCctDate = getProgrammeCctDate(programmeMembership);
+      boolean isExtension = oldCctDate != null
           && programmeMembership.getStartDate() != null
-          && oldEndDate.plusDays(DEFERRAL_IF_MORE_THAN_DAYS)
-          .isBefore(programmeMembership.getEndDate());
-      log.info("Programme membership {} is extension: {} (old end date {}, new end date {})",
-          programmeMembership.getTisId(), isExtension, oldEndDate,
-          programmeMembership.getStartDate());
+          && oldCctDate.plusDays(DEFERRAL_IF_MORE_THAN_DAYS)
+          .isBefore(newCctDate);
+      log.info("Programme membership {} is extension: {} (old CCT date {}, new CCT date {})",
+          programmeMembership.getTisId(), isExtension, oldCctDate, newCctDate);
       return isExtension;
     }
 
@@ -693,21 +695,21 @@ public class ProgrammeMembershipService {
   }
 
   /**
-   * Get the programme end date from a saved history item.
+   * Get the programme CCT date from a saved history item.
    *
    * @param history The history to inspect.
-   * @return The programme end date, or null if it is missing or unparseable.
+   * @return The programme CCT date, or null if it is missing or unparseable.
    */
-  private LocalDate getProgrammeEndDate(History history) {
+  private LocalDate getProgrammeCctDate(History history) {
     if (history.template() != null
         && history.template().variables() != null
-        && history.template().variables().get(END_DATE_FIELD) != null) {
-      //to be extendable, a programme-related notification must include the END_DATE_FIELD
+        && history.template().variables().get(CCT_DATE_FIELD) != null) {
+      //to be extendable, a programme-related notification must include the CCT_DATE_FIELD
       try {
-        return (LocalDate) history.template().variables().get(END_DATE_FIELD);
+        return (LocalDate) history.template().variables().get(CCT_DATE_FIELD);
       } catch (Exception e) {
-        log.error("Error: unparseable endDate in history (should be a LocalDate): '{}'",
-            history.template().variables().get(END_DATE_FIELD));
+        log.error("Error: unparseable CCT Date in history (should be a LocalDate): '{}'",
+            history.template().variables().get(CCT_DATE_FIELD));
       }
     }
     return null;

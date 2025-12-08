@@ -80,6 +80,7 @@ import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.EnumSource.Mode;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
+import org.junit.jupiter.params.provider.NullSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import uk.nhs.tis.trainee.notifications.dto.CojPublishedEvent.ConditionsOfJoining;
@@ -1199,10 +1200,12 @@ class ProgrammeMembershipServiceTest {
           Instant.from(previousSentAt.atStartOfDay(timezone)), Instant.MAX,
           SENT, null, null));
     }
-
     when(historyService.findAllHistoryForTrainee(PERSON_ID)).thenReturn(sentNotifications);
 
     ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
+    Curriculum theCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, "any specialty", false,
+        CURRICULUM_END_DATE, false); //exclude POG notification
+    programmeMembership.setCurricula(List.of(theCurriculum));
     service.addNotifications(programmeMembership);
 
     verify(notificationService, never()).scheduleNotification(any(), any(), any(), anyLong());
@@ -1570,6 +1573,82 @@ class ProgrammeMembershipServiceTest {
 
     assertThat("Expected null for non-programme notification type " + notificationType,
         daysBeforeStartDate, is(nullValue()));
+  }
+
+  @ParameterizedTest
+  @NullSource
+  @ValueSource(strings = "2020-01-01")
+  void shouldExcludePogWhenCctDateIsNullOrPast(String cctDateString) {
+    LocalDate cctDate = cctDateString != null ? LocalDate.parse(cctDateString) : null;
+    ProgrammeMembership programmeMembership = new ProgrammeMembership();
+    programmeMembership.setCurricula(List.of(
+        new Curriculum("MEDICAL_CURRICULUM", "specialty", false,
+            cctDate, true)
+    ));
+
+    boolean isExcludedPog = service.isExcludedPog(programmeMembership);
+
+    assertThat("Expected exclusion when CCT date is null or past.", isExcludedPog, is(true));
+  }
+
+  @Test
+  void shouldNotExcludePogWhenCctDateIsToday() {
+    ProgrammeMembership programmeMembership = new ProgrammeMembership();
+    programmeMembership.setCurricula(List.of(
+        new Curriculum("MEDICAL_CURRICULUM", "specialty", false,
+            LocalDate.now(timezone), true)
+    ));
+
+    boolean isExcludedPog = service.isExcludedPog(programmeMembership);
+
+    assertThat("Expected not to be excluded when CCT date is today.", isExcludedPog, is(false));
+  }
+
+  @Test
+  void shouldNotExcludePogWhenCctDateIsInFuture() {
+    ProgrammeMembership programmeMembership = new ProgrammeMembership();
+    programmeMembership.setCurricula(List.of(
+        new Curriculum("MEDICAL_CURRICULUM", "specialty", false,
+            LocalDate.now(timezone).plusDays(10), true)
+    ));
+
+    boolean isExcludedPog = service.isExcludedPog(programmeMembership);
+
+    assertThat("Expected not to be excluded when CCT date is in the future.",
+        isExcludedPog, is(false));
+  }
+
+  @ParameterizedTest
+  @NullSource
+  @ValueSource(booleans = false)
+  void shouldExcludePogWhenCurriculumEligibleForPeriodOfGraceIsNullOrFalse(Boolean eligibleForPog) {
+    ProgrammeMembership programmeMembership = new ProgrammeMembership();
+    programmeMembership.setCurricula(List.of(
+        new Curriculum("MEDICAL_CURRICULUM", "specialty", false,
+            LocalDate.now(timezone).plusDays(10), eligibleForPog)
+    ));
+
+    boolean isExcludedPog = service.isExcludedPog(programmeMembership);
+
+    assertThat("Expected exclusion when curriculumEligibleForPeriodOfGrace is null or false.",
+        isExcludedPog, is(true));
+  }
+
+  @Test
+  void shouldIgnoreCurriculaNotEligibleForPeriodOfGrace() {
+    LocalDate now = LocalDate.now(timezone);
+    Curriculum eligibleCurriculum = new Curriculum("MEDICAL_CURRICULUM", "specialty", false,
+        now.plusDays(5), true);
+    Curriculum notEligibleCurriculum = new Curriculum("MEDICAL_CURRICULUM", "specialty", false,
+        now.minusDays(5), false); //would be excluded
+
+    ProgrammeMembership programmeMembership = new ProgrammeMembership();
+    programmeMembership.setCurricula(List.of(eligibleCurriculum, notEligibleCurriculum));
+
+    boolean isExcludedPog = service.isExcludedPog(programmeMembership);
+
+    assertThat("Expected not to be excluded when one eligible curriculum.",
+        isExcludedPog, is(false));
   }
 
   /**
