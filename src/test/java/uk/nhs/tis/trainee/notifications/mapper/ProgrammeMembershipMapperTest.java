@@ -42,6 +42,7 @@ class ProgrammeMembershipMapperTest {
 
   private static final String TIS_ID = "123";
   private static final LocalDate START_DATE = LocalDate.now();
+  private static final LocalDate END_DATE = LocalDate.now().plusMonths(12);
   private static final String CURRICULUM_SUB_TYPE = "sub-type";
   private static final String CURRICULUM_SPECIALTY = "specialty";
   private static final Instant COJ_SYNCED_AT = Instant.now();
@@ -61,7 +62,8 @@ class ProgrammeMembershipMapperTest {
     ProgrammeMembership programmeMembership = new ProgrammeMembership();
     programmeMembership.setTisId(TIS_ID);
     programmeMembership.setStartDate(START_DATE);
-    Curriculum curriculum = new Curriculum(CURRICULUM_SUB_TYPE, CURRICULUM_SPECIALTY, false);
+    Curriculum curriculum = new Curriculum(CURRICULUM_SUB_TYPE, CURRICULUM_SPECIALTY, false,
+        END_DATE, true);
     programmeMembership.setCurricula(List.of(curriculum));
     ResponsibleOfficer ro = new ResponsibleOfficer("email@email.com", RO_FIRST_NAME,
         RO_LAST_NAME, "1234567", "0141111111111");
@@ -91,9 +93,11 @@ class ProgrammeMembershipMapperTest {
         [{
           "curriculumSubType": "%s",
           "curriculumSpecialty": "%s",
-          "another-curriculum-property": "some value"
+          "another-curriculum-property": "some value",
+          "curriculumEndDate": "%s",
+          "curriculumEligibleForPeriodOfGrace": true
         }]
-        """.formatted(CURRICULUM_SUB_TYPE, CURRICULUM_SPECIALTY));
+        """.formatted(CURRICULUM_SUB_TYPE, CURRICULUM_SPECIALTY, END_DATE));
     dataMap.put("conditionsOfJoining", """
         {
           "signedAt": "2023-06-05T20:44:29.943Z",

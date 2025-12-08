@@ -47,6 +47,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
@@ -171,9 +172,29 @@ public class ProgrammeMembershipService {
     return !hasMedicalSubType || hasExcludedSpecialty;
   }
 
+  /**
+   * Get the Programme membership's CCT date, based on the curricula end dates.
+   *
+   * @param programmeMembership the Programme membership.
+   * @return the CCT date, or null if not available.
+   */
+  public LocalDate getProgrammeCctDate(ProgrammeMembership programmeMembership) {
+    return programmeMembership.getCurricula().stream()
+        .map(Curriculum::curriculumEndDate)
+        .filter(Objects::nonNull)
+        .max(LocalDate::compareTo)
+        .orElse(null);
+  }
+
+  /**
+   * Determines whether a programme membership is excluded from POG notifications.
+   *
+   * @param programmeMembership the Programme membership.
+   * @return true if the programme membership is excluded from POG notifications.
+   */
   public boolean isExcludedPog(ProgrammeMembership programmeMembership) {
-    LocalDate endDate = programmeMembership.getEndDate();
-    return endDate == null || endDate.isBefore(LocalDate.now(timezone));
+    LocalDate cctDate = getProgrammeCctDate(programmeMembership);
+    return cctDate == null || cctDate.isBefore(LocalDate.now(timezone));
   }
 
   /**

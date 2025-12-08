@@ -110,11 +110,13 @@ class ProgrammeMembershipServiceTest {
   private static final String PROGRAMME_NUMBER = "the programme number";
   private static final String MANAGING_DEANERY = "the local office";
   private static final LocalDate START_DATE = LocalDate.now().plusYears(1);
+  private static final LocalDate CURRICULUM_END_DATE = LocalDate.now().plusYears(2);
   //set a year in the future to allow all notifications to be scheduled
   private static final ZoneId timezone = ZoneId.of("Europe/London");
 
   private static final Curriculum IGNORED_CURRICULUM
-      = new Curriculum("some-subtype", "some-specialty", false);
+      = new Curriculum("some-subtype", "some-specialty", false,
+      CURRICULUM_END_DATE, false);
 
   private static final String E_PORTFOLIO_VERSION = "v1.2.3";
   private static final String INDEMNITY_INSURANCE_VERSION = "v2.3.4";
@@ -151,7 +153,8 @@ class ProgrammeMembershipServiceTest {
   @ParameterizedTest
   @ValueSource(strings = {MEDICAL_CURRICULUM_1, MEDICAL_CURRICULUM_2})
   void shouldNotExcludePmWithMedicalSubtypeAndNoExcludedSpecialties(String subtype) {
-    Curriculum theCurriculum = new Curriculum(subtype, "some-specialty", false);
+    Curriculum theCurriculum = new Curriculum(subtype, "some-specialty", false,
+        CURRICULUM_END_DATE, null);
     ProgrammeMembership programmeMembership = new ProgrammeMembership();
     programmeMembership.setStartDate(START_DATE);
     programmeMembership.setCurricula(List.of(theCurriculum, IGNORED_CURRICULUM));
@@ -163,7 +166,8 @@ class ProgrammeMembershipServiceTest {
 
   @Test
   void shouldExcludePmThatHasNoStartDate() {
-    Curriculum theCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, "some-specialty", false);
+    Curriculum theCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, "some-specialty", false,
+        CURRICULUM_END_DATE, null);
     ProgrammeMembership programmeMembership = new ProgrammeMembership();
     programmeMembership.setCurricula(List.of(theCurriculum, IGNORED_CURRICULUM));
 
@@ -174,7 +178,8 @@ class ProgrammeMembershipServiceTest {
 
   @Test
   void shouldExcludePmThatIsNotFuture() {
-    Curriculum theCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, "some-specialty", false);
+    Curriculum theCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, "some-specialty", false,
+        CURRICULUM_END_DATE, null);
     ProgrammeMembership programmeMembership = new ProgrammeMembership();
     programmeMembership.setStartDate(LocalDate.now().minusYears(1));
     programmeMembership.setCurricula(List.of(theCurriculum, IGNORED_CURRICULUM));
@@ -198,7 +203,8 @@ class ProgrammeMembershipServiceTest {
 
   @Test
   void shouldExcludePmWithNullSubtype() {
-    Curriculum theCurriculum = new Curriculum(null, "some-specialty", false);
+    Curriculum theCurriculum = new Curriculum(null, "some-specialty", false,
+        CURRICULUM_END_DATE, null);
     List<Curriculum> curricula = List.of(theCurriculum);
     ProgrammeMembership programmeMembership = new ProgrammeMembership();
     programmeMembership.setStartDate(START_DATE);
@@ -223,8 +229,10 @@ class ProgrammeMembershipServiceTest {
   @ParameterizedTest
   @ValueSource(strings = {EXCLUDE_SPECIALTY_1, EXCLUDE_SPECIALTY_2})
   void shouldExcludePmWithExcludedSpecialty(String specialty) {
-    Curriculum theCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, specialty, false);
-    Curriculum anotherCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, "some-specialty", false);
+    Curriculum theCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, specialty, false,
+        CURRICULUM_END_DATE, null);
+    Curriculum anotherCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, "some-specialty", false,
+        CURRICULUM_END_DATE, null);
     ProgrammeMembership programmeMembership = new ProgrammeMembership();
     programmeMembership.setStartDate(START_DATE);
     programmeMembership.setCurricula(List.of(theCurriculum, anotherCurriculum));
@@ -236,7 +244,8 @@ class ProgrammeMembershipServiceTest {
 
   @Test()
   void shouldThrowExceptionIfPmHasNullSpecialty() {
-    Curriculum nullCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, null, false);
+    Curriculum nullCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, null, false,
+        CURRICULUM_END_DATE, null);
     ProgrammeMembership programmeMembership = new ProgrammeMembership();
     programmeMembership.setStartDate(START_DATE);
     programmeMembership.setCurricula(List.of(nullCurriculum, nullCurriculum));
@@ -262,7 +271,8 @@ class ProgrammeMembershipServiceTest {
 
   @Test
   void shouldNotAddNotificationsWhenExcluded() {
-    Curriculum theCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, EXCLUDE_SPECIALTY_1, false);
+    Curriculum theCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, EXCLUDE_SPECIALTY_1, false,
+        CURRICULUM_END_DATE, null);
     ProgrammeMembership programmeMembership = new ProgrammeMembership();
     programmeMembership.setTisId(TIS_ID);
     programmeMembership.setStartDate(START_DATE);
@@ -341,7 +351,8 @@ class ProgrammeMembershipServiceTest {
 
   @Test
   void shouldIncludeBlockFlagInIndemnityInsuranceInAppNotification() {
-    Curriculum theCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, "any specialty", true);
+    Curriculum theCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, "any specialty", true,
+        CURRICULUM_END_DATE, null);
     ProgrammeMembership programmeMembership = new ProgrammeMembership();
     programmeMembership.setTisId(TIS_ID);
     programmeMembership.setPersonId(PERSON_ID);
@@ -375,9 +386,9 @@ class ProgrammeMembershipServiceTest {
     programmeMembership.setPersonId(PERSON_ID);
     programmeMembership.setStartDate(START_DATE);
     programmeMembership.setCurricula(List.of(
-        new Curriculum(MEDICAL_CURRICULUM_1, "specialty 1", false),
-        new Curriculum(MEDICAL_CURRICULUM_1, "specialty 2", true),
-        new Curriculum(MEDICAL_CURRICULUM_1, "specialty 3", false)
+        new Curriculum(MEDICAL_CURRICULUM_1, "specialty 1", false, CURRICULUM_END_DATE, null),
+        new Curriculum(MEDICAL_CURRICULUM_1, "specialty 2", true, CURRICULUM_END_DATE, null),
+        new Curriculum(MEDICAL_CURRICULUM_1, "specialty 3", false, CURRICULUM_END_DATE, null)
     ));
 
     when(notificationService.meetsCriteria(programmeMembership, true, true)).thenReturn(true);
@@ -402,9 +413,9 @@ class ProgrammeMembershipServiceTest {
     programmeMembership.setPersonId(PERSON_ID);
     programmeMembership.setStartDate(START_DATE);
     programmeMembership.setCurricula(List.of(
-        new Curriculum(MEDICAL_CURRICULUM_1, "specialty 1", false),
-        new Curriculum(MEDICAL_CURRICULUM_1, "specialty 2", false),
-        new Curriculum(MEDICAL_CURRICULUM_1, "specialty 3", false)
+        new Curriculum(MEDICAL_CURRICULUM_1, "specialty 1", false, CURRICULUM_END_DATE, null),
+        new Curriculum(MEDICAL_CURRICULUM_1, "specialty 2", false, CURRICULUM_END_DATE, null),
+        new Curriculum(MEDICAL_CURRICULUM_1, "specialty 3", false, CURRICULUM_END_DATE, null)
     ));
 
     when(notificationService.meetsCriteria(programmeMembership, true, true)).thenReturn(true);
@@ -470,7 +481,8 @@ class ProgrammeMembershipServiceTest {
 
   @Test
   void shouldAddUnknownGmcInInAppNotificationWhenTraineeDetailsNull() {
-    Curriculum theCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, "any specialty", true);
+    Curriculum theCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, "any specialty", true,
+        CURRICULUM_END_DATE, null);
     ProgrammeMembership programmeMembership = new ProgrammeMembership();
     programmeMembership.setTisId(TIS_ID);
     programmeMembership.setPersonId(PERSON_ID);
@@ -502,7 +514,8 @@ class ProgrammeMembershipServiceTest {
 
   @Test
   void shouldAddUnknownGmcInInAppNotificationWhenMissingGmcInTraineeDetails() {
-    Curriculum theCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, "any specialty", true);
+    Curriculum theCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, "any specialty", true,
+        CURRICULUM_END_DATE, null);
     ProgrammeMembership programmeMembership = new ProgrammeMembership();
     programmeMembership.setTisId(TIS_ID);
     programmeMembership.setPersonId(PERSON_ID);
@@ -1565,7 +1578,8 @@ class ProgrammeMembershipServiceTest {
    * @return the default programme membership.
    */
   private ProgrammeMembership getDefaultProgrammeMembership() {
-    Curriculum theCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, "any specialty", false);
+    Curriculum theCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, "any specialty", false,
+        CURRICULUM_END_DATE, null);
     ResponsibleOfficer theRo = new ResponsibleOfficer("roEmail", RO_FIRST_NAME, RO_LAST_NAME,
         "roGmc", "roPhone");
     ProgrammeMembership programmeMembership = new ProgrammeMembership();
