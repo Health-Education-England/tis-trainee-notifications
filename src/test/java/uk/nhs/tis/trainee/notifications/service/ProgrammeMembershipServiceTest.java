@@ -25,7 +25,6 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyLong;
@@ -79,9 +78,6 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.EnumSource.Mode;
-import org.junit.jupiter.params.provider.NullAndEmptySource;
-import org.junit.jupiter.params.provider.NullSource;
-import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import uk.nhs.tis.trainee.notifications.dto.CojPublishedEvent.ConditionsOfJoining;
 import uk.nhs.tis.trainee.notifications.dto.UserDetails;
@@ -101,9 +97,7 @@ import uk.nhs.tis.trainee.notifications.model.TisReferenceType;
 class ProgrammeMembershipServiceTest {
 
   private static final String MEDICAL_CURRICULUM_1 = "Medical_curriculum";
-  private static final String MEDICAL_CURRICULUM_2 = "Medical_spr";
   private static final String EXCLUDE_SPECIALTY_1 = "Public health medicine";
-  private static final String EXCLUDE_SPECIALTY_2 = "Foundation";
 
   private static final String TIS_ID = "123";
   private static final String PERSON_ID = "abc";
@@ -114,10 +108,6 @@ class ProgrammeMembershipServiceTest {
   private static final LocalDate CURRICULUM_END_DATE = LocalDate.now().plusYears(2);
   //set a year in the future to allow all notifications to be scheduled
   private static final ZoneId timezone = ZoneId.of("Europe/London");
-
-  private static final Curriculum IGNORED_CURRICULUM
-      = new Curriculum("some-subtype", "some-specialty", false,
-      CURRICULUM_END_DATE, false);
 
   private static final String E_PORTFOLIO_VERSION = "v1.2.3";
   private static final String INDEMNITY_INSURANCE_VERSION = "v2.3.4";
@@ -140,6 +130,7 @@ class ProgrammeMembershipServiceTest {
   HistoryService historyService;
   InAppService inAppService;
   NotificationService notificationService;
+  ProgrammeMembershipUtils programmeMembershipUtils = new ProgrammeMembershipUtils(timezone);
 
   @BeforeEach
   void setUp() {
@@ -147,111 +138,8 @@ class ProgrammeMembershipServiceTest {
     inAppService = mock(InAppService.class);
     notificationService = mock(NotificationService.class);
     service = new ProgrammeMembershipService(historyService, inAppService, notificationService,
-        timezone, DAY_ONE_VERSION, DEFERRAL_VERSION, E_PORTFOLIO_VERSION,
+        programmeMembershipUtils, timezone, DAY_ONE_VERSION, DEFERRAL_VERSION, E_PORTFOLIO_VERSION,
         INDEMNITY_INSURANCE_VERSION, LTFT_VERSION, SPONSORSHIP_VERSION);
-  }
-
-  @ParameterizedTest
-  @ValueSource(strings = {MEDICAL_CURRICULUM_1, MEDICAL_CURRICULUM_2})
-  void shouldNotExcludePmWithMedicalSubtypeAndNoExcludedSpecialties(String subtype) {
-    Curriculum theCurriculum = new Curriculum(subtype, "some-specialty", false,
-        CURRICULUM_END_DATE, null);
-    ProgrammeMembership programmeMembership = new ProgrammeMembership();
-    programmeMembership.setStartDate(START_DATE);
-    programmeMembership.setCurricula(List.of(theCurriculum, IGNORED_CURRICULUM));
-
-    boolean isExcluded = service.isExcluded(programmeMembership);
-
-    assertThat("Unexpected excluded value.", isExcluded, is(false));
-  }
-
-  @Test
-  void shouldExcludePmThatHasNoStartDate() {
-    Curriculum theCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, "some-specialty", false,
-        CURRICULUM_END_DATE, null);
-    ProgrammeMembership programmeMembership = new ProgrammeMembership();
-    programmeMembership.setCurricula(List.of(theCurriculum, IGNORED_CURRICULUM));
-
-    boolean isExcluded = service.isExcluded(programmeMembership);
-
-    assertThat("Unexpected excluded value.", isExcluded, is(true));
-  }
-
-  @Test
-  void shouldExcludePmThatIsNotFuture() {
-    Curriculum theCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, "some-specialty", false,
-        CURRICULUM_END_DATE, null);
-    ProgrammeMembership programmeMembership = new ProgrammeMembership();
-    programmeMembership.setStartDate(LocalDate.now().minusYears(1));
-    programmeMembership.setCurricula(List.of(theCurriculum, IGNORED_CURRICULUM));
-
-    boolean isExcluded = service.isExcluded(programmeMembership);
-
-    assertThat("Unexpected excluded value.", isExcluded, is(true));
-  }
-
-  @Test
-  void shouldExcludePmWithNoMedicalSubtype() {
-    List<Curriculum> curricula = List.of(IGNORED_CURRICULUM);
-    ProgrammeMembership programmeMembership = new ProgrammeMembership();
-    programmeMembership.setStartDate(START_DATE);
-    programmeMembership.setCurricula(curricula);
-
-    boolean isExcluded = service.isExcluded(programmeMembership);
-
-    assertThat("Unexpected excluded value.", isExcluded, is(true));
-  }
-
-  @Test
-  void shouldExcludePmWithNullSubtype() {
-    Curriculum theCurriculum = new Curriculum(null, "some-specialty", false,
-        CURRICULUM_END_DATE, null);
-    List<Curriculum> curricula = List.of(theCurriculum);
-    ProgrammeMembership programmeMembership = new ProgrammeMembership();
-    programmeMembership.setStartDate(START_DATE);
-    programmeMembership.setCurricula(curricula);
-
-    boolean isExcluded = service.isExcluded(programmeMembership);
-    assertThat("Unexpected excluded value.", isExcluded, is(true));
-  }
-
-  @ParameterizedTest
-  @NullAndEmptySource
-  void shouldExcludePmWithNoCurricula(List<Curriculum> curricula) {
-    ProgrammeMembership programmeMembership = new ProgrammeMembership();
-    programmeMembership.setStartDate(START_DATE);
-    programmeMembership.setCurricula(curricula);
-
-    boolean isExcluded = service.isExcluded(programmeMembership);
-
-    assertThat("Unexpected excluded value.", isExcluded, is(true));
-  }
-
-  @ParameterizedTest
-  @ValueSource(strings = {EXCLUDE_SPECIALTY_1, EXCLUDE_SPECIALTY_2})
-  void shouldExcludePmWithExcludedSpecialty(String specialty) {
-    Curriculum theCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, specialty, false,
-        CURRICULUM_END_DATE, null);
-    Curriculum anotherCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, "some-specialty", false,
-        CURRICULUM_END_DATE, null);
-    ProgrammeMembership programmeMembership = new ProgrammeMembership();
-    programmeMembership.setStartDate(START_DATE);
-    programmeMembership.setCurricula(List.of(theCurriculum, anotherCurriculum));
-
-    boolean isExcluded = service.isExcluded(programmeMembership);
-
-    assertThat("Unexpected excluded value.", isExcluded, is(true));
-  }
-
-  @Test()
-  void shouldThrowExceptionIfPmHasNullSpecialty() {
-    Curriculum nullCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, null, false,
-        CURRICULUM_END_DATE, null);
-    ProgrammeMembership programmeMembership = new ProgrammeMembership();
-    programmeMembership.setStartDate(START_DATE);
-    programmeMembership.setCurricula(List.of(nullCurriculum, nullCurriculum));
-
-    assertThrows(NullPointerException.class, () -> service.isExcluded(programmeMembership));
   }
 
   @Test
@@ -699,7 +587,7 @@ class ProgrammeMembershipServiceTest {
     assertThat("Unexpected job id.", jobId, is(expectedJobId));
 
     Map<String, Object> jobDataMap = jobDataMapCaptor.getValue();
-    assertThat("Unexpected variable count.", jobDataMap.size(), is(10));
+    assertThat("Unexpected variable count.", jobDataMap.size(), is(11));
     assertThat("Unexpected tisId.", jobDataMap.get(TIS_ID_FIELD), is(TIS_ID));
     assertThat("Unexpected personId.", jobDataMap.get(PERSON_ID_FIELD), is(PERSON_ID));
     assertThat("Unexpected programme.", jobDataMap.get(PROGRAMME_NAME_FIELD),
@@ -722,7 +610,7 @@ class ProgrammeMembershipServiceTest {
     assertThat("Unexpected job id.", dayOneJobId, is(dayOneExpectedJobId));
 
     Map<String, Object> dayOneJobDataMap = dayOneJobDataMapCaptor.getValue();
-    assertThat("Unexpected variable count.", dayOneJobDataMap.size(), is(10));
+    assertThat("Unexpected variable count.", dayOneJobDataMap.size(), is(11));
     assertThat("Unexpected tisId.", dayOneJobDataMap.get(TIS_ID_FIELD), is(TIS_ID));
     assertThat("Unexpected personId.", dayOneJobDataMap.get(PERSON_ID_FIELD), is(PERSON_ID));
     assertThat("Unexpected programme.", dayOneJobDataMap.get(PROGRAMME_NAME_FIELD),
@@ -753,7 +641,8 @@ class ProgrammeMembershipServiceTest {
     when(historyService.findAllHistoryForTrainee(PERSON_ID)).thenReturn(new ArrayList<>());
 
     ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
-    int offsetDays = service.getDaysBeforeStartForNotification(reminderNotification);
+    int offsetDays
+        = programmeMembershipUtils.getDaysBeforeStartForNotification(reminderNotification);
     LocalDate reminderDate = LocalDate.now().plusDays(offsetDays);
     programmeMembership.setStartDate(reminderDate);
 
@@ -769,7 +658,8 @@ class ProgrammeMembershipServiceTest {
     when(historyService.findAllHistoryForTrainee(PERSON_ID)).thenReturn(new ArrayList<>());
 
     ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
-    int offsetDays = service.getDaysBeforeStartForNotification(reminderNotification);
+    int offsetDays
+        = programmeMembershipUtils.getDaysBeforeStartForNotification(reminderNotification);
     LocalDate overdueDate = LocalDate.now().plusDays(offsetDays - 1);
     programmeMembership.setStartDate(overdueDate);
 
@@ -788,7 +678,8 @@ class ProgrammeMembershipServiceTest {
     when(historyService.findAllHistoryForTrainee(PERSON_ID)).thenReturn(new ArrayList<>());
 
     ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
-    int offsetDays = service.getDaysBeforeStartForNotification(reminderNotification);
+    int offsetDays
+        = programmeMembershipUtils.getDaysBeforeStartForNotification(reminderNotification);
     LocalDate overdueDate = LocalDate.now().plusDays(offsetDays + 1);
     programmeMembership.setStartDate(overdueDate);
 
@@ -1259,138 +1150,6 @@ class ProgrammeMembershipServiceTest {
         .createNotifications(any(), any(), any(), any(), any(), anyBoolean(), any());
   }
 
-  @Test
-  void shouldNotScheduleNotificationIfNewStartDateIsNull() {
-    RecipientInfo recipientInfo = new RecipientInfo("id", MessageType.EMAIL, "test@email.com");
-    //original start date was > DEFERRAL_IF_MORE_THAN_DAYS days before START_DATE,
-    //and we don't know updated programme start date
-    LocalDate originalStartDate = START_DATE.minusDays(DEFERRAL_IF_MORE_THAN_DAYS + 1);
-    LocalDate originalSentAt = LocalDate.now().minusDays(100);
-    TemplateInfo templateInfo = new TemplateInfo(null, null,
-        Map.of(START_DATE_FIELD, originalStartDate));
-
-    History sentNotification = new History(ObjectId.get(),
-        new TisReferenceInfo(PROGRAMME_MEMBERSHIP, TIS_ID),
-        PROGRAMME_CREATED, recipientInfo,
-        templateInfo, null,
-        Instant.from(originalSentAt.atStartOfDay(timezone)), Instant.MAX,
-        SENT, null, null);
-    Map<NotificationType, History> alreadySent = Map.of(PROGRAMME_CREATED, sentNotification);
-
-    ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
-    programmeMembership.setStartDate(null);
-
-    boolean shouldSchedule
-        = service.shouldScheduleNotification(PROGRAMME_CREATED, programmeMembership, alreadySent);
-    assertThat("Unexpected should schedule value.", shouldSchedule, is(false));
-  }
-
-  @Test
-  void shouldNotScheduleNotificationIfStartDateChangeNotDeferral() {
-    RecipientInfo recipientInfo = new RecipientInfo("id", MessageType.EMAIL, "test@email.com");
-    //original start date was <= DEFERRAL_IF_MORE_THAN_DAYS days before START_DATE,
-    LocalDate originalStartDate = START_DATE.minusDays(DEFERRAL_IF_MORE_THAN_DAYS);
-    LocalDate originalSentAt = LocalDate.now().minusDays(100);
-    TemplateInfo templateInfo = new TemplateInfo(null, null,
-        Map.of(START_DATE_FIELD, originalStartDate));
-
-    History sentNotification = new History(ObjectId.get(),
-        new TisReferenceInfo(PROGRAMME_MEMBERSHIP, TIS_ID),
-        PROGRAMME_CREATED, recipientInfo,
-        templateInfo, null,
-        Instant.from(originalSentAt.atStartOfDay(timezone)), Instant.MAX,
-        SENT, null, null);
-    Map<NotificationType, History> alreadySent = Map.of(PROGRAMME_CREATED, sentNotification);
-
-    ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
-
-    boolean shouldSchedule
-        = service.shouldScheduleNotification(PROGRAMME_CREATED, programmeMembership, alreadySent);
-    assertThat("Unexpected should schedule value.", shouldSchedule, is(false));
-  }
-
-  @Test
-  void shouldNotScheduleNotificationIfHistoryStartDateCorrupt() {
-    RecipientInfo recipientInfo = new RecipientInfo("id", MessageType.EMAIL, "test@email.com");
-    LocalDate originalSentAt = LocalDate.now().minusDays(100);
-    TemplateInfo templateInfo = new TemplateInfo(null, null,
-        Map.of(START_DATE_FIELD, "not a date"));
-
-    History sentNotification = new History(ObjectId.get(),
-        new TisReferenceInfo(PROGRAMME_MEMBERSHIP, TIS_ID),
-        PROGRAMME_CREATED, recipientInfo,
-        templateInfo, null,
-        Instant.from(originalSentAt.atStartOfDay(timezone)), Instant.MAX,
-        SENT, null, null);
-    Map<NotificationType, History> alreadySent = Map.of(PROGRAMME_CREATED, sentNotification);
-
-    ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
-
-    boolean shouldSchedule
-        = service.shouldScheduleNotification(PROGRAMME_CREATED, programmeMembership, alreadySent);
-    assertThat("Unexpected should schedule value.", shouldSchedule, is(false));
-  }
-
-  @Test
-  void shouldNotScheduleNotificationIfHistoryTemplateMissing() {
-    RecipientInfo recipientInfo = new RecipientInfo("id", MessageType.EMAIL, "test@email.com");
-
-    History sentNotification = new History(ObjectId.get(),
-        new TisReferenceInfo(PROGRAMME_MEMBERSHIP, TIS_ID),
-        PROGRAMME_CREATED, recipientInfo,
-        null, null,
-        Instant.MIN, Instant.MAX,
-        SENT, null, null);
-    Map<NotificationType, History> alreadySent = Map.of(PROGRAMME_CREATED, sentNotification);
-
-    ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
-
-    boolean shouldSchedule
-        = service.shouldScheduleNotification(PROGRAMME_CREATED, programmeMembership, alreadySent);
-    assertThat("Unexpected should schedule value.", shouldSchedule, is(false));
-  }
-
-  @Test
-  void shouldNotScheduleNotificationIfHistoryTemplateVariablesMissing() {
-    RecipientInfo recipientInfo = new RecipientInfo("id", MessageType.EMAIL, "test@email.com");
-
-    TemplateInfo templateInfo = new TemplateInfo(null, null, null);
-    History sentNotification = new History(ObjectId.get(),
-        new TisReferenceInfo(PROGRAMME_MEMBERSHIP, TIS_ID),
-        PROGRAMME_CREATED, recipientInfo,
-        templateInfo, null,
-        Instant.MIN, Instant.MAX,
-        SENT, null, null);
-    Map<NotificationType, History> alreadySent = Map.of(PROGRAMME_CREATED, sentNotification);
-
-    ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
-
-    boolean shouldSchedule
-        = service.shouldScheduleNotification(PROGRAMME_CREATED, programmeMembership, alreadySent);
-    assertThat("Unexpected should schedule value.", shouldSchedule, is(false));
-  }
-
-  @Test
-  void shouldNotScheduleNotificationIfHistoryTemplateVariablesStartDateMissing() {
-    RecipientInfo recipientInfo = new RecipientInfo("id", MessageType.EMAIL, "test@email.com");
-
-    TemplateInfo templateInfo = new TemplateInfo(null, null,
-        Map.of("some field", "some field value"));
-    History sentNotification = new History(ObjectId.get(),
-        new TisReferenceInfo(PROGRAMME_MEMBERSHIP, TIS_ID),
-        PROGRAMME_CREATED, recipientInfo,
-        templateInfo, null,
-        Instant.MIN, Instant.MAX,
-        SENT, null, null);
-    Map<NotificationType, History> alreadySent = Map.of(PROGRAMME_CREATED, sentNotification);
-
-    ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
-
-    boolean shouldSchedule
-        = service.shouldScheduleNotification(PROGRAMME_CREATED, programmeMembership, alreadySent);
-    assertThat("Unexpected should schedule value.", shouldSchedule, is(false));
-  }
-
   @ParameterizedTest
   @EnumSource(value = NotificationType.class, mode = Mode.EXCLUDE,
       names = {"PROGRAMME_CREATED", "PROGRAMME_DAY_ONE", "PROGRAMME_UPDATED_WEEK_12",
@@ -1543,112 +1302,6 @@ class ProgrammeMembershipServiceTest {
     Map<String, Object> jobDataMap = jobDataMapCaptor.getValue();
     assertThat("Unexpected CoJ synced at.", jobDataMap.get(COJ_SYNCED_FIELD),
         is(nullValue()));
-  }
-
-  @ParameterizedTest
-  @CsvSource(delimiter = '|', textBlock = """
-      PROGRAMME_DAY_ONE | 0
-      PROGRAMME_UPDATED_WEEK_12 | 84
-      PROGRAMME_UPDATED_WEEK_8 | 56
-      PROGRAMME_UPDATED_WEEK_4 | 28
-      PROGRAMME_UPDATED_WEEK_2 | 14
-      PROGRAMME_UPDATED_WEEK_1 | 7
-      PROGRAMME_UPDATED_WEEK_0 | 0
-      """)
-  void shouldCalculateDaysBeforeProgrammeStartDateForMilestoneNotifications(
-      NotificationType notificationType, int expectedDaysBeforeStart) {
-    int daysBeforeStartDate = service.getDaysBeforeStartForNotification(notificationType);
-
-    assertThat("Unexpected days before start date for " + notificationType,
-        daysBeforeStartDate, is(expectedDaysBeforeStart));
-  }
-
-  @ParameterizedTest
-  @EnumSource(value = NotificationType.class, mode = Mode.EXCLUDE,
-      names = {"PROGRAMME_DAY_ONE", "PROGRAMME_UPDATED_WEEK_12", "PROGRAMME_UPDATED_WEEK_8",
-          "PROGRAMME_UPDATED_WEEK_4", "PROGRAMME_UPDATED_WEEK_2", "PROGRAMME_UPDATED_WEEK_1",
-          "PROGRAMME_UPDATED_WEEK_0"})
-  void shouldReturnNullForNonProgrammeMilestoneNotifications(NotificationType notificationType) {
-    Integer daysBeforeStartDate = service.getDaysBeforeStartForNotification(notificationType);
-
-    assertThat("Expected null for non-programme notification type " + notificationType,
-        daysBeforeStartDate, is(nullValue()));
-  }
-
-  @ParameterizedTest
-  @NullSource
-  @ValueSource(strings = "2020-01-01")
-  void shouldExcludePogWhenCctDateIsNullOrPast(String cctDateString) {
-    LocalDate cctDate = cctDateString != null ? LocalDate.parse(cctDateString) : null;
-    ProgrammeMembership programmeMembership = new ProgrammeMembership();
-    programmeMembership.setCurricula(List.of(
-        new Curriculum("MEDICAL_CURRICULUM", "specialty", false,
-            cctDate, true)
-    ));
-
-    boolean isExcludedPog = service.isExcludedPog(programmeMembership);
-
-    assertThat("Expected exclusion when CCT date is null or past.", isExcludedPog, is(true));
-  }
-
-  @Test
-  void shouldNotExcludePogWhenCctDateIsToday() {
-    ProgrammeMembership programmeMembership = new ProgrammeMembership();
-    programmeMembership.setCurricula(List.of(
-        new Curriculum("MEDICAL_CURRICULUM", "specialty", false,
-            LocalDate.now(timezone), true)
-    ));
-
-    boolean isExcludedPog = service.isExcludedPog(programmeMembership);
-
-    assertThat("Expected not to be excluded when CCT date is today.", isExcludedPog, is(false));
-  }
-
-  @Test
-  void shouldNotExcludePogWhenCctDateIsInFuture() {
-    ProgrammeMembership programmeMembership = new ProgrammeMembership();
-    programmeMembership.setCurricula(List.of(
-        new Curriculum("MEDICAL_CURRICULUM", "specialty", false,
-            LocalDate.now(timezone).plusDays(10), true)
-    ));
-
-    boolean isExcludedPog = service.isExcludedPog(programmeMembership);
-
-    assertThat("Expected not to be excluded when CCT date is in the future.",
-        isExcludedPog, is(false));
-  }
-
-  @ParameterizedTest
-  @NullSource
-  @ValueSource(booleans = false)
-  void shouldExcludePogWhenCurriculumEligibleForPeriodOfGraceIsNullOrFalse(Boolean eligibleForPog) {
-    ProgrammeMembership programmeMembership = new ProgrammeMembership();
-    programmeMembership.setCurricula(List.of(
-        new Curriculum("MEDICAL_CURRICULUM", "specialty", false,
-            LocalDate.now(timezone).plusDays(10), eligibleForPog)
-    ));
-
-    boolean isExcludedPog = service.isExcludedPog(programmeMembership);
-
-    assertThat("Expected exclusion when curriculumEligibleForPeriodOfGrace is null or false.",
-        isExcludedPog, is(true));
-  }
-
-  @Test
-  void shouldIgnoreCurriculaNotEligibleForPeriodOfGrace() {
-    LocalDate now = LocalDate.now(timezone);
-    Curriculum eligibleCurriculum = new Curriculum("MEDICAL_CURRICULUM", "specialty", false,
-        now.plusDays(5), true);
-    Curriculum notEligibleCurriculum = new Curriculum("MEDICAL_CURRICULUM", "specialty", false,
-        now.minusDays(5), false); //would be excluded
-
-    ProgrammeMembership programmeMembership = new ProgrammeMembership();
-    programmeMembership.setCurricula(List.of(eligibleCurriculum, notEligibleCurriculum));
-
-    boolean isExcludedPog = service.isExcludedPog(programmeMembership);
-
-    assertThat("Expected not to be excluded when one eligible curriculum.",
-        isExcludedPog, is(false));
   }
 
   /**

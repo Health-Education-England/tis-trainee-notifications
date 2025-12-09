@@ -35,6 +35,7 @@ public enum LocalOfficeContactType {
   LTFT("Less Than Full Time"),
   LTFT_SUPPORT("LTFT Support"),
   ONBOARDING_SUPPORT("Onboarding Support"),
+  POG("Period of Grace"),
   SPONSORSHIP("Sponsorship"),
   SUPPORTED_RETURN_TO_TRAINING("Supported Return to Training"),
   DEFERRAL("Deferral"),

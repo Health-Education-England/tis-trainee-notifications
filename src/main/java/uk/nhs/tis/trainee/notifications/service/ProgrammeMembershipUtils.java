@@ -1,0 +1,360 @@
+/*
+ * The MIT License (MIT)
+ *
+ * Copyright 2025 Crown Copyright (Health Education England)
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
+ * associated documentation files (the "Software"), to deal in the Software without restriction,
+ * including without limitation the rights to use, copy, modify, merge, publish, distribute,
+ * sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all copies or
+ * substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT
+ * NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+ * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
+ * DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ *
+ */
+
+package uk.nhs.tis.trainee.notifications.service;
+
+import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_CREATED;
+import static uk.nhs.tis.trainee.notifications.service.NotificationService.TEMPLATE_OWNER_FIELD;
+import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.DEFERRAL_IF_MORE_THAN_DAYS;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.Duration;
+import java.util.Date;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
+import uk.nhs.tis.trainee.notifications.model.Curriculum;
+import uk.nhs.tis.trainee.notifications.model.History;
+import uk.nhs.tis.trainee.notifications.model.NotificationType;
+import uk.nhs.tis.trainee.notifications.model.ProgrammeMembership;
+import uk.nhs.tis.trainee.notifications.model.ResponsibleOfficer;
+
+/**
+ * Utility/helper methods for ProgrammeMembershipService.
+ */
+@Slf4j
+@Component
+public class ProgrammeMembershipUtils {
+
+  public static final String TIS_ID_FIELD = "tisId";
+  public static final String PERSON_ID_FIELD = "personId";
+  public static final String PROGRAMME_NAME_FIELD = "programmeName";
+  public static final String PROGRAMME_NUMBER_FIELD = "programmeNumber";
+  public static final String START_DATE_FIELD = "startDate";
+  public static final String CCT_DATE_FIELD = "cctDate";
+  public static final String COJ_SYNCED_FIELD = "conditionsOfJoiningSyncedAt";
+  public static final String RO_NAME_FIELD = "roName";
+  public static final String DESIGNATED_BODY_FIELD = "designatedBody";
+
+  private static final List<String> INCLUDE_CURRICULUM_SUBTYPES
+      = List.of("MEDICAL_CURRICULUM", "MEDICAL_SPR");
+  private static final List<String> EXCLUDE_CURRICULUM_SPECIALTIES
+      = List.of("PUBLIC HEALTH MEDICINE", "FOUNDATION");
+
+  private ZoneId timezone;
+
+  ProgrammeMembershipUtils(@Value("${application.timezone}") ZoneId timezone) {
+    this.timezone = timezone;
+  }
+
+  public void addStandardProgrammeDetailsToJobMap(Map<String, Object> jobDataMap,
+      ProgrammeMembership programmeMembership) {
+    jobDataMap.put(TIS_ID_FIELD, programmeMembership.getTisId());
+    jobDataMap.put(PERSON_ID_FIELD, programmeMembership.getPersonId());
+    jobDataMap.put(PROGRAMME_NAME_FIELD, programmeMembership.getProgrammeName());
+    jobDataMap.put(PROGRAMME_NUMBER_FIELD, programmeMembership.getProgrammeNumber());
+    jobDataMap.put(START_DATE_FIELD, programmeMembership.getStartDate());
+    jobDataMap.put(TEMPLATE_OWNER_FIELD, programmeMembership.getManagingDeanery());
+    if (programmeMembership.getConditionsOfJoining() != null) {
+      jobDataMap.put(COJ_SYNCED_FIELD, programmeMembership.getConditionsOfJoining().syncedAt());
+    }
+    jobDataMap.put(RO_NAME_FIELD, getRoName(programmeMembership.getResponsibleOfficer()));
+    jobDataMap.put(DESIGNATED_BODY_FIELD, programmeMembership.getDesignatedBody());
+    jobDataMap.put(CCT_DATE_FIELD, getProgrammeCctDateFromMembership(programmeMembership));
+  }
+
+  public LocalDate getProgrammeCctDateFromMembership(ProgrammeMembership programmeMembership) {
+    return programmeMembership.getCurricula().stream()
+        .filter(c -> c.curriculumEligibleForPeriodOfGrace() != null
+            && c.curriculumEligibleForPeriodOfGrace())
+        .map(uk.nhs.tis.trainee.notifications.model.Curriculum::curriculumEndDate)
+        .filter(java.util.Objects::nonNull)
+        .max(LocalDate::compareTo)
+        .orElse(null);
+  }
+
+  public String getRoName(ResponsibleOfficer responsibleOfficer) {
+    if (responsibleOfficer != null) {
+      return ((responsibleOfficer.firstName() == null ? "" : responsibleOfficer.firstName())
+          + " " + (responsibleOfficer.lastName() == null ? "" : responsibleOfficer.lastName())
+      ).trim();
+    }
+    return "";
+  }
+
+  public Integer getDaysBeforeStartForNotification(NotificationType notificationType) {
+    return switch (notificationType) {
+      case PROGRAMME_DAY_ONE -> 0;
+      case PROGRAMME_UPDATED_WEEK_12 -> 84;
+      case PROGRAMME_UPDATED_WEEK_8 -> 56;
+      case PROGRAMME_UPDATED_WEEK_4 -> 28;
+      case PROGRAMME_UPDATED_WEEK_2 -> 14;
+      case PROGRAMME_UPDATED_WEEK_1 -> 7;
+      case PROGRAMME_UPDATED_WEEK_0 -> 0;
+      default -> null;
+    };
+  }
+
+  public Integer getDaysBeforeEndForNotification(NotificationType notificationType) {
+    if (notificationType == NotificationType.PROGRAMME_POG_MONTH_12) {
+      return 365;
+    }
+    return null;
+  }
+
+  public Date whenScheduleDeferredNotification(NotificationType notificationType,
+      ProgrammeMembership programmeMembership,
+      Map<NotificationType, History> notificationsAlreadySent) {
+    if (notificationsAlreadySent.containsKey(notificationType)) {
+      History lastSent = notificationsAlreadySent.get(notificationType);
+      LocalDate oldStartDate = getProgrammeStartDate(lastSent);
+      LocalDate newStartDate = programmeMembership.getStartDate();
+      if (lastSent.sentAt() != null && oldStartDate != null) {
+        LocalDateTime oldSentDateTime = lastSent.sentAt().atZone(timezone).toLocalDateTime();
+        long leadDays = Duration.between(oldSentDateTime, oldStartDate.atStartOfDay()).toDays();
+        LocalDate newSend = newStartDate.minusDays(leadDays);
+        if (newSend.isAfter(LocalDate.now())) {
+          return Date.from(newSend.atStartOfDay(timezone).toInstant());
+        }
+      }
+      return null;
+    }
+    return null;
+  }
+
+  public LocalDate getProgrammeStartDate(History history) {
+    if (history.template() != null
+        && history.template().variables() != null
+        && history.template().variables().get(START_DATE_FIELD) != null) {
+      try {
+        return (LocalDate) history.template().variables().get(START_DATE_FIELD);
+      } catch (Exception e) {
+        log.error("Error: unparseable startDate in history (should be a LocalDate): '{}'",
+            history.template().variables().get(START_DATE_FIELD));
+      }
+    }
+    return null;
+  }
+
+  /**
+   * Get the Programme membership's CCT date from a History record.
+   *
+   * @param history the History record.
+   * @return the CCT date, or null if not available.
+   */
+  public LocalDate getProgrammeCctDate(History history) {
+    if (history.template() != null
+        && history.template().variables() != null
+        && history.template().variables().get(CCT_DATE_FIELD) != null) {
+      try {
+        return (LocalDate) history.template().variables().get(CCT_DATE_FIELD);
+      } catch (Exception e) {
+        log.error("Error: unparseable CCT Date in history (should be a LocalDate): '{}'",
+            history.template().variables().get(CCT_DATE_FIELD));
+      }
+    }
+    return null;
+  }
+
+  /**
+   * Get the Programme membership's CCT date, based on the curricula end dates.
+   *
+   * @param programmeMembership the Programme membership.
+   * @return the CCT date, or null if not available.
+   */
+  public LocalDate getProgrammeCctDate(ProgrammeMembership programmeMembership) {
+    return programmeMembership.getCurricula().stream()
+        .filter(c -> c.curriculumEligibleForPeriodOfGrace() != null
+            && c.curriculumEligibleForPeriodOfGrace())
+        .map(Curriculum::curriculumEndDate)
+        .filter(Objects::nonNull)
+        .max(LocalDate::compareTo)
+        .orElse(null);
+  }
+
+  /**
+   * Determines whether a programme membership is excluded or not, on the basis of curricula.
+   *
+   * <p>Excluded means the trainee will not be notified (contacted) in respect of this
+   * programme membership.
+   *
+   * <p>This will be TRUE if any of the following are true in relation to the curricula:
+   * 1. None have curriculumSubType = MEDICAL_CURRICULUM or MEDICAL_SPR. 2. Any have specialtyName =
+   * 'Public health medicine' or 'Foundation'.
+   *
+   * @param programmeMembership the Programme membership.
+   * @return true if the programme membership is excluded.
+   */
+  public boolean isExcluded(ProgrammeMembership programmeMembership) {
+    LocalDate startDate = programmeMembership.getStartDate();
+    if (startDate == null || startDate.isBefore(LocalDate.now(timezone))) {
+      return true;
+    }
+
+    List<Curriculum> curricula = programmeMembership.getCurricula();
+    if (curricula == null) {
+      return true;
+    }
+
+    boolean hasMedicalSubType = curricula.stream()
+        .filter(c -> c.curriculumSubType() != null)
+        .map(c -> c.curriculumSubType().toUpperCase())
+        .anyMatch(INCLUDE_CURRICULUM_SUBTYPES::contains);
+
+    boolean hasExcludedSpecialty = curricula.stream()
+        .map(c -> c.curriculumSpecialty().toUpperCase())
+        .anyMatch(EXCLUDE_CURRICULUM_SPECIALTIES::contains);
+
+    return !hasMedicalSubType || hasExcludedSpecialty;
+  }
+
+  /**
+   * Determines whether a programme membership is excluded from POG notifications.
+   *
+   * @param programmeMembership the Programme membership.
+   * @return true if the programme membership is excluded from POG notifications.
+   */
+  public boolean isExcludedPog(ProgrammeMembership programmeMembership) {
+    LocalDate cctDate = getProgrammeCctDate(programmeMembership);
+    return cctDate == null || cctDate.isBefore(LocalDate.now(timezone));
+  }
+
+  /**
+   * Determine when a programme notification should be scheduled.
+   *
+   * @param notificationType         The type of notification to schedule.
+   * @param programmeMembership      The programme membership to consider.
+   * @param notificationsAlreadySent The notifications already sent for this entity.
+   * @return The date when the notification should be scheduled, or null if it should be sent
+   *     immediately.
+   */
+  public Date whenScheduleProgrammeNotification(
+      NotificationType notificationType, ProgrammeMembership programmeMembership,
+      Map<NotificationType, History> notificationsAlreadySent) {
+    if (notificationType == PROGRAMME_CREATED) {
+      return whenScheduleDeferredNotification(PROGRAMME_CREATED, programmeMembership,
+          notificationsAlreadySent);
+    } else {
+      Integer daysBeforeStart = getDaysBeforeStartForNotification(notificationType);
+      if (programmeMembership.getStartDate().minusDays(daysBeforeStart)
+          .isBefore(LocalDate.now(timezone).plusDays(1))) {
+        // If the deadline for this notification type is today or in the past, send immediately.
+        return null;
+      }
+      // Otherwise, schedule for the deadline.
+      return Date.from(programmeMembership.getStartDate().minusDays(daysBeforeStart)
+          .atStartOfDay(timezone).toInstant());
+    }
+  }
+
+  /**
+   * Determine when a programme POG notification should be scheduled.
+   *
+   * @param notificationType         The type of notification to schedule.
+   * @param programmeMembership      The programme membership to consider.
+   * @param notificationsAlreadySent The notifications already sent for this entity.
+   * @return The date when the notification should be scheduled, or null if it should be sent
+   *     immediately.
+   */
+  public Date whenScheduleProgrammePogNotification(
+      NotificationType notificationType, ProgrammeMembership programmeMembership,
+      Map<NotificationType, History> notificationsAlreadySent) {
+
+    Integer daysBeforeEnd = getDaysBeforeEndForNotification(notificationType);
+    LocalDate cctDate = getProgrammeCctDate(programmeMembership);
+    if (cctDate.minusDays(daysBeforeEnd)
+        .isBefore(LocalDate.now(timezone).plusDays(1))) {
+      // If the deadline for this notification type is today or in the past, send immediately.
+      return null;
+    }
+    // Otherwise, schedule for the deadline.
+    return Date.from(cctDate.minusDays(daysBeforeEnd).atStartOfDay(timezone).toInstant());
+
+  }
+
+  /**
+   * Helper function to determine whether a notification should be scheduled.
+   *
+   * @param notificationType         The notification type.
+   * @param programmeMembership      The updated programme membership to consider.
+   * @param notificationsAlreadySent The notifications already sent for this entity.
+   * @return true if it should be scheduled, false otherwise.
+   */
+  protected boolean shouldScheduleNotification(NotificationType notificationType,
+      ProgrammeMembership programmeMembership,
+      Map<NotificationType, History> notificationsAlreadySent) {
+
+    //only resend deferred notifications
+    if (notificationsAlreadySent.containsKey(notificationType)) {
+      History lastSent = notificationsAlreadySent.get(notificationType);
+      LocalDate oldStartDate = getProgrammeStartDate(lastSent);
+      boolean isDeferral = oldStartDate != null
+          && programmeMembership.getStartDate() != null
+          && oldStartDate.plusDays(DEFERRAL_IF_MORE_THAN_DAYS)
+          .isBefore(programmeMembership.getStartDate());
+      log.info("Programme membership {} is deferral: {} (old start date {}, new start date {})",
+          programmeMembership.getTisId(), isDeferral, oldStartDate,
+          programmeMembership.getStartDate());
+      return isDeferral;
+    }
+    //reminder notifications are only sent if the deadline is not past
+    if (NotificationType.getReminderProgrammeUpdateNotificationTypes().contains(notificationType)) {
+      Integer daysBeforeStart = getDaysBeforeStartForNotification(notificationType);
+      LocalDate deadline = programmeMembership.getStartDate().minusDays(daysBeforeStart);
+      return !deadline.isBefore(LocalDate.now(timezone)); //deadline is in the past, do not send
+    }
+    return true; //send new notifications
+  }
+
+  /**
+   * Helper function to determine whether a POG notification should be scheduled.
+   *
+   * @param notificationType         The notification type.
+   * @param programmeMembership      The updated programme membership to consider.
+   * @param notificationsAlreadySent The notifications already sent for this entity.
+   * @return true if it should be scheduled, false otherwise.
+   */
+  protected boolean shouldSchedulePogNotification(NotificationType notificationType,
+      ProgrammeMembership programmeMembership,
+      Map<NotificationType, History> notificationsAlreadySent) {
+
+    //only resend extension notifications
+    if (notificationsAlreadySent.containsKey(notificationType)) {
+      History lastSent = notificationsAlreadySent.get(notificationType);
+      LocalDate oldCctDate = getProgrammeCctDate(lastSent);
+      LocalDate newCctDate = getProgrammeCctDate(programmeMembership);
+      boolean isExtension = oldCctDate != null
+          && programmeMembership.getStartDate() != null
+          && oldCctDate.plusDays(DEFERRAL_IF_MORE_THAN_DAYS)
+          .isBefore(newCctDate);
+      log.info("Programme membership {} is extension: {} (old CCT date {}, new CCT date {})",
+          programmeMembership.getTisId(), isExtension, oldCctDate, newCctDate);
+      return isExtension;
+    }
+
+    return true; //send new notifications, or missed ones TODO: confirm business logic
+  }
+}

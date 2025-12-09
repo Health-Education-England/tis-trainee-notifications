@@ -269,7 +269,7 @@ class ProgrammeMembershipListenerIntegrationTest {
       assertThat("Unexpected template version.", templateInfo.version(), is("v1.0.0"));
 
       Map<String, Object> storedVariables = templateInfo.variables();
-      assertThat("Unexpected template variable count.", storedVariables.size(), is(19));
+      assertThat("Unexpected template variable count.", storedVariables.size(), is(20));
       for (ProgrammeActionType actionType : ProgrammeActionType.values()) {
         assertThat("Unexpected template variable for action type: " + actionType,
             storedVariables.get(actionType.toString()), nullValue());
@@ -465,7 +465,7 @@ class ProgrammeMembershipListenerIntegrationTest {
     assertThat("Unexpected template version.", templateInfo.version(), is("v1.0.0"));
 
     Map<String, Object> storedVariables = templateInfo.variables();
-    int expectedVariableCount = 19 //basic set
+    int expectedVariableCount = 20 //basic set
         + ProgrammeActionType.values().length
         + 2; //domain and hashedEmail added when sending email
     assertThat("Unexpected template variable count.", storedVariables.size(),
