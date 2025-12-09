@@ -25,6 +25,7 @@ package uk.nhs.tis.trainee.notifications.service;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_CREATED;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.TEMPLATE_OWNER_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.DEFERRAL_IF_MORE_THAN_DAYS;
+
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
@@ -66,10 +67,21 @@ public class ProgrammeMembershipUtils {
 
   private ZoneId timezone;
 
+  /**
+   * Construct a ProgrammeMembershipUtils.
+   *
+   * @param timezone the application timezone.
+   */
   ProgrammeMembershipUtils(@Value("${application.timezone}") ZoneId timezone) {
     this.timezone = timezone;
   }
 
+  /**
+   * Add standard programme details to a notification job data map.
+   *
+   * @param jobDataMap           the job data map.
+   * @param programmeMembership  the programme membership to use.
+   */
   public void addStandardProgrammeDetailsToJobMap(Map<String, Object> jobDataMap,
       ProgrammeMembership programmeMembership) {
     jobDataMap.put(TIS_ID_FIELD, programmeMembership.getTisId());
@@ -86,6 +98,12 @@ public class ProgrammeMembershipUtils {
     jobDataMap.put(CCT_DATE_FIELD, getProgrammeCctDateFromMembership(programmeMembership));
   }
 
+  /**
+   * Get the Programme membership's CCT date, based on the curricula end dates.
+   *
+   * @param programmeMembership the Programme membership.
+   * @return the CCT date, or null if not available.
+   */
   public LocalDate getProgrammeCctDateFromMembership(ProgrammeMembership programmeMembership) {
     return programmeMembership.getCurricula().stream()
         .filter(c -> c.curriculumEligibleForPeriodOfGrace() != null
@@ -96,6 +114,12 @@ public class ProgrammeMembershipUtils {
         .orElse(null);
   }
 
+  /**
+   * Get the Responsible Officer's name.
+   *
+   * @param responsibleOfficer the Responsible Officer.
+   * @return the formatted Responsible Officer's name.
+   */
   public String getRoName(ResponsibleOfficer responsibleOfficer) {
     if (responsibleOfficer != null) {
       return ((responsibleOfficer.firstName() == null ? "" : responsibleOfficer.firstName())
@@ -105,6 +129,12 @@ public class ProgrammeMembershipUtils {
     return "";
   }
 
+  /**
+   * Get the number of days before the programme start date for a given notification type.
+   *
+   * @param notificationType the notification type.
+   * @return the number of days before the start date.
+   */
   public Integer getDaysBeforeStartForNotification(NotificationType notificationType) {
     return switch (notificationType) {
       case PROGRAMME_DAY_ONE -> 0;
@@ -118,6 +148,12 @@ public class ProgrammeMembershipUtils {
     };
   }
 
+  /**
+   * Get the number of days before the programme end date for a given notification type.
+   *
+   * @param notificationType the notification type.
+   * @return the number of days before the end date.
+   */
   public Integer getDaysBeforeEndForNotification(NotificationType notificationType) {
     if (notificationType == NotificationType.PROGRAMME_POG_MONTH_12) {
       return 365;
@@ -125,6 +161,15 @@ public class ProgrammeMembershipUtils {
     return null;
   }
 
+  /**
+   * Determine when a deferred notification should be scheduled.
+   *
+   * @param notificationType         the notification type.
+   * @param programmeMembership      the programme membership to consider.
+   * @param notificationsAlreadySent the notifications already sent for this entity.
+   * @return the date when the notification should be scheduled, or null if it should be sent
+   *     immediately.
+   */
   public Date whenScheduleDeferredNotification(NotificationType notificationType,
       ProgrammeMembership programmeMembership,
       Map<NotificationType, History> notificationsAlreadySent) {
@@ -145,6 +190,12 @@ public class ProgrammeMembershipUtils {
     return null;
   }
 
+  /**
+   * Get the Programme membership's start date from a History record.
+   *
+   * @param history the History record.
+   * @return the start date, or null if not available.
+   */
   public LocalDate getProgrammeStartDate(History history) {
     if (history.template() != null
         && history.template().variables() != null
@@ -251,8 +302,8 @@ public class ProgrammeMembershipUtils {
    * @return The date when the notification should be scheduled, or null if it should be sent
    *     immediately.
    */
-  public Date whenScheduleProgrammeNotification(
-      NotificationType notificationType, ProgrammeMembership programmeMembership,
+  public Date whenScheduleProgrammeNotification(NotificationType notificationType,
+      ProgrammeMembership programmeMembership,
       Map<NotificationType, History> notificationsAlreadySent) {
     if (notificationType == PROGRAMME_CREATED) {
       return whenScheduleDeferredNotification(PROGRAMME_CREATED, programmeMembership,
@@ -292,6 +343,7 @@ public class ProgrammeMembershipUtils {
     }
     // Otherwise, schedule for the deadline.
     return Date.from(cctDate.minusDays(daysBeforeEnd).atStartOfDay(timezone).toInstant());
+    //TODO: consider if already sent logic is needed here
 
   }
 
@@ -347,7 +399,7 @@ public class ProgrammeMembershipUtils {
       LocalDate oldCctDate = getProgrammeCctDate(lastSent);
       LocalDate newCctDate = getProgrammeCctDate(programmeMembership);
       boolean isExtension = oldCctDate != null
-          && programmeMembership.getStartDate() != null
+          && newCctDate != null
           && oldCctDate.plusDays(DEFERRAL_IF_MORE_THAN_DAYS)
           .isBefore(newCctDate);
       log.info("Programme membership {} is extension: {} (old CCT date {}, new CCT date {})",

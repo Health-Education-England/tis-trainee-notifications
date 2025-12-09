@@ -31,9 +31,12 @@ import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_
 import static uk.nhs.tis.trainee.notifications.model.TisReferenceType.PROGRAMME_MEMBERSHIP;
 import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.DEFERRAL_IF_MORE_THAN_DAYS;
 import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.START_DATE_FIELD;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import org.bson.types.ObjectId;
@@ -289,7 +292,8 @@ class ProgrammeMembershipUtilsTest {
 
   @Test
   void shouldNotScheduleNotificationIfNewStartDateIsNull() {
-    History.RecipientInfo recipientInfo = new History.RecipientInfo("id", MessageType.EMAIL, "test@email.com");
+    History.RecipientInfo recipientInfo = new History.RecipientInfo("id", MessageType.EMAIL,
+        "test@email.com");
     //original start date was > DEFERRAL_IF_MORE_THAN_DAYS days before START_DATE,
     //and we don't know updated programme start date
     LocalDate originalStartDate = START_DATE.minusDays(DEFERRAL_IF_MORE_THAN_DAYS + 1);
@@ -315,7 +319,8 @@ class ProgrammeMembershipUtilsTest {
 
   @Test
   void shouldNotScheduleNotificationIfStartDateChangeNotDeferral() {
-    History.RecipientInfo recipientInfo = new History.RecipientInfo("id", MessageType.EMAIL, "test@email.com");
+    History.RecipientInfo recipientInfo = new History.RecipientInfo("id", MessageType.EMAIL,
+        "test@email.com");
     //original start date was <= DEFERRAL_IF_MORE_THAN_DAYS days before START_DATE,
     LocalDate originalStartDate = START_DATE.minusDays(DEFERRAL_IF_MORE_THAN_DAYS);
     LocalDate originalSentAt = LocalDate.now().minusDays(100);
@@ -339,7 +344,8 @@ class ProgrammeMembershipUtilsTest {
 
   @Test
   void shouldNotScheduleNotificationIfHistoryStartDateCorrupt() {
-    History.RecipientInfo recipientInfo = new History.RecipientInfo("id", MessageType.EMAIL, "test@email.com");
+    History.RecipientInfo recipientInfo = new History.RecipientInfo("id", MessageType.EMAIL,
+        "test@email.com");
     LocalDate originalSentAt = LocalDate.now().minusDays(100);
     History.TemplateInfo templateInfo = new History.TemplateInfo(null, null,
         Map.of(START_DATE_FIELD, "not a date"));
@@ -361,7 +367,8 @@ class ProgrammeMembershipUtilsTest {
 
   @Test
   void shouldNotScheduleNotificationIfHistoryTemplateMissing() {
-    History.RecipientInfo recipientInfo = new History.RecipientInfo("id", MessageType.EMAIL, "test@email.com");
+    History.RecipientInfo recipientInfo = new History.RecipientInfo("id", MessageType.EMAIL,
+        "test@email.com");
 
     History sentNotification = new History(ObjectId.get(),
         new History.TisReferenceInfo(PROGRAMME_MEMBERSHIP, TIS_ID),
@@ -380,7 +387,8 @@ class ProgrammeMembershipUtilsTest {
 
   @Test
   void shouldNotScheduleNotificationIfHistoryTemplateVariablesMissing() {
-    History.RecipientInfo recipientInfo = new History.RecipientInfo("id", MessageType.EMAIL, "test@email.com");
+    History.RecipientInfo recipientInfo = new History.RecipientInfo("id", MessageType.EMAIL,
+        "test@email.com");
 
     History.TemplateInfo templateInfo = new History.TemplateInfo(null, null, null);
     History sentNotification = new History(ObjectId.get(),
@@ -400,7 +408,8 @@ class ProgrammeMembershipUtilsTest {
 
   @Test
   void shouldNotScheduleNotificationIfHistoryTemplateVariablesStartDateMissing() {
-    History.RecipientInfo recipientInfo = new History.RecipientInfo("id", MessageType.EMAIL, "test@email.com");
+    History.RecipientInfo recipientInfo = new History.RecipientInfo("id", MessageType.EMAIL,
+        "test@email.com");
 
     History.TemplateInfo templateInfo = new History.TemplateInfo(null, null,
         Map.of("some field", "some field value"));
@@ -419,6 +428,280 @@ class ProgrammeMembershipUtilsTest {
     assertThat("Unexpected should schedule value.", shouldSchedule, is(false));
   }
 
+  @Test
+  void shouldReturnCctDateFromHistoryWhenPresentAndValid() {
+    LocalDate cctDate = LocalDate.now(TIMEZONE).plusDays(30);
+    History.TemplateInfo templateInfo = new History.TemplateInfo(null, null,
+        Map.of(ProgrammeMembershipUtils.CCT_DATE_FIELD, cctDate));
+    History history = new History(ObjectId.get(), null, null, null, templateInfo, null,
+        Instant.MIN, Instant.MAX, SENT, null, null);
+
+    LocalDate result = service.getProgrammeCctDate(history);
+
+    assertThat("Expected CCT date to be returned from history.", result, is(cctDate));
+  }
+
+  @Test
+  void shouldReturnNullIfHistoryTemplateIsNull() {
+    History history = new History(ObjectId.get(), null, null, null, null, null,
+        Instant.MIN, Instant.MAX, SENT, null, null);
+
+    LocalDate result = service.getProgrammeCctDate(history);
+
+    assertThat("Expected null when template is null.", result, is(nullValue()));
+  }
+
+  @Test
+  void shouldReturnNullIfHistoryTemplateVariablesIsNull() {
+    History.TemplateInfo templateInfo = new History.TemplateInfo(null, null, null);
+    History history = new History(ObjectId.get(), null, null, null, templateInfo, null,
+        Instant.MIN, Instant.MAX, SENT, null, null);
+
+    LocalDate result = service.getProgrammeCctDate(history);
+
+    assertThat("Expected null when template variables are null.", result, is(nullValue()));
+  }
+
+  @Test
+  void shouldReturnNullIfHistoryTemplateVariablesDoesNotContainCctDate() {
+    History.TemplateInfo templateInfo = new History.TemplateInfo(null, null,
+        Map.of("someOtherField", LocalDate.now(TIMEZONE)));
+    History history = new History(ObjectId.get(), null, null, null, templateInfo, null,
+        Instant.MIN, Instant.MAX, SENT, null, null);
+
+    LocalDate result = service.getProgrammeCctDate(history);
+
+    assertThat("Expected null when CCT date field is missing.", result, is(nullValue()));
+  }
+
+  @Test
+  void shouldReturnNullIfHistoryTemplateVariablesCctDateIsNotLocalDate() {
+    History.TemplateInfo templateInfo = new History.TemplateInfo(null, null,
+        Map.of(ProgrammeMembershipUtils.CCT_DATE_FIELD, "not a date"));
+    History history = new History(ObjectId.get(), null, null, null, templateInfo, null,
+        Instant.MIN, Instant.MAX, SENT, null, null);
+
+    LocalDate result = service.getProgrammeCctDate(history);
+
+    assertThat("Expected null when CCT date field is not a LocalDate.", result, is(nullValue()));
+  }
+
+
+  @Test
+  void shouldReturnNullWhenScheduleProgrammePogNotificationIfCctDateIsInPast() {
+    LocalDate cctDate = LocalDate.now(TIMEZONE).minusDays(1);
+    ProgrammeMembership programmeMembership = new ProgrammeMembership();
+    programmeMembership.setCurricula(List.of(
+        new Curriculum("MEDICAL_CURRICULUM", "specialty", false, cctDate, true)
+    ));
+
+    Date result = service.whenScheduleProgrammePogNotification(
+        NotificationType.PROGRAMME_POG_MONTH_12, programmeMembership, Map.of());
+
+    assertThat("Expected null when CCT date is in the past.", result, is(nullValue()));
+  }
+
+  @Test
+  void shouldReturnNullWhenScheduleProgrammePogNotificationIfCctDateIsToday() {
+    LocalDate cctDate = LocalDate.now(TIMEZONE);
+    ProgrammeMembership programmeMembership = new ProgrammeMembership();
+    programmeMembership.setCurricula(List.of(
+        new Curriculum("MEDICAL_CURRICULUM", "specialty", false, cctDate, true)
+    ));
+
+    Date result = service.whenScheduleProgrammePogNotification(
+        NotificationType.PROGRAMME_POG_MONTH_12, programmeMembership, Map.of());
+
+    assertThat("Expected null when CCT date is today.", result, is(nullValue()));
+  }
+
+  @Test
+  void shouldReturnScheduledDateWhenCctDateIsInFuture() {
+    LocalDate cctDate = LocalDate.now(TIMEZONE).plusDays(400);
+    ProgrammeMembership programmeMembership = new ProgrammeMembership();
+    programmeMembership.setCurricula(List.of(
+        new Curriculum("MEDICAL_CURRICULUM", "specialty", false, cctDate, true)
+    ));
+
+    Date result = service.whenScheduleProgrammePogNotification(
+        NotificationType.PROGRAMME_POG_MONTH_12, programmeMembership, Map.of());
+
+    LocalDate expectedDate = cctDate.minusDays(365);
+    Date expected = Date.from(expectedDate.atStartOfDay(TIMEZONE).toInstant());
+
+    assertThat("Expected scheduled date to be 365 days before CCT date.", result, is(expected));
+  }
+
+  @Test
+  void shouldSchedulePogNotificationIfNoHistoryExists() {
+    ProgrammeMembership programmeMembership = new ProgrammeMembership();
+    programmeMembership.setCurricula(List.of(
+        new Curriculum("MEDICAL_CURRICULUM", "specialty", false,
+            LocalDate.now(TIMEZONE).plusDays(400), true)
+    ));
+
+    boolean shouldSchedule = service.shouldSchedulePogNotification(
+        NotificationType.PROGRAMME_POG_MONTH_12, programmeMembership, Map.of());
+
+    assertThat("Expected to schedule POG notification when no history exists.", shouldSchedule,
+        is(true));
+  }
+
+  @Test
+  void shouldSchedulePogNotificationIfCctDateIsExtended() {
+    LocalDate oldCctDate = LocalDate.now(TIMEZONE).plusDays(10);
+    LocalDate newCctDate = oldCctDate.plusDays(DEFERRAL_IF_MORE_THAN_DAYS + 1);
+
+    History.TemplateInfo templateInfo = new History.TemplateInfo(null, null,
+        Map.of(ProgrammeMembershipUtils.CCT_DATE_FIELD, oldCctDate));
+    History history = new History(ObjectId.get(), null, null, null, templateInfo, null,
+        Instant.MIN, Instant.MAX, SENT, null, null);
+
+    ProgrammeMembership programmeMembership = new ProgrammeMembership();
+    programmeMembership.setCurricula(List.of(
+        new Curriculum("MEDICAL_CURRICULUM", "specialty", false, newCctDate, true)
+    ));
+
+    Map<NotificationType, History> alreadySent = Map.of(NotificationType.PROGRAMME_POG_MONTH_12,
+        history);
+
+    boolean shouldSchedule = service.shouldSchedulePogNotification(
+        NotificationType.PROGRAMME_POG_MONTH_12, programmeMembership, alreadySent);
+
+    assertThat("Expected to schedule POG notification when CCT date is extended.", shouldSchedule
+        , is(true));
+  }
+
+  @Test
+  void shouldNotSchedulePogNotificationIfCctDateIsNotExtended() {
+    LocalDate oldCctDate = LocalDate.now(TIMEZONE).plusDays(10);
+    LocalDate newCctDate = oldCctDate.plusDays(DEFERRAL_IF_MORE_THAN_DAYS);
+
+    History.TemplateInfo templateInfo = new History.TemplateInfo(null, null,
+        Map.of(ProgrammeMembershipUtils.CCT_DATE_FIELD, oldCctDate));
+    History history = new History(ObjectId.get(), null, null, null, templateInfo, null,
+        Instant.MIN, Instant.MAX, SENT, null, null);
+
+    ProgrammeMembership programmeMembership = new ProgrammeMembership();
+    programmeMembership.setCurricula(List.of(
+        new Curriculum("MEDICAL_CURRICULUM", "specialty", false, newCctDate, true)
+    ));
+
+    Map<NotificationType, History> alreadySent = Map.of(NotificationType.PROGRAMME_POG_MONTH_12,
+        history);
+
+    boolean shouldSchedule = service.shouldSchedulePogNotification(
+        NotificationType.PROGRAMME_POG_MONTH_12, programmeMembership, alreadySent);
+
+    assertThat("Expected not to schedule POG notification when CCT date is not extended.",
+        shouldSchedule, is(false));
+  }
+
+  @Test
+  void shouldNotSchedulePogNotificationIfHistoryCctDateIsNull() {
+    History.TemplateInfo templateInfo = new History.TemplateInfo(null, null, Map.of());
+    History history = new History(ObjectId.get(), null, null, null, templateInfo, null,
+        Instant.MIN, Instant.MAX, SENT, null, null);
+
+    ProgrammeMembership programmeMembership = new ProgrammeMembership();
+    programmeMembership.setCurricula(List.of(
+        new Curriculum("MEDICAL_CURRICULUM", "specialty", false,
+            LocalDate.now(TIMEZONE).plusDays(400), true)
+    ));
+
+    Map<NotificationType, History> alreadySent = Map.of(NotificationType.PROGRAMME_POG_MONTH_12,
+        history);
+
+    boolean shouldSchedule = service.shouldSchedulePogNotification(
+        NotificationType.PROGRAMME_POG_MONTH_12, programmeMembership, alreadySent);
+
+    assertThat("Expected not to schedule POG notification when history CCT date is null.",
+        shouldSchedule, is(false));
+  }
+
+  @Test
+  void shouldReturnNullWhenScheduleProgrammeNotificationIfDeadlineIsTodayOrPast() {
+    LocalDate startDate = LocalDate.now(TIMEZONE);
+    ProgrammeMembership programmeMembership = new ProgrammeMembership();
+    programmeMembership.setStartDate(startDate);
+
+    Date result = service.whenScheduleProgrammeNotification(
+        NotificationType.PROGRAMME_DAY_ONE, programmeMembership, Map.of());
+
+    assertThat("Expected null when deadline is today.", result, is(nullValue()));
+  }
+
+  @Test
+  void shouldReturnScheduledDateWhenDeadlineIsInFuture() {
+    LocalDate startDate = LocalDate.now(TIMEZONE).plusDays(10);
+    ProgrammeMembership programmeMembership = new ProgrammeMembership();
+    programmeMembership.setStartDate(startDate);
+
+    Date result = service.whenScheduleProgrammeNotification(
+        NotificationType.PROGRAMME_UPDATED_WEEK_1, programmeMembership, Map.of());
+
+    LocalDate expectedDate = startDate.minusDays(7);
+    Date expected = Date.from(expectedDate.atStartOfDay(TIMEZONE).toInstant());
+
+    assertThat("Expected scheduled date to be 7 days before start date.", result, is(expected));
+  }
+
+  @Test
+  void shouldReturnNullWhenScheduleProgrammeNotificationForProgrammeCreatedIfDeferredShouldSendImmediately() {
+    // Simulate deferred notification logic: old start date and sentAt present, but new start
+    // date is today (should send immediately)
+    LocalDate oldStartDate = LocalDate.now(TIMEZONE).minusDays(DEFERRAL_IF_MORE_THAN_DAYS + 1);
+    LocalDate oldSentAt = LocalDate.now(TIMEZONE).minusDays(100);
+    History.TemplateInfo templateInfo = new History.TemplateInfo(null, null,
+        Map.of(START_DATE_FIELD, oldStartDate));
+    History sentNotification = new History(ObjectId.get(), null,
+        NotificationType.PROGRAMME_CREATED, null,
+        templateInfo, null, Instant.from(oldSentAt.atStartOfDay(TIMEZONE)), Instant.MAX, SENT,
+        null, null);
+    Map<NotificationType, History> alreadySent = Map.of(NotificationType.PROGRAMME_CREATED,
+        sentNotification);
+
+    ProgrammeMembership programmeMembership = new ProgrammeMembership();
+    programmeMembership.setStartDate(LocalDate.now(TIMEZONE));
+
+    Date result = service.whenScheduleProgrammeNotification(
+        NotificationType.PROGRAMME_CREATED, programmeMembership, alreadySent);
+
+    assertThat("Expected null for deferred notification when deadline is today.", result,
+        is(nullValue()));
+  }
+
+  @Test
+  void shouldReturnScheduledDateForProgrammeCreatedIfDeferredShouldSchedule() {
+    // Simulate deferred notification logic: old start date and sentAt present, new start date is
+    // in future (should schedule)
+    LocalDate oldStartDate = LocalDate.now(TIMEZONE).minusDays(DEFERRAL_IF_MORE_THAN_DAYS + 1);
+    LocalDate oldSentAt = LocalDate.now(TIMEZONE).minusDays(DEFERRAL_IF_MORE_THAN_DAYS + 10);
+    History.TemplateInfo templateInfo = new History.TemplateInfo(null, null,
+        Map.of(START_DATE_FIELD, oldStartDate));
+    History sentNotification = new History(ObjectId.get(), null,
+        NotificationType.PROGRAMME_CREATED, null,
+        templateInfo, null, Instant.from(oldSentAt.atStartOfDay(TIMEZONE)), Instant.MAX, SENT,
+        null, null);
+    Map<NotificationType, History> alreadySent = Map.of(NotificationType.PROGRAMME_CREATED,
+        sentNotification);
+
+    LocalDate newStartDate = LocalDate.now(TIMEZONE).plusDays(10);
+    // 10 > (10 - 1) lead days between oldStartDate and oldSentAt
+    ProgrammeMembership programmeMembership = new ProgrammeMembership();
+    programmeMembership.setStartDate(newStartDate);
+
+    // leadDays calculation
+    LocalDateTime oldSentDateTime = oldSentAt.atStartOfDay();
+    long leadDays = Duration.between(oldSentDateTime, oldStartDate.atStartOfDay()).toDays();
+    LocalDate expectedSendDate = newStartDate.minusDays(leadDays);
+    Date expected = Date.from(expectedSendDate.atStartOfDay(TIMEZONE).toInstant());
+
+    Date result = service.whenScheduleProgrammeNotification(
+        NotificationType.PROGRAMME_CREATED, programmeMembership, alreadySent);
+
+    assertThat("Expected scheduled date for deferred notification.", result, is(expected));
+  }
 
   /**
    * Helper function to set up a default non-excluded programme membership.
@@ -443,5 +726,5 @@ class ProgrammeMembershipUtilsTest {
     programmeMembership.setDesignatedBody(DESIGNATED_BODY);
     return programmeMembership;
   }
-}
 
+}
