@@ -65,7 +65,10 @@ public class ProgrammeMembershipUtils {
   private static final List<String> EXCLUDE_CURRICULUM_SPECIALTIES
       = List.of("PUBLIC HEALTH MEDICINE", "FOUNDATION");
 
-  private ZoneId timezone;
+  public static final int POG_12MONTH_NOTIFICATION_CUTOFF_MONTHS = 6;
+  public static final int POG_ALL_NOTIFICATION_CUTOFF_WEEKS = 16;
+
+  private final ZoneId timezone;
 
   /**
    * Construct a ProgrammeMembershipUtils.
@@ -270,15 +273,16 @@ public class ProgrammeMembershipUtils {
   }
 
   /**
-   * Determines whether a programme membership is excluded from POG notifications.
+   * Determines whether a programme membership is excluded from POG notifications, either because
+   * it has no CCT date, or the CCT date is within the POG notification cutoff period.
    *
    * @param programmeMembership the Programme membership.
    * @return true if the programme membership is excluded from POG notifications.
    */
   public boolean isExcludedPog(ProgrammeMembership programmeMembership) {
     LocalDate cctDate = getProgrammeCctDate(programmeMembership);
-    return cctDate == null || cctDate.isBefore(LocalDate.now(timezone));
-    //TODO: missed notification logic
+    return cctDate == null
+        || cctDate.isBefore(LocalDate.now(timezone).plusWeeks(POG_ALL_NOTIFICATION_CUTOFF_WEEKS));
   }
 
   /**
@@ -381,20 +385,27 @@ public class ProgrammeMembershipUtils {
       ProgrammeMembership programmeMembership,
       Map<NotificationType, History> notificationsAlreadySent) {
 
+    LocalDate cctDate = getProgrammeCctDate(programmeMembership);
+
     //only resend extension notifications
     if (notificationsAlreadySent.containsKey(notificationType)) {
       History lastSent = notificationsAlreadySent.get(notificationType);
       LocalDate oldCctDate = getProgrammeCctDate(lastSent);
-      LocalDate newCctDate = getProgrammeCctDate(programmeMembership);
       boolean isExtension = oldCctDate != null
-          && newCctDate != null
+          && cctDate != null
           && oldCctDate.plusDays(DEFERRAL_IF_MORE_THAN_DAYS)
-          .isBefore(newCctDate);
+          .isBefore(cctDate);
       log.info("Programme membership {} is extension: {} (old CCT date {}, new CCT date {})",
-          programmeMembership.getTisId(), isExtension, oldCctDate, newCctDate);
+          programmeMembership.getTisId(), isExtension, oldCctDate, cctDate);
       return isExtension;
     }
 
-    return true; //send new notifications, or missed ones TODO: confirm business logic
+    if (notificationType == NotificationType.PROGRAMME_POG_MONTH_12
+        && cctDate.isBefore(LocalDate.now(timezone)
+        .plusMonths(POG_12MONTH_NOTIFICATION_CUTOFF_MONTHS))) {
+      return false; //if less than 6 months we'll send the 6-month notification, so don't duplicate
+    }
+
+    return true; //send new notifications
   }
 }
