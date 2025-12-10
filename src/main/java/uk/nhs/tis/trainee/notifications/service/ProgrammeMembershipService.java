@@ -61,6 +61,8 @@ import uk.nhs.tis.trainee.notifications.model.TisReferenceType;
 public class ProgrammeMembershipService {
 
   public static final String TIS_ID_FIELD = "tisId";
+  public static final String PERSON_ID_FIELD = "personId";
+  public static final String CCT_DATE_FIELD = "cctDate";
   public static final String PROGRAMME_NAME_FIELD = "programmeName";
   public static final String PROGRAMME_NUMBER_FIELD = "programmeNumber";
   public static final String START_DATE_FIELD = "startDate";
@@ -72,6 +74,13 @@ public class ProgrammeMembershipService {
   public static final String RO_NAME_FIELD = "roName";
   public static final String DESIGNATED_BODY_FIELD = "designatedBody";
   public static final Integer DEFERRAL_IF_MORE_THAN_DAYS = 89;
+  public static final Integer POG_12MONTH_NOTIFICATION_CUTOFF_MONTHS = 6;
+  public static final Integer POG_ALL_NOTIFICATION_CUTOFF_WEEKS = 16;
+
+  public static final List<String> INCLUDE_CURRICULUM_SUBTYPES
+      = List.of("MEDICAL_CURRICULUM", "MEDICAL_SPR");
+  public static final List<String> EXCLUDE_CURRICULUM_SPECIALTIES
+      = List.of("PUBLIC HEALTH MEDICINE", "FOUNDATION");
 
   private final HistoryService historyService;
   private final InAppService inAppService;

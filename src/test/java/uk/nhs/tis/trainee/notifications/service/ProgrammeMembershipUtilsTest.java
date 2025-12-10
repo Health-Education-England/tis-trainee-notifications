@@ -29,14 +29,26 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.SENT;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_CREATED;
 import static uk.nhs.tis.trainee.notifications.model.TisReferenceType.PROGRAMME_MEMBERSHIP;
+import static uk.nhs.tis.trainee.notifications.service.NotificationService.TEMPLATE_OWNER_FIELD;
+import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.CCT_DATE_FIELD;
+import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.COJ_SYNCED_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.DEFERRAL_IF_MORE_THAN_DAYS;
+import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.DESIGNATED_BODY_FIELD;
+import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.PERSON_ID_FIELD;
+import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.POG_ALL_NOTIFICATION_CUTOFF_WEEKS;
+import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.PROGRAMME_NAME_FIELD;
+import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.PROGRAMME_NUMBER_FIELD;
+import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.RO_NAME_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.START_DATE_FIELD;
+import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.TIS_ID_FIELD;
+
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.bson.types.ObjectId;
@@ -63,7 +75,7 @@ class ProgrammeMembershipUtilsTest {
   private static final String PROGRAMME_NUMBER = "the programme number";
   private static final String MANAGING_DEANERY = "the local office";
 
-  private static final String DESIGNATED_BODY = "deisgnatedBody";
+  private static final String DESIGNATED_BODY = "designatedBody";
   private static final String RO_FIRST_NAME = "RO First Name";
   private static final String RO_LAST_NAME = "RO Last Name";
 
@@ -214,46 +226,35 @@ class ProgrammeMembershipUtilsTest {
         daysBeforeStartDate, is(nullValue()));
   }
 
-  @ParameterizedTest
-  @NullSource
-  @ValueSource(strings = "2020-01-01")
-  void shouldExcludePogWhenCctDateIsNullOrPast(String cctDateString) {
-    LocalDate cctDate = cctDateString != null ? LocalDate.parse(cctDateString) : null;
+  @Test
+  void shouldExcludePogWhenCctDateIsWithinPogAllNotificationCutoffWeeks() {
+    // CCT date is before the cutoff (should be excluded)
+    LocalDate cctDate = LocalDate.now(TIMEZONE)
+        .plusWeeks(POG_ALL_NOTIFICATION_CUTOFF_WEEKS)
+        .minusDays(1);
     ProgrammeMembership programmeMembership = new ProgrammeMembership();
     programmeMembership.setCurricula(List.of(
-        new Curriculum("MEDICAL_CURRICULUM", "specialty", false,
-            cctDate, true)
+        new Curriculum("MEDICAL_CURRICULUM", "specialty", false, cctDate, true)
     ));
 
     boolean isExcludedPog = service.isExcludedPog(programmeMembership);
 
-    assertThat("Expected exclusion when CCT date is null or past.", isExcludedPog, is(true));
+    assertThat("Expected exclusion when CCT date is within cutoff weeks.", isExcludedPog, is(true));
   }
 
   @Test
-  void shouldNotExcludePogWhenCctDateIsToday() {
+  void shouldNotExcludePogWhenCctDateIsAfterPogAllNotificationCutoffWeeks() {
+    // CCT date is on or after the cutoff (should NOT be excluded)
+    LocalDate cctDate = LocalDate.now(TIMEZONE)
+        .plusWeeks(POG_ALL_NOTIFICATION_CUTOFF_WEEKS);
     ProgrammeMembership programmeMembership = new ProgrammeMembership();
     programmeMembership.setCurricula(List.of(
-        new Curriculum("MEDICAL_CURRICULUM", "specialty", false,
-            LocalDate.now(TIMEZONE), true)
+        new Curriculum("MEDICAL_CURRICULUM", "specialty", false, cctDate, true)
     ));
 
     boolean isExcludedPog = service.isExcludedPog(programmeMembership);
 
-    assertThat("Expected not to be excluded when CCT date is today.", isExcludedPog, is(false));
-  }
-
-  @Test
-  void shouldNotExcludePogWhenCctDateIsInFuture() {
-    ProgrammeMembership programmeMembership = new ProgrammeMembership();
-    programmeMembership.setCurricula(List.of(
-        new Curriculum("MEDICAL_CURRICULUM", "specialty", false,
-            LocalDate.now(TIMEZONE).plusDays(10), true)
-    ));
-
-    boolean isExcludedPog = service.isExcludedPog(programmeMembership);
-
-    assertThat("Expected not to be excluded when CCT date is in the future.",
+    assertThat("Expected not to be excluded when CCT date is on or after cutoff weeks.",
         isExcludedPog, is(false));
   }
 
@@ -277,9 +278,9 @@ class ProgrammeMembershipUtilsTest {
   void shouldIgnoreCurriculaNotEligibleForPeriodOfGrace() {
     LocalDate now = LocalDate.now(TIMEZONE);
     Curriculum eligibleCurriculum = new Curriculum("MEDICAL_CURRICULUM", "specialty", false,
-        now.plusDays(5), true);
+        now.plusYears(1), true);
     Curriculum notEligibleCurriculum = new Curriculum("MEDICAL_CURRICULUM", "specialty", false,
-        now.minusDays(5), false); //would be excluded
+        now.plusYears(1), false); //would be excluded
 
     ProgrammeMembership programmeMembership = new ProgrammeMembership();
     programmeMembership.setCurricula(List.of(eligibleCurriculum, notEligibleCurriculum));
@@ -432,7 +433,7 @@ class ProgrammeMembershipUtilsTest {
   void shouldReturnCctDateFromHistoryWhenPresentAndValid() {
     LocalDate cctDate = LocalDate.now(TIMEZONE).plusDays(30);
     History.TemplateInfo templateInfo = new History.TemplateInfo(null, null,
-        Map.of(ProgrammeMembershipUtils.CCT_DATE_FIELD, cctDate));
+        Map.of(CCT_DATE_FIELD, cctDate));
     History history = new History(ObjectId.get(), null, null, null, templateInfo, null,
         Instant.MIN, Instant.MAX, SENT, null, null);
 
@@ -477,7 +478,7 @@ class ProgrammeMembershipUtilsTest {
   @Test
   void shouldReturnNullIfHistoryTemplateVariablesCctDateIsNotLocalDate() {
     History.TemplateInfo templateInfo = new History.TemplateInfo(null, null,
-        Map.of(ProgrammeMembershipUtils.CCT_DATE_FIELD, "not a date"));
+        Map.of(CCT_DATE_FIELD, "not a date"));
     History history = new History(ObjectId.get(), null, null, null, templateInfo, null,
         Instant.MIN, Instant.MAX, SENT, null, null);
 
@@ -553,7 +554,7 @@ class ProgrammeMembershipUtilsTest {
     LocalDate newCctDate = oldCctDate.plusDays(DEFERRAL_IF_MORE_THAN_DAYS + 1);
 
     History.TemplateInfo templateInfo = new History.TemplateInfo(null, null,
-        Map.of(ProgrammeMembershipUtils.CCT_DATE_FIELD, oldCctDate));
+        Map.of(CCT_DATE_FIELD, oldCctDate));
     History history = new History(ObjectId.get(), null, null, null, templateInfo, null,
         Instant.MIN, Instant.MAX, SENT, null, null);
 
@@ -578,7 +579,7 @@ class ProgrammeMembershipUtilsTest {
     LocalDate newCctDate = oldCctDate.plusDays(DEFERRAL_IF_MORE_THAN_DAYS);
 
     History.TemplateInfo templateInfo = new History.TemplateInfo(null, null,
-        Map.of(ProgrammeMembershipUtils.CCT_DATE_FIELD, oldCctDate));
+        Map.of(CCT_DATE_FIELD, oldCctDate));
     History history = new History(ObjectId.get(), null, null, null, templateInfo, null,
         Instant.MIN, Instant.MAX, SENT, null, null);
 
@@ -701,6 +702,83 @@ class ProgrammeMembershipUtilsTest {
         NotificationType.PROGRAMME_CREATED, programmeMembership, alreadySent);
 
     assertThat("Expected scheduled date for deferred notification.", result, is(expected));
+  }
+
+  @Test
+  void shouldReturnEmptyStringWhenResponsibleOfficerIsNull() {
+    String roName = service.getRoName(null);
+    assertThat("Expected empty string when ResponsibleOfficer is null.", roName, is(""));
+  }
+
+  @Test
+  void shouldReturnTrimmedFirstNameWhenLastNameIsNull() {
+    ResponsibleOfficer ro = new ResponsibleOfficer("email", "First", null, "gmc", "phone");
+    String roName = service.getRoName(ro);
+    assertThat("Expected first name only when last name is null.", roName, is("First"));
+  }
+
+  @Test
+  void shouldReturnTrimmedLastNameWhenFirstNameIsNull() {
+    ResponsibleOfficer ro = new ResponsibleOfficer("email", null, "Last", "gmc", "phone");
+    String roName = service.getRoName(ro);
+    assertThat("Expected last name only when first name is null.", roName, is("Last"));
+  }
+
+  @Test
+  void shouldReturnTrimmedFullNameWhenBothNamesPresent() {
+    ResponsibleOfficer ro = new ResponsibleOfficer("email", "First", "Last", "gmc", "phone");
+    String roName = service.getRoName(ro);
+    assertThat("Expected full name when both names present.", roName, is("First Last"));
+  }
+
+  @Test
+  void shouldReturnEmptyStringWhenBothNamesAreEmpty() {
+    ResponsibleOfficer ro = new ResponsibleOfficer("email", "", "", "gmc", "phone");
+    String roName = service.getRoName(ro);
+    assertThat("Expected empty string when both names are empty.", roName, is(""));
+  }
+
+  @Test
+  void shouldAddAllStandardProgrammeDetailsToJobMap() {
+    ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
+    Map<String, Object> jobDataMap = new HashMap<>();
+
+    service.addStandardProgrammeDetailsToJobMap(jobDataMap, programmeMembership);
+
+    assertThat(jobDataMap.get(TIS_ID_FIELD), is(programmeMembership.getTisId()));
+    assertThat(jobDataMap.get(PERSON_ID_FIELD), is(programmeMembership.getPersonId()));
+    assertThat(jobDataMap.get(PROGRAMME_NAME_FIELD), is(programmeMembership.getProgrammeName()));
+    assertThat(jobDataMap.get(PROGRAMME_NUMBER_FIELD), is(programmeMembership.getProgrammeNumber()));
+    assertThat(jobDataMap.get(START_DATE_FIELD), is(programmeMembership.getStartDate()));
+    assertThat(jobDataMap.get(TEMPLATE_OWNER_FIELD), is(programmeMembership.getManagingDeanery()));
+    assertThat(jobDataMap.get(RO_NAME_FIELD), is(service.getRoName(programmeMembership.getResponsibleOfficer())));
+    assertThat(jobDataMap.get(DESIGNATED_BODY_FIELD), is(programmeMembership.getDesignatedBody()));
+    assertThat(jobDataMap.get(CCT_DATE_FIELD), is(service.getProgrammeCctDate(programmeMembership)));
+    assertThat(jobDataMap.get(COJ_SYNCED_FIELD),
+        is(programmeMembership.getConditionsOfJoining().syncedAt()));
+  }
+
+  @Test
+  void shouldHandleNullConditionsOfJoiningInJobMap() {
+    ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
+    programmeMembership.setConditionsOfJoining(null);
+    Map<String, Object> jobDataMap = new HashMap<>();
+
+    service.addStandardProgrammeDetailsToJobMap(jobDataMap, programmeMembership);
+
+    // Should not throw and should not contain COJ_SYNCED_FIELD
+    assertThat(jobDataMap.containsKey(COJ_SYNCED_FIELD), is(false));
+  }
+
+  @Test
+  void shouldHandleNullResponsibleOfficerInJobMap() {
+    ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
+    programmeMembership.setResponsibleOfficer(null);
+    Map<String, Object> jobDataMap = new HashMap<>();
+
+    service.addStandardProgrammeDetailsToJobMap(jobDataMap, programmeMembership);
+
+    assertThat(jobDataMap.get(RO_NAME_FIELD), is(""));
   }
 
   /**

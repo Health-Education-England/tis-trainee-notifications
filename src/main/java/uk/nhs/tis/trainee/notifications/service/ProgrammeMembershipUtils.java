@@ -24,7 +24,20 @@ package uk.nhs.tis.trainee.notifications.service;
 
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_CREATED;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.TEMPLATE_OWNER_FIELD;
+import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.CCT_DATE_FIELD;
+import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.COJ_SYNCED_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.DEFERRAL_IF_MORE_THAN_DAYS;
+import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.DESIGNATED_BODY_FIELD;
+import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.EXCLUDE_CURRICULUM_SPECIALTIES;
+import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.INCLUDE_CURRICULUM_SUBTYPES;
+import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.PERSON_ID_FIELD;
+import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.POG_12MONTH_NOTIFICATION_CUTOFF_MONTHS;
+import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.POG_ALL_NOTIFICATION_CUTOFF_WEEKS;
+import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.PROGRAMME_NAME_FIELD;
+import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.PROGRAMME_NUMBER_FIELD;
+import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.START_DATE_FIELD;
+import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.RO_NAME_FIELD;
+import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.TIS_ID_FIELD;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -49,24 +62,6 @@ import uk.nhs.tis.trainee.notifications.model.ResponsibleOfficer;
 @Slf4j
 @Component
 public class ProgrammeMembershipUtils {
-
-  public static final String TIS_ID_FIELD = "tisId";
-  public static final String PERSON_ID_FIELD = "personId";
-  public static final String PROGRAMME_NAME_FIELD = "programmeName";
-  public static final String PROGRAMME_NUMBER_FIELD = "programmeNumber";
-  public static final String START_DATE_FIELD = "startDate";
-  public static final String CCT_DATE_FIELD = "cctDate";
-  public static final String COJ_SYNCED_FIELD = "conditionsOfJoiningSyncedAt";
-  public static final String RO_NAME_FIELD = "roName";
-  public static final String DESIGNATED_BODY_FIELD = "designatedBody";
-
-  private static final List<String> INCLUDE_CURRICULUM_SUBTYPES
-      = List.of("MEDICAL_CURRICULUM", "MEDICAL_SPR");
-  private static final List<String> EXCLUDE_CURRICULUM_SPECIALTIES
-      = List.of("PUBLIC HEALTH MEDICINE", "FOUNDATION");
-
-  public static final int POG_12MONTH_NOTIFICATION_CUTOFF_MONTHS = 6;
-  public static final int POG_ALL_NOTIFICATION_CUTOFF_WEEKS = 16;
 
   private final ZoneId timezone;
 
