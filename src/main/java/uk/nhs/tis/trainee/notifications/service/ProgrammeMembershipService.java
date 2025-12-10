@@ -107,7 +107,8 @@ public class ProgrammeMembershipService {
       @Value("${application.template-versions.day-one.in-app}") String dayOneVersion,
       @Value("${application.template-versions.deferral.in-app}") String deferralVersion,
       @Value("${application.template-versions.e-portfolio.in-app}") String eportfolioVersion,
-      @Value("${application.template-versions.indemnity-insurance.in-app}") String indemnityInsuranceVersion,
+      @Value("${application.template-versions.indemnity-insurance.in-app}")
+      String indemnityInsuranceVersion,
       @Value("${application.template-versions.less-than-full-time.in-app}") String ltftVersion,
       @Value("${application.template-versions.sponsorship.in-app}") String sponsorshipVersion) {
     this.historyService = historyService;
@@ -220,6 +221,19 @@ public class ProgrammeMembershipService {
     }
   }
 
+  private void doScheduleProgrammeNotification(NotificationType notificationType,
+      ProgrammeMembership programmeMembership, Map<String, Object> jobDataMap,
+      Map<NotificationType, History> notificationsAlreadySent) {
+    String jobId = notificationType + "-" + jobDataMap.get(TIS_ID_FIELD);
+    Date scheduleWhen = pmUtils.whenScheduleProgrammeNotification(notificationType,
+        programmeMembership, notificationsAlreadySent);
+    if (scheduleWhen == null) {
+      notificationService.executeNow(jobId, jobDataMap);
+    } else {
+      notificationService.scheduleNotification(jobId, jobDataMap, scheduleWhen, ONE_DAY_IN_SECONDS);
+    }
+  }
+
   /**
    * Create "direct" programme notifications for POG, such as email, which may be scheduled for a
    * future date/time.
@@ -248,19 +262,6 @@ public class ProgrammeMembershipService {
         doScheduleProgrammePogNotification(notificationType, programmeMembership, jobDataMap,
             notificationsAlreadySent);
       }
-    }
-  }
-
-  private void doScheduleProgrammeNotification(NotificationType notificationType,
-      ProgrammeMembership programmeMembership, Map<String, Object> jobDataMap,
-      Map<NotificationType, History> notificationsAlreadySent) {
-    String jobId = notificationType + "-" + jobDataMap.get(TIS_ID_FIELD);
-    Date scheduleWhen = pmUtils.whenScheduleProgrammeNotification(notificationType,
-        programmeMembership, notificationsAlreadySent);
-    if (scheduleWhen == null) {
-      notificationService.executeNow(jobId, jobDataMap);
-    } else {
-      notificationService.scheduleNotification(jobId, jobDataMap, scheduleWhen, ONE_DAY_IN_SECONDS);
     }
   }
 

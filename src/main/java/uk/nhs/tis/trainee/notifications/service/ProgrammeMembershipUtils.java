@@ -95,23 +95,7 @@ public class ProgrammeMembershipUtils {
     }
     jobDataMap.put(RO_NAME_FIELD, getRoName(programmeMembership.getResponsibleOfficer()));
     jobDataMap.put(DESIGNATED_BODY_FIELD, programmeMembership.getDesignatedBody());
-    jobDataMap.put(CCT_DATE_FIELD, getProgrammeCctDateFromMembership(programmeMembership));
-  }
-
-  /**
-   * Get the Programme membership's CCT date, based on the curricula end dates.
-   *
-   * @param programmeMembership the Programme membership.
-   * @return the CCT date, or null if not available.
-   */
-  public LocalDate getProgrammeCctDateFromMembership(ProgrammeMembership programmeMembership) {
-    return programmeMembership.getCurricula().stream()
-        .filter(c -> c.curriculumEligibleForPeriodOfGrace() != null
-            && c.curriculumEligibleForPeriodOfGrace())
-        .map(uk.nhs.tis.trainee.notifications.model.Curriculum::curriculumEndDate)
-        .filter(java.util.Objects::nonNull)
-        .max(LocalDate::compareTo)
-        .orElse(null);
+    jobDataMap.put(CCT_DATE_FIELD, getProgrammeCctDate(programmeMembership));
   }
 
   /**
@@ -137,14 +121,14 @@ public class ProgrammeMembershipUtils {
    */
   public Integer getDaysBeforeStartForNotification(NotificationType notificationType) {
     return switch (notificationType) {
-      case PROGRAMME_DAY_ONE -> 0;
+      case PROGRAMME_DAY_ONE -> 0; // Day One is sent on the start date
       case PROGRAMME_UPDATED_WEEK_12 -> 84;
       case PROGRAMME_UPDATED_WEEK_8 -> 56;
       case PROGRAMME_UPDATED_WEEK_4 -> 28;
       case PROGRAMME_UPDATED_WEEK_2 -> 14;
       case PROGRAMME_UPDATED_WEEK_1 -> 7;
       case PROGRAMME_UPDATED_WEEK_0 -> 0;
-      default -> null;
+      default -> null; //not applicable
     };
   }
 
@@ -173,6 +157,8 @@ public class ProgrammeMembershipUtils {
   public Date whenScheduleDeferredNotification(NotificationType notificationType,
       ProgrammeMembership programmeMembership,
       Map<NotificationType, History> notificationsAlreadySent) {
+
+    //schedule deferred notifications with the same lead time as the original notification
     if (notificationsAlreadySent.containsKey(notificationType)) {
       History lastSent = notificationsAlreadySent.get(notificationType);
       LocalDate oldStartDate = getProgrammeStartDate(lastSent);
@@ -185,21 +171,22 @@ public class ProgrammeMembershipUtils {
           return Date.from(newSend.atStartOfDay(timezone).toInstant());
         }
       }
-      return null;
+      return null; //send immediately if newSend is not in the future, or any data missing
     }
-    return null;
+    return null; //send new notification immediately
   }
 
   /**
-   * Get the Programme membership's start date from a History record.
+   * Get the Programme membership's start date from a saved history item.
    *
-   * @param history the History record.
-   * @return the start date, or null if not available.
+   * @param history  The history to inspect.
+   * @return The start date, or null if it is missing or unparseable.
    */
   public LocalDate getProgrammeStartDate(History history) {
     if (history.template() != null
         && history.template().variables() != null
         && history.template().variables().get(START_DATE_FIELD) != null) {
+      //to be deferrable, a programme-related notification must include the START_DATE_FIELD
       try {
         return (LocalDate) history.template().variables().get(START_DATE_FIELD);
       } catch (Exception e) {
@@ -214,7 +201,7 @@ public class ProgrammeMembershipUtils {
    * Get the Programme membership's CCT date from a History record.
    *
    * @param history the History record.
-   * @return the CCT date, or null if not available.
+   * @return The CCT date, or null if not available.
    */
   public LocalDate getProgrammeCctDate(History history) {
     if (history.template() != null
@@ -234,7 +221,7 @@ public class ProgrammeMembershipUtils {
    * Get the Programme membership's CCT date, based on the curricula end dates.
    *
    * @param programmeMembership the Programme membership.
-   * @return the CCT date, or null if not available.
+   * @return The CCT date, or null if not available.
    */
   public LocalDate getProgrammeCctDate(ProgrammeMembership programmeMembership) {
     return programmeMembership.getCurricula().stream()
@@ -291,6 +278,7 @@ public class ProgrammeMembershipUtils {
   public boolean isExcludedPog(ProgrammeMembership programmeMembership) {
     LocalDate cctDate = getProgrammeCctDate(programmeMembership);
     return cctDate == null || cctDate.isBefore(LocalDate.now(timezone));
+    //TODO: missed notification logic
   }
 
   /**
