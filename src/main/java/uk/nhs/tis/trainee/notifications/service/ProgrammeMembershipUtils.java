@@ -35,14 +35,14 @@ import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipServic
 import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.POG_ALL_NOTIFICATION_CUTOFF_WEEKS;
 import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.PROGRAMME_NAME_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.PROGRAMME_NUMBER_FIELD;
-import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.START_DATE_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.RO_NAME_FIELD;
+import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.START_DATE_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.TIS_ID_FIELD;
 
+import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
-import java.time.Duration;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
@@ -77,8 +77,8 @@ public class ProgrammeMembershipUtils {
   /**
    * Add standard programme details to a notification job data map.
    *
-   * @param jobDataMap           the job data map.
-   * @param programmeMembership  the programme membership to use.
+   * @param jobDataMap          the job data map.
+   * @param programmeMembership the programme membership to use.
    */
   public void addStandardProgrammeDetailsToJobMap(Map<String, Object> jobDataMap,
       ProgrammeMembership programmeMembership) {
@@ -177,7 +177,7 @@ public class ProgrammeMembershipUtils {
   /**
    * Get the Programme membership's start date from a saved history item.
    *
-   * @param history  The history to inspect.
+   * @param history The history to inspect.
    * @return The start date, or null if it is missing or unparseable.
    */
   public LocalDate getProgrammeStartDate(History history) {
@@ -311,15 +311,13 @@ public class ProgrammeMembershipUtils {
   /**
    * Determine when a programme POG notification should be scheduled.
    *
-   * @param notificationType         The type of notification to schedule.
-   * @param programmeMembership      The programme membership to consider.
-   * @param notificationsAlreadySent The notifications already sent for this entity.
+   * @param notificationType    The type of notification to schedule.
+   * @param programmeMembership The programme membership to consider.
    * @return The date when the notification should be scheduled, or null if it should be sent
    *     immediately.
    */
   public Date whenScheduleProgrammePogNotification(
-      NotificationType notificationType, ProgrammeMembership programmeMembership,
-      Map<NotificationType, History> notificationsAlreadySent) {
+      NotificationType notificationType, ProgrammeMembership programmeMembership) {
 
     Integer daysBeforeEnd = getDaysBeforeEndForNotification(notificationType);
     LocalDate cctDate = getProgrammeCctDate(programmeMembership);
@@ -330,8 +328,6 @@ public class ProgrammeMembershipUtils {
     }
     // Otherwise, schedule for the deadline.
     return Date.from(cctDate.minusDays(daysBeforeEnd).atStartOfDay(timezone).toInstant());
-    //TODO: consider if already sent logic is needed here
-
   }
 
   /**
@@ -395,12 +391,10 @@ public class ProgrammeMembershipUtils {
       return isExtension;
     }
 
-    if (notificationType == NotificationType.PROGRAMME_POG_MONTH_12
-        && cctDate.isBefore(LocalDate.now(timezone)
-        .plusMonths(POG_12MONTH_NOTIFICATION_CUTOFF_MONTHS))) {
-      return false; //if less than 6 months we'll send the 6-month notification, so don't duplicate
-    }
-
-    return true; //send new notifications
+    return notificationType != NotificationType.PROGRAMME_POG_MONTH_12
+        || !cctDate.isBefore(LocalDate.now(timezone)
+        .plusMonths(POG_12MONTH_NOTIFICATION_CUTOFF_MONTHS));
+    // if less than 6 months we'll send the 6-month notification, so don't send 12-month one,
+    // otherwise send it
   }
 }

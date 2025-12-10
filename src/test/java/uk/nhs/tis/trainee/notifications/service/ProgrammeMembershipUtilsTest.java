@@ -497,7 +497,7 @@ class ProgrammeMembershipUtilsTest {
     ));
 
     Date result = service.whenScheduleProgrammePogNotification(
-        NotificationType.PROGRAMME_POG_MONTH_12, programmeMembership, Map.of());
+        NotificationType.PROGRAMME_POG_MONTH_12, programmeMembership);
 
     assertThat("Expected null when CCT date is in the past.", result, is(nullValue()));
   }
@@ -511,7 +511,7 @@ class ProgrammeMembershipUtilsTest {
     ));
 
     Date result = service.whenScheduleProgrammePogNotification(
-        NotificationType.PROGRAMME_POG_MONTH_12, programmeMembership, Map.of());
+        NotificationType.PROGRAMME_POG_MONTH_12, programmeMembership);
 
     assertThat("Expected null when CCT date is today.", result, is(nullValue()));
   }
@@ -525,7 +525,7 @@ class ProgrammeMembershipUtilsTest {
     ));
 
     Date result = service.whenScheduleProgrammePogNotification(
-        NotificationType.PROGRAMME_POG_MONTH_12, programmeMembership, Map.of());
+        NotificationType.PROGRAMME_POG_MONTH_12, programmeMembership);
 
     LocalDate expectedDate = cctDate.minusDays(365);
     Date expected = Date.from(expectedDate.atStartOfDay(TIMEZONE).toInstant());
@@ -748,12 +748,15 @@ class ProgrammeMembershipUtilsTest {
     assertThat(jobDataMap.get(TIS_ID_FIELD), is(programmeMembership.getTisId()));
     assertThat(jobDataMap.get(PERSON_ID_FIELD), is(programmeMembership.getPersonId()));
     assertThat(jobDataMap.get(PROGRAMME_NAME_FIELD), is(programmeMembership.getProgrammeName()));
-    assertThat(jobDataMap.get(PROGRAMME_NUMBER_FIELD), is(programmeMembership.getProgrammeNumber()));
+    assertThat(jobDataMap.get(PROGRAMME_NUMBER_FIELD),
+        is(programmeMembership.getProgrammeNumber()));
     assertThat(jobDataMap.get(START_DATE_FIELD), is(programmeMembership.getStartDate()));
     assertThat(jobDataMap.get(TEMPLATE_OWNER_FIELD), is(programmeMembership.getManagingDeanery()));
-    assertThat(jobDataMap.get(RO_NAME_FIELD), is(service.getRoName(programmeMembership.getResponsibleOfficer())));
+    assertThat(jobDataMap.get(RO_NAME_FIELD),
+        is(service.getRoName(programmeMembership.getResponsibleOfficer())));
     assertThat(jobDataMap.get(DESIGNATED_BODY_FIELD), is(programmeMembership.getDesignatedBody()));
-    assertThat(jobDataMap.get(CCT_DATE_FIELD), is(service.getProgrammeCctDate(programmeMembership)));
+    assertThat(jobDataMap.get(CCT_DATE_FIELD),
+        is(service.getProgrammeCctDate(programmeMembership)));
     assertThat(jobDataMap.get(COJ_SYNCED_FIELD),
         is(programmeMembership.getConditionsOfJoining().syncedAt()));
   }
@@ -781,6 +784,99 @@ class ProgrammeMembershipUtilsTest {
     assertThat(jobDataMap.get(RO_NAME_FIELD), is(""));
   }
 
+  @Test
+  void shouldNotSchedulePogNotificationIfNotificationTypeIsNotProgrammePogMonth12() {
+    // For notification types other than PROGRAMME_POG_MONTH_12, should always return true if no
+    // history
+    ProgrammeMembership programmeMembership = new ProgrammeMembership();
+    programmeMembership.setCurricula(List.of(
+        new Curriculum("MEDICAL_CURRICULUM", "specialty", false,
+            LocalDate.now(TIMEZONE).plusDays(400), true)
+    ));
+
+    boolean shouldSchedule = service.shouldSchedulePogNotification(
+        NotificationType.PROGRAMME_UPDATED_WEEK_12, programmeMembership, Map.of());
+
+    assertThat("Expected to schedule POG notification for non-POG type.", shouldSchedule, is(true));
+  }
+
+  @Test
+  void shouldNotSchedulePog12MonthNotificationIfCctDateIsBefore6MonthCutoff() {
+    // CCT date is less than 12 months from now, should return false
+    LocalDate cctDate = LocalDate.now(TIMEZONE).plusMonths(6).minusDays(1);
+    ProgrammeMembership programmeMembership = new ProgrammeMembership();
+    programmeMembership.setCurricula(List.of(
+        new Curriculum("MEDICAL_CURRICULUM", "specialty", false, cctDate, true)
+    ));
+
+    boolean shouldSchedule = service.shouldSchedulePogNotification(
+        NotificationType.PROGRAMME_POG_MONTH_12, programmeMembership, Map.of());
+
+    assertThat("Expected not to schedule 12-month POG notification if CCT date is less than 6 " +
+        "months away.", shouldSchedule, is(false));
+  }
+
+  @Test
+  void shouldSchedulePogNotificationIfCctDateIsOnOrAfter6MonthCutoff() {
+    // CCT date is at least 12 months from now, should return true
+    LocalDate cctDate = LocalDate.now(TIMEZONE).plusMonths(6);
+    ProgrammeMembership programmeMembership = new ProgrammeMembership();
+    programmeMembership.setCurricula(List.of(
+        new Curriculum("MEDICAL_CURRICULUM", "specialty", false, cctDate, true)
+    ));
+
+    boolean shouldSchedule = service.shouldSchedulePogNotification(
+        NotificationType.PROGRAMME_POG_MONTH_12, programmeMembership, Map.of());
+
+    assertThat("Expected to schedule 12-month POG notification if CCT date is at least 6 months " +
+        "away.", shouldSchedule, is(true));
+  }
+
+  @Test
+  void shouldNotSchedulePogNotificationIfOldCctDateIsNull() {
+    // If history exists but old CCT date is null, should return false
+    History.TemplateInfo templateInfo = new History.TemplateInfo(null, null, Map.of());
+    History history = new History(ObjectId.get(), null, null, null, templateInfo, null,
+        Instant.MIN, Instant.MAX, SENT, null, null);
+
+    LocalDate cctDate = LocalDate.now(TIMEZONE).plusMonths(13);
+    ProgrammeMembership programmeMembership = new ProgrammeMembership();
+    programmeMembership.setCurricula(List.of(
+        new Curriculum("MEDICAL_CURRICULUM", "specialty", false, cctDate, true)
+    ));
+
+    Map<NotificationType, History> alreadySent = Map.of(NotificationType.PROGRAMME_POG_MONTH_12,
+        history);
+
+    boolean shouldSchedule = service.shouldSchedulePogNotification(
+        NotificationType.PROGRAMME_POG_MONTH_12, programmeMembership, alreadySent);
+
+    assertThat("Expected not to schedule POG notification when old CCT date is null.",
+        shouldSchedule, is(false));
+  }
+
+  @Test
+  void shouldNotSchedulePogNotificationIfCctDateIsNull() {
+    // If current CCT date is null, should return false
+    LocalDate oldCctDate = LocalDate.now(TIMEZONE).plusMonths(13);
+    History.TemplateInfo templateInfo = new History.TemplateInfo(null, null,
+        Map.of(CCT_DATE_FIELD, oldCctDate));
+    History history = new History(ObjectId.get(), null, null, null, templateInfo, null,
+        Instant.MIN, Instant.MAX, SENT, null, null);
+
+    ProgrammeMembership programmeMembership = new ProgrammeMembership();
+    // No curricula, so getProgrammeCctDate returns null
+
+    Map<NotificationType, History> alreadySent = Map.of(NotificationType.PROGRAMME_POG_MONTH_12,
+        history);
+
+    boolean shouldSchedule = service.shouldSchedulePogNotification(
+        NotificationType.PROGRAMME_POG_MONTH_12, programmeMembership, alreadySent);
+
+    assertThat("Expected not to schedule POG notification when current CCT date is null.",
+        shouldSchedule, is(false));
+  }
+
   /**
    * Helper function to set up a default non-excluded programme membership.
    *
@@ -804,5 +900,4 @@ class ProgrammeMembershipUtilsTest {
     programmeMembership.setDesignatedBody(DESIGNATED_BODY);
     return programmeMembership;
   }
-
 }

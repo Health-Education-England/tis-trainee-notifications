@@ -268,8 +268,7 @@ public class ProgrammeMembershipService {
 
         jobDataMap.put(TEMPLATE_NOTIFICATION_TYPE_FIELD, notificationType);
 
-        doScheduleProgrammePogNotification(notificationType, programmeMembership, jobDataMap,
-            notificationsAlreadySent);
+        doScheduleProgrammePogNotification(notificationType, programmeMembership, jobDataMap);
       }
     }
   }
@@ -280,14 +279,12 @@ public class ProgrammeMembershipService {
    * @param notificationType         The type of POG notification to schedule.
    * @param programmeMembership      The programme membership.
    * @param jobDataMap               The job data map.
-   * @param notificationsAlreadySent The notifications already sent for this entity.
    */
   private void doScheduleProgrammePogNotification(NotificationType notificationType,
-      ProgrammeMembership programmeMembership, Map<String, Object> jobDataMap,
-      Map<NotificationType, History> notificationsAlreadySent) {
+      ProgrammeMembership programmeMembership, Map<String, Object> jobDataMap) {
     String jobId = notificationType + "-" + jobDataMap.get(TIS_ID_FIELD);
     Date scheduleWhen = pmUtils.whenScheduleProgrammePogNotification(notificationType,
-        programmeMembership, notificationsAlreadySent);
+        programmeMembership);
     if (scheduleWhen == null) {
       notificationService.executeNow(jobId, jobDataMap);
     } else {
