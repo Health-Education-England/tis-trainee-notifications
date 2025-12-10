@@ -28,6 +28,8 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyMap;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -46,6 +48,7 @@ import static uk.nhs.tis.trainee.notifications.model.NotificationType.INDEMNITY_
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.LTFT;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_CREATED;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_DAY_ONE;
+import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_POG_MONTH_12;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.SPONSORSHIP;
 import static uk.nhs.tis.trainee.notifications.model.TisReferenceType.PROGRAMME_MEMBERSHIP;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.CONTACT_TYPE_FIELD;
@@ -620,6 +623,84 @@ class ProgrammeMembershipServiceTest {
         is(RO_FIRST_NAME + " " + RO_LAST_NAME));
     assertThat("Unexpected designated body.", dayOneJobDataMap.get(DESIGNATED_BODY_FIELD),
         is(DESIGNATED_BODY));
+  }
+
+  @Test
+  void shouldNotCreateDirectProgrammePogNotificationsIfExcludedPog() {
+    when(historyService.findAllHistoryForTrainee(PERSON_ID)).thenReturn(new ArrayList<>());
+
+    ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
+    //works since curriculum in default has curriculumEligibleForPeriodOfGrace=null
+
+    service.addNotifications(programmeMembership);
+
+    String jobId = PROGRAMME_POG_MONTH_12 + "-" + TIS_ID;
+    verify(notificationService, never()).executeNow(eq(jobId), anyMap());
+
+    verify(notificationService, never())
+        .scheduleNotification(eq(jobId), anyMap(), any(), anyLong());
+  }
+
+  @Test
+  void shouldCreateDirectProgrammePogNotificationsIfNotExcludedPog() {
+    when(historyService.findAllHistoryForTrainee(PERSON_ID)).thenReturn(new ArrayList<>());
+
+    ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
+
+    Curriculum eligibleCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, "another specialty",
+        false, CURRICULUM_END_DATE, true);
+    programmeMembership.setCurricula(
+        List.of(programmeMembership.getCurricula().get(0), eligibleCurriculum));
+
+    service.addNotifications(programmeMembership);
+
+    String jobId = PROGRAMME_POG_MONTH_12 + "-" + TIS_ID;
+    verify(notificationService).scheduleNotification(eq(jobId), anyMap(), any(), anyLong());
+  }
+
+  @Test
+  void shouldNotRetrieveHistoryForTraineeForPogIfAlreadyKnown() {
+    when(historyService.findAllHistoryForTrainee(PERSON_ID)).thenReturn(new ArrayList<>());
+
+    ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
+
+    Curriculum eligibleCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, "another specialty",
+        false, CURRICULUM_END_DATE, true);
+    programmeMembership.setCurricula(
+        List.of(programmeMembership.getCurricula().get(0), eligibleCurriculum));
+
+    service.addNotifications(programmeMembership);
+
+    verify(historyService).findAllHistoryForTrainee(PERSON_ID); //only once
+
+    String expectedUpdateJobId = PROGRAMME_CREATED + "-" + TIS_ID;
+    verify(notificationService).executeNow(eq(expectedUpdateJobId), anyMap());
+    String expectedPogJobId = PROGRAMME_POG_MONTH_12 + "-" + TIS_ID;
+    verify(notificationService)
+        .scheduleNotification(eq(expectedPogJobId), anyMap(), any(), anyLong());
+  }
+
+  @Test
+  void shouldRetrieveHistoryForTraineeForPogIfNotAlreadyKnown() {
+    when(historyService.findAllHistoryForTrainee(PERSON_ID)).thenReturn(new ArrayList<>());
+
+    ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
+    programmeMembership.setStartDate(null); //exclude from other notification logic
+
+    Curriculum eligibleCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, "another specialty",
+        false, CURRICULUM_END_DATE, true);
+    programmeMembership.setCurricula(
+        List.of(programmeMembership.getCurricula().get(0), eligibleCurriculum));
+
+    service.addNotifications(programmeMembership);
+
+    verify(historyService).findAllHistoryForTrainee(PERSON_ID); //only once
+
+    String expectedUpdateJobId = PROGRAMME_CREATED + "-" + TIS_ID;
+    verify(notificationService, never()).executeNow(eq(expectedUpdateJobId), anyMap());
+    String expectedPogJobId = PROGRAMME_POG_MONTH_12 + "-" + TIS_ID;
+    verify(notificationService)
+        .scheduleNotification(eq(expectedPogJobId), anyMap(), any(), anyLong());
   }
 
   @Test
