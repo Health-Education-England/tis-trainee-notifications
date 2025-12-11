@@ -80,6 +80,9 @@ import uk.nhs.tis.trainee.notifications.model.ProgrammeMembership;
 @Component
 public class NotificationService {
 
+  // Do not send any emails for POG notifications before this date
+  public static final LocalDate POG_EPOCH = LocalDate.of(2026, 2, 1);
+
   protected static final String DEFAULT_NO_CONTACT_MESSAGE = "your local office";
   protected static final List<String> DUMMY_USER_ROLES = List.of("Placeholder", "Dummy Record");
   protected static final String JOB_RESULT_STATUS = "status";
@@ -429,7 +432,15 @@ public class NotificationService {
     } else if (notificationType == NotificationType.PLACEMENT_ROLLOUT_2024_CORRECTION) {
       actuallySendEmail = inWhitelist
           || messagingControllerService.isValidRecipient(personId, MessageType.EMAIL);
+
+    } else if (notificationType == PROGRAMME_POG_MONTH_12) {
+
+      LocalDate now = LocalDate.now();
+      actuallySendEmail = inWhitelist
+          || (messagingControllerService.isValidRecipient(personId, MessageType.EMAIL)
+          && now.isAfter(POG_EPOCH));
     }
+
     log.debug("Actually send email [{}]: for person {} and entity {} and notification {}",
         actuallySendEmail, personId, tisReferenceId, notificationType);
     return actuallySendEmail;

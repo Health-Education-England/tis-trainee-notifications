@@ -918,8 +918,7 @@ class NotificationServiceTest {
     when(emailService.getRecipientAccountByEmail(USER_EMAIL)).thenReturn(userAccountDetails);
     when(restTemplate.getForObject(ACCOUNT_DETAILS_URL, UserDetails.class,
         Map.of(TIS_ID_FIELD, PERSON_ID))).thenReturn(userAccountDetails);
-    when(messagingControllerService.isValidRecipient(any(), any()))
-        .thenReturn(true);
+    when(messagingControllerService.isValidRecipient(any(), any())).thenReturn(true);
     when(messagingControllerService.isProgrammeMembershipNewStarter(any(), any()))
         .thenReturn(true);
     when(messagingControllerService.isPlacementInPilot2024(any(), any()))
@@ -1987,6 +1986,79 @@ class NotificationServiceTest {
     boolean isDummy = service.userHasDummyRole(userDetails);
 
     assertThat("Unexpected dummy user check.", isDummy, is(false));
+  }
+
+  @Test
+  void shouldSendPogEmailIfPersonIsInWhitelistRegardlessOfEpoch() {
+    // Simulate before epoch to ensure whitelist overrides epoch logic
+    try (var ignored = org.mockito.Mockito.mockStatic(LocalDate.class, invocation -> {
+      if (invocation.getMethod().getName().equals("now")) {
+        return LocalDate.of(2026, 1, 31);
+      }
+      return invocation.callRealMethod();
+    })) {
+      boolean result = serviceWhitelisted.shouldActuallySendEmail(
+          NotificationType.PROGRAMME_POG_MONTH_12, PERSON_ID, TIS_ID);
+
+      assertThat("Expected to send POG email for whitelisted person.", result, is(true));
+    }
+  }
+
+  @Test
+  void shouldSendPogEmailIfAfterEpochAndRecipientIsValid() {
+    when(messagingControllerService.isValidRecipient(PERSON_ID, EMAIL)).thenReturn(true);
+
+    // Simulate after epoch
+    try (var ignored = org.mockito.Mockito.mockStatic(LocalDate.class, invocation -> {
+      if (invocation.getMethod().getName().equals("now")) {
+        return LocalDate.of(2026, 2, 2);
+      }
+      return invocation.callRealMethod();
+    })) {
+      boolean result = service.shouldActuallySendEmail(
+          NotificationType.PROGRAMME_POG_MONTH_12, PERSON_ID, TIS_ID);
+
+      assertThat("Expected to send POG email after epoch and valid recipient.", result,
+          is(true));
+    }
+  }
+
+  @Test
+  void shouldNotSendPogEmailIfBeforeEpochAndNotWhitelisted() {
+    when(messagingControllerService.isValidRecipient(PERSON_ID, EMAIL)).thenReturn(true);
+
+    // Simulate before epoch
+    try (var ignored = org.mockito.Mockito.mockStatic(LocalDate.class, invocation -> {
+      if (invocation.getMethod().getName().equals("now")) {
+        return LocalDate.of(2026, 1, 31);
+      }
+      return invocation.callRealMethod();
+    })) {
+      boolean result = service.shouldActuallySendEmail(
+          NotificationType.PROGRAMME_POG_MONTH_12, PERSON_ID, TIS_ID);
+
+      assertThat("Expected not to send POG email before epoch if not whitelisted.", result,
+          is(false));
+    }
+  }
+
+  @Test
+  void shouldNotSendPogEmailIfRecipientIsNotValidEvenAfterEpoch() {
+    when(messagingControllerService.isValidRecipient(PERSON_ID, EMAIL)).thenReturn(false);
+
+    // Simulate after epoch
+    try (var ignored = org.mockito.Mockito.mockStatic(LocalDate.class, invocation -> {
+      if (invocation.getMethod().getName().equals("now")) {
+        return LocalDate.of(2026, 2, 2);
+      }
+      return invocation.callRealMethod();
+    })) {
+      boolean result = service.shouldActuallySendEmail(
+          NotificationType.PROGRAMME_POG_MONTH_12, PERSON_ID, TIS_ID);
+
+      assertThat("Expected not to send POG email if recipient is not valid.", result,
+          is(false));
+    }
   }
 
   /**
