@@ -621,7 +621,7 @@ class ProgrammeMembershipUtilsTest {
   }
 
   @Test
-  void shouldReturnNullWhenScheduleProgrammeNotificationIfDeadlineIsTodayOrPast() {
+  void shouldReturnNullWhenScheduleNotificationIfDeadlineIsTodayOrPast() {
     LocalDate startDate = LocalDate.now(TIMEZONE);
     ProgrammeMembership programmeMembership = new ProgrammeMembership();
     programmeMembership.setStartDate(startDate);
@@ -648,7 +648,7 @@ class ProgrammeMembershipUtilsTest {
   }
 
   @Test
-  void shouldReturnNullWhenScheduleProgrammeNotificationForProgrammeCreatedIfDeferredShouldSendImmediately() {
+  void shouldReturnNullWhenScheduleNotificationForProgrammeCreatedIfDeferred() {
     // Simulate deferred notification logic: old start date and sentAt present, but new start
     // date is today (should send immediately)
     LocalDate oldStartDate = LocalDate.now(TIMEZONE).minusDays(DEFERRAL_IF_MORE_THAN_DAYS + 1);
@@ -673,7 +673,7 @@ class ProgrammeMembershipUtilsTest {
   }
 
   @Test
-  void shouldReturnScheduledDateForProgrammeCreatedIfDeferredShouldSchedule() {
+  void shouldReturnScheduledDateForProgrammeCreatedIfDeferred() {
     // Simulate deferred notification logic: old start date and sentAt present, new start date is
     // in future (should schedule)
     LocalDate oldStartDate = LocalDate.now(TIMEZONE).minusDays(DEFERRAL_IF_MORE_THAN_DAYS + 1);
@@ -812,8 +812,8 @@ class ProgrammeMembershipUtilsTest {
     boolean shouldSchedule = service.shouldSchedulePogNotification(
         NotificationType.PROGRAMME_POG_MONTH_12, programmeMembership, Map.of());
 
-    assertThat("Expected not to schedule 12-month POG notification if CCT date is less than 6 " +
-        "months away.", shouldSchedule, is(false));
+    assertThat("Expected not to schedule 12-month POG notification if CCT date is less than 6 "
+        + "months away.", shouldSchedule, is(false));
   }
 
   @Test
@@ -828,8 +828,8 @@ class ProgrammeMembershipUtilsTest {
     boolean shouldSchedule = service.shouldSchedulePogNotification(
         NotificationType.PROGRAMME_POG_MONTH_12, programmeMembership, Map.of());
 
-    assertThat("Expected to schedule 12-month POG notification if CCT date is at least 6 months " +
-        "away.", shouldSchedule, is(true));
+    assertThat("Expected to schedule 12-month POG notification if CCT date is at least 6 months "
+        + "away.", shouldSchedule, is(true));
   }
 
   @Test
@@ -894,7 +894,8 @@ class ProgrammeMembershipUtilsTest {
     programmeMembership.setProgrammeNumber(PROGRAMME_NUMBER);
     programmeMembership.setStartDate(START_DATE);
     programmeMembership.setCurricula(List.of(theCurriculum));
-    programmeMembership.setConditionsOfJoining(new CojPublishedEvent.ConditionsOfJoining(Instant.MIN));
+    programmeMembership.setConditionsOfJoining(
+        new CojPublishedEvent.ConditionsOfJoining(Instant.MIN));
     programmeMembership.setManagingDeanery(MANAGING_DEANERY);
     programmeMembership.setResponsibleOfficer(theRo);
     programmeMembership.setDesignatedBody(DESIGNATED_BODY);

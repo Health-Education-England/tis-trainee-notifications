@@ -363,7 +363,6 @@ public class NotificationService {
           "The requested notification is for unknown or unavailable trainee '%s'.", personId);
       throw new IllegalArgumentException(message);
     }
-    UserDetails userCognitoAccountDetails = getCognitoAccountDetails(userTraineeDetails.email());
 
     String owner = (String) jobDetails.get(TEMPLATE_OWNER_FIELD);
     List<Map<String, String>> ownerContactList = getOwnerContactList(owner);
@@ -382,6 +381,8 @@ public class NotificationService {
       jobDetails.putIfAbsent(TEMPLATE_POG_CONTACT_FIELD, pogContact);
       jobDetails.putIfAbsent(TEMPLATE_POG_HREF_FIELD, getHrefTypeForContact(pogContact));
     }
+
+    UserDetails userCognitoAccountDetails = getCognitoAccountDetails(userTraineeDetails.email());
 
     UserDetails userAccountDetails = mapUserDetails(userCognitoAccountDetails, userTraineeDetails);
     if (userAccountDetails != null) {
