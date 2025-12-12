@@ -25,6 +25,7 @@ import static uk.nhs.tis.trainee.notifications.model.HrefType.ABSOLUTE_URL;
 import static uk.nhs.tis.trainee.notifications.model.HrefType.NON_HREF;
 import static uk.nhs.tis.trainee.notifications.model.HrefType.PROTOCOL_EMAIL;
 import static uk.nhs.tis.trainee.notifications.model.MessageType.EMAIL;
+import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_POG_MONTH_12;
 import static uk.nhs.tis.trainee.notifications.model.TisReferenceType.PLACEMENT;
 import static uk.nhs.tis.trainee.notifications.model.TisReferenceType.PROGRAMME_MEMBERSHIP;
 import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.TIS_ID_FIELD;
@@ -79,6 +80,9 @@ import uk.nhs.tis.trainee.notifications.model.ProgrammeMembership;
 @Component
 public class NotificationService {
 
+  // Do not send any emails for POG notifications before this date
+  public static final LocalDate POG_EPOCH = LocalDate.of(2026, 2, 1);
+
   protected static final String DEFAULT_NO_CONTACT_MESSAGE = "your local office";
   protected static final List<String> DUMMY_USER_ROLES = List.of("Placeholder", "Dummy Record");
   protected static final String JOB_RESULT_STATUS = "status";
@@ -88,7 +92,6 @@ public class NotificationService {
       = "/api/trainee-profile/local-office-contacts/{tisId}/{contactTypeName}";
   public static final String API_GET_OWNER_CONTACT
       = "/api/local-office-contact-by-lo-name/{localOfficeName}";
-  private static final String TRIGGER_ID_PREFIX = "trigger-";
   public static final long ONE_DAY_IN_SECONDS = 24 * 60 * 60L;
 
   public static final String TEMPLATE_NOTIFICATION_TYPE_FIELD = "notificationType";
@@ -96,6 +99,8 @@ public class NotificationService {
   public static final String TEMPLATE_CONTACT_HREF_FIELD = "contactHref";
   public static final String TEMPLATE_OWNER_FIELD = "localOfficeName";
   public static final String TEMPLATE_OWNER_WEBSITE_FIELD = "localOfficeWebsite";
+  public static final String TEMPLATE_POG_CONTACT_FIELD = "pogContact";
+  public static final String TEMPLATE_POG_HREF_FIELD = "pogContactHref";
   public static final String PERSON_ID_FIELD = "personId";
   public static final String OWNER_FIELD = "localOfficeName";
   public static final String CONTACT_TYPE_FIELD = "contactTypeName";
@@ -358,7 +363,6 @@ public class NotificationService {
           "The requested notification is for unknown or unavailable trainee '%s'.", personId);
       throw new IllegalArgumentException(message);
     }
-    UserDetails userCognitoAccountDetails = getCognitoAccountDetails(userTraineeDetails.email());
 
     String owner = (String) jobDetails.get(TEMPLATE_OWNER_FIELD);
     List<Map<String, String>> ownerContactList = getOwnerContactList(owner);
@@ -369,6 +373,16 @@ public class NotificationService {
     String website = getOwnerContact(ownerContactList, LocalOfficeContactType.LOCAL_OFFICE_WEBSITE,
         null);
     jobDetails.putIfAbsent(TEMPLATE_OWNER_WEBSITE_FIELD, website);
+
+    if (jobDetails.get(TEMPLATE_NOTIFICATION_TYPE_FIELD).toString()
+        .equalsIgnoreCase(String.valueOf(PROGRAMME_POG_MONTH_12))) {
+      String pogContact = getOwnerContact(ownerContactList, LocalOfficeContactType.POG,
+          LocalOfficeContactType.TSS_SUPPORT);
+      jobDetails.putIfAbsent(TEMPLATE_POG_CONTACT_FIELD, pogContact);
+      jobDetails.putIfAbsent(TEMPLATE_POG_HREF_FIELD, getHrefTypeForContact(pogContact));
+    }
+
+    UserDetails userCognitoAccountDetails = getCognitoAccountDetails(userTraineeDetails.email());
 
     UserDetails userAccountDetails = mapUserDetails(userCognitoAccountDetails, userTraineeDetails);
     if (userAccountDetails != null) {
@@ -419,7 +433,15 @@ public class NotificationService {
     } else if (notificationType == NotificationType.PLACEMENT_ROLLOUT_2024_CORRECTION) {
       actuallySendEmail = inWhitelist
           || messagingControllerService.isValidRecipient(personId, MessageType.EMAIL);
+
+    } else if (notificationType == PROGRAMME_POG_MONTH_12) {
+
+      LocalDate now = LocalDate.now();
+      actuallySendEmail = inWhitelist
+          || (messagingControllerService.isValidRecipient(personId, MessageType.EMAIL)
+          && now.isAfter(POG_EPOCH));
     }
+
     log.debug("Actually send email [{}]: for person {} and entity {} and notification {}",
         actuallySendEmail, personId, tisReferenceId, notificationType);
     return actuallySendEmail;
