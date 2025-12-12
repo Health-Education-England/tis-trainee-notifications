@@ -28,6 +28,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.SENT;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_CREATED;
+import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_POG_MONTH_12;
 import static uk.nhs.tis.trainee.notifications.model.TisReferenceType.PROGRAMME_MEMBERSHIP;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.TEMPLATE_OWNER_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.CCT_DATE_FIELD;
@@ -51,11 +52,13 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Stream;
 import org.bson.types.ObjectId;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.NullSource;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -92,6 +95,24 @@ class ProgrammeMembershipUtilsTest {
       CURRICULUM_END_DATE, false);
 
   ProgrammeMembershipUtils service = new ProgrammeMembershipUtils(TIMEZONE);
+
+  @Test
+  void shouldGetPogDaysBeforeEndDate() {
+    int pogDaysBeforeEndDate = service.getDaysBeforeEndForNotification(PROGRAMME_POG_MONTH_12);
+
+    assertThat("Unexpected POG days before end date.",
+        pogDaysBeforeEndDate, is(365));
+  }
+
+  @ParameterizedTest
+  @EnumSource(value = NotificationType.class, mode = EnumSource.Mode.EXCLUDE,
+      names = "PROGRAMME_POG_MONTH_12")
+  void shouldGetNullDaysBeforeEndDateForNonPogNotificationTypes() {
+    Integer pogDaysBeforeEndDate = service.getDaysBeforeEndForNotification(PROGRAMME_CREATED);
+
+    assertThat("Expected null for non-POG notification type.",
+        pogDaysBeforeEndDate, is(nullValue()));
+  }
 
   @Test()
   void shouldThrowExceptionIfPmHasNullSpecialty() {
@@ -648,7 +669,7 @@ class ProgrammeMembershipUtilsTest {
   }
 
   @Test
-  void shouldReturnNullWhenScheduleNotificationForProgrammeCreatedIfDeferred() {
+  void shouldReturnNullWhenScheduleProgrammeNotificationIfDeferred() {
     // Simulate deferred notification logic: old start date and sentAt present, but new start
     // date is today (should send immediately)
     LocalDate oldStartDate = LocalDate.now(TIMEZONE).minusDays(DEFERRAL_IF_MORE_THAN_DAYS + 1);
@@ -877,6 +898,202 @@ class ProgrammeMembershipUtilsTest {
         shouldSchedule, is(false));
   }
 
+  @ParameterizedTest
+  @MethodSource("provideAllReminderNotifications")
+  void shouldScheduleReminderNotificationIfDeadlineIsToday(NotificationType reminderType) {
+    int daysBeforeStart = service.getDaysBeforeStartForNotification(reminderType);
+    LocalDate startDate = LocalDate.now(TIMEZONE).plusDays(daysBeforeStart);
+    ProgrammeMembership programmeMembership = new ProgrammeMembership();
+    programmeMembership.setStartDate(startDate);
+
+    boolean shouldSchedule = service.shouldScheduleNotification(reminderType, programmeMembership,
+        Map.of());
+
+    assertThat("Expected to schedule reminder notification if deadline is today.",
+        shouldSchedule, is(true));
+  }
+
+  @ParameterizedTest
+  @MethodSource("provideAllReminderNotifications")
+  void shouldScheduleReminderNotificationIfDeadlineIsInFuture(NotificationType reminderType) {
+    int daysBeforeStart = service.getDaysBeforeStartForNotification(reminderType);
+    LocalDate startDate = LocalDate.now(TIMEZONE).plusDays(daysBeforeStart + 1);
+    ProgrammeMembership programmeMembership = new ProgrammeMembership();
+    programmeMembership.setStartDate(startDate);
+
+    boolean shouldSchedule = service.shouldScheduleNotification(reminderType, programmeMembership,
+        Map.of());
+
+    assertThat("Expected to schedule reminder notification if deadline is in the future.",
+        shouldSchedule, is(true));
+  }
+
+  @ParameterizedTest
+  @MethodSource("provideAllReminderNotifications")
+  void shouldNotScheduleReminderNotificationIfDeadlineIsInPast(NotificationType reminderType) {
+    int daysBeforeStart = service.getDaysBeforeStartForNotification(reminderType);
+    LocalDate startDate = LocalDate.now(TIMEZONE).plusDays(daysBeforeStart - 1);
+    ProgrammeMembership programmeMembership = new ProgrammeMembership();
+    programmeMembership.setStartDate(startDate);
+
+    boolean shouldSchedule = service.shouldScheduleNotification(reminderType, programmeMembership,
+        Map.of());
+
+    assertThat("Expected not to schedule reminder notification if deadline is in the past.",
+        shouldSchedule, is(false));
+  }
+
+  @Test
+  void shouldScheduleNotificationForNonDeferralAndNonReminderType() {
+    // PROGRAMME_DAY_ONE is not a reminder notification
+    ProgrammeMembership programmeMembership = new ProgrammeMembership();
+    programmeMembership.setStartDate(LocalDate.now(TIMEZONE).plusDays(10));
+
+    boolean shouldSchedule = service.shouldScheduleNotification(
+        NotificationType.PROGRAMME_DAY_ONE, programmeMembership, Map.of()); //no history
+
+    assertThat("Expected to schedule notification for non-deferral, non-reminder type.",
+        shouldSchedule, is(true));
+  }
+
+  @Test
+  void shouldScheduleNotificationIfStartDateChangeIsDeferral() {
+    LocalDate oldStartDate = START_DATE;
+    LocalDate oldSentAt = START_DATE.minusDays(100);
+    History.TemplateInfo templateInfo = new History.TemplateInfo(null, null,
+        Map.of(START_DATE_FIELD, oldStartDate));
+    History sentNotification = new History(ObjectId.get(), null,
+        NotificationType.PROGRAMME_CREATED, null,
+        templateInfo, null, Instant.from(oldSentAt.atStartOfDay(TIMEZONE)), Instant.MAX, SENT,
+        null, null);
+    Map<NotificationType, History> alreadySent = Map.of(NotificationType.PROGRAMME_CREATED,
+        sentNotification);
+
+    // New start date is after oldStartDate + DEFERRAL_IF_MORE_THAN_DAYS
+    LocalDate newStartDate = oldStartDate.plusDays(DEFERRAL_IF_MORE_THAN_DAYS + 1);
+    ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
+    programmeMembership.setStartDate(newStartDate);
+
+    boolean shouldSchedule = service.shouldScheduleNotification(
+        NotificationType.PROGRAMME_CREATED, programmeMembership, alreadySent);
+
+    assertThat("Expected to schedule notification if start date change is a deferral.",
+        shouldSchedule, is(true));
+  }
+
+  @Test
+  void shouldNotScheduleNotificationIfStartDateChangeIsNotDeferral() {
+    LocalDate oldStartDate = START_DATE;
+    LocalDate oldSentAt = START_DATE.minusDays(100);
+    History.TemplateInfo templateInfo = new History.TemplateInfo(null, null,
+        Map.of(START_DATE_FIELD, oldStartDate));
+    History sentNotification = new History(ObjectId.get(), null,
+        NotificationType.PROGRAMME_CREATED, null,
+        templateInfo, null, Instant.from(oldSentAt.atStartOfDay(TIMEZONE)), Instant.MAX, SENT,
+        null, null);
+    Map<NotificationType, History> alreadySent = Map.of(NotificationType.PROGRAMME_CREATED,
+        sentNotification);
+
+    // New start date is exactly at the threshold (should not be a deferral)
+    LocalDate newStartDate = oldStartDate.plusDays(DEFERRAL_IF_MORE_THAN_DAYS);
+    ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
+    programmeMembership.setStartDate(newStartDate);
+
+    boolean shouldSchedule = service.shouldScheduleNotification(
+        NotificationType.PROGRAMME_CREATED, programmeMembership, alreadySent);
+
+    assertThat("Expected not to schedule notification if start date change is not a deferral.",
+        shouldSchedule, is(false));
+  }
+
+  @Test
+  void shouldNotScheduleNotificationIfStartDateChangeIsBeforeOldStartDate() {
+    LocalDate oldStartDate = START_DATE;
+    LocalDate oldSentAt = START_DATE.minusDays(100);
+    History.TemplateInfo templateInfo = new History.TemplateInfo(null, null,
+        Map.of(START_DATE_FIELD, oldStartDate));
+    History sentNotification = new History(ObjectId.get(), null,
+        NotificationType.PROGRAMME_CREATED, null,
+        templateInfo, null, Instant.from(oldSentAt.atStartOfDay(TIMEZONE)), Instant.MAX, SENT,
+        null, null);
+    Map<NotificationType, History> alreadySent = Map.of(NotificationType.PROGRAMME_CREATED,
+        sentNotification);
+
+    // New start date is before oldStartDate
+    LocalDate newStartDate = oldStartDate.minusDays(5);
+    ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
+    programmeMembership.setStartDate(newStartDate);
+
+    boolean shouldSchedule = service.shouldScheduleNotification(
+        NotificationType.PROGRAMME_CREATED, programmeMembership, alreadySent);
+
+    assertThat("Expected not to schedule notification if new start date is before old start date.",
+        shouldSchedule, is(false));
+  }
+
+  @Test
+  void shouldReturnNullWhenScheduleDeferrableNotificationIfNoHistoryExists() {
+    // notificationsAlreadySent does not contain the notificationType
+    ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
+
+    Date result = service.whenScheduleDeferrableNotification(
+        NotificationType.PROGRAMME_CREATED, programmeMembership, Map.of());
+
+    assertThat("Expected null when no history exists for deferred notification.", result,
+        is(nullValue()));
+  }
+
+  @Test
+  void shouldReturnNullWhenScheduleDeferrableNotificationIfHistoryExistsButNotForType() {
+    // notificationsAlreadySent contains a different notificationType
+    ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
+    History history = new History(ObjectId.get(), null, NotificationType.PROGRAMME_DAY_ONE,
+        null, null, null, Instant.MIN, Instant.MAX, SENT, null, null);
+    Map<NotificationType, History> alreadySent = Map.of(NotificationType.PROGRAMME_DAY_ONE, history);
+
+    Date result = service.whenScheduleDeferrableNotification(
+        NotificationType.PROGRAMME_CREATED, programmeMembership, alreadySent);
+
+    assertThat("Expected null when history exists but not for the given notificationType.",
+        result, is(nullValue()));
+  }
+
+  @Test
+  void shouldReturnNullWhenScheduleDeferrableNotificationIfLastSentSentAtIsNull() {
+    // Setup: lastSent.sentAt() is null, oldStartDate is valid
+    LocalDate oldStartDate = START_DATE.minusDays(DEFERRAL_IF_MORE_THAN_DAYS + 1);
+    History.TemplateInfo templateInfo = new History.TemplateInfo(null, null,
+        Map.of(START_DATE_FIELD, oldStartDate));
+    History lastSent = new History(ObjectId.get(), null, NotificationType.PROGRAMME_CREATED, null,
+        templateInfo, null, null, Instant.MAX, SENT, null, null);
+    Map<NotificationType, History> alreadySent = Map.of(NotificationType.PROGRAMME_CREATED, lastSent);
+
+    ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
+    programmeMembership.setStartDate(START_DATE);
+
+    Date result = service.whenScheduleDeferrableNotification(
+        NotificationType.PROGRAMME_CREATED, programmeMembership, alreadySent);
+
+    assertThat("Expected null when lastSent.sentAt() is null.", result, is(nullValue()));
+  }
+
+  @Test
+  void shouldReturnNullWhenScheduleDeferrableNotificationIfOldStartDateIsNull() {
+    // Setup: lastSent.sentAt() is valid, but oldStartDate is null
+    History.TemplateInfo templateInfo = new History.TemplateInfo(null, null, Map.of());
+    History lastSent = new History(ObjectId.get(), null, NotificationType.PROGRAMME_CREATED, null,
+        templateInfo, null, Instant.now(), Instant.MAX, SENT, null, null);
+    Map<NotificationType, History> alreadySent = Map.of(NotificationType.PROGRAMME_CREATED, lastSent);
+
+    ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
+    programmeMembership.setStartDate(START_DATE);
+
+    Date result = service.whenScheduleDeferrableNotification(
+        NotificationType.PROGRAMME_CREATED, programmeMembership, alreadySent);
+
+    assertThat("Expected null when oldStartDate is null.", result, is(nullValue()));
+  }
+
   /**
    * Helper function to set up a default non-excluded programme membership.
    *
@@ -900,5 +1117,14 @@ class ProgrammeMembershipUtilsTest {
     programmeMembership.setResponsibleOfficer(theRo);
     programmeMembership.setDesignatedBody(DESIGNATED_BODY);
     return programmeMembership;
+  }
+
+  /**
+   * Provide all programme reminder notification types
+   *
+   * @return The stream of reminder notification types.
+   */
+  private static Stream<NotificationType> provideAllReminderNotifications() {
+    return NotificationType.getReminderProgrammeUpdateNotificationTypes().stream();
   }
 }

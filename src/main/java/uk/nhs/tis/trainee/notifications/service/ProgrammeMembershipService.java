@@ -404,7 +404,7 @@ public class ProgrammeMembershipService {
       boolean shouldSchedule = pmUtils.shouldScheduleNotification(
           notificationType, programmeMembership, notificationsAlreadySent);
       if (shouldSchedule) {
-        Date scheduleWhen = pmUtils.whenScheduleDeferredNotification(notificationType,
+        Date scheduleWhen = pmUtils.whenScheduleDeferrableNotification(notificationType,
             programmeMembership, notificationsAlreadySent);
         if (scheduleWhen == null) {
           inAppService.createNotifications(programmeMembership.getPersonId(), tisReference,

@@ -646,7 +646,7 @@ class ProgrammeMembershipServiceTest {
 
     ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
 
-    Curriculum eligibleCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, "another specialty",
+    Curriculum eligibleCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, "specialty",
         false, CURRICULUM_END_DATE, true);
     programmeMembership.setCurricula(
         List.of(programmeMembership.getCurricula().get(0), eligibleCurriculum));
@@ -658,12 +658,33 @@ class ProgrammeMembershipServiceTest {
   }
 
   @Test
+  void shouldCreateDirectProgrammePogNotificationAndSendImmediatelyIfOverdue() {
+    when(historyService.findAllHistoryForTrainee(PERSON_ID)).thenReturn(new ArrayList<>());
+
+    ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
+
+    LocalDate curriculumEndDateSendNow = LocalDate.now()
+        .plusDays(programmeMembershipUtils.getDaysBeforeEndForNotification(PROGRAMME_POG_MONTH_12))
+        .minusDays(1);
+    Curriculum eligibleCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, "specialty",
+        false, curriculumEndDateSendNow, true);
+    programmeMembership.setCurricula(
+        List.of(programmeMembership.getCurricula().get(0), eligibleCurriculum));
+
+    service.addNotifications(programmeMembership);
+
+    String jobId = PROGRAMME_POG_MONTH_12 + "-" + TIS_ID;
+    verify(notificationService, never()).scheduleNotification(eq(jobId), anyMap(), any(), anyLong());
+    verify(notificationService).executeNow(eq(jobId), anyMap());
+  }
+
+  @Test
   void shouldNotRetrieveHistoryForTraineeForPogIfAlreadyKnown() {
     when(historyService.findAllHistoryForTrainee(PERSON_ID)).thenReturn(new ArrayList<>());
 
     ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
 
-    Curriculum eligibleCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, "another specialty",
+    Curriculum eligibleCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, "specialty",
         false, CURRICULUM_END_DATE, true);
     programmeMembership.setCurricula(
         List.of(programmeMembership.getCurricula().get(0), eligibleCurriculum));
@@ -686,7 +707,7 @@ class ProgrammeMembershipServiceTest {
     ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
     programmeMembership.setStartDate(null); //exclude from other notification logic
 
-    Curriculum eligibleCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, "another specialty",
+    Curriculum eligibleCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, "specialty",
         false, CURRICULUM_END_DATE, true);
     programmeMembership.setCurricula(
         List.of(programmeMembership.getCurricula().get(0), eligibleCurriculum));

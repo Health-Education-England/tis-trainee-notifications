@@ -144,7 +144,7 @@ public class ProgrammeMembershipUtils {
   }
 
   /**
-   * Determine when a deferred notification should be scheduled.
+   * Determine when a deferrable notification should be scheduled.
    *
    * @param notificationType         the notification type.
    * @param programmeMembership      the programme membership to consider.
@@ -152,7 +152,7 @@ public class ProgrammeMembershipUtils {
    * @return the date when the notification should be scheduled, or null if it should be sent
    *     immediately.
    */
-  public Date whenScheduleDeferredNotification(NotificationType notificationType,
+  public Date whenScheduleDeferrableNotification(NotificationType notificationType,
       ProgrammeMembership programmeMembership,
       Map<NotificationType, History> notificationsAlreadySent) {
 
@@ -293,7 +293,7 @@ public class ProgrammeMembershipUtils {
       ProgrammeMembership programmeMembership,
       Map<NotificationType, History> notificationsAlreadySent) {
     if (notificationType == PROGRAMME_CREATED) {
-      return whenScheduleDeferredNotification(PROGRAMME_CREATED, programmeMembership,
+      return whenScheduleDeferrableNotification(PROGRAMME_CREATED, programmeMembership,
           notificationsAlreadySent);
     } else {
       Integer daysBeforeStart = getDaysBeforeStartForNotification(notificationType);
