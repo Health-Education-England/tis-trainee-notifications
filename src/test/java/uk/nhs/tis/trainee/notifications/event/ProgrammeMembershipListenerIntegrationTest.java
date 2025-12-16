@@ -33,6 +33,8 @@ import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.testcontainers.containers.localstack.LocalStackContainer.Service.SQS;
+import static uk.nhs.tis.trainee.notifications.model.LocalOfficeContactType.POG;
+import static uk.nhs.tis.trainee.notifications.model.LocalOfficeContactType.TSS_SUPPORT;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_CREATED;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_UPDATED_WEEK_12;
 import static uk.nhs.tis.trainee.notifications.model.ProgrammeActionType.SIGN_COJ;
@@ -132,6 +134,12 @@ class ProgrammeMembershipListenerIntegrationTest {
   private static final UserDetails USER_DETAILS = new UserDetails(true, EMAIL, TITLE,
       FAMILY_NAME, GIVEN_NAME, GMC);
 
+  private static final LocalDate PROGRAMME_CCT_DATE = LocalDate.now().plusWeeks(50);
+  private static final String RESPONSIBLE_OFFICER_FIRST_NAME = "Responsible";
+  private static final String RESPONSIBLE_OFFICER_LAST_NAME = "TestRO";
+  private static final String MANAGING_DEANERY = "deaneryTest";
+  private static final String LOCAL_OFFICE_CONTACT_EMAIL = "local@office.com";
+
   @Value("${service.trainee.url}")
   private String serviceUrl;
   @Value("${service.reference.url}")
@@ -210,8 +218,20 @@ class ProgrammeMembershipListenerIntegrationTest {
     when(restTemplate.getForObject(serviceUrl + API_TRAINEE_DETAILS,
         UserDetails.class, Map.of(TIS_ID_FIELD, PERSON_ID))).thenReturn(USER_DETAILS);
 
+    Map<String, String> pogEmailContact = Map.of(
+        "contact", LOCAL_OFFICE_CONTACT_EMAIL,
+        "localOfficeName", MANAGING_DEANERY,
+        "contactTypeName", POG.getContactTypeName()
+    );
+    Map<String, String> loTssEmailContact = Map.of(
+        "contact", LOCAL_OFFICE_CONTACT_EMAIL,
+        "localOfficeName", MANAGING_DEANERY,
+        "contactTypeName", TSS_SUPPORT.getContactTypeName()
+    );
+
     when(restTemplate.getForObject(referenceUrl + API_GET_OWNER_CONTACT,
-        List.class, Map.of(OWNER_FIELD, "deaneryTest"))).thenReturn(List.of());
+        List.class, Map.of(OWNER_FIELD, MANAGING_DEANERY))).
+        thenReturn(List.of(pogEmailContact, loTssEmailContact));
 
     //default empty actions set returned
     ResponseEntity<Set<ActionDto>> responseEntity = new ResponseEntity<>(Set.of(), HttpStatus.OK);
@@ -269,7 +289,7 @@ class ProgrammeMembershipListenerIntegrationTest {
       assertThat("Unexpected template version.", templateInfo.version(), is("v1.0.0"));
 
       Map<String, Object> storedVariables = templateInfo.variables();
-      assertThat("Unexpected template variable count.", storedVariables.size(), is(19));
+      assertThat("Unexpected template variable count.", storedVariables.size(), is(20));
       for (ProgrammeActionType actionType : ProgrammeActionType.values()) {
         assertThat("Unexpected template variable for action type: " + actionType,
             storedVariables.get(actionType.toString()), nullValue());
@@ -465,7 +485,7 @@ class ProgrammeMembershipListenerIntegrationTest {
     assertThat("Unexpected template version.", templateInfo.version(), is("v1.0.0"));
 
     Map<String, Object> storedVariables = templateInfo.variables();
-    int expectedVariableCount = 19 //basic set
+    int expectedVariableCount = 20 //basic set
         + ProgrammeActionType.values().length
         + 2; //domain and hashedEmail added when sending email
     assertThat("Unexpected template variable count.", storedVariables.size(),
@@ -647,9 +667,49 @@ class ProgrammeMembershipListenerIntegrationTest {
     assertThat("Unexpected content.", content.html(), is(expectedContentStr));
   }
 
+  @ParameterizedTest
+  @EnumSource(value = NotificationType.class, names = "PROGRAMME_POG_MONTH_12")
+  void shouldSendFullPogNotificationsWhenTemplateVariablesPresent(NotificationType type)
+      throws MessagingException, IOException, URISyntaxException {
+
+    //insert a welcome notification for the trainee, so that we don't send this email as well.
+    ObjectId id = ObjectId.get();
+    History welcomeNotification = new History(
+        id, new History.TisReferenceInfo(PROGRAMME_MEMBERSHIP, PROGRAMME_MEMBERSHIP_ID.toString()),
+        PROGRAMME_CREATED, new History.RecipientInfo(PERSON_ID, MessageType.EMAIL, EMAIL), null,
+        null, Instant.now(), null, NotificationStatus.FAILED, null, null);
+    mongoTemplate.insert(welcomeNotification);
+
+    when(userAccountService.getUserDetailsById(PERSON_ID)).thenReturn(
+        new UserDetails(true, EMAIL, null, null, null, null));
+
+    sqsTemplate.send(PM_UPDATED_QUEUE,
+        buildStandardProgrammeMembershipEvent(LocalDate.now().minusMonths(1), true));
+
+    ArgumentCaptor<MimeMessage> messageCaptor = ArgumentCaptor.captor();
+
+    await()
+        .pollInterval(Duration.ofSeconds(2))
+        .atMost(Duration.ofSeconds(10))
+        .ignoreExceptions()
+        .untilAsserted(() -> verify(mailSender).send(messageCaptor.capture()));
+
+    MimeMessage message = messageCaptor.getValue();
+
+    Document content = Jsoup.parse((String) message.getContent());
+
+    URL resource = getClass().getResource(
+        "/email/" + type.getTemplateName() + "-full-email-contacts.html");
+    assert resource != null;
+    Document expectedContent = Jsoup.parse(Paths.get(resource.toURI()).toFile());
+    DateTimeFormatter longDateFormatter = DateTimeFormatter.ofPattern("dd MMMM yyyy");
+    String expectedContentStr = expectedContent.html()
+        .replace("{{CCT DATE}}", PROGRAMME_CCT_DATE.format(longDateFormatter));
+    assertThat("Unexpected content.", content.html(), is(expectedContentStr));
+  }
 
   /**
-   * Helper method to build a standard programme membership event JSON.
+   * Helper method to build a standard programme membership event JSON with default curriculum.
    *
    * @param startDate The start date of the programme membership
    * @return A JsonNode representing the programme membership event.
@@ -657,26 +717,43 @@ class ProgrammeMembershipListenerIntegrationTest {
    */
   JsonNode buildStandardProgrammeMembershipEvent(LocalDate startDate)
       throws JsonProcessingException {
+    return buildStandardProgrammeMembershipEvent(startDate, false);
+  }
+
+  /**
+   * Helper method to build a standard programme membership event JSON with defined curriculum
+   * POG-eligibility.
+   *
+   * @param startDate   The start date of the programme membership
+   * @param pogEligible Whether the curriculum is eligible for period of grace
+   * @return A JsonNode representing the programme membership event.
+   * @throws JsonProcessingException If there is an error processing the JSON.
+   */
+  JsonNode buildStandardProgrammeMembershipEvent(LocalDate startDate, boolean pogEligible)
+      throws JsonProcessingException {
     String eventString = """
         {
           "tisId": "%s",
           "record": {
-            "data": {
-              "tisId": "%s",
-              "personId": "%s",
-              "startDate": "%s",
-              "programmeName": "test",
-              "managingDeanery": "deaneryTest",
-              "programmeNumber": "123456",
-              "designatedBody": "desBody",
-              "curricula": "[{\\"curriculumSubType\\":\\"MEDICAL_CURRICULUM\\",\\"curriculumSpecialty\\":\\"specialty\\",\\"curriculumSpecialtyBlockIndemnity\\":false}]"
-            },
-            "metadata": {
-              "operation": "LOAD"
-            }
+             "data": {
+                "tisId": "%s",
+                "personId": "%s",
+                "startDate": "%s",
+                "programmeName": "test",
+                "managingDeanery": "%s",
+                "programmeNumber": "123456",
+                "designatedBody": "desBody",
+                "responsibleOfficer": "{\\"firstName\\": \\"%s\\", \\"lastName\\": \\"%s\\"}",
+                "curricula": "[{\\"curriculumSubType\\":\\"MEDICAL_CURRICULUM\\",\\"curriculumSpecialty\\":\\"specialty\\",\\"curriculumSpecialtyBlockIndemnity\\":false,\\"curriculumEndDate\\":\\"%s\\",\\"curriculumEligibleForPeriodOfGrace\\":%s}]"
+             },
+             "metadata": {
+                "operation": "LOAD"
+             }
           }
         }
-        """.formatted(PROGRAMME_MEMBERSHIP_ID, PROGRAMME_MEMBERSHIP_ID, PERSON_ID, startDate);
+        """.formatted(PROGRAMME_MEMBERSHIP_ID, PROGRAMME_MEMBERSHIP_ID, PERSON_ID, startDate,
+        MANAGING_DEANERY, RESPONSIBLE_OFFICER_FIRST_NAME, RESPONSIBLE_OFFICER_LAST_NAME,
+        PROGRAMME_CCT_DATE, pogEligible);
 
     return JsonMapper.builder()
         .build()

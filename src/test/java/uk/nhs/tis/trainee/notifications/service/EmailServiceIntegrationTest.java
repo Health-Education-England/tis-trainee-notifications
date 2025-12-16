@@ -43,6 +43,7 @@ import static uk.nhs.tis.trainee.notifications.model.NotificationType.PLACEMENT_
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PLACEMENT_UPDATED_WEEK_12;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_CREATED;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_DAY_ONE;
+import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_POG_MONTH_12;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.CC_OF_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.TEMPLATE_CONTACT_HREF_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.PlacementService.START_DATE_FIELD;
@@ -771,6 +772,32 @@ class EmailServiceIntegrationTest {
     String otherContents = Objects.requireNonNull(body.getElementById("OTHER")).text();
     assertThat("Unexpected other content.", otherContents.contains("We want to "
         + "inform you that your FormR has been updated on 01 September 2025"), is(true));
+  }
+
+  @Test
+  void shouldIncludePogContactUrlInPogEmail() throws Exception {
+    when(userAccountService.getUserDetailsById(USER_ID)).thenReturn(
+        new UserDetails(true, RECIPIENT, null, null, null, GMC));
+    String pogContactUrl = "http://pog.contact/link";
+
+    Map<String, Object> templateVariables = new HashMap<>();
+    templateVariables.put("pogContact", pogContactUrl);
+    templateVariables.put("pogContactHref", "url");
+    service.sendMessageToExistingUser(PERSON_ID, PROGRAMME_POG_MONTH_12, TEMPLATE_VERSION,
+        templateVariables, null);
+
+    ArgumentCaptor<MimeMessage> messageCaptor = ArgumentCaptor.captor();
+    verify(mailSender).send(messageCaptor.capture());
+
+    MimeMessage message = messageCaptor.getValue();
+    Document content = Jsoup.parse((String) message.getContent());
+    Element body = content.body();
+
+    assertThat("Unexpected POG URL.", Objects.requireNonNull(body.getElementById("pogUrl"))
+        .hasAttr("href"), is(true));
+    String pogUrl = Objects.requireNonNull(body.getElementById("pogUrl")).attributes().get("href");
+    assertThat("Unexpected POG URL content.", pogUrl
+            .contains(pogContactUrl), is(true));
   }
 
   int getGreetingElementIndex(NotificationType notificationType) {
