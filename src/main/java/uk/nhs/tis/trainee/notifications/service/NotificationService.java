@@ -443,7 +443,7 @@ public class NotificationService {
 
     } else if (notificationType == PROGRAMME_POG_MONTH_12) {
 
-      LocalDate now = LocalDate.now();
+      LocalDate now = LocalDate.now(ZoneId.of(timezone));
       actuallySendEmail = inWhitelist
           || (messagingControllerService.isValidRecipient(personId, MessageType.EMAIL)
           && now.isAfter(POG_EPOCH));

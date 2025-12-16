@@ -29,7 +29,7 @@ import java.time.LocalDate;
  *
  * @param curriculumSubType   The Curriculum subtype.
  * @param curriculumSpecialty The Curriculum specialty.
- * @param curriculumSpecialtyBlockIndemnity Whether the specialty is part of blocks indemnity.
+ * @param curriculumSpecialtyBlockIndemnity Whether the specialty is part of block indemnity.
  * @param curriculumEndDate  The Curriculum end date.
  * @param curriculumEligibleForPeriodOfGrace Whether the Curriculum is eligible for POG.
  */
