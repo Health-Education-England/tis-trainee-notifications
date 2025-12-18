@@ -39,6 +39,7 @@ public class ProgrammeMembership {
   private String programmeNumber;
   private String managingDeanery;
   private LocalDate startDate;
+  private LocalDate endDate;
   private List<Curriculum> curricula = new ArrayList<>();
   private ConditionsOfJoining conditionsOfJoining;
   private ResponsibleOfficer responsibleOfficer;

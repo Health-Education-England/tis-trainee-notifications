@@ -16,7 +16,7 @@ application:
   environment: ${ENVIRONMENT:local}
   in-app:
     enabled: ${NOTIFICATIONS_IN_APP_ENABLED:false}
-  notifications-whitelist: ${NOTIFICATIONS_WHITELIST:[]}
+  notifications-whitelist: ${NOTIFICATIONS_WHITELIST:}
   immediate-notifications-delay-minutes: ${IMMEDIATE_NOTIFICATIONS_DELAY:60}
   queues:
     account-confirmed: ${ACCOUNT_CONFIRMED_QUEUE}
@@ -104,6 +104,8 @@ application:
       email: v1.3.3
     programme-day-one:
       email: v1.1.0
+    programme-pog-month-12:
+      email: v1.0.0
     programme-updated-week-0:
       email: v1.0.0
     programme-updated-week-1:
