@@ -682,6 +682,23 @@ class ProgrammeMembershipUtilsTest {
   }
 
   @Test
+  void shouldNotSchedulePog6NotificationIfCctDateIsBeforeCutoff() {
+    // CCT date is less than 12 weeks from now, should return false for 6-month POG
+    LocalDate cctDate = LocalDate.now(TIMEZONE).plusWeeks(POG_ALL_NOTIFICATION_CUTOFF_WEEKS)
+        .minusDays(1);
+    ProgrammeMembership programmeMembership = new ProgrammeMembership();
+    programmeMembership.setCurricula(List.of(
+        new Curriculum("MEDICAL_CURRICULUM", "specialty", false, cctDate, true)
+    ));
+
+    boolean shouldSchedule = service.shouldSchedulePogNotification(
+        PROGRAMME_POG_MONTH_6, programmeMembership, Map.of());
+
+    assertThat("Expected not to schedule 6-month POG notification if CCT date is less than cutoff.",
+        shouldSchedule, is(false));
+  }
+
+  @Test
   void shouldReturnNullWhenScheduleNotificationIfDeadlineIsTodayOrPast() {
     LocalDate startDate = LocalDate.now(TIMEZONE);
     ProgrammeMembership programmeMembership = new ProgrammeMembership();

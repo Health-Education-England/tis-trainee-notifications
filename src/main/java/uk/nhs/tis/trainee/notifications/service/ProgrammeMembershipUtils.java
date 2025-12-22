@@ -23,6 +23,8 @@
 package uk.nhs.tis.trainee.notifications.service;
 
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_CREATED;
+import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_POG_MONTH_12;
+import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_POG_MONTH_6;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.TEMPLATE_OWNER_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.CCT_DATE_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.COJ_SYNCED_FIELD;
@@ -396,11 +398,10 @@ public class ProgrammeMembershipUtils {
       return isExtension;
     }
 
-    if (notificationType == NotificationType.PROGRAMME_POG_MONTH_6) {
+    if (notificationType == PROGRAMME_POG_MONTH_6) {
       return !cctDate.isBefore(LocalDate.now(timezone)
           .plusWeeks(POG_ALL_NOTIFICATION_CUTOFF_WEEKS));
-    }
-    if (notificationType == NotificationType.PROGRAMME_POG_MONTH_12) {
+    } else if (notificationType == PROGRAMME_POG_MONTH_12) {
       return !cctDate.isBefore(LocalDate.now(timezone)
           .plusMonths(POG_12MONTH_NOTIFICATION_CUTOFF_MONTHS));
       // if sooner than cutoff, may send 6-month reminder

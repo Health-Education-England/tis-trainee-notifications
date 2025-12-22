@@ -384,7 +384,7 @@ public class NotificationService {
 
     if (jobDetails.get(TEMPLATE_NOTIFICATION_TYPE_FIELD).toString()
         .equalsIgnoreCase(String.valueOf(PROGRAMME_POG_MONTH_12))
-       || jobDetails.get(TEMPLATE_NOTIFICATION_TYPE_FIELD).toString()
+        || jobDetails.get(TEMPLATE_NOTIFICATION_TYPE_FIELD).toString()
         .equalsIgnoreCase(String.valueOf(PROGRAMME_POG_MONTH_6))) {
       String pogContact = getOwnerContact(ownerContactList, LocalOfficeContactType.POG,
           LocalOfficeContactType.TSS_SUPPORT);

@@ -2148,7 +2148,8 @@ class NotificationServiceTest {
       "true, PROGRAMME_POG_MONTH_6",
       "false, PROGRAMME_POG_MONTH_6"
   })
-  void shouldStorePogEmailIfPersonIsInWhitelist(boolean recipientValid, NotificationType notificationType) {
+  void shouldStorePogEmailIfPersonIsInWhitelist(
+      boolean recipientValid, NotificationType notificationType) {
     when(messagingControllerService.isValidRecipient(PERSON_ID, EMAIL)).thenReturn(recipientValid);
     assertThat("Unexpected should schedule POG.",
         serviceWhitelisted.shouldStorePogEmail(notificationType, PERSON_ID), is(true));
