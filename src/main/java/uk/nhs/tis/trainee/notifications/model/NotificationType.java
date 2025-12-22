@@ -72,6 +72,7 @@ public enum NotificationType {
   PROGRAMME_UPDATED_WEEK_0("programme-updated-week-0"),
   PROGRAMME_CREATED("programme-created"),
   PROGRAMME_POG_MONTH_12("programme-pog-month-12"),
+  PROGRAMME_POG_MONTH_6("programme-pog-month-6"),
   SPONSORSHIP("sponsorship"),
   WELCOME("welcome");
 
@@ -114,7 +115,7 @@ public enum NotificationType {
    */
   @Getter
   private static final Set<NotificationType> programmePogNotificationTypes = EnumSet.of(
-      PROGRAMME_POG_MONTH_12);
+      PROGRAMME_POG_MONTH_12, PROGRAMME_POG_MONTH_6);
 
   /**
    * The set of Programme Updated in-app notification types.

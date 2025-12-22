@@ -26,6 +26,7 @@ import static uk.nhs.tis.trainee.notifications.model.HrefType.NON_HREF;
 import static uk.nhs.tis.trainee.notifications.model.HrefType.PROTOCOL_EMAIL;
 import static uk.nhs.tis.trainee.notifications.model.MessageType.EMAIL;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_POG_MONTH_12;
+import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_POG_MONTH_6;
 import static uk.nhs.tis.trainee.notifications.model.TisReferenceType.PLACEMENT;
 import static uk.nhs.tis.trainee.notifications.model.TisReferenceType.PROGRAMME_MEMBERSHIP;
 import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.PROGRAMME_NAME_FIELD;
@@ -199,7 +200,7 @@ public class NotificationService {
       History.TisReferenceInfo tisReferenceInfo = new TisReferenceInfo(PLACEMENT,
           jobDetails.get(PlacementService.TIS_ID_FIELD).toString());
       notificationSummary = new NotificationSummary(jobName, startDate, tisReferenceInfo);
-    } else if (notificationType == PROGRAMME_POG_MONTH_12) {
+    } else if (NotificationType.getProgrammePogNotificationTypes().contains(notificationType)) {
       String programmeId = (String) jobDetails.get(TIS_ID_FIELD);
       History.TisReferenceInfo tisReferenceInfo = new TisReferenceInfo(PROGRAMME_MEMBERSHIP,
           programmeId);
@@ -382,7 +383,9 @@ public class NotificationService {
     jobDetails.putIfAbsent(TEMPLATE_OWNER_WEBSITE_FIELD, website);
 
     if (jobDetails.get(TEMPLATE_NOTIFICATION_TYPE_FIELD).toString()
-        .equalsIgnoreCase(String.valueOf(PROGRAMME_POG_MONTH_12))) {
+        .equalsIgnoreCase(String.valueOf(PROGRAMME_POG_MONTH_12))
+       || jobDetails.get(TEMPLATE_NOTIFICATION_TYPE_FIELD).toString()
+        .equalsIgnoreCase(String.valueOf(PROGRAMME_POG_MONTH_6))) {
       String pogContact = getOwnerContact(ownerContactList, LocalOfficeContactType.POG,
           LocalOfficeContactType.TSS_SUPPORT);
       jobDetails.putIfAbsent(TEMPLATE_POG_CONTACT_FIELD, pogContact);
@@ -441,7 +444,7 @@ public class NotificationService {
       actuallySendEmail = inWhitelist
           || messagingControllerService.isValidRecipient(personId, MessageType.EMAIL);
 
-    } else if (notificationType == PROGRAMME_POG_MONTH_12) {
+    } else if (NotificationType.getProgrammePogNotificationTypes().contains(notificationType)) {
 
       LocalDate now = LocalDate.now(ZoneId.of(timezone));
       actuallySendEmail = inWhitelist
@@ -463,7 +466,7 @@ public class NotificationService {
    * @return True if the POG email should be scheduled, false otherwise.
    */
   protected boolean shouldStorePogEmail(NotificationType notificationType, String personId) {
-    if (notificationType == PROGRAMME_POG_MONTH_12) {
+    if (NotificationType.getProgrammePogNotificationTypes().contains(notificationType)) {
       boolean inWhitelist = notificationsWhitelist.contains(personId);
       return inWhitelist
           || messagingControllerService.isValidRecipient(personId, MessageType.EMAIL);
@@ -492,7 +495,7 @@ public class NotificationService {
     } else if (notificationType == NotificationType.PLACEMENT_UPDATED_WEEK_12) {
       tisReferenceInfo = new TisReferenceInfo(PLACEMENT,
           jobDetails.get(PlacementService.TIS_ID_FIELD).toString());
-    } else if (notificationType == PROGRAMME_POG_MONTH_12) {
+    } else if (NotificationType.getProgrammePogNotificationTypes().contains(notificationType)) {
       tisReferenceInfo = new TisReferenceInfo(PROGRAMME_MEMBERSHIP,
           jobDetails.get(ProgrammeMembershipService.TIS_ID_FIELD).toString());
     }

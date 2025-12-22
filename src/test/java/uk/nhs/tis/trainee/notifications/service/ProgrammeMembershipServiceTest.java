@@ -47,7 +47,6 @@ import static uk.nhs.tis.trainee.notifications.model.NotificationType.INDEMNITY_
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.LTFT;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_CREATED;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_DAY_ONE;
-import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_POG_MONTH_12;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.SPONSORSHIP;
 import static uk.nhs.tis.trainee.notifications.model.TisReferenceType.PROGRAMME_MEMBERSHIP;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.CONTACT_TYPE_FIELD;
@@ -624,8 +623,10 @@ class ProgrammeMembershipServiceTest {
         is(DESIGNATED_BODY));
   }
 
-  @Test
-  void shouldNotCreateDirectProgrammePogNotificationsIfExcludedPog() {
+  @ParameterizedTest
+  @EnumSource(value = NotificationType.class,
+      names = {"PROGRAMME_POG_MONTH_12", "PROGRAMME_POG_MONTH_6"})
+  void shouldNotCreateDirectProgrammePogNotificationsIfExcludedPog(NotificationType pogType) {
     when(historyService.findAllHistoryForTrainee(PERSON_ID)).thenReturn(new ArrayList<>());
 
     ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
@@ -633,15 +634,18 @@ class ProgrammeMembershipServiceTest {
 
     service.addNotifications(programmeMembership);
 
-    String jobId = PROGRAMME_POG_MONTH_12 + "-" + TIS_ID;
+    String jobId = pogType + "-" + TIS_ID;
     verify(notificationService, never()).executeNow(eq(jobId), anyMap());
 
     verify(notificationService, never())
         .scheduleNotification(eq(jobId), anyMap(), any(), anyLong());
   }
 
-  @Test
-  void shouldNotSchedulePogNotificationIfNotExcludedButShouldScheduleIsFalse() {
+  @ParameterizedTest
+  @EnumSource(value = NotificationType.class,
+      names = {"PROGRAMME_POG_MONTH_12", "PROGRAMME_POG_MONTH_6"})
+  void shouldNotSchedulePogNotificationIfNotExcludedButShouldScheduleIsFalse(
+      NotificationType pogType) {
     // Arrange: eligible for POG, but shouldSchedulePogNotification returns false
     when(historyService.findAllHistoryForTrainee(PERSON_ID)).thenReturn(new ArrayList<>());
 
@@ -655,8 +659,7 @@ class ProgrammeMembershipServiceTest {
     ProgrammeMembershipUtils spyUtils = org.mockito.Mockito.spy(programmeMembershipUtils);
     org.mockito.Mockito.doReturn(false)
         .when(spyUtils)
-        .shouldSchedulePogNotification(
-            eq(PROGRAMME_POG_MONTH_12), eq(programmeMembership), any());
+        .shouldSchedulePogNotification(eq(pogType), eq(programmeMembership), any());
 
     // Use a new service instance with the spy
     ProgrammeMembershipService serviceWithSpyUtils = new ProgrammeMembershipService(
@@ -666,14 +669,16 @@ class ProgrammeMembershipServiceTest {
 
     serviceWithSpyUtils.addNotifications(programmeMembership);
 
-    String jobId = PROGRAMME_POG_MONTH_12 + "-" + TIS_ID;
+    String jobId = pogType + "-" + TIS_ID;
     verify(notificationService, never()).executeNow(eq(jobId), anyMap());
     verify(notificationService, never()).scheduleNotification(eq(jobId), anyMap(), any(),
         anyLong());
   }
 
-  @Test
-  void shouldCreateDirectProgrammePogNotificationsIfNotExcludedPog() {
+  @ParameterizedTest
+  @EnumSource(value = NotificationType.class,
+      names = {"PROGRAMME_POG_MONTH_12", "PROGRAMME_POG_MONTH_6"})
+  void shouldCreateDirectProgrammePogNotificationsIfNotExcludedPog(NotificationType pogType) {
     when(historyService.findAllHistoryForTrainee(PERSON_ID)).thenReturn(new ArrayList<>());
 
     ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
@@ -685,18 +690,21 @@ class ProgrammeMembershipServiceTest {
 
     service.addNotifications(programmeMembership);
 
-    String jobId = PROGRAMME_POG_MONTH_12 + "-" + TIS_ID;
+    String jobId = pogType + "-" + TIS_ID;
     verify(notificationService).scheduleNotification(eq(jobId), anyMap(), any(), anyLong());
   }
 
-  @Test
-  void shouldCreateDirectProgrammePogNotificationAndSendImmediatelyIfOverdue() {
+  @ParameterizedTest
+  @EnumSource(value = NotificationType.class,
+      names = {"PROGRAMME_POG_MONTH_12", "PROGRAMME_POG_MONTH_6"})
+  void shouldCreateDirectProgrammePog12NotificationAndSendImmediatelyIfOverdue(
+      NotificationType pogType) {
     when(historyService.findAllHistoryForTrainee(PERSON_ID)).thenReturn(new ArrayList<>());
 
     ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
 
     LocalDate curriculumEndDateSendNow = LocalDate.now()
-        .plusDays(programmeMembershipUtils.getDaysBeforeEndForNotification(PROGRAMME_POG_MONTH_12))
+        .plusDays(programmeMembershipUtils.getDaysBeforeEndForNotification(pogType))
         .minusDays(1);
     Curriculum eligibleCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, "specialty",
         false, curriculumEndDateSendNow, true);
@@ -705,14 +713,16 @@ class ProgrammeMembershipServiceTest {
 
     service.addNotifications(programmeMembership);
 
-    String jobId = PROGRAMME_POG_MONTH_12 + "-" + TIS_ID;
+    String jobId = pogType + "-" + TIS_ID;
     verify(notificationService, never()).scheduleNotification(eq(jobId), anyMap(), any(),
         anyLong());
     verify(notificationService).executeNow(eq(jobId), anyMap());
   }
 
-  @Test
-  void shouldNotRetrieveHistoryForTraineeForPogIfAlreadyKnown() {
+  @ParameterizedTest
+  @EnumSource(value = NotificationType.class,
+      names = {"PROGRAMME_POG_MONTH_12", "PROGRAMME_POG_MONTH_6"})
+  void shouldNotRetrieveHistoryForTraineeForPogIfAlreadyKnown(NotificationType pogType) {
     when(historyService.findAllHistoryForTrainee(PERSON_ID)).thenReturn(new ArrayList<>());
 
     ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
@@ -728,13 +738,15 @@ class ProgrammeMembershipServiceTest {
 
     String expectedUpdateJobId = PROGRAMME_CREATED + "-" + TIS_ID;
     verify(notificationService).executeNow(eq(expectedUpdateJobId), anyMap());
-    String expectedPogJobId = PROGRAMME_POG_MONTH_12 + "-" + TIS_ID;
+    String expectedPogJobId = pogType + "-" + TIS_ID;
     verify(notificationService)
         .scheduleNotification(eq(expectedPogJobId), anyMap(), any(), anyLong());
   }
 
-  @Test
-  void shouldRetrieveHistoryForTraineeForPogIfNotAlreadyKnown() {
+  @ParameterizedTest
+  @EnumSource(value = NotificationType.class,
+      names = {"PROGRAMME_POG_MONTH_12", "PROGRAMME_POG_MONTH_6"})
+  void shouldRetrieveHistoryForTraineeForPogIfNotAlreadyKnown(NotificationType pogType) {
     when(historyService.findAllHistoryForTrainee(PERSON_ID)).thenReturn(new ArrayList<>());
 
     ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
@@ -751,7 +763,7 @@ class ProgrammeMembershipServiceTest {
 
     String expectedUpdateJobId = PROGRAMME_CREATED + "-" + TIS_ID;
     verify(notificationService, never()).executeNow(eq(expectedUpdateJobId), anyMap());
-    String expectedPogJobId = PROGRAMME_POG_MONTH_12 + "-" + TIS_ID;
+    String expectedPogJobId = pogType + "-" + TIS_ID;
     verify(notificationService)
         .scheduleNotification(eq(expectedPogJobId), anyMap(), any(), anyLong());
   }

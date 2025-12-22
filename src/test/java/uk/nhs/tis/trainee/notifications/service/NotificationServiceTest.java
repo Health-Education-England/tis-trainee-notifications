@@ -56,7 +56,6 @@ import static uk.nhs.tis.trainee.notifications.model.NotificationType.GMC_UPDATE
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PLACEMENT_ROLLOUT_2024_CORRECTION;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PLACEMENT_UPDATED_WEEK_12;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_CREATED;
-import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_POG_MONTH_12;
 import static uk.nhs.tis.trainee.notifications.model.TisReferenceType.PLACEMENT;
 import static uk.nhs.tis.trainee.notifications.model.TisReferenceType.PROGRAMME_MEMBERSHIP;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.CONTACT_FIELD;
@@ -95,6 +94,7 @@ import java.util.stream.Stream;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.EnumSource.Mode;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -585,7 +585,8 @@ class NotificationServiceTest {
   @EnumSource(value = NotificationType.class, mode = Mode.EXCLUDE,
       names = {"PLACEMENT_UPDATED_WEEK_12", "PLACEMENT_ROLLOUT_2024_CORRECTION",
           "PROGRAMME_CREATED", "PROGRAMME_DAY_ONE", "PROGRAMME_UPDATED_WEEK_12",
-          "PROGRAMME_UPDATED_WEEK_4", "PROGRAMME_UPDATED_WEEK_2", "PROGRAMME_POG_MONTH_12"})
+          "PROGRAMME_UPDATED_WEEK_4", "PROGRAMME_UPDATED_WEEK_2", "PROGRAMME_POG_MONTH_12",
+          "PROGRAMME_POG_MONTH_6"})
   void shouldIgnoreNonActiveProgrammeOrPlacementJobs(NotificationType notificationType)
       throws MessagingException {
     UserDetails userAccountDetails = new UserDetails(false, USER_EMAIL, USER_TITLE,
@@ -935,7 +936,7 @@ class NotificationServiceTest {
   @EnumSource(value = NotificationType.class, mode = Mode.EXCLUDE,
       names = {"PLACEMENT_UPDATED_WEEK_12", "PROGRAMME_CREATED", "PROGRAMME_DAY_ONE",
           "PROGRAMME_UPDATED_WEEK_12", "PROGRAMME_UPDATED_WEEK_4", "PROGRAMME_UPDATED_WEEK_2",
-          "PROGRAMME_POG_MONTH_12"})
+          "PROGRAMME_POG_MONTH_12", "PROGRAMME_POG_MONTH_6"})
   void shouldNotSaveScheduleNotificationWhenNotCorrectNotificationType(
       NotificationType notificationType) {
     placementJobDataMap.put(TEMPLATE_NOTIFICATION_TYPE_FIELD,
@@ -1987,8 +1988,10 @@ class NotificationServiceTest {
     assertThat("Unexpected dummy user check.", isDummy, is(false));
   }
 
-  @Test
-  void shouldSendPogEmailIfPersonIsInWhitelistRegardlessOfEpoch() {
+  @ParameterizedTest
+  @EnumSource(value = NotificationType.class,
+      names = {"PROGRAMME_POG_MONTH_12", "PROGRAMME_POG_MONTH_6"})
+  void shouldSendPogEmailIfPersonIsInWhitelistRegardlessOfEpoch(NotificationType pogType) {
     // Simulate before epoch to ensure whitelist overrides epoch logic
     try (var ignored = org.mockito.Mockito.mockStatic(LocalDate.class, invocation -> {
       if (invocation.getMethod().getName().equals("now")) {
@@ -1996,15 +1999,16 @@ class NotificationServiceTest {
       }
       return invocation.callRealMethod();
     })) {
-      boolean result = serviceWhitelisted.shouldActuallySendEmail(
-          PROGRAMME_POG_MONTH_12, PERSON_ID, TIS_ID);
+      boolean result = serviceWhitelisted.shouldActuallySendEmail(pogType, PERSON_ID, TIS_ID);
 
       assertThat("Expected to send POG email for whitelisted person.", result, is(true));
     }
   }
 
-  @Test
-  void shouldSendPogEmailIfAfterEpochAndRecipientIsValid() {
+  @ParameterizedTest
+  @EnumSource(value = NotificationType.class,
+      names = {"PROGRAMME_POG_MONTH_12", "PROGRAMME_POG_MONTH_6"})
+  void shouldSendPogEmailIfAfterEpochAndRecipientIsValid(NotificationType pogType) {
     when(messagingControllerService.isValidRecipient(PERSON_ID, EMAIL)).thenReturn(true);
 
     // Simulate after epoch
@@ -2014,16 +2018,17 @@ class NotificationServiceTest {
       }
       return invocation.callRealMethod();
     })) {
-      boolean result = service.shouldActuallySendEmail(
-          PROGRAMME_POG_MONTH_12, PERSON_ID, TIS_ID);
+      boolean result = service.shouldActuallySendEmail(pogType, PERSON_ID, TIS_ID);
 
       assertThat("Expected to send POG email after epoch and valid recipient.", result,
           is(true));
     }
   }
 
-  @Test
-  void shouldNotSendPogEmailIfBeforeEpochAndNotWhitelisted() {
+  @ParameterizedTest
+  @EnumSource(value = NotificationType.class,
+      names = {"PROGRAMME_POG_MONTH_12", "PROGRAMME_POG_MONTH_6"})
+  void shouldNotSendPogEmailIfBeforeEpochAndNotWhitelisted(NotificationType pogType) {
     when(messagingControllerService.isValidRecipient(PERSON_ID, EMAIL)).thenReturn(true);
 
     // Simulate before epoch
@@ -2033,16 +2038,17 @@ class NotificationServiceTest {
       }
       return invocation.callRealMethod();
     })) {
-      boolean result = service.shouldActuallySendEmail(
-          PROGRAMME_POG_MONTH_12, PERSON_ID, TIS_ID);
+      boolean result = service.shouldActuallySendEmail(pogType, PERSON_ID, TIS_ID);
 
       assertThat("Expected not to send POG email before epoch if not whitelisted.", result,
           is(false));
     }
   }
 
-  @Test
-  void shouldNotSendPogEmailIfRecipientIsNotValidEvenAfterEpoch() {
+  @ParameterizedTest
+  @EnumSource(value = NotificationType.class,
+      names = {"PROGRAMME_POG_MONTH_12", "PROGRAMME_POG_MONTH_6"})
+  void shouldNotSendPogEmailIfRecipientIsNotValidEvenAfterEpoch(NotificationType pogType) {
     when(messagingControllerService.isValidRecipient(PERSON_ID, EMAIL)).thenReturn(false);
 
     // Simulate after epoch
@@ -2052,8 +2058,7 @@ class NotificationServiceTest {
       }
       return invocation.callRealMethod();
     })) {
-      boolean result = service.shouldActuallySendEmail(
-          PROGRAMME_POG_MONTH_12, PERSON_ID, TIS_ID);
+      boolean result = service.shouldActuallySendEmail(pogType, PERSON_ID, TIS_ID);
 
       assertThat("Expected not to send POG email if recipient is not valid.", result,
           is(false));
@@ -2061,17 +2066,23 @@ class NotificationServiceTest {
   }
 
   @ParameterizedTest
-  @ValueSource(booleans = {true, false})
-  void shouldSaveScheduleHistoryForPogNotificationIfPersonIsInWhitelist(boolean recipientValid) {
+  @CsvSource({
+      "true, PROGRAMME_POG_MONTH_12",
+      "false, PROGRAMME_POG_MONTH_12",
+      "true, PROGRAMME_POG_MONTH_6",
+      "false, PROGRAMME_POG_MONTH_6"
+  })
+  void shouldSaveScheduleHistoryForPogNotificationIfPersonIsInWhitelist(
+      boolean recipientValid, NotificationType notificationType) {
     Map<String, Object> jobDataMap = new HashMap<>();
     jobDataMap.put(TIS_ID_FIELD, TIS_ID);
     jobDataMap.put(PERSON_ID_FIELD, PERSON_ID);
-    jobDataMap.put(TEMPLATE_NOTIFICATION_TYPE_FIELD, PROGRAMME_POG_MONTH_12.toString());
+    jobDataMap.put(TEMPLATE_NOTIFICATION_TYPE_FIELD, notificationType.toString());
     jobDataMap.put(PROGRAMME_NAME_FIELD, PROGRAMME_NAME);
     jobDataMap.put(START_DATE_FIELD, START_DATE);
 
-    UserDetails userAccountDetails = new UserDetails(true, USER_EMAIL, USER_TITLE, USER_FAMILY_NAME,
-        USER_GIVEN_NAME, USER_GMC);
+    UserDetails userAccountDetails = new UserDetails(true, USER_EMAIL, USER_TITLE,
+        USER_FAMILY_NAME, USER_GIVEN_NAME, USER_GMC);
     when(restTemplate.getForObject(ACCOUNT_DETAILS_URL, UserDetails.class,
         Map.of(TIS_ID_FIELD, PERSON_ID))).thenReturn(userAccountDetails);
 
@@ -2082,17 +2093,19 @@ class NotificationServiceTest {
     verify(historyService).save(any(History.class));
   }
 
-  @Test
-  void shouldSaveScheduleHistoryForPogNotificationIfRecipientIsValid() {
+  @ParameterizedTest
+  @EnumSource(value = NotificationType.class,
+      names = {"PROGRAMME_POG_MONTH_12", "PROGRAMME_POG_MONTH_6"})
+  void shouldSaveScheduleHistoryForPogNotificationIfRecipientIsValid(NotificationType pogType) {
     Map<String, Object> jobDataMap = new HashMap<>();
     jobDataMap.put(TIS_ID_FIELD, TIS_ID);
     jobDataMap.put(PERSON_ID_FIELD, PERSON_ID);
-    jobDataMap.put(TEMPLATE_NOTIFICATION_TYPE_FIELD, PROGRAMME_POG_MONTH_12.toString());
+    jobDataMap.put(TEMPLATE_NOTIFICATION_TYPE_FIELD, pogType.toString());
     jobDataMap.put(PROGRAMME_NAME_FIELD, PROGRAMME_NAME);
     jobDataMap.put(START_DATE_FIELD, START_DATE);
 
-    UserDetails userAccountDetails = new UserDetails(true, USER_EMAIL, USER_TITLE, USER_FAMILY_NAME,
-        USER_GIVEN_NAME, USER_GMC);
+    UserDetails userAccountDetails = new UserDetails(true, USER_EMAIL, USER_TITLE,
+        USER_FAMILY_NAME, USER_GIVEN_NAME, USER_GMC);
     when(restTemplate.getForObject(ACCOUNT_DETAILS_URL, UserDetails.class,
         Map.of(TIS_ID_FIELD, PERSON_ID))).thenReturn(userAccountDetails);
 
@@ -2104,17 +2117,20 @@ class NotificationServiceTest {
     verify(historyService, times(2)).save(any(History.class));
   }
 
-  @Test
-  void shouldNotSaveScheduleHistoryForPogNotificationIfRecipientNotValidAndNotWhitelisted() {
+  @ParameterizedTest
+  @EnumSource(value = NotificationType.class,
+      names = {"PROGRAMME_POG_MONTH_12", "PROGRAMME_POG_MONTH_6"})
+  void shouldNotSaveScheduleHistoryForPogNotificationIfRecipientNotValidAndNotWhitelisted(
+      NotificationType pogType) {
     Map<String, Object> jobDataMap = new HashMap<>();
     jobDataMap.put(TIS_ID_FIELD, TIS_ID);
     jobDataMap.put(PERSON_ID_FIELD, PERSON_ID);
-    jobDataMap.put(TEMPLATE_NOTIFICATION_TYPE_FIELD, PROGRAMME_POG_MONTH_12.toString());
+    jobDataMap.put(TEMPLATE_NOTIFICATION_TYPE_FIELD, pogType.toString());
     jobDataMap.put(PROGRAMME_NAME_FIELD, PROGRAMME_NAME);
     jobDataMap.put(START_DATE_FIELD, START_DATE);
 
-    UserDetails userAccountDetails = new UserDetails(true, USER_EMAIL, USER_TITLE, USER_FAMILY_NAME,
-        USER_GIVEN_NAME, USER_GMC);
+    UserDetails userAccountDetails = new UserDetails(true, USER_EMAIL, USER_TITLE,
+        USER_FAMILY_NAME, USER_GIVEN_NAME, USER_GMC);
     when(restTemplate.getForObject(ACCOUNT_DETAILS_URL, UserDetails.class,
         Map.of(TIS_ID_FIELD, PERSON_ID))).thenReturn(userAccountDetails);
 
@@ -2126,27 +2142,36 @@ class NotificationServiceTest {
   }
 
   @ParameterizedTest
-  @ValueSource(booleans = {true, false})
-  void shouldStorePogEmailIfPersonIsInWhitelist(boolean recipientValid) {
+  @CsvSource({
+      "true, PROGRAMME_POG_MONTH_12",
+      "false, PROGRAMME_POG_MONTH_12",
+      "true, PROGRAMME_POG_MONTH_6",
+      "false, PROGRAMME_POG_MONTH_6"
+  })
+  void shouldStorePogEmailIfPersonIsInWhitelist(boolean recipientValid, NotificationType notificationType) {
     when(messagingControllerService.isValidRecipient(PERSON_ID, EMAIL)).thenReturn(recipientValid);
     assertThat("Unexpected should schedule POG.",
-        serviceWhitelisted.shouldStorePogEmail(PROGRAMME_POG_MONTH_12, PERSON_ID), is(true));
+        serviceWhitelisted.shouldStorePogEmail(notificationType, PERSON_ID), is(true));
   }
 
-  @Test
-  void shouldStorePogEmailIfValidRecipient() {
+  @ParameterizedTest
+  @EnumSource(value = NotificationType.class,
+      names = {"PROGRAMME_POG_MONTH_12", "PROGRAMME_POG_MONTH_6"})
+  void shouldStorePogEmailIfValidRecipient(NotificationType pogType) {
     when(messagingControllerService.isValidRecipient(PERSON_ID, EMAIL)).thenReturn(true);
 
     assertThat("Unexpected should schedule POG.",
-          service.shouldStorePogEmail(PROGRAMME_POG_MONTH_12, PERSON_ID), is(true));
+          service.shouldStorePogEmail(pogType, PERSON_ID), is(true));
   }
 
-  @Test
-  void shouldNotSchedulePogEmailIfNotWhitelistedAndNotValidRecipient() {
+  @ParameterizedTest
+  @EnumSource(value = NotificationType.class,
+      names = {"PROGRAMME_POG_MONTH_12", "PROGRAMME_POG_MONTH_6"})
+  void shouldNotSchedulePogEmailIfNotWhitelistedAndNotValidRecipient(NotificationType pogType) {
     when(messagingControllerService.isValidRecipient(PERSON_ID, EMAIL)).thenReturn(false);
 
     assertThat("Unexpected should schedule POG.",
-        service.shouldStorePogEmail(PROGRAMME_POG_MONTH_12, PERSON_ID), is(false));
+        service.shouldStorePogEmail(pogType, PERSON_ID), is(false));
   }
 
   /**

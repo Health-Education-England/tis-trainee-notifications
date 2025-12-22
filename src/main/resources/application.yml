@@ -106,6 +106,8 @@ application:
       email: v1.1.0
     programme-pog-month-12:
       email: v1.0.0
+    programme-pog-month-6:
+      email: v1.0.0
     programme-updated-week-0:
       email: v1.0.0
     programme-updated-week-1:

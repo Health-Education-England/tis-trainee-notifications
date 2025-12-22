@@ -111,6 +111,7 @@ import uk.nhs.tis.trainee.notifications.model.ProgrammeActionType;
 import uk.nhs.tis.trainee.notifications.service.EmailService;
 import uk.nhs.tis.trainee.notifications.service.MessageSendingService;
 import uk.nhs.tis.trainee.notifications.service.NotificationService;
+import uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipUtils;
 import uk.nhs.tis.trainee.notifications.service.UserAccountService;
 
 /**
@@ -134,7 +135,6 @@ class ProgrammeMembershipListenerIntegrationTest {
   private static final UserDetails USER_DETAILS = new UserDetails(true, EMAIL, TITLE,
       FAMILY_NAME, GIVEN_NAME, GMC);
 
-  private static final LocalDate PROGRAMME_CCT_DATE = LocalDate.now().plusWeeks(50);
   private static final String RESPONSIBLE_OFFICER_FIRST_NAME = "Responsible";
   private static final String RESPONSIBLE_OFFICER_LAST_NAME = "TestRO";
   private static final String MANAGING_DEANERY = "deaneryTest";
@@ -202,6 +202,9 @@ class ProgrammeMembershipListenerIntegrationTest {
 
   @Autowired
   private NotificationService notificationService;
+
+  @Autowired
+  private ProgrammeMembershipUtils pmUtils;
 
   @Autowired
   private SqsTemplate sqsTemplate;
@@ -668,7 +671,8 @@ class ProgrammeMembershipListenerIntegrationTest {
   }
 
   @ParameterizedTest
-  @EnumSource(value = NotificationType.class, names = "PROGRAMME_POG_MONTH_12")
+  @EnumSource(value = NotificationType.class,
+      names = {"PROGRAMME_POG_MONTH_12", "PROGRAMME_POG_MONTH_6"})
   void shouldSendFullPogNotificationsWhenTemplateVariablesPresent(NotificationType type)
       throws MessagingException, IOException, URISyntaxException {
 
@@ -683,8 +687,11 @@ class ProgrammeMembershipListenerIntegrationTest {
     when(userAccountService.getUserDetailsById(PERSON_ID)).thenReturn(
         new UserDetails(true, EMAIL, null, null, null, null));
 
+    LocalDate cctDate = LocalDate.now().plusDays(
+        pmUtils.getDaysBeforeEndForNotification(type) - 1);
+
     sqsTemplate.send(PM_UPDATED_QUEUE,
-        buildStandardProgrammeMembershipEvent(LocalDate.now().minusMonths(1), true));
+        buildStandardProgrammeMembershipEvent(LocalDate.now().minusMonths(1), true, cctDate));
 
     ArgumentCaptor<MimeMessage> messageCaptor = ArgumentCaptor.captor();
 
@@ -704,7 +711,7 @@ class ProgrammeMembershipListenerIntegrationTest {
     Document expectedContent = Jsoup.parse(Paths.get(resource.toURI()).toFile());
     DateTimeFormatter longDateFormatter = DateTimeFormatter.ofPattern("dd MMMM yyyy");
     String expectedContentStr = expectedContent.html()
-        .replace("{{CCT DATE}}", PROGRAMME_CCT_DATE.format(longDateFormatter));
+        .replace("{{CCT DATE}}", cctDate.format(longDateFormatter));
     assertThat("Unexpected content.", content.html(), is(expectedContentStr));
   }
 
@@ -717,7 +724,7 @@ class ProgrammeMembershipListenerIntegrationTest {
    */
   JsonNode buildStandardProgrammeMembershipEvent(LocalDate startDate)
       throws JsonProcessingException {
-    return buildStandardProgrammeMembershipEvent(startDate, false);
+    return buildStandardProgrammeMembershipEvent(startDate, false, LocalDate.now().plusYears(1));
   }
 
   /**
@@ -726,10 +733,12 @@ class ProgrammeMembershipListenerIntegrationTest {
    *
    * @param startDate   The start date of the programme membership
    * @param pogEligible Whether the curriculum is eligible for period of grace
+   * @param cctDate     The curriculum CCT date
    * @return A JsonNode representing the programme membership event.
    * @throws JsonProcessingException If there is an error processing the JSON.
    */
-  JsonNode buildStandardProgrammeMembershipEvent(LocalDate startDate, boolean pogEligible)
+  JsonNode buildStandardProgrammeMembershipEvent(LocalDate startDate, boolean pogEligible,
+      LocalDate cctDate)
       throws JsonProcessingException {
     String eventString = """
         {
@@ -753,7 +762,7 @@ class ProgrammeMembershipListenerIntegrationTest {
         }
         """.formatted(PROGRAMME_MEMBERSHIP_ID, PROGRAMME_MEMBERSHIP_ID, PERSON_ID, startDate,
         MANAGING_DEANERY, RESPONSIBLE_OFFICER_FIRST_NAME, RESPONSIBLE_OFFICER_LAST_NAME,
-        PROGRAMME_CCT_DATE, pogEligible);
+        cctDate, pogEligible);
 
     return JsonMapper.builder()
         .build()
