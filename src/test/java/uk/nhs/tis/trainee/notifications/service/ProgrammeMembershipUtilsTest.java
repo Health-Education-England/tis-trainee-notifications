@@ -28,7 +28,10 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.SENT;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_CREATED;
+import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_DAY_ONE;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_POG_MONTH_12;
+import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_POG_MONTH_6;
+import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_UPDATED_WEEK_1;
 import static uk.nhs.tis.trainee.notifications.model.TisReferenceType.PROGRAMME_MEMBERSHIP;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.TEMPLATE_OWNER_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.CCT_DATE_FIELD;
@@ -97,18 +100,26 @@ class ProgrammeMembershipUtilsTest {
   ProgrammeMembershipUtils service = new ProgrammeMembershipUtils(TIMEZONE);
 
   @Test
-  void shouldGetPogDaysBeforeEndDate() {
+  void shouldGetPog12monthDaysBeforeEndDate() {
     int pogDaysBeforeEndDate = service.getDaysBeforeEndForNotification(PROGRAMME_POG_MONTH_12);
 
     assertThat("Unexpected POG days before end date.",
         pogDaysBeforeEndDate, is(365));
   }
 
+  @Test
+  void shouldGetPog6monthDaysBeforeEndDate() {
+    int pogDaysBeforeEndDate = service.getDaysBeforeEndForNotification(PROGRAMME_POG_MONTH_6);
+
+    assertThat("Unexpected POG days before end date.",
+        pogDaysBeforeEndDate, is(182));
+  }
+
   @ParameterizedTest
   @EnumSource(value = NotificationType.class, mode = EnumSource.Mode.EXCLUDE,
-      names = "PROGRAMME_POG_MONTH_12")
-  void shouldGetNullDaysBeforeEndDateForNonPogNotificationTypes() {
-    Integer pogDaysBeforeEndDate = service.getDaysBeforeEndForNotification(PROGRAMME_CREATED);
+      names = {"PROGRAMME_POG_MONTH_12", "PROGRAMME_POG_MONTH_6"})
+  void shouldGetNullDaysBeforeEndDateForNonPogNotificationTypes(NotificationType nonPogType) {
+    Integer pogDaysBeforeEndDate = service.getDaysBeforeEndForNotification(nonPogType);
 
     assertThat("Expected null for non-POG notification type.",
         pogDaysBeforeEndDate, is(nullValue()));
@@ -509,68 +520,96 @@ class ProgrammeMembershipUtilsTest {
   }
 
 
-  @Test
-  void shouldReturnNullWhenScheduleProgrammePogNotificationIfCctDateIsInPast() {
+  @ParameterizedTest
+  @EnumSource(value = NotificationType.class,
+      names = {"PROGRAMME_POG_MONTH_12", "PROGRAMME_POG_MONTH_6"})
+  void shouldReturnNullWhenScheduleProgrammePogNotificationIfCctDateIsInPast(
+      NotificationType pogType) {
     LocalDate cctDate = LocalDate.now(TIMEZONE).minusDays(1);
     ProgrammeMembership programmeMembership = new ProgrammeMembership();
     programmeMembership.setCurricula(List.of(
         new Curriculum("MEDICAL_CURRICULUM", "specialty", false, cctDate, true)
     ));
 
-    Date result = service.whenScheduleProgrammePogNotification(
-        NotificationType.PROGRAMME_POG_MONTH_12, programmeMembership);
+    Date result = service.whenScheduleProgrammePogNotification(pogType, programmeMembership);
 
     assertThat("Expected null when CCT date is in the past.", result, is(nullValue()));
   }
 
-  @Test
-  void shouldReturnNullWhenScheduleProgrammePogNotificationIfCctDateIsToday() {
+  @ParameterizedTest
+  @EnumSource(value = NotificationType.class,
+      names = {"PROGRAMME_POG_MONTH_12", "PROGRAMME_POG_MONTH_6"})
+  void shouldReturnNullWhenScheduleProgrammePogNotificationIfCctDateIsToday(
+      NotificationType pogType) {
     LocalDate cctDate = LocalDate.now(TIMEZONE);
     ProgrammeMembership programmeMembership = new ProgrammeMembership();
     programmeMembership.setCurricula(List.of(
         new Curriculum("MEDICAL_CURRICULUM", "specialty", false, cctDate, true)
     ));
 
-    Date result = service.whenScheduleProgrammePogNotification(
-        NotificationType.PROGRAMME_POG_MONTH_12, programmeMembership);
+    Date result = service.whenScheduleProgrammePogNotification(pogType, programmeMembership);
 
     assertThat("Expected null when CCT date is today.", result, is(nullValue()));
   }
 
-  @Test
-  void shouldReturnScheduledDateWhenCctDateIsInFuture() {
+  @ParameterizedTest
+  @EnumSource(value = NotificationType.class,
+      names = {"PROGRAMME_POG_MONTH_12", "PROGRAMME_POG_MONTH_6"})
+  void shouldReturnScheduledDateWhenCctDateIsInFuture(NotificationType pogType) {
     LocalDate cctDate = LocalDate.now(TIMEZONE).plusDays(400);
     ProgrammeMembership programmeMembership = new ProgrammeMembership();
     programmeMembership.setCurricula(List.of(
         new Curriculum("MEDICAL_CURRICULUM", "specialty", false, cctDate, true)
     ));
 
-    Date result = service.whenScheduleProgrammePogNotification(
-        NotificationType.PROGRAMME_POG_MONTH_12, programmeMembership);
+    Date result = service.whenScheduleProgrammePogNotification(pogType, programmeMembership);
 
-    LocalDate expectedDate = cctDate.minusDays(365);
+    LocalDate expectedDate = cctDate.minusDays(service.getDaysBeforeEndForNotification(pogType));
     Date expected = Date.from(expectedDate.atStartOfDay(TIMEZONE).toInstant());
 
-    assertThat("Expected scheduled date to be 365 days before CCT date.", result, is(expected));
+    assertThat("Expected scheduled date to be POG-applicable days before CCT date.", result,
+        is(expected));
   }
 
-  @Test
-  void shouldSchedulePogNotificationIfNoHistoryExists() {
+  @ParameterizedTest
+  @EnumSource(value = NotificationType.class, mode = EnumSource.Mode.EXCLUDE,
+      names = {"PROGRAMME_POG_MONTH_12", "PROGRAMME_POG_MONTH_6"})
+  void shouldNotScheduleNonPogNotifications(NotificationType nonPogType) {
+    LocalDate newCctDate = LocalDate.now(TIMEZONE).plusWeeks(40);
+
     ProgrammeMembership programmeMembership = new ProgrammeMembership();
     programmeMembership.setCurricula(List.of(
-        new Curriculum("MEDICAL_CURRICULUM", "specialty", false,
-            LocalDate.now(TIMEZONE).plusDays(400), true)
+        new Curriculum("MEDICAL_CURRICULUM", "specialty", false, newCctDate, true)
     ));
 
     boolean shouldSchedule = service.shouldSchedulePogNotification(
-        NotificationType.PROGRAMME_POG_MONTH_12, programmeMembership, Map.of());
+        nonPogType, programmeMembership, Map.of());
+
+    assertThat("Expected not to schedule non-POG notification.", shouldSchedule, is(false));
+  }
+
+  @ParameterizedTest
+  @EnumSource(value = NotificationType.class,
+      names = {"PROGRAMME_POG_MONTH_12", "PROGRAMME_POG_MONTH_6"})
+  void shouldSchedulePogNotificationIfNoHistoryExists(NotificationType pogType) {
+    ProgrammeMembership programmeMembership = new ProgrammeMembership();
+    programmeMembership.setCurricula(List.of(
+        new Curriculum("MEDICAL_CURRICULUM", "specialty", false,
+            LocalDate.now(TIMEZONE).plusDays(service.getDaysBeforeEndForNotification(pogType) + 1),
+            true)
+    ));
+
+    boolean shouldSchedule = service.shouldSchedulePogNotification(
+        pogType, programmeMembership, Map.of());
 
     assertThat("Expected to schedule POG notification when no history exists.", shouldSchedule,
         is(true));
   }
 
-  @Test
-  void shouldSchedulePogNotificationIfCctDateIsExtended() {
+  @ParameterizedTest
+  @EnumSource(value = NotificationType.class,
+      names = {"PROGRAMME_POG_MONTH_12", "PROGRAMME_POG_MONTH_6"})
+  void shouldSchedulePogNotificationIfCctDateIsExtended(NotificationType pogType) {
     LocalDate oldCctDate = LocalDate.now(TIMEZONE).plusDays(10);
     LocalDate newCctDate = oldCctDate.plusDays(DEFERRAL_IF_MORE_THAN_DAYS + 1);
 
@@ -584,18 +623,19 @@ class ProgrammeMembershipUtilsTest {
         new Curriculum("MEDICAL_CURRICULUM", "specialty", false, newCctDate, true)
     ));
 
-    Map<NotificationType, History> alreadySent = Map.of(NotificationType.PROGRAMME_POG_MONTH_12,
-        history);
+    Map<NotificationType, History> alreadySent = Map.of(pogType, history);
 
     boolean shouldSchedule = service.shouldSchedulePogNotification(
-        NotificationType.PROGRAMME_POG_MONTH_12, programmeMembership, alreadySent);
+        pogType, programmeMembership, alreadySent);
 
     assertThat("Expected to schedule POG notification when CCT date is extended.", shouldSchedule
         , is(true));
   }
 
-  @Test
-  void shouldNotSchedulePogNotificationIfCctDateIsNotExtended() {
+  @ParameterizedTest
+  @EnumSource(value = NotificationType.class,
+      names = {"PROGRAMME_POG_MONTH_12", "PROGRAMME_POG_MONTH_6"})
+  void shouldNotSchedulePogNotificationIfCctDateIsNotExtended(NotificationType pogType) {
     LocalDate oldCctDate = LocalDate.now(TIMEZONE).plusDays(10);
     LocalDate newCctDate = oldCctDate.plusDays(DEFERRAL_IF_MORE_THAN_DAYS);
 
@@ -609,18 +649,19 @@ class ProgrammeMembershipUtilsTest {
         new Curriculum("MEDICAL_CURRICULUM", "specialty", false, newCctDate, true)
     ));
 
-    Map<NotificationType, History> alreadySent = Map.of(NotificationType.PROGRAMME_POG_MONTH_12,
-        history);
+    Map<NotificationType, History> alreadySent = Map.of(pogType, history);
 
     boolean shouldSchedule = service.shouldSchedulePogNotification(
-        NotificationType.PROGRAMME_POG_MONTH_12, programmeMembership, alreadySent);
+        pogType, programmeMembership, alreadySent);
 
     assertThat("Expected not to schedule POG notification when CCT date is not extended.",
         shouldSchedule, is(false));
   }
 
-  @Test
-  void shouldNotSchedulePogNotificationIfHistoryCctDateIsNull() {
+  @ParameterizedTest
+  @EnumSource(value = NotificationType.class,
+      names = {"PROGRAMME_POG_MONTH_12", "PROGRAMME_POG_MONTH_6"})
+  void shouldNotSchedulePogNotificationIfHistoryCctDateIsNull(NotificationType pogType) {
     History.TemplateInfo templateInfo = new History.TemplateInfo(null, null, Map.of());
     History history = new History(ObjectId.get(), null, null, null, templateInfo, null,
         Instant.MIN, Instant.MAX, SENT, null, null);
@@ -631,13 +672,29 @@ class ProgrammeMembershipUtilsTest {
             LocalDate.now(TIMEZONE).plusDays(400), true)
     ));
 
-    Map<NotificationType, History> alreadySent = Map.of(NotificationType.PROGRAMME_POG_MONTH_12,
-        history);
+    Map<NotificationType, History> alreadySent = Map.of(pogType, history);
 
     boolean shouldSchedule = service.shouldSchedulePogNotification(
-        NotificationType.PROGRAMME_POG_MONTH_12, programmeMembership, alreadySent);
+        pogType, programmeMembership, alreadySent);
 
     assertThat("Expected not to schedule POG notification when history CCT date is null.",
+        shouldSchedule, is(false));
+  }
+
+  @Test
+  void shouldNotSchedulePog6NotificationIfCctDateIsBeforeCutoff() {
+    // CCT date is less than 12 weeks from now, should return false for 6-month POG
+    LocalDate cctDate = LocalDate.now(TIMEZONE).plusWeeks(POG_ALL_NOTIFICATION_CUTOFF_WEEKS)
+        .minusDays(1);
+    ProgrammeMembership programmeMembership = new ProgrammeMembership();
+    programmeMembership.setCurricula(List.of(
+        new Curriculum("MEDICAL_CURRICULUM", "specialty", false, cctDate, true)
+    ));
+
+    boolean shouldSchedule = service.shouldSchedulePogNotification(
+        PROGRAMME_POG_MONTH_6, programmeMembership, Map.of());
+
+    assertThat("Expected not to schedule 6-month POG notification if CCT date is less than cutoff.",
         shouldSchedule, is(false));
   }
 
@@ -648,7 +705,7 @@ class ProgrammeMembershipUtilsTest {
     programmeMembership.setStartDate(startDate);
 
     Date result = service.whenScheduleProgrammeNotification(
-        NotificationType.PROGRAMME_DAY_ONE, programmeMembership, Map.of());
+        PROGRAMME_DAY_ONE, programmeMembership, Map.of());
 
     assertThat("Expected null when deadline is today.", result, is(nullValue()));
   }
@@ -660,7 +717,7 @@ class ProgrammeMembershipUtilsTest {
     programmeMembership.setStartDate(startDate);
 
     Date result = service.whenScheduleProgrammeNotification(
-        NotificationType.PROGRAMME_UPDATED_WEEK_1, programmeMembership, Map.of());
+        PROGRAMME_UPDATED_WEEK_1, programmeMembership, Map.of());
 
     LocalDate expectedDate = startDate.minusDays(7);
     Date expected = Date.from(expectedDate.atStartOfDay(TIMEZONE).toInstant());
@@ -687,7 +744,7 @@ class ProgrammeMembershipUtilsTest {
     programmeMembership.setStartDate(LocalDate.now(TIMEZONE));
 
     Date result = service.whenScheduleProgrammeNotification(
-        NotificationType.PROGRAMME_CREATED, programmeMembership, alreadySent);
+        PROGRAMME_CREATED, programmeMembership, alreadySent);
 
     assertThat("Expected null for deferred notification when deadline is today.", result,
         is(nullValue()));
@@ -720,7 +777,7 @@ class ProgrammeMembershipUtilsTest {
     Date expected = Date.from(expectedSendDate.atStartOfDay(TIMEZONE).toInstant());
 
     Date result = service.whenScheduleProgrammeNotification(
-        NotificationType.PROGRAMME_CREATED, programmeMembership, alreadySent);
+        PROGRAMME_CREATED, programmeMembership, alreadySent);
 
     assertThat("Expected scheduled date for deferred notification.", result, is(expected));
   }
@@ -805,10 +862,11 @@ class ProgrammeMembershipUtilsTest {
     assertThat(jobDataMap.get(RO_NAME_FIELD), is(""));
   }
 
-  @Test
-  void shouldNotSchedulePogNotificationIfNotificationTypeIsNotProgrammePogMonth12() {
-    // For notification types other than PROGRAMME_POG_MONTH_12, should always return true if no
-    // history
+  @ParameterizedTest
+  @EnumSource(value = NotificationType.class,
+      names = {"PROGRAMME_POG_MONTH_12", "PROGRAMME_POG_MONTH_6"})
+  void shouldSchedulePogNotificationIfNotificationTypeIsProgrammePog(NotificationType pogType) {
+    // For notification types other than PROGRAMME_POG_MONTH_12 / _6, should always return false
     ProgrammeMembership programmeMembership = new ProgrammeMembership();
     programmeMembership.setCurricula(List.of(
         new Curriculum("MEDICAL_CURRICULUM", "specialty", false,
@@ -816,14 +874,14 @@ class ProgrammeMembershipUtilsTest {
     ));
 
     boolean shouldSchedule = service.shouldSchedulePogNotification(
-        NotificationType.PROGRAMME_UPDATED_WEEK_12, programmeMembership, Map.of());
+        pogType, programmeMembership, Map.of());
 
-    assertThat("Expected to schedule POG notification for non-POG type.", shouldSchedule, is(true));
+    assertThat("Expected to schedule POG notification for POG type.", shouldSchedule, is(true));
   }
 
   @Test
   void shouldNotSchedulePog12MonthNotificationIfCctDateIsBefore6MonthCutoff() {
-    // CCT date is less than 12 months from now, should return false
+    // CCT date is less than 6 months from now, should return false
     LocalDate cctDate = LocalDate.now(TIMEZONE).plusMonths(6).minusDays(1);
     ProgrammeMembership programmeMembership = new ProgrammeMembership();
     programmeMembership.setCurricula(List.of(
@@ -831,14 +889,30 @@ class ProgrammeMembershipUtilsTest {
     ));
 
     boolean shouldSchedule = service.shouldSchedulePogNotification(
-        NotificationType.PROGRAMME_POG_MONTH_12, programmeMembership, Map.of());
+        PROGRAMME_POG_MONTH_12, programmeMembership, Map.of());
 
     assertThat("Expected not to schedule 12-month POG notification if CCT date is less than 6 "
         + "months away.", shouldSchedule, is(false));
   }
 
   @Test
-  void shouldSchedulePogNotificationIfCctDateIsOnOrAfter6MonthCutoff() {
+  void shouldSchedulePog6MonthNotificationIfCctDateIsBefore6MonthCutoff() {
+    // CCT date is less than 6 months from now, but more than 12 weeks, should return true
+    LocalDate cctDate = LocalDate.now(TIMEZONE).plusMonths(6).minusDays(1);
+    ProgrammeMembership programmeMembership = new ProgrammeMembership();
+    programmeMembership.setCurricula(List.of(
+        new Curriculum("MEDICAL_CURRICULUM", "specialty", false, cctDate, true)
+    ));
+
+    boolean shouldSchedule = service.shouldSchedulePogNotification(
+        PROGRAMME_POG_MONTH_6, programmeMembership, Map.of());
+
+    assertThat("Expected to schedule 6-month POG notification if CCT date is less than 6 "
+        + "months away.", shouldSchedule, is(true));
+  }
+
+  @Test
+  void shouldSchedulePog12NotificationIfCctDateIsOnOrAfter6MonthCutoff() {
     // CCT date is at least 12 months from now, should return true
     LocalDate cctDate = LocalDate.now(TIMEZONE).plusMonths(6);
     ProgrammeMembership programmeMembership = new ProgrammeMembership();
@@ -847,14 +921,16 @@ class ProgrammeMembershipUtilsTest {
     ));
 
     boolean shouldSchedule = service.shouldSchedulePogNotification(
-        NotificationType.PROGRAMME_POG_MONTH_12, programmeMembership, Map.of());
+        PROGRAMME_POG_MONTH_12, programmeMembership, Map.of());
 
     assertThat("Expected to schedule 12-month POG notification if CCT date is at least 6 months "
         + "away.", shouldSchedule, is(true));
   }
 
-  @Test
-  void shouldNotSchedulePogNotificationIfOldCctDateIsNull() {
+  @ParameterizedTest
+  @EnumSource(value = NotificationType.class,
+      names = {"PROGRAMME_POG_MONTH_12", "PROGRAMME_POG_MONTH_6"})
+  void shouldNotSchedulePogNotificationIfOldCctDateIsNull(NotificationType pogType) {
     // If history exists but old CCT date is null, should return false
     History.TemplateInfo templateInfo = new History.TemplateInfo(null, null, Map.of());
     History history = new History(ObjectId.get(), null, null, null, templateInfo, null,
@@ -866,18 +942,19 @@ class ProgrammeMembershipUtilsTest {
         new Curriculum("MEDICAL_CURRICULUM", "specialty", false, cctDate, true)
     ));
 
-    Map<NotificationType, History> alreadySent = Map.of(NotificationType.PROGRAMME_POG_MONTH_12,
-        history);
+    Map<NotificationType, History> alreadySent = Map.of(pogType, history);
 
     boolean shouldSchedule = service.shouldSchedulePogNotification(
-        NotificationType.PROGRAMME_POG_MONTH_12, programmeMembership, alreadySent);
+        pogType, programmeMembership, alreadySent);
 
     assertThat("Expected not to schedule POG notification when old CCT date is null.",
         shouldSchedule, is(false));
   }
 
-  @Test
-  void shouldNotSchedulePogNotificationIfCctDateIsNull() {
+  @ParameterizedTest
+  @EnumSource(value = NotificationType.class,
+      names = {"PROGRAMME_POG_MONTH_12", "PROGRAMME_POG_MONTH_6"})
+  void shouldNotSchedulePogNotificationIfCctDateIsNull(NotificationType pogType) {
     // If current CCT date is null, should return false
     LocalDate oldCctDate = LocalDate.now(TIMEZONE).plusMonths(13);
     History.TemplateInfo templateInfo = new History.TemplateInfo(null, null,
@@ -888,11 +965,10 @@ class ProgrammeMembershipUtilsTest {
     ProgrammeMembership programmeMembership = new ProgrammeMembership();
     // No curricula, so getProgrammeCctDate returns null
 
-    Map<NotificationType, History> alreadySent = Map.of(NotificationType.PROGRAMME_POG_MONTH_12,
-        history);
+    Map<NotificationType, History> alreadySent = Map.of(pogType, history);
 
     boolean shouldSchedule = service.shouldSchedulePogNotification(
-        NotificationType.PROGRAMME_POG_MONTH_12, programmeMembership, alreadySent);
+        pogType, programmeMembership, alreadySent);
 
     assertThat("Expected not to schedule POG notification when current CCT date is null.",
         shouldSchedule, is(false));
@@ -950,7 +1026,7 @@ class ProgrammeMembershipUtilsTest {
     programmeMembership.setStartDate(LocalDate.now(TIMEZONE).plusDays(10));
 
     boolean shouldSchedule = service.shouldScheduleNotification(
-        NotificationType.PROGRAMME_DAY_ONE, programmeMembership, Map.of()); //no history
+        PROGRAMME_DAY_ONE, programmeMembership, Map.of()); //no history
 
     assertThat("Expected to schedule notification for non-deferral, non-reminder type.",
         shouldSchedule, is(true));
@@ -1047,9 +1123,9 @@ class ProgrammeMembershipUtilsTest {
   void shouldReturnNullWhenScheduleDeferrableNotificationIfHistoryExistsButNotForType() {
     // notificationsAlreadySent contains a different notificationType
     ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
-    History history = new History(ObjectId.get(), null, NotificationType.PROGRAMME_DAY_ONE,
+    History history = new History(ObjectId.get(), null, PROGRAMME_DAY_ONE,
         null, null, null, Instant.MIN, Instant.MAX, SENT, null, null);
-    Map<NotificationType, History> alreadySent = Map.of(NotificationType.PROGRAMME_DAY_ONE,
+    Map<NotificationType, History> alreadySent = Map.of(PROGRAMME_DAY_ONE,
         history);
 
     Date result = service.whenScheduleDeferrableNotification(

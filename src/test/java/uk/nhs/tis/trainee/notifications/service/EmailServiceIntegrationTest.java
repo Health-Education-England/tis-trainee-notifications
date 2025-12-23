@@ -43,7 +43,6 @@ import static uk.nhs.tis.trainee.notifications.model.NotificationType.PLACEMENT_
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PLACEMENT_UPDATED_WEEK_12;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_CREATED;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_DAY_ONE;
-import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_POG_MONTH_12;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.CC_OF_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.TEMPLATE_CONTACT_HREF_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.PlacementService.START_DATE_FIELD;
@@ -68,6 +67,7 @@ import org.jsoup.nodes.Element;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
@@ -774,8 +774,10 @@ class EmailServiceIntegrationTest {
         + "inform you that your FormR has been updated on 01 September 2025"), is(true));
   }
 
-  @Test
-  void shouldIncludePogContactUrlInPogEmail() throws Exception {
+  @ParameterizedTest
+  @EnumSource(value = NotificationType.class,
+      names = {"PROGRAMME_POG_MONTH_12", "PROGRAMME_POG_MONTH_6"})
+  void shouldIncludePogContactUrlInPogEmail(NotificationType pogType) throws Exception {
     when(userAccountService.getUserDetailsById(USER_ID)).thenReturn(
         new UserDetails(true, RECIPIENT, null, null, null, GMC));
     String pogContactUrl = "http://pog.contact/link";
@@ -783,7 +785,7 @@ class EmailServiceIntegrationTest {
     Map<String, Object> templateVariables = new HashMap<>();
     templateVariables.put("pogContact", pogContactUrl);
     templateVariables.put("pogContactHref", "url");
-    service.sendMessageToExistingUser(PERSON_ID, PROGRAMME_POG_MONTH_12, TEMPLATE_VERSION,
+    service.sendMessageToExistingUser(PERSON_ID, pogType, TEMPLATE_VERSION,
         templateVariables, null);
 
     ArgumentCaptor<MimeMessage> messageCaptor = ArgumentCaptor.captor();
@@ -804,11 +806,12 @@ class EmailServiceIntegrationTest {
     return switch (notificationType) {
       case PLACEMENT_UPDATED_WEEK_12, PLACEMENT_ROLLOUT_2024_CORRECTION, PROGRAMME_CREATED,
            PROGRAMME_DAY_ONE, PROGRAMME_UPDATED_WEEK_12, PROGRAMME_UPDATED_WEEK_4,
-           PROGRAMME_UPDATED_WEEK_2, PROGRAMME_POG_MONTH_12, EMAIL_UPDATED_NEW, EMAIL_UPDATED_OLD,
-           COJ_CONFIRMATION, CREDENTIAL_REVOKED, FORM_SUBMITTED, FORM_UPDATED, GMC_UPDATED,
-           GMC_REJECTED_LO, GMC_REJECTED_TRAINEE, LTFT_ADMIN_UNSUBMITTED, LTFT_APPROVED,
-           LTFT_APPROVED_TPD, LTFT_UPDATED, LTFT_SUBMITTED, LTFT_SUBMITTED_TPD, LTFT_UNSUBMITTED,
-           LTFT_WITHDRAWN, LTFT_REJECTED, LTFT_REJECTED_TPD -> 1;
+           PROGRAMME_UPDATED_WEEK_2, PROGRAMME_POG_MONTH_12, PROGRAMME_POG_MONTH_6,
+           EMAIL_UPDATED_NEW, EMAIL_UPDATED_OLD, COJ_CONFIRMATION, CREDENTIAL_REVOKED,
+           FORM_SUBMITTED, FORM_UPDATED, GMC_UPDATED, GMC_REJECTED_LO, GMC_REJECTED_TRAINEE,
+           LTFT_ADMIN_UNSUBMITTED, LTFT_APPROVED, LTFT_APPROVED_TPD, LTFT_UPDATED, LTFT_SUBMITTED,
+           LTFT_SUBMITTED_TPD, LTFT_UNSUBMITTED, LTFT_WITHDRAWN, LTFT_REJECTED,
+           LTFT_REJECTED_TPD -> 1;
       default -> 0;
     };
   }

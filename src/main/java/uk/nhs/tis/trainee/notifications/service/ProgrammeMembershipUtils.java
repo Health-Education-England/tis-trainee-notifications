@@ -23,6 +23,8 @@
 package uk.nhs.tis.trainee.notifications.service;
 
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_CREATED;
+import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_POG_MONTH_12;
+import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_POG_MONTH_6;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.TEMPLATE_OWNER_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.CCT_DATE_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.COJ_SYNCED_FIELD;
@@ -137,10 +139,11 @@ public class ProgrammeMembershipUtils {
    * @return the number of days before the end date.
    */
   public Integer getDaysBeforeEndForNotification(NotificationType notificationType) {
-    if (notificationType == NotificationType.PROGRAMME_POG_MONTH_12) {
-      return 365;
-    }
-    return null;
+    return switch (notificationType) {
+      case PROGRAMME_POG_MONTH_12 -> 365;
+      case PROGRAMME_POG_MONTH_6 -> 182;
+      default -> null; //not applicable
+    };
   }
 
   /**
@@ -376,6 +379,10 @@ public class ProgrammeMembershipUtils {
       ProgrammeMembership programmeMembership,
       Map<NotificationType, History> notificationsAlreadySent) {
 
+    if (!NotificationType.getProgrammePogNotificationTypes().contains(notificationType)) {
+      return false; //not a POG notification
+    }
+
     LocalDate cctDate = getProgrammeCctDate(programmeMembership);
 
     //only resend extension notifications
@@ -391,12 +398,14 @@ public class ProgrammeMembershipUtils {
       return isExtension;
     }
 
-    return notificationType != NotificationType.PROGRAMME_POG_MONTH_12
-        || !cctDate.isBefore(LocalDate.now(timezone)
-        .plusMonths(POG_12MONTH_NOTIFICATION_CUTOFF_MONTHS));
-    // if less than 6 months we'll send the 6-month notification, so don't send 12-month one,
-    // otherwise send it.
-    // We will add logic to not schedule the 6-month POG notification if less than 12 weeks to CCT
-    // when we add that type.
+    if (notificationType == PROGRAMME_POG_MONTH_6) {
+      return !cctDate.isBefore(LocalDate.now(timezone)
+          .plusWeeks(POG_ALL_NOTIFICATION_CUTOFF_WEEKS));
+    } else if (notificationType == PROGRAMME_POG_MONTH_12) {
+      return !cctDate.isBefore(LocalDate.now(timezone)
+          .plusMonths(POG_12MONTH_NOTIFICATION_CUTOFF_MONTHS));
+      // if sooner than cutoff, may send 6-month reminder
+    }
+    return false; //should not reach here
   }
 }
