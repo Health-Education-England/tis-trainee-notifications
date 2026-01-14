@@ -36,8 +36,6 @@ import static org.testcontainers.containers.localstack.LocalStackContainer.Servi
 import static uk.nhs.tis.trainee.notifications.model.LocalOfficeContactType.POG;
 import static uk.nhs.tis.trainee.notifications.model.LocalOfficeContactType.TSS_SUPPORT;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_CREATED;
-import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_POG_MONTH_12;
-import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_POG_MONTH_6;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_UPDATED_WEEK_12;
 import static uk.nhs.tis.trainee.notifications.model.ProgrammeActionType.SIGN_COJ;
 import static uk.nhs.tis.trainee.notifications.model.TisReferenceType.PROGRAMME_MEMBERSHIP;
