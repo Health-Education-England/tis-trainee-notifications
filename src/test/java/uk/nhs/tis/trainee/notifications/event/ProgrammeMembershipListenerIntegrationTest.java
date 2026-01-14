@@ -685,22 +685,15 @@ class ProgrammeMembershipListenerIntegrationTest {
         PROGRAMME_CREATED, new History.RecipientInfo(PERSON_ID, MessageType.EMAIL, EMAIL), null,
         null, Instant.now(), null, NotificationStatus.FAILED, null, null);
     mongoTemplate.insert(welcomeNotification);
-    if (type == PROGRAMME_POG_MONTH_6) {
-      //insert POG 12 month notification, so we don't send this as well
-      ObjectId id2 = ObjectId.get();
-      History pog12monthNotification = new History(
-          id2, new History.TisReferenceInfo(PROGRAMME_MEMBERSHIP,
-          PROGRAMME_MEMBERSHIP_ID.toString()), PROGRAMME_POG_MONTH_12,
-          new History.RecipientInfo(PERSON_ID, MessageType.EMAIL, EMAIL),
-          null, null, Instant.now(), null, NotificationStatus.FAILED, null, null);
-      mongoTemplate.insert(pog12monthNotification);
-    }
 
     when(userAccountService.getUserDetailsById(PERSON_ID)).thenReturn(
         new UserDetails(true, EMAIL, null, null, null, null));
 
     LocalDate cctDate = LocalDate.now().plusDays(
-        pmUtils.getDaysBeforeEndForNotification(type) - 1);
+        pmUtils.getDaysBeforeEndForNotification(type) - 2);
+    // avoid shouldSchedulePogNotification() edge case since 6 months is not exactly 182 days, so we
+    // don't want the 12-month POG notification to be accidentally triggered when testing the
+    // 6-month one.
 
     sqsTemplate.send(PM_UPDATED_QUEUE,
         buildStandardProgrammeMembershipEvent(LocalDate.now().minusMonths(1), true, cctDate));
