@@ -36,6 +36,8 @@ import static org.testcontainers.containers.localstack.LocalStackContainer.Servi
 import static uk.nhs.tis.trainee.notifications.model.LocalOfficeContactType.POG;
 import static uk.nhs.tis.trainee.notifications.model.LocalOfficeContactType.TSS_SUPPORT;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_CREATED;
+import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_POG_MONTH_12;
+import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_POG_MONTH_6;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_UPDATED_WEEK_12;
 import static uk.nhs.tis.trainee.notifications.model.ProgrammeActionType.SIGN_COJ;
 import static uk.nhs.tis.trainee.notifications.model.TisReferenceType.PROGRAMME_MEMBERSHIP;
@@ -683,6 +685,16 @@ class ProgrammeMembershipListenerIntegrationTest {
         PROGRAMME_CREATED, new History.RecipientInfo(PERSON_ID, MessageType.EMAIL, EMAIL), null,
         null, Instant.now(), null, NotificationStatus.FAILED, null, null);
     mongoTemplate.insert(welcomeNotification);
+    if (type == PROGRAMME_POG_MONTH_6) {
+      //insert POG 12 month notification, so we don't send this as well
+      ObjectId id2 = ObjectId.get();
+      History pog12monthNotification = new History(
+          id2, new History.TisReferenceInfo(PROGRAMME_MEMBERSHIP,
+          PROGRAMME_MEMBERSHIP_ID.toString()), PROGRAMME_POG_MONTH_12,
+          new History.RecipientInfo(PERSON_ID, MessageType.EMAIL, EMAIL),
+          null, null, Instant.now(), null, NotificationStatus.FAILED, null, null);
+      mongoTemplate.insert(pog12monthNotification);
+    }
 
     when(userAccountService.getUserDetailsById(PERSON_ID)).thenReturn(
         new UserDetails(true, EMAIL, null, null, null, null));
