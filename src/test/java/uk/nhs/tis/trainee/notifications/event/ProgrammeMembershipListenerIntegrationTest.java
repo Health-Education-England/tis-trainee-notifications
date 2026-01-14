@@ -688,7 +688,10 @@ class ProgrammeMembershipListenerIntegrationTest {
         new UserDetails(true, EMAIL, null, null, null, null));
 
     LocalDate cctDate = LocalDate.now().plusDays(
-        pmUtils.getDaysBeforeEndForNotification(type) - 1);
+        pmUtils.getDaysBeforeEndForNotification(type) - 2);
+    // avoid shouldSchedulePogNotification() edge case since 6 months is not exactly 182 days, so we
+    // don't want the 12-month POG notification to be accidentally triggered when testing the
+    // 6-month one.
 
     sqsTemplate.send(PM_UPDATED_QUEUE,
         buildStandardProgrammeMembershipEvent(LocalDate.now().minusMonths(1), true, cctDate));

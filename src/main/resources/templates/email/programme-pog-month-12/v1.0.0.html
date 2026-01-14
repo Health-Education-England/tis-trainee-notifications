@@ -29,8 +29,8 @@
     ><span th:case="email"><a id="pogMail1" th:href="|mailto:${pogContact}?subject=Period of Grace query - GMC: ${not #strings.isEmpty(gmcNumber) ? gmcNumber : 'unknown'}, Prog No: ${not #strings.isEmpty(programmeNumber) ? programmeNumber : 'unknown'}|"><span th:text="${pogContact}"></span></a></span
     ><span th:case="*"><span th:text="${pogContact}"></span></span
     ></th:block> to confirm whether you will be applying for a POG. If we do not receive the intent form 6 months before your CCT date, NHS England may not be able to offer you a Period of Grace placement.</p>
-    <p>You must remain connected to <span th:text="${not #strings.isEmpty(roName)} ? ${roName} : _">responsible officer missing</span
-    > and <span th:text="${not #strings.isEmpty(designatedBody)} ? ${designatedBody} : _">designated body missing</span
+    <p>You must remain connected to your Responsible Officer - <span th:text="${not #strings.isEmpty(roName)} ? ${roName} : _">responsible officer missing</span
+    >, and your Designated Body - <span th:text="${not #strings.isEmpty(designatedBody)} ? ${designatedBody} : _">designated body missing</span
     > for the duration of your Period of Grace.</p>
     <p>Please familiarise yourself with the process for applying to join the Specialist Register through the GMC. The GMC have provided the following online guide to help you with the process:</p>
     <p>CCT route: <a href="https://www.gmc-uk.org/registration-and-licensing/join-the-register/registration-applications/specialist-application-guides/guide-to-a-certificate-of-completion-of-training">Certificate of completion of training application</a>.</p>
