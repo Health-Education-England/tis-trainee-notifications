@@ -96,8 +96,9 @@ class PlacementServiceTest {
   private static final String SERVICE_URL =
       "http://localhost:0000/reference/api/local-office-contact/{owner}";
   private static final String IN_POST = "In Post";
-  private static final String In_POST_ACTING_UP = "In Post - Acting up";
+  private static final String IN_POST_ACTING_UP = "In Post - Acting up";
   private static final String IN_POST_EXTENSION = "In Post - Extension";
+  private static final String IN_POST_POG = "In Post - POG";
   private static final String EXCLUDED_PLACEMENT_TYPE = "RANDOM TYPE";
 
   private static final String TIS_ID = "123";
@@ -136,7 +137,7 @@ class PlacementServiceTest {
   }
 
   @ParameterizedTest
-  @ValueSource(strings = {IN_POST, In_POST_ACTING_UP, IN_POST_EXTENSION})
+  @ValueSource(strings = {IN_POST, IN_POST_ACTING_UP, IN_POST_EXTENSION, IN_POST_POG})
   void shouldNotExcludePlacementWithInPostPlacementType(String placementType) {
     Placement placement = new Placement();
     placement.setPlacementType(placementType);
