@@ -75,7 +75,7 @@ public class PlacementService {
   public static final String GMC_NUMBER_FIELD = "gmcNumber";
 
   public static final List<String> PLACEMENT_TYPES_TO_ACT_ON
-      = List.of("In post", "In post - Acting up", "In Post - Extension");
+      = List.of("In post"); // only placements with type starting with "In Post" are included
 
   private final HistoryService historyService;
   private final NotificationService notificationService;
@@ -134,7 +134,8 @@ public class PlacementService {
       return true; //should not happen, but some legacy data has no placement type set.
     }
     return (PLACEMENT_TYPES_TO_ACT_ON.stream()
-        .noneMatch(placement.getPlacementType()::equalsIgnoreCase));
+        .noneMatch(type ->
+            placement.getPlacementType().toLowerCase().startsWith(type.toLowerCase())));
   }
 
   /**
