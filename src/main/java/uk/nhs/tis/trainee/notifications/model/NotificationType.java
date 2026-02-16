@@ -52,6 +52,8 @@ public enum NotificationType {
   LTFT_REJECTED("ltft-rejected"),
   LTFT_REJECTED_TPD("ltft-rejected-tpd"),
   LTFT_SUBMITTED("ltft-submitted"),
+  // Notification share with `ltft-submitted`, this type is for test only
+  LTFT_ADMIN_UPDATED("ltft-admin-updated"),
   LTFT_SUBMITTED_TPD("ltft-submitted-tpd"),
   LTFT_UNSUBMITTED("ltft-unsubmitted"),
   LTFT_UPDATED("ltft-updated"),

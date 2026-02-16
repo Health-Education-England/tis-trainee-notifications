@@ -77,7 +77,7 @@ application:
     ltft-rejected-tpd:
       email: v1.0.0
     ltft-submitted:
-      email: v1.0.0
+      email: v1.1.0
     ltft-submitted-tpd:
       email: v1.0.1
     ltft-unsubmitted:

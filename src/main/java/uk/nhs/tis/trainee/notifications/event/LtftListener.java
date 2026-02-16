@@ -127,7 +127,8 @@ public class LtftListener {
 
     Map<String, Object> templateVariables = Map.of(
         "var", event,
-        "contacts", getContacts(managingDeanery)
+        "contacts", getContacts(managingDeanery),
+        "modifiedRole", statusModifiedByRole
     );
     History.TisReferenceInfo tisReferenceInfo
         = new History.TisReferenceInfo(TisReferenceType.LTFT, event.getFormId());

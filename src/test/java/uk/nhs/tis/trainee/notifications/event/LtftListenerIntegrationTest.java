@@ -36,6 +36,7 @@ import static uk.nhs.tis.trainee.notifications.model.LocalOfficeContactType.LTFT
 import static uk.nhs.tis.trainee.notifications.model.LocalOfficeContactType.SUPPORTED_RETURN_TO_TRAINING;
 import static uk.nhs.tis.trainee.notifications.model.LocalOfficeContactType.TSS_SUPPORT;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.LTFT_ADMIN_UNSUBMITTED;
+import static uk.nhs.tis.trainee.notifications.model.NotificationType.LTFT_ADMIN_UPDATED;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -197,6 +198,7 @@ class LtftListenerIntegrationTest {
       APPROVED     | LTFT_APPROVED
       REJECTED     | LTFT_REJECTED
       SUBMITTED    | LTFT_SUBMITTED
+      SUBMITTED    | LTFT_ADMIN_UPDATED
       UNSUBMITTED  | LTFT_UNSUBMITTED
       UNSUBMITTED  | LTFT_ADMIN_UNSUBMITTED
       WITHDRAWN    | LTFT_WITHDRAWN
@@ -207,7 +209,8 @@ class LtftListenerIntegrationTest {
     when(userAccountService.getUserDetailsById(USER_ID)).thenReturn(
         new UserDetails(true, EMAIL, TITLE, null, null, GMC));
 
-    String modifiedByRole = type == LTFT_ADMIN_UNSUBMITTED ? "ADMIN" : "TRAINEE";
+    String modifiedByRole = (type == LTFT_ADMIN_UNSUBMITTED || type == LTFT_ADMIN_UPDATED)
+        ? "ADMIN" : "TRAINEE";
     String eventString = """
         {
           "traineeTisId": "%s",
@@ -252,6 +255,7 @@ class LtftListenerIntegrationTest {
       APPROVED     | LTFT_APPROVED
       REJECTED     | LTFT_REJECTED
       SUBMITTED    | LTFT_SUBMITTED
+      SUBMITTED    | LTFT_ADMIN_UPDATED
       UNSUBMITTED  | LTFT_UNSUBMITTED
       UNSUBMITTED  | LTFT_ADMIN_UNSUBMITTED
       WITHDRAWN    | LTFT_WITHDRAWN
@@ -262,7 +266,8 @@ class LtftListenerIntegrationTest {
     when(userAccountService.getUserDetailsById(USER_ID)).thenReturn(
         new UserDetails(true, EMAIL, TITLE, "", "", GMC));
 
-    String modifiedByRole = type == LTFT_ADMIN_UNSUBMITTED ? "ADMIN" : "TRAINEE";
+    String modifiedByRole = (type == LTFT_ADMIN_UNSUBMITTED || type == LTFT_ADMIN_UPDATED)
+        ? "ADMIN" : "TRAINEE";
     String eventString = """
         {
           "traineeTisId": "%s",
@@ -326,6 +331,7 @@ class LtftListenerIntegrationTest {
       APPROVED    | LTFT_APPROVED
       REJECTED    | LTFT_REJECTED
       SUBMITTED   | LTFT_SUBMITTED
+      SUBMITTED   | LTFT_ADMIN_UPDATED
       UNSUBMITTED | LTFT_UNSUBMITTED
       UNSUBMITTED | LTFT_ADMIN_UNSUBMITTED
       WITHDRAWN   | LTFT_WITHDRAWN
@@ -346,7 +352,8 @@ class LtftListenerIntegrationTest {
         eq(""))).thenCallRealMethod();
     when(notificationService.getHrefTypeForContact(any())).thenCallRealMethod();
 
-    String modifiedByRole = type == LTFT_ADMIN_UNSUBMITTED ? "ADMIN" : "TRAINEE";
+    String modifiedByRole = (type == LTFT_ADMIN_UNSUBMITTED || type == LTFT_ADMIN_UPDATED)
+        ? "ADMIN" : "TRAINEE";
     String eventString = """
         {
           "traineeTisId": "%s",
@@ -411,6 +418,7 @@ class LtftListenerIntegrationTest {
       APPROVED    | LTFT_APPROVED
       REJECTED    | LTFT_REJECTED
       SUBMITTED   | LTFT_SUBMITTED
+      SUBMITTED   | LTFT_ADMIN_UPDATED
       UNSUBMITTED | LTFT_UNSUBMITTED
       UNSUBMITTED | LTFT_ADMIN_UNSUBMITTED
       WITHDRAWN   | LTFT_WITHDRAWN
@@ -431,7 +439,8 @@ class LtftListenerIntegrationTest {
         eq(""))).thenCallRealMethod();
     when(notificationService.getHrefTypeForContact(any())).thenCallRealMethod();
 
-    String modifiedByRole = type == LTFT_ADMIN_UNSUBMITTED ? "ADMIN" : "TRAINEE";
+    String modifiedByRole = (type == LTFT_ADMIN_UNSUBMITTED || type == LTFT_ADMIN_UPDATED)
+        ? "ADMIN" : "TRAINEE";
     String eventString = """
         {
           "traineeTisId": "%s",
@@ -558,7 +567,7 @@ class LtftListenerIntegrationTest {
   @CsvSource(delimiter = '|', textBlock = """
       APPROVED     | LTFT_APPROVED          | v1.0.2
       REJECTED     | LTFT_REJECTED          | v1.0.0
-      SUBMITTED    | LTFT_SUBMITTED         | v1.0.0
+      SUBMITTED    | LTFT_SUBMITTED         | v1.1.0
       UNSUBMITTED  | LTFT_UNSUBMITTED       | v1.0.0
       UNSUBMITTED  | LTFT_ADMIN_UNSUBMITTED | v1.0.0
       WITHDRAWN    | LTFT_WITHDRAWN         | v1.0.0
@@ -643,7 +652,7 @@ class LtftListenerIntegrationTest {
     assertThat("Unexpected template version.", templateInfo.version(), is(expectedVersion));
 
     Map<String, Object> storedVariables = templateInfo.variables();
-    assertThat("Unexpected template variable count.", storedVariables.size(), is(6));
+    assertThat("Unexpected template variable count.", storedVariables.size(), is(7));
     assertThat("Unexpected template variable.", storedVariables.get("familyName"), is(FAMILY_NAME));
     assertThat("Unexpected template variable.", storedVariables.get("givenName"), is(GIVEN_NAME));
 
