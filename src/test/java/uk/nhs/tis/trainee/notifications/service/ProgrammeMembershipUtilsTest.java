@@ -628,8 +628,8 @@ class ProgrammeMembershipUtilsTest {
     boolean shouldSchedule = service.shouldSchedulePogNotification(
         pogType, programmeMembership, alreadySent);
 
-    assertThat("Expected to schedule POG notification when CCT date is extended.", shouldSchedule
-        , is(true));
+    assertThat("Expected to schedule POG notification when CCT date is extended.", shouldSchedule,
+        is(true));
   }
 
   @ParameterizedTest

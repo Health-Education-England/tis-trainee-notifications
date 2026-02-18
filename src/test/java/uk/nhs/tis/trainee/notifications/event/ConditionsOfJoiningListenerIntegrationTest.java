@@ -66,9 +66,9 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
 import org.springframework.boot.autoconfigure.thymeleaf.ThymeleafAutoConfiguration;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import uk.nhs.tis.trainee.notifications.dto.CojPublishedEvent;
 import uk.nhs.tis.trainee.notifications.dto.CojPublishedEvent.ConditionsOfJoining;
 import uk.nhs.tis.trainee.notifications.dto.StoredFile;
@@ -113,16 +113,16 @@ class ConditionsOfJoiningListenerIntegrationTest {
       + "taking action, or refraining from taking action, on the basis of information contained "
       + "in this email. Thank you.";
 
-  @MockBean
+  @MockitoBean
   private JavaMailSender mailSender;
 
-  @MockBean
+  @MockitoBean
   private UserAccountService userAccountService;
 
-  @MockBean
+  @MockitoBean
   private HistoryService historyService;
 
-  @MockBean
+  @MockitoBean
   private S3Template s3Template;
 
   @Autowired

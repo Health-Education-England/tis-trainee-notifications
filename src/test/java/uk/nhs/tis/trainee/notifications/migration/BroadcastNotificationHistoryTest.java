@@ -81,7 +81,7 @@ class BroadcastNotificationHistoryTest {
 
   @Test
   void shouldCatchMongoExceptionNotThrowIt() {
-    when(template.stream(any(), eq(History.class))).thenThrow(new MongoException("exception"));
+    when(template.stream(any(), eq(History.class))).thenThrow(MongoException.class);
     Assertions.assertDoesNotThrow(() -> migration.migrate());
   }
 

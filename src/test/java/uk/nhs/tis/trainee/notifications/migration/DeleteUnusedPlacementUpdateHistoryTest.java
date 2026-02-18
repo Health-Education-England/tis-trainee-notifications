@@ -76,7 +76,7 @@ class DeleteUnusedPlacementUpdateHistoryTest {
 
   @Test
   void shouldCatchMongoExceptionNotThrowIt() {
-    when(template.remove(any(), eq(History.class))).thenThrow(new MongoException("exception"));
+    when(template.remove(any(), eq(History.class))).thenThrow(MongoException.class);
     Assertions.assertDoesNotThrow(() -> migration.migrate());
   }
 

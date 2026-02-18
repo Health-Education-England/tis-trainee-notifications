@@ -75,8 +75,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
 import org.springframework.boot.autoconfigure.thymeleaf.ThymeleafAutoConfiguration;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.web.client.RestTemplate;
 import uk.nhs.tis.trainee.notifications.dto.UserDetails;
 import uk.nhs.tis.trainee.notifications.model.NotificationType;
@@ -93,19 +93,19 @@ class EmailServiceIntegrationTest {
   private static final String PROGRAM_NO = "SW111";
   private static final LocalDate PLACEMENT_START_DATE = LocalDate.now();
 
-  @MockBean
+  @MockitoBean
   private JavaMailSender mailSender;
 
-  @MockBean
+  @MockitoBean
   private HistoryService historyService;
 
-  @MockBean
+  @MockitoBean
   private UserAccountService userAccountService;
 
-  @MockBean
+  @MockitoBean
   private RestTemplate restTemplate;
 
-  @MockBean
+  @MockitoBean
   private S3Template s3Template;
 
   @Autowired

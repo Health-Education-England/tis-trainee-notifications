@@ -320,10 +320,8 @@ class NotificationServiceTest {
 
   @Test
   void shouldThrowExceptionWhenTraineeDetailsRestClientExceptions() {
-    when(emailService.getRecipientAccountByEmail(any())).thenThrow(
-        new IllegalArgumentException("error"));
-    when(restTemplate.getForObject(any(), any(), anyMap()))
-        .thenThrow(new RestClientException("error"));
+    when(emailService.getRecipientAccountByEmail(any())).thenThrow(IllegalArgumentException.class);
+    when(restTemplate.getForObject(any(), any(), anyMap())).thenThrow(RestClientException.class);
 
     assertThrows(IllegalArgumentException.class,
         () -> service.executeNow(JOB_KEY, programmeJobDataMap));
@@ -670,7 +668,8 @@ class NotificationServiceTest {
   @EnumSource(value = NotificationType.class, mode = Mode.EXCLUDE,
       names = {"PLACEMENT_UPDATED_WEEK_12", "PLACEMENT_ROLLOUT_2024_CORRECTION",
           "PROGRAMME_CREATED", "PROGRAMME_DAY_ONE", "PROGRAMME_UPDATED_WEEK_12",
-          "PROGRAMME_UPDATED_WEEK_4", "PROGRAMME_UPDATED_WEEK_2"})
+          "PROGRAMME_UPDATED_WEEK_4", "PROGRAMME_UPDATED_WEEK_2", "PROGRAMME_POG_MONTH_12",
+          "PROGRAMME_POG_MONTH_6"})
   void shouldNotSendEmailWhenNotificationTypeNotCorrect(NotificationType notificationType) {
 
     when(messagingControllerService.isValidRecipient(any(), any()))
@@ -1730,8 +1729,7 @@ class NotificationServiceTest {
 
   @Test
   void shouldReturnNullWhenRestClientExceptionsInGetTraineeDetails() {
-    when(restTemplate.getForObject(any(), any(), anyMap()))
-        .thenThrow(new RestClientException("error"));
+    when(restTemplate.getForObject(any(), any(), anyMap())).thenThrow(RestClientException.class);
 
     UserDetails result = service.getTraineeDetails(PERSON_ID);
 
@@ -1745,7 +1743,7 @@ class NotificationServiceTest {
     ParameterizedTypeReference<Set<LocalOfficeContact>> loContactListListType
         = new ParameterizedTypeReference<>() {};
     when(restTemplate.exchange(any(), any(), any(), eq(loContactListListType), anyMap()))
-        .thenThrow(new RestClientException("error"));
+        .thenThrow(RestClientException.class);
 
     Set<LocalOfficeContact> result = service.getTraineeLocalOfficeContacts(PERSON_ID, contactType);
 

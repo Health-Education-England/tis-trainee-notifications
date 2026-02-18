@@ -113,11 +113,11 @@ class UserAccountServiceTest {
 
     UserType user1 = UserType.builder().attributes(
         AttributeType.builder().name(ATTRIBUTE_PERSON_ID).value(PERSON_ID_1).build(),
-        AttributeType.builder().name(ATTRIBUTE_USER_ID).value(USER_ID_1.toString()).build()
+        AttributeType.builder().name(ATTRIBUTE_USER_ID).value(USER_ID_1).build()
     ).build();
     UserType user2 = UserType.builder().attributes(
         AttributeType.builder().name(ATTRIBUTE_PERSON_ID).value(PERSON_ID_2).build(),
-        AttributeType.builder().name(ATTRIBUTE_USER_ID).value(USER_ID_2.toString()).build()
+        AttributeType.builder().name(ATTRIBUTE_USER_ID).value(USER_ID_2).build()
     ).build();
     when(users.stream()).thenReturn(Stream.of(user1, user2));
 
@@ -140,7 +140,7 @@ class UserAccountServiceTest {
 
     UserType user2 = UserType.builder().attributes(
         AttributeType.builder().name(ATTRIBUTE_PERSON_ID).value(PERSON_ID_1).build(),
-        AttributeType.builder().name(ATTRIBUTE_USER_ID).value(USER_ID_2.toString()).build()
+        AttributeType.builder().name(ATTRIBUTE_USER_ID).value(USER_ID_2).build()
     ).build();
     when(users.stream()).thenReturn(Stream.of(user2));
 

@@ -53,11 +53,11 @@ import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mockito;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
-import org.springframework.boot.test.mock.mockito.SpyBean;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.testcontainers.containers.MongoDBContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -80,13 +80,13 @@ class UpdateInAppTvTest {
 
   private static final String CONTACT_URL = "https://ltft.com";
 
-  @SpyBean
+  @MockitoSpyBean
   private MongoTemplate mongoTemplate;
 
-  @MockBean
+  @MockitoBean
   private NotificationService notificationService;
 
-  @MockBean
+  @MockitoBean
   private MessageSendingService messageService;
 
   private UpdateInAppTvContact migrator;
