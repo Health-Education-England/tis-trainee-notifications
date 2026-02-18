@@ -66,10 +66,9 @@ dependencies {
   testImplementation("com.playtika.testcontainers:embedded-redis:3.1.17")
 
   testImplementation("org.springframework.boot:spring-boot-testcontainers")
-  testImplementation("org.testcontainers:testcontainers:1.21.4")
-  testImplementation("org.testcontainers:junit-jupiter:1.21.4")
-  testImplementation("org.testcontainers:localstack:1.21.4")
-  testImplementation("org.testcontainers:mongodb:1.21.4")
+  testImplementation("org.testcontainers:junit-jupiter")
+  testImplementation("org.testcontainers:localstack")
+  testImplementation("org.testcontainers:mongodb")
   testImplementation("org.awaitility:awaitility")
 
   testImplementation(libs.jsoup)
