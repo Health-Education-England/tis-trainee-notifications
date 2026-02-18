@@ -51,6 +51,6 @@ public class MongoCollectionConfiguration {
   @PostConstruct
   public void initIndexes() {
     IndexOperations indexOps = template.indexOps(History.class);
-    indexOps.ensureIndex(new Index().on("recipient.id", Direction.ASC));
+    indexOps.createIndex(new Index().on("recipient.id", Direction.ASC));
   }
 }

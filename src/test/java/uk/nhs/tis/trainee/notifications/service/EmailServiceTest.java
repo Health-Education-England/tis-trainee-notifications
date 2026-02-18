@@ -792,7 +792,7 @@ class EmailServiceTest {
   void shouldUseDefaultHashIfMd5NotAvailable() {
     MockedStatic<MessageDigest> mockedMessageDigest = Mockito.mockStatic(MessageDigest.class);
     mockedMessageDigest.when(() -> MessageDigest.getInstance(any()))
-        .thenThrow(new NoSuchAlgorithmException("error"));
+        .thenThrow(NoSuchAlgorithmException.class);
 
     String hash = service.createMd5Hash("some input");
     assertThat("Unexpected default hash.", hash, is(DEFAULT_EMAIL_HASH));

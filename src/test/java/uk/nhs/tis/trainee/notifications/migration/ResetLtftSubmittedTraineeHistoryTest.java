@@ -39,14 +39,14 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
-import org.springframework.boot.test.mock.mockito.SpyBean;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.mongodb.core.query.Update;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.testcontainers.containers.MongoDBContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -61,10 +61,10 @@ class ResetLtftSubmittedTraineeHistoryTest {
   @ServiceConnection
   private static final MongoDBContainer MONGODB_CONTAINER = new MongoDBContainer(MONGODB);
 
-  @SpyBean
+  @MockitoSpyBean
   private MongoTemplate mongoTemplate;
 
-  @MockBean
+  @MockitoBean
   private SqsTemplate sqsTemplate;
 
   private ResetLtftSubmittedTraineeHistory migrator;
@@ -126,7 +126,7 @@ class ResetLtftSubmittedTraineeHistoryTest {
     Update expectedUpdate = Update.update("type", LTFT_SUBMITTED);
 
     when(mongoTemplate.updateMulti(expectedQuery, expectedUpdate, History.class))
-        .thenThrow(new MongoException("exception"));
+        .thenThrow(MongoException.class);
     Assertions.assertDoesNotThrow(() -> migrator.migrate());
   }
 

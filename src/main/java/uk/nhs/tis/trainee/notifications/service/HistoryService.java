@@ -471,7 +471,8 @@ public class HistoryService {
     }
 
     History history = optionalHistory.get();
-    Set<String> selectors = history.recipient().type() == IN_APP ? Set.of(SELECTOR_CONTENT) : Set.of();
+    Set<String> selectors =
+        history.recipient().type() == IN_APP ? Set.of(SELECTOR_CONTENT) : Set.of();
     return rebuildMessage(history, selectors);
   }
 

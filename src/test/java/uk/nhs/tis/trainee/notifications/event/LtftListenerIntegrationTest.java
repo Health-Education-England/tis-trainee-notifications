@@ -65,7 +65,6 @@ import org.junit.jupiter.params.provider.CsvSource;
 import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
@@ -74,6 +73,7 @@ import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.testcontainers.containers.MongoDBContainer;
 import org.testcontainers.containers.localstack.LocalStackContainer;
 import org.testcontainers.junit.jupiter.Container;
@@ -151,19 +151,19 @@ class LtftListenerIntegrationTest {
     localstack.execInContainer("awslocal sqs create-queue --queue-name", LTFT_UPDATED_TPD_QUEUE);
   }
 
-  @MockBean
+  @MockitoBean
   private JavaMailSender mailSender;
 
-  @MockBean
+  @MockitoBean
   private MessageSendingService messageService;
 
-  @MockBean
+  @MockitoBean
   private NotificationService notificationService;
 
-  @MockBean
+  @MockitoBean
   private UserAccountService userAccountService;
 
-  @MockBean
+  @MockitoBean
   private S3Template s3Template;
 
   @Autowired

@@ -29,22 +29,22 @@ import io.awspring.cloud.sqs.operations.SqsTemplate;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.ApplicationContext;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import uk.nhs.tis.trainee.notifications.config.MongoCollectionConfiguration;
 
 @SpringBootTest
 @ActiveProfiles("test")
 class TisTraineeNotificationsApplicationTest {
 
-  @MockBean
+  @MockitoBean
   private MongoCollectionConfiguration mongoConfiguration;
 
-  @MockBean
+  @MockitoBean
   private S3Template s3Template;
 
-  @MockBean
+  @MockitoBean
   private SqsTemplate sqsTemplate;
 
   @Autowired

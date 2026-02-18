@@ -83,7 +83,6 @@ import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.data.mongodb.core.MongoTemplate;
@@ -95,6 +94,7 @@ import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.web.client.RestTemplate;
 import org.testcontainers.containers.MongoDBContainer;
 import org.testcontainers.containers.localstack.LocalStackContainer;
@@ -179,19 +179,19 @@ class ProgrammeMembershipListenerIntegrationTest {
     localstack.execInContainer("awslocal sqs create-queue --queue-name", PM_UPDATED_QUEUE);
   }
 
-  @MockBean
+  @MockitoBean
   private JavaMailSender mailSender;
 
-  @MockBean
+  @MockitoBean
   private MessageSendingService messageService;
 
-  @MockBean
+  @MockitoBean
   private UserAccountService userAccountService;
 
-  @MockBean
+  @MockitoBean
   private S3Template s3Template;
 
-  @MockBean
+  @MockitoBean
   private RestTemplate restTemplate;
 
   @Autowired
@@ -233,8 +233,8 @@ class ProgrammeMembershipListenerIntegrationTest {
     );
 
     when(restTemplate.getForObject(referenceUrl + API_GET_OWNER_CONTACT,
-        List.class, Map.of(OWNER_FIELD, MANAGING_DEANERY))).
-        thenReturn(List.of(pogEmailContact, loTssEmailContact));
+        List.class, Map.of(OWNER_FIELD, MANAGING_DEANERY)))
+        .thenReturn(List.of(pogEmailContact, loTssEmailContact));
 
     //default empty actions set returned
     ResponseEntity<Set<ActionDto>> responseEntity = new ResponseEntity<>(Set.of(), HttpStatus.OK);

@@ -58,7 +58,7 @@ class MongoCollectionConfigurationTest {
     configuration.initIndexes();
 
     ArgumentCaptor<IndexDefinition> indexCaptor = ArgumentCaptor.captor();
-    verify(indexOperations, atLeastOnce()).ensureIndex(indexCaptor.capture());
+    verify(indexOperations, atLeastOnce()).createIndex(indexCaptor.capture());
 
     List<IndexDefinition> indexes = indexCaptor.getAllValues();
     assertThat("Unexpected number of indexes.", indexes.size(), is(1));

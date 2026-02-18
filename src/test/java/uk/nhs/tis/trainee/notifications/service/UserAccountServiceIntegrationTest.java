@@ -40,12 +40,12 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.annotation.DirtiesContext.ClassMode;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import software.amazon.awssdk.core.pagination.sync.SdkIterable;
 import software.amazon.awssdk.services.cognitoidentityprovider.CognitoIdentityProviderClient;
@@ -68,13 +68,13 @@ class UserAccountServiceIntegrationTest {
   private static final String ATTRIBUTE_PERSON_ID = "custom:tisId";
   private static final String ATTRIBUTE_USER_ID = "sub";
 
-  @MockBean
+  @MockitoBean
   private MongoCollectionConfiguration mongoConfiguration;
 
-  @MockBean
+  @MockitoBean
   private CognitoIdentityProviderClient cognitoClient;
 
-  @MockBean
+  @MockitoBean
   private SqsTemplate sqsTemplate;
 
   @Mock
