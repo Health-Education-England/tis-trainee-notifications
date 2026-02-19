@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+  <title>LTFT Submitted</title>
+</head>
+<body>
+<h1>Email Message</h1>
+<h2>Subject</h2>
+<th:block th:fragment="subject">
+  NHS England<th:block th:text="${not #strings.isEmpty(var?.programmeMembership?.managingDeanery)} ? | - ${var.programmeMembership.managingDeanery}| : _"></th:block> - <th:block th:if="${modifiedRole== 'ADMIN'}">Update to </th:block><th:block th:if="${modifiedRole!= 'ADMIN'}">Confirmation of </th:block>Submitted Application for Change in Hours (LTFT) - <th:block th:text="${not #strings.isEmpty(var?.formRef)} ? ${var.formRef} : 'unknown form reference'"></th:block>
+</th:block><h2>Content</h2>
+<th:block th:fragment="content" th:with="subjectRefs = |GMC: ${not #strings.isEmpty(var?.personalDetails?.gmcNumber) ? var.personalDetails.gmcNumber : 'unknown'}, LTFT Ref No: ${not #strings.isEmpty(var?.formRef) ? var.formRef : 'unknown'}|">
+  <div th:replace="fragments/retry/v1.0.0 :: retry(${originallySentOn})"></div>
+  <div style="text-align:right"><img style="margin-right:25px; height:100px" src='https://trainee.tis.nhs.uk/nhse-logo.png' alt="NHS England logo"/></div>
+  <p th:replace="~{fragments/greeting/v1.0.0 :: greeting(${familyName})}"></p>
+  </div>
+  <p>
+    <th:block th:if="${modifiedRole=='ADMIN'}">We are writing to inform you that details of a submitted Less Than Full Time (LTFT) application have been updated by your Local Office on</th:block>
+    <th:block th:if="${modifiedRole!='ADMIN'}">Thank you for submitting your Less Than Full Time (LTFT) application on</th:block>
+    <th:block th:text="${not #strings.isEmpty(var?.timestamp)} ? ${#temporals.format(var.timestamp, 'dd MMMM yyyy')}   : 'unknown'"></th:block>.
+    Your reference number is
+    <th:block th:text="${not #strings.isEmpty(var?.formRef)} ? ${var.formRef} : 'unknown'"></th:block>.
+  </p>
+  <th:block th:if="${modifiedRole=='ADMIN'}">
+    <p><strong>Reason for changes:</strong><br><th:block th:text="${not #strings.isEmpty(var?.stateDetail?.reason)} ? ${var.stateDetail.reason} : 'Unknown'"></th:block> <th:block th:text="${not #strings.isEmpty(var?.stateDetail?.message)} ? | - ${var.stateDetail.message}| : _"></th:block></p>
+    <p th:if="${modifiedRole=='ADMIN'}">Below are the details of your updated Less Than Full Time (LTFT) application:</p>
+    <table th:if="${modifiedRole=='ADMIN'}" th:replace="~{fragments/ltft-summary/v1.0.0 :: ltftSummary(${var?.programmeMembership?.name}, ${var?.change?.startDate}, ${var?.change?.cctDate}, ${var?.programmeMembership?.wte}, ${var?.change?.wte})}"></table>
+  </th:block>
+  <h3>What Happens Next?</h3>
+  <p>
+    Your application has been sent to your Local Office
+    <th:block th:text="${not #strings.isEmpty(var?.programmeMembership?.managingDeanery)} ? |(NHS England ${var.programmeMembership.managingDeanery})| : _"></th:block> for review. You will receive an update on the progress of your application within the next <strong>two weeks</strong>.
+  </p>
+  <p>
+    Please allow at least <strong>two weeks</strong> before contacting your Local Office regarding the status of your application.
+  </p>
+
+  <h3>Making Changes to Your Application</h3>
+  <p>
+    If you wish to edit or withdraw your submitted application, you can do so via
+    <a href="https://trainee.tis.nhs.uk/ltft" target="_blank">TIS Self-Service</a>.<br>Please go to the Changing hours (LTFT) tab.
+  </p>
+  <ul>
+    <li><strong>To Edit:</strong> Select <strong>"Unsubmit"</strong> to update your application and then re-submit it.</li>
+    <li><strong>To Withdraw:</strong> Select <strong>"Withdraw"</strong> to permanently withdraw your application.</li>
+  </ul>
+
+  <h3>Resolving Any Issues</h3>
+  <p>
+    If your Local Office is unable to process your application, you will receive an email explaining the reason. This may include your application being reverted to an <strong>unsubmitted</strong> state, allowing you to make necessary changes and re-submit.
+  </p>
+
+  <p>
+    For any further queries, please contact your <th:block th:with="contact = ${contacts?.get('LTFT_SUPPORT')}">
+      <th:block th:replace="~{fragments/link/v1.0.0 :: link(${contact?.contact}, ${contact?.type}, '', 'Local Office Support Team', '.', 'Local Office Support Team.', |Ltft Submitted - Enquiries - ${subjectRefs}|)}"></th:block>
+    </th:block>
+  </p>
+
+  <p><strong>Kind Regards,<br><th:block th:text="${not #strings.isEmpty(var?.programmeMembership?.managingDeanery)} ? |NHS England - ${var.programmeMembership.managingDeanery}| : 'Your Local Office'"></th:block></strong></p>
+
+  <p><em>(Please note: Health Education England is now part of NHS England, and our systems will be updated accordingly.)</em></p>
+
+  <p><strong>Workforce, Training and Education<br>NHS England</strong></p>
+  <div th:replace="fragments/disclaimer/v1.0.0 :: body"></div>
+</th:block>
+</body>
+</html>

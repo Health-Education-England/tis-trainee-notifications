@@ -36,6 +36,7 @@ import static uk.nhs.tis.trainee.notifications.model.LocalOfficeContactType.LTFT
 import static uk.nhs.tis.trainee.notifications.model.LocalOfficeContactType.SUPPORTED_RETURN_TO_TRAINING;
 import static uk.nhs.tis.trainee.notifications.model.LocalOfficeContactType.TSS_SUPPORT;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.LTFT_ADMIN_UNSUBMITTED;
+import static uk.nhs.tis.trainee.notifications.model.NotificationType.LTFT_SUBMITTED;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -194,20 +195,21 @@ class LtftListenerIntegrationTest {
 
   @ParameterizedTest
   @CsvSource(delimiter = '|', textBlock = """
-      APPROVED     | LTFT_APPROVED
-      REJECTED     | LTFT_REJECTED
-      SUBMITTED    | LTFT_SUBMITTED
-      UNSUBMITTED  | LTFT_UNSUBMITTED
-      UNSUBMITTED  | LTFT_ADMIN_UNSUBMITTED
-      WITHDRAWN    | LTFT_WITHDRAWN
-      Other-Status | LTFT_UPDATED
+      APPROVED     | LTFT_APPROVED          | TRAINEE
+      REJECTED     | LTFT_REJECTED          | TRAINEE
+      SUBMITTED    | LTFT_SUBMITTED         | TRAINEE
+      SUBMITTED    | LTFT_SUBMITTED         | ADMIN
+      UNSUBMITTED  | LTFT_UNSUBMITTED       | TRAINEE
+      UNSUBMITTED  | LTFT_ADMIN_UNSUBMITTED | ADMIN
+      WITHDRAWN    | LTFT_WITHDRAWN         | TRAINEE
+      Other-Status | LTFT_UPDATED           | TRAINEE
       """)
-  void shouldSendDefaultNotificationsWhenTemplateVariablesNull(String state, NotificationType type)
+  void shouldSendDefaultNotificationsWhenTemplateVariablesNull(String state, NotificationType type,
+                                                               String modifiedByRole)
       throws Exception {
     when(userAccountService.getUserDetailsById(USER_ID)).thenReturn(
         new UserDetails(true, EMAIL, TITLE, null, null, GMC));
 
-    String modifiedByRole = type == LTFT_ADMIN_UNSUBMITTED ? "ADMIN" : "TRAINEE";
     String eventString = """
         {
           "traineeTisId": "%s",
@@ -241,7 +243,9 @@ class LtftListenerIntegrationTest {
     MimeMessage message = messageCaptor.getValue();
     Document content = Jsoup.parse((String) message.getContent());
 
-    URL resource = getClass().getResource("/email/" + type.getTemplateName() + "-minimal.html");
+    String templateName = (type == LTFT_SUBMITTED && modifiedByRole.equals("ADMIN"))
+        ? "ltft-admin-updated" : type.getTemplateName();
+    URL resource = getClass().getResource("/email/" + templateName + "-minimal.html");
     assert resource != null;
     Document expectedContent = Jsoup.parse(Paths.get(resource.toURI()).toFile());
     assertThat("Unexpected content.", content.html(), is(expectedContent.html()));
@@ -249,20 +253,21 @@ class LtftListenerIntegrationTest {
 
   @ParameterizedTest
   @CsvSource(delimiter = '|', textBlock = """
-      APPROVED     | LTFT_APPROVED
-      REJECTED     | LTFT_REJECTED
-      SUBMITTED    | LTFT_SUBMITTED
-      UNSUBMITTED  | LTFT_UNSUBMITTED
-      UNSUBMITTED  | LTFT_ADMIN_UNSUBMITTED
-      WITHDRAWN    | LTFT_WITHDRAWN
-      Other-Status | LTFT_UPDATED
+      APPROVED     | LTFT_APPROVED          | TRAINEE
+      REJECTED     | LTFT_REJECTED          | TRAINEE
+      SUBMITTED    | LTFT_SUBMITTED         | TRAINEE
+      SUBMITTED    | LTFT_SUBMITTED         | ADMIN
+      UNSUBMITTED  | LTFT_UNSUBMITTED       | TRAINEE
+      UNSUBMITTED  | LTFT_ADMIN_UNSUBMITTED | ADMIN
+      WITHDRAWN    | LTFT_WITHDRAWN         | TRAINEE
+      Other-Status | LTFT_UPDATED           | TRAINEE
       """)
-  void shouldSendDefaultNotificationsWhenTemplateVariablesEmpty(String state, NotificationType type)
+  void shouldSendDefaultNotificationsWhenTemplateVariablesEmpty(String state, NotificationType type,
+                                                                String modifiedByRole)
       throws Exception {
     when(userAccountService.getUserDetailsById(USER_ID)).thenReturn(
         new UserDetails(true, EMAIL, TITLE, "", "", GMC));
 
-    String modifiedByRole = type == LTFT_ADMIN_UNSUBMITTED ? "ADMIN" : "TRAINEE";
     String eventString = """
         {
           "traineeTisId": "%s",
@@ -315,7 +320,9 @@ class LtftListenerIntegrationTest {
     MimeMessage message = messageCaptor.getValue();
     Document content = Jsoup.parse((String) message.getContent());
 
-    URL resource = getClass().getResource("/email/" + type.getTemplateName() + "-minimal.html");
+    String templateName = (type == LTFT_SUBMITTED && modifiedByRole.equals("ADMIN"))
+        ? "ltft-admin-updated" : type.getTemplateName();
+    URL resource = getClass().getResource("/email/" + templateName + "-minimal.html");
     assert resource != null;
     Document expectedContent = Jsoup.parse(Paths.get(resource.toURI()).toFile());
     assertThat("Unexpected content.", content.html(), is(expectedContent.html()));
@@ -323,15 +330,16 @@ class LtftListenerIntegrationTest {
 
   @ParameterizedTest
   @CsvSource(delimiter = '|', textBlock = """
-      APPROVED    | LTFT_APPROVED
-      REJECTED    | LTFT_REJECTED
-      SUBMITTED   | LTFT_SUBMITTED
-      UNSUBMITTED | LTFT_UNSUBMITTED
-      UNSUBMITTED | LTFT_ADMIN_UNSUBMITTED
-      WITHDRAWN   | LTFT_WITHDRAWN
+      APPROVED     | LTFT_APPROVED          | TRAINEE
+      REJECTED     | LTFT_REJECTED          | TRAINEE
+      SUBMITTED    | LTFT_SUBMITTED         | TRAINEE
+      SUBMITTED    | LTFT_SUBMITTED         | ADMIN
+      UNSUBMITTED  | LTFT_UNSUBMITTED       | TRAINEE
+      UNSUBMITTED  | LTFT_ADMIN_UNSUBMITTED | ADMIN
+      WITHDRAWN    | LTFT_WITHDRAWN         | TRAINEE
       """)
   void shouldSendFullyTailoredNotificationsWhenAllTemplateVariablesAvailableAndUrlContacts(
-      String state, NotificationType type) throws Exception {
+      String state, NotificationType type, String modifiedByRole) throws Exception {
     when(userAccountService.getUserDetailsById(USER_ID)).thenReturn(
         new UserDetails(true, EMAIL, TITLE, FAMILY_NAME, GIVEN_NAME, GMC));
 
@@ -346,7 +354,6 @@ class LtftListenerIntegrationTest {
         eq(""))).thenCallRealMethod();
     when(notificationService.getHrefTypeForContact(any())).thenCallRealMethod();
 
-    String modifiedByRole = type == LTFT_ADMIN_UNSUBMITTED ? "ADMIN" : "TRAINEE";
     String eventString = """
         {
           "traineeTisId": "%s",
@@ -399,8 +406,10 @@ class LtftListenerIntegrationTest {
     MimeMessage message = messageCaptor.getValue();
     Document content = Jsoup.parse((String) message.getContent());
 
+    String templateName = (type == LTFT_SUBMITTED && modifiedByRole.equals("ADMIN"))
+        ? "ltft-admin-updated" : type.getTemplateName();
     URL resource = getClass().getResource(
-        "/email/" + type.getTemplateName() + "-full-url-contacts.html");
+        "/email/" + templateName + "-full-url-contacts.html");
     assert resource != null;
     Document expectedContent = Jsoup.parse(Paths.get(resource.toURI()).toFile());
     assertThat("Unexpected content.", content.html(), is(expectedContent.html()));
@@ -408,15 +417,16 @@ class LtftListenerIntegrationTest {
 
   @ParameterizedTest
   @CsvSource(delimiter = '|', textBlock = """
-      APPROVED    | LTFT_APPROVED
-      REJECTED    | LTFT_REJECTED
-      SUBMITTED   | LTFT_SUBMITTED
-      UNSUBMITTED | LTFT_UNSUBMITTED
-      UNSUBMITTED | LTFT_ADMIN_UNSUBMITTED
-      WITHDRAWN   | LTFT_WITHDRAWN
+      APPROVED     | LTFT_APPROVED          | TRAINEE
+      REJECTED     | LTFT_REJECTED          | TRAINEE
+      SUBMITTED    | LTFT_SUBMITTED         | TRAINEE
+      SUBMITTED    | LTFT_SUBMITTED         | ADMIN
+      UNSUBMITTED  | LTFT_UNSUBMITTED       | TRAINEE
+      UNSUBMITTED  | LTFT_ADMIN_UNSUBMITTED | ADMIN
+      WITHDRAWN    | LTFT_WITHDRAWN         | TRAINEE
       """)
   void shouldSendFullyTailoredNotificationsWhenAllTemplateVariablesAvailableAndEmailContacts(
-      String state, NotificationType type) throws Exception {
+      String state, NotificationType type, String modifiedByRole) throws Exception {
     when(userAccountService.getUserDetailsById(USER_ID)).thenReturn(
         new UserDetails(true, EMAIL, TITLE, FAMILY_NAME, GIVEN_NAME, GMC));
 
@@ -431,7 +441,6 @@ class LtftListenerIntegrationTest {
         eq(""))).thenCallRealMethod();
     when(notificationService.getHrefTypeForContact(any())).thenCallRealMethod();
 
-    String modifiedByRole = type == LTFT_ADMIN_UNSUBMITTED ? "ADMIN" : "TRAINEE";
     String eventString = """
         {
           "traineeTisId": "%s",
@@ -484,8 +493,10 @@ class LtftListenerIntegrationTest {
     MimeMessage message = messageCaptor.getValue();
     Document content = Jsoup.parse((String) message.getContent());
 
+    String templateName = (type == LTFT_SUBMITTED && modifiedByRole.equals("ADMIN"))
+        ? "ltft-admin-updated" : type.getTemplateName();
     URL resource = getClass().getResource(
-        "/email/" + type.getTemplateName() + "-full-email-contacts.html");
+        "/email/" + templateName + "-full-email-contacts.html");
     assert resource != null;
     Document expectedContent = Jsoup.parse(Paths.get(resource.toURI()).toFile());
     assertThat("Unexpected content.", content.html(), is(expectedContent.html()));
@@ -558,7 +569,7 @@ class LtftListenerIntegrationTest {
   @CsvSource(delimiter = '|', textBlock = """
       APPROVED     | LTFT_APPROVED          | v1.0.2
       REJECTED     | LTFT_REJECTED          | v1.0.0
-      SUBMITTED    | LTFT_SUBMITTED         | v1.0.0
+      SUBMITTED    | LTFT_SUBMITTED         | v1.1.0
       UNSUBMITTED  | LTFT_UNSUBMITTED       | v1.0.0
       UNSUBMITTED  | LTFT_ADMIN_UNSUBMITTED | v1.0.0
       WITHDRAWN    | LTFT_WITHDRAWN         | v1.0.0
@@ -643,7 +654,7 @@ class LtftListenerIntegrationTest {
     assertThat("Unexpected template version.", templateInfo.version(), is(expectedVersion));
 
     Map<String, Object> storedVariables = templateInfo.variables();
-    assertThat("Unexpected template variable count.", storedVariables.size(), is(6));
+    assertThat("Unexpected template variable count.", storedVariables.size(), is(7));
     assertThat("Unexpected template variable.", storedVariables.get("familyName"), is(FAMILY_NAME));
     assertThat("Unexpected template variable.", storedVariables.get("givenName"), is(GIVEN_NAME));
 
