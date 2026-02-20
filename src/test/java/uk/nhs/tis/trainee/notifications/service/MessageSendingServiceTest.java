@@ -44,7 +44,6 @@ import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.SCHEDULE
 import com.amazonaws.xray.AWSXRay;
 import com.amazonaws.xray.AWSXRayRecorder;
 import com.amazonaws.xray.entities.Segment;
-import com.amazonaws.xray.entities.TraceHeader;
 import io.awspring.cloud.sqs.operations.SendResult.Batch;
 import io.awspring.cloud.sqs.operations.SendResult.Failed;
 import io.awspring.cloud.sqs.operations.SqsTemplate;
@@ -255,7 +254,7 @@ class MessageSendingServiceTest {
     MessageHeaders messageHeaders = message.getHeaders();
     assertThat("Unexpected message header.", messageHeaders, hasKey(SQS_AWS_TRACE_HEADER));
     assertThat("Unexpected trace id.", messageHeaders.get(SQS_AWS_TRACE_HEADER),
-        instanceOf(TraceHeader.class));
+        instanceOf(String.class));
   }
 
   @Test
