@@ -159,7 +159,7 @@ public class MessageSendingService {
     if (AWSXRay.getTraceEntity() != null) {
       TraceHeader traceHeader = TraceHeader.fromEntity(AWSXRay.getTraceEntity());
       log.debug("Trace header '{}' found and will be reused.", traceHeader);
-      headers.put(SQS_AWS_TRACE_HEADER, traceHeader);
+      headers.put(SQS_AWS_TRACE_HEADER, traceHeader.toString());
     }
 
     int total = content.size();
