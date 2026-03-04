@@ -87,14 +87,15 @@ class ProgrammeMembershipUtilsTest {
 
   private static final String MEDICAL_CURRICULUM_1 = "Medical_curriculum";
   private static final String MEDICAL_CURRICULUM_2 = "Medical_spr";
-  private static final String EXCLUDE_SPECIALTY_1 = "Public health medicine";
-  private static final String EXCLUDE_SPECIALTY_2 = "Foundation";
+  private static final String EXCLUDE_SPECIALTY_1 = "Foundation";
+  private static final String INCLUDED_SPECIALTY_1 = "some-specialty";
+  private static final String INCLUDED_SPECIALTY_2 = "Public Health Medicine";
   private static final LocalDate START_DATE = LocalDate.now().plusYears(1);
   private static final LocalDate CURRICULUM_END_DATE = LocalDate.now().plusYears(2);
   private static final ZoneId TIMEZONE = ZoneId.of("Europe/London");
 
   private static final Curriculum IGNORED_CURRICULUM
-      = new Curriculum("some-subtype", "some-specialty", false,
+      = new Curriculum("some-subtype", "INCLUDED_SPECIALTY_1", false,
       CURRICULUM_END_DATE, false);
 
   ProgrammeMembershipUtils service = new ProgrammeMembershipUtils(TIMEZONE);
@@ -139,7 +140,21 @@ class ProgrammeMembershipUtilsTest {
   @ParameterizedTest
   @ValueSource(strings = {MEDICAL_CURRICULUM_1, MEDICAL_CURRICULUM_2})
   void shouldNotExcludePmWithMedicalSubtypeAndNoExcludedSpecialties(String subtype) {
-    Curriculum theCurriculum = new Curriculum(subtype, "some-specialty", false,
+    Curriculum theCurriculum = new Curriculum(subtype, "INCLUDED_SPECIALTY_1", false,
+        CURRICULUM_END_DATE, null);
+    ProgrammeMembership programmeMembership = new ProgrammeMembership();
+    programmeMembership.setStartDate(START_DATE);
+    programmeMembership.setCurricula(List.of(theCurriculum, IGNORED_CURRICULUM));
+
+    boolean isExcluded = service.isExcluded(programmeMembership);
+
+    assertThat("Unexpected excluded value.", isExcluded, is(false));
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {INCLUDED_SPECIALTY_1, INCLUDED_SPECIALTY_2})
+  void shouldNotExcludePmWithMedicalSubtypeAndIncludedSpecialties(String specialty) {
+    Curriculum theCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, specialty, false,
         CURRICULUM_END_DATE, null);
     ProgrammeMembership programmeMembership = new ProgrammeMembership();
     programmeMembership.setStartDate(START_DATE);
@@ -152,7 +167,7 @@ class ProgrammeMembershipUtilsTest {
 
   @Test
   void shouldExcludePmThatHasNoStartDate() {
-    Curriculum theCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, "some-specialty", false,
+    Curriculum theCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, "INCLUDED_SPECIALTY_1", false,
         CURRICULUM_END_DATE, null);
     ProgrammeMembership programmeMembership = new ProgrammeMembership();
     programmeMembership.setCurricula(List.of(theCurriculum, IGNORED_CURRICULUM));
@@ -164,7 +179,7 @@ class ProgrammeMembershipUtilsTest {
 
   @Test
   void shouldExcludePmThatIsNotFuture() {
-    Curriculum theCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, "some-specialty", false,
+    Curriculum theCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, "INCLUDED_SPECIALTY_1", false,
         CURRICULUM_END_DATE, null);
     ProgrammeMembership programmeMembership = new ProgrammeMembership();
     programmeMembership.setStartDate(LocalDate.now().minusYears(1));
@@ -189,7 +204,7 @@ class ProgrammeMembershipUtilsTest {
 
   @Test
   void shouldExcludePmWithNullSubtype() {
-    Curriculum theCurriculum = new Curriculum(null, "some-specialty", false,
+    Curriculum theCurriculum = new Curriculum(null, "INCLUDED_SPECIALTY_1", false,
         CURRICULUM_END_DATE, null);
     List<Curriculum> curricula = List.of(theCurriculum);
     ProgrammeMembership programmeMembership = new ProgrammeMembership();
@@ -213,11 +228,12 @@ class ProgrammeMembershipUtilsTest {
   }
 
   @ParameterizedTest
-  @ValueSource(strings = {EXCLUDE_SPECIALTY_1, EXCLUDE_SPECIALTY_2})
+  @ValueSource(strings = {EXCLUDE_SPECIALTY_1})
   void shouldExcludePmWithExcludedSpecialty(String specialty) {
     Curriculum theCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, specialty, false,
         CURRICULUM_END_DATE, null);
-    Curriculum anotherCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, "some-specialty", false,
+    Curriculum anotherCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, "INCLUDED_SPECIALTY_1",
+        false,
         CURRICULUM_END_DATE, null);
     ProgrammeMembership programmeMembership = new ProgrammeMembership();
     programmeMembership.setStartDate(START_DATE);

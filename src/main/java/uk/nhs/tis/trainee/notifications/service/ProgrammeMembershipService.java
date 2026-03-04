@@ -80,7 +80,7 @@ public class ProgrammeMembershipService {
   public static final List<String> INCLUDE_CURRICULUM_SUBTYPES
       = List.of("MEDICAL_CURRICULUM", "MEDICAL_SPR");
   public static final List<String> EXCLUDE_CURRICULUM_SPECIALTIES
-      = List.of("PUBLIC HEALTH MEDICINE", "FOUNDATION");
+      = List.of("FOUNDATION");
 
   private final HistoryService historyService;
   private final InAppService inAppService;
