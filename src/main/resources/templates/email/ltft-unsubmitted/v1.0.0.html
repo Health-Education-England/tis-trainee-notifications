@@ -17,7 +17,7 @@
   </div>
   <p>The status of your Changing hours (LTFT) application (ref: <th:block th:text="${not #strings.isEmpty(var?.formRef)} ? ${var.formRef} : 'unknown'"></th:block>) has changed<th:block
       th:text="${not #strings.isEmpty(var?.state)}? | to ${var.state}| : _"></th:block> on <th:block
-      th:text="${not #strings.isEmpty(var?.timestamp)} ? ${#temporals.format(var.timestamp, 'dd MMMM yyyy')}   : 'unknown'"></th:block>.
+      th:text="${not #strings.isEmpty(var?.timestamp)} ? ${#temporals.format(var.timestamp, 'd MMMM yyyy')}   : 'unknown'"></th:block>.
   </p>
   <p>Reason provided: <th:block th:text="${not #strings.isEmpty(var?.stateDetail?.reason)} ? ${var.stateDetail.reason} : 'unknown'"></th:block></p>
 

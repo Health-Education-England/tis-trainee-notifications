@@ -15,7 +15,7 @@
       <p th:replace="~{fragments/greeting/v1.0.0 :: greeting(${familyName})}"></p>
       <p>
         We want to inform you that your local NHS England office has received your signed Conditions of Joining<span
-          th:text="${syncedAt} ? | on ${#temporals.format(syncedAt, 'dd MMMM yyyy')}| : _"
+          th:text="${syncedAt} ? | on ${#temporals.format(syncedAt, 'd MMMM yyyy')}| : _"
         ></span
         >.
       </p>

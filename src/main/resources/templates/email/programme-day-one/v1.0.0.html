@@ -18,7 +18,7 @@
   > <span th:text="${not #strings.isEmpty(givenName)} ? ${givenName} : _"></span> <span th:text="${not #strings.isEmpty(familyName)} ? ${familyName} : _"></span>,</p>
   <p>Congratulations on your appointment to the <strong><span
       th:text="${not #strings.isEmpty(programmeName)} ? ${programmeName} : 'programme'"></span></strong> starting on <strong><span
-    th:text="${not #strings.isEmpty(startDate)} ? |${#temporals.format(startDate, 'dd MMMM yyyy')}| : _">(start date missing)</span></strong>.</p>
+    th:text="${not #strings.isEmpty(startDate)} ? |${#temporals.format(startDate, 'd MMMM yyyy')}| : _">(start date missing)</span></strong>.</p>
   <p>We appreciate this is a busy time for you but please set some time aside to read this letter in
     its entirety as it contains some vital information regarding your training and the registration process.</p>
   <p><strong>Training Number</strong></p>

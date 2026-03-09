@@ -35,8 +35,8 @@
   <p>At this point, your employing organisation will follow the <a href="https://www.nhsemployers.org/topics-0/employment-standards-and-regulation">NHS Employment Check Standards</a>.</p>
   <p><b><u>National Training Number (NTN)</u></b></p>
   <p>Subject to you completing all actions on TIS Self-Service, on the first day of your programme (<span
-      th:text="${not #strings.isEmpty(startDate)} ? |${#temporals.format(startDate, 'dd MMMM yyyy')}| : _">start date missing</span>), you will receive your National Training Number (NTN). It is also vitally important you connect to your Postgraduate Dean for Revalidation and ensure you are connected to the correct Deanery as your Designated Body on GMC Online. Please do <b>not</b> do this before <span
-      th:text="${not #strings.isEmpty(startDate)} ? |${#temporals.format(startDate, 'dd MMMM yyyy')}| : _">(start date missing)</span>. It is essential you do not connect to your trust or employing body. The notice containing your NTN will explain how to do this.</p>
+      th:text="${not #strings.isEmpty(startDate)} ? |${#temporals.format(startDate, 'd MMMM yyyy')}| : _">start date missing</span>), you will receive your National Training Number (NTN). It is also vitally important you connect to your Postgraduate Dean for Revalidation and ensure you are connected to the correct Deanery as your Designated Body on GMC Online. Please do <b>not</b> do this before <span
+      th:text="${not #strings.isEmpty(startDate)} ? |${#temporals.format(startDate, 'd MMMM yyyy')}| : _">(start date missing)</span>. It is essential you do not connect to your trust or employing body. The notice containing your NTN will explain how to do this.</p>
 
   <p><b><u>Pre-employment checks and processes</u></b></p>
   <p>Both NHS England and your employing organisation understand that you will be busy in this transition period to the start of your upcoming training programme, but we wish to emphasise the importance of engaging with all organisations with the onboarding process.</p>
@@ -55,7 +55,7 @@
   <p><b>Accessing TIS Self-Service (TSS)</b></p><ul>
   <li>TIS Self-Service (TSS) gives you access to your training information. You will need to use TSS to submit essential forms, sign training agreements and complete actions that are presented on the Action Summary.</li>
   <th:block th:switch="${isRegistered}"
-  ><li>It is essential that this is completed as part of your onboarding process to your training programme by <b><span th:text="${not #strings.isEmpty(startDate)} ? |${#temporals.format(startDate, 'dd MMMM yyyy')}| : _">(start date missing)</span></b>; Your progress will be monitored by your NHS England Local Office. Failure to complete these actions may be considered as non-engagement.
+  ><li>It is essential that this is completed as part of your onboarding process to your training programme by <b><span th:text="${not #strings.isEmpty(startDate)} ? |${#temporals.format(startDate, 'd MMMM yyyy')}| : _">(start date missing)</span></b>; Your progress will be monitored by your NHS England Local Office. Failure to complete these actions may be considered as non-engagement.
     <li th:case="true">We have a registered account for you on TIS Self-Service against the email address <b><span th:text="${email}"></span></b>. To access details for onboarding onto your programme and actions to complete please sign in to <a href="https://trainee.tis.nhs.uk">TIS Self-Service</a>.</li>
     <li th:case="false">According to our records, you do not currently have a TIS Self-Service account. Please create one by visiting <a href="https://trainee.tis.nhs.uk/">TIS Self-Service</a>. Please ensure you create an account using the email address we have against our records: <b><span th:text="${email}"></span></b>.</li></th:block>
   <li>If your email address is likely to change, or you need support signing up on TIS Self-Service, then contact us via <th:block th:switch="${contactHref}"

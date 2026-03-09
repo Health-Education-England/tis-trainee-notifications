@@ -18,7 +18,7 @@
   ><th:block th:if="${#strings.isEmpty(isValidGmc) OR not isValidGmc}"> - We don't have a confirmed GMC no. please contact your local office to update this.</th:block>
   </p>
   <p>
-    For your placement starting <th:block th:text="${startDate} ? |${#temporals.format(startDate, 'dd MMMM yyyy')}| : _">(start date missing)</th:block
+    For your placement starting <th:block th:text="${startDate} ? |${#temporals.format(startDate, 'd MMMM yyyy')}| : _">(start date missing)</th:block
   > at <b><th:block th:text="${not #strings.isEmpty(site)} ? ${site} : _">(site name missing)</th:block
   ></b> in <th:block th:text="${not #strings.isEmpty(specialty)} ? ${specialty} : _">(speciality name missing)</th:block
   >, please see the below information. We appreciate this must be a busy time for you but please set some time aside to read this letter as it contains some vital information regarding your training placement.

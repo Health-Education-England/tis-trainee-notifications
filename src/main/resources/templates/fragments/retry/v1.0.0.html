@@ -7,7 +7,7 @@
 <body th:fragment="retry(originallySentOn)">
 <span th:if="${!#strings.isEmpty(originallySentOn)}"><hr
 ><i>This is a copy of an email sent<span
-    th:text="${originallySentOn} ? | on ${#temporals.format(originallySentOn, 'dd MMMM yyyy')}| : _"
+    th:text="${originallySentOn} ? | on ${#temporals.format(originallySentOn, 'd MMMM yyyy')}| : _"
 ></span
 > that may have failed to reach you.</i><hr></span>
 </body>

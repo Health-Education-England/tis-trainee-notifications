@@ -17,7 +17,7 @@
 
         <span th:case="'SUBMITTED'" id="SUBMITTED">
             <p>We want to inform you that your local NHS England office has received your FormR<span
-            th:text="${eventDate}? | on ${#temporals.format(eventDate, 'dd MMMM yyyy')}| : _"></span>.</p>
+            th:text="${eventDate}? | on ${#temporals.format(eventDate, 'd MMMM yyyy')}| : _"></span>.</p>
             <p>Please find attached a PDF of your signed FormR, you can access this at any time by visiting
             <a th:href="${not #strings.isEmpty(domain)}? @{{domain}/{formType}(domain=${domain},formType=${formType})} : _">TIS
             Self-Service</a>.</p>
@@ -25,7 +25,7 @@
 
         <span th:case="*" id="OTHER">
             <p>We want to inform you that your FormR has been updated<span
-            th:text="${eventDate}? | on ${#temporals.format(eventDate, 'dd MMMM yyyy')}| : _"></span>.</p>
+            th:text="${eventDate}? | on ${#temporals.format(eventDate, 'd MMMM yyyy')}| : _"></span>.</p>
             <p>If this is unexpected then please contact your local NHS England office for further details.</p>
         </span>
 

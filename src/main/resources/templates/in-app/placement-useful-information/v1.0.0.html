@@ -13,7 +13,7 @@
   <p>
     For your placement starting
     <b>
-      <th:block th:text="${startDate} ? |${#temporals.format(startDate, 'dd MMMM yyyy')}| : _">
+      <th:block th:text="${startDate} ? |${#temporals.format(startDate, 'd MMMM yyyy')}| : _">
         (start date missing)
       </th:block>
     </b> at
