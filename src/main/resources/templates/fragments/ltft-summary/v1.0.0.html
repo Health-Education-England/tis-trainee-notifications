@@ -12,11 +12,11 @@
   </tr>
   <tr>
     <th>Start Date</th>
-    <td><th:block th:text="${not #strings.isEmpty(startDate)} ? ${startDate} : 'unknown'"></th:block></td>
+    <td><th:block th:text="${startDate}? ${#temporals.format(startDate, 'd MMMM yyyy')} : _">unknown</th:block></td>
   </tr>
   <tr>
     <th>Anticipated End Date</th>
-    <td><th:block th:text="${not #strings.isEmpty(cctDate)} ? ${cctDate} : 'unknown'"></th:block></td>
+    <td><th:block th:text="${cctDate}? ${#temporals.format(cctDate, 'd MMMM yyyy')} : _">unknown</th:block></td>
   </tr>
   <tr>
     <th>Current WTE %</th>

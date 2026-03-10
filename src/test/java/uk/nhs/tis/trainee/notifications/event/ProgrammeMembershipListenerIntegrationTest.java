@@ -611,7 +611,7 @@ class ProgrammeMembershipListenerIntegrationTest {
     URL resource = getClass().getResource("/email/" + type.getTemplateName() + "-full.html");
     assert resource != null;
     Document expectedContent = Jsoup.parse(Paths.get(resource.toURI()).toFile());
-    DateTimeFormatter longDateFormatter = DateTimeFormatter.ofPattern("dd MMMM yyyy");
+    DateTimeFormatter longDateFormatter = DateTimeFormatter.ofPattern("d MMMM yyyy");
     String expectedContentStr = expectedContent.html()
         .replace("{{DATE TODAY}}", LocalDate.now().format(longDateFormatter))
         .replace("{{DATE START}}", week12ReminderDate.format(longDateFormatter));
@@ -664,7 +664,7 @@ class ProgrammeMembershipListenerIntegrationTest {
     URL resource = getClass().getResource("/email/" + type.getTemplateName() + "-minimal.html");
     assert resource != null;
     Document expectedContent = Jsoup.parse(Paths.get(resource.toURI()).toFile());
-    DateTimeFormatter longDateFormatter = DateTimeFormatter.ofPattern("dd MMMM yyyy");
+    DateTimeFormatter longDateFormatter = DateTimeFormatter.ofPattern("d MMMM yyyy");
     String expectedContentStr = expectedContent.html()
         .replace("{{DATE START}}", week12ReminderDate.format(longDateFormatter));
     assertThat("Unexpected content.", content.html(), is(expectedContentStr));
@@ -712,7 +712,7 @@ class ProgrammeMembershipListenerIntegrationTest {
         "/email/" + type.getTemplateName() + "-full-email-contacts.html");
     assert resource != null;
     Document expectedContent = Jsoup.parse(Paths.get(resource.toURI()).toFile());
-    DateTimeFormatter longDateFormatter = DateTimeFormatter.ofPattern("dd MMMM yyyy");
+    DateTimeFormatter longDateFormatter = DateTimeFormatter.ofPattern("d MMMM yyyy");
     String expectedContentStr = expectedContent.html()
         .replace("{{CCT DATE}}", cctDate.format(longDateFormatter));
     assertThat("Unexpected content.", content.html(), is(expectedContentStr));

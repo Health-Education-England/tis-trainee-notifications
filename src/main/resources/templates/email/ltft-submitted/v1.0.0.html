@@ -17,7 +17,7 @@
   </div>
   <p>
     Thank you for submitting your Less Than Full Time (LTFT) application on
-    <th:block th:text="${not #strings.isEmpty(var?.timestamp)} ? ${#temporals.format(var.timestamp, 'dd MMMM yyyy')}   : 'unknown'"></th:block>.
+    <th:block th:text="${not #strings.isEmpty(var?.timestamp)} ? ${#temporals.format(var.timestamp, 'd MMMM yyyy')}   : 'unknown'"></th:block>.
     Your reference number is
     <th:block th:text="${not #strings.isEmpty(var?.formRef)} ? ${var.formRef} : 'unknown'"></th:block>.
   </p>

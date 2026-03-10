@@ -302,7 +302,7 @@ class FormListenerIntegrationTest {
     assertThat("Unexpected element tag.", eventDetail.tagName(), is("p"));
     assertThat("Unexpected event detail.", eventDetail.text(),
         is("We want to inform you that your local NHS England office has returned your FormR "
-            + "for modification on 01 August 2023."));
+            + "for modification on 1 August 2023."));
 
     Element nextSteps = content.getElementById(FORM_UNSUBMITTED).children().get(1);
     assertThat("Unexpected element tag.", nextSteps.tagName(), is("p"));
@@ -351,7 +351,7 @@ class FormListenerIntegrationTest {
     assertThat("Unexpected element tag.", eventDetail.tagName(), is("p"));
     assertThat("Unexpected event detail.", eventDetail.text(),
         is("We want to inform you that your local NHS England office has deleted your FormR "
-            + "on 01 August 2023."));
+            + "on 1 August 2023."));
 
     Element nextSteps = content.getElementById(FORM_DELETED).children().get(1);
     assertThat("Unexpected element tag.", nextSteps.tagName(), is("p"));

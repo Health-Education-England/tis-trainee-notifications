@@ -23,11 +23,11 @@
       <th>Agreed New WTE %</th>
     </tr>
     <tr>
-      <td><th:block th:text="${not #strings.isEmpty(var?.programmeMembership?.name)} ? ${var.programmeMembership.name} : 'unknown'"></th:block></td>
-      <td><th:block th:text="${not #strings.isEmpty(var?.change?.startDate)} ? ${var.change.startDate} : 'unknown'"></th:block></td>
-      <td><th:block th:text="${not #strings.isEmpty(var?.change?.cctDate)} ? ${var.change.cctDate} : 'unknown'"></th:block></td>
-      <td><th:block th:text="${not #strings.isEmpty(var?.programmeMembership?.wte)} ? ${var.programmeMembership.wte} : 'unknown'"></th:block></td>
-      <td><th:block th:text="${not #strings.isEmpty(var?.change?.wte)} ? ${var.change.wte} : 'unknown'"></th:block></td>
+      <td><th:block th:text="${not #strings.isEmpty(var?.programmeMembership?.name)} ? ${var.programmeMembership.name} : _">unknown</th:block></td>
+      <td><th:block th:text="${var?.change?.startDate} ? ${#temporals.format(var.change.startDate, 'd MMMM yyyy')} : _">unknown</th:block></td>
+      <td><th:block th:text="${var?.change?.cctDate} ? ${#temporals.format(var.change.cctDate, 'd MMMM yyyy')} : _">unknown</th:block></td>
+      <td><th:block th:text="${not #strings.isEmpty(var?.programmeMembership?.wte)} ? ${var.programmeMembership.wte} : _">unknown</th:block></td>
+      <td><th:block th:text="${not #strings.isEmpty(var?.change?.wte)} ? ${var.change.wte} : _">unknown</th:block></td>
     </tr>
   </table>
   <p>Your estimated completion date will be extended as a result of your change in working hours and will be confirmed at your next Annual Review of Competence Progression (ARCP).</p>

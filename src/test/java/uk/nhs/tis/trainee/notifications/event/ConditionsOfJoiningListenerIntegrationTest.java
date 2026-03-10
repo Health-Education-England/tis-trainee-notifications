@@ -221,7 +221,7 @@ class ConditionsOfJoiningListenerIntegrationTest {
     assertThat("Unexpected element tag.", eventDetail.tagName(), is("p"));
     assertThat("Unexpected event detail.", eventDetail.text(),
         is("We want to inform you that your local NHS England office has received your signed"
-            + " Conditions of Joining on 01 August 2023."));
+            + " Conditions of Joining on 1 August 2023."));
 
     Element nextSteps = bodyChildren.get(3);
     assertThat("Unexpected element tag.", nextSteps.tagName(), is("p"));
@@ -345,7 +345,7 @@ class ConditionsOfJoiningListenerIntegrationTest {
     assertThat("Unexpected element tag.", eventDetail.tagName(), is("p"));
     assertThat("Unexpected event detail.", eventDetail.text(),
         is("We want to inform you that your local NHS England office has received your signed"
-            + " Conditions of Joining on 01 August 2023."));
+            + " Conditions of Joining on 1 August 2023."));
 
     Element nextSteps = bodyChildren.get(3);
     assertThat("Unexpected element tag.", nextSteps.tagName(), is("p"));

@@ -16,7 +16,7 @@
     <p><b>Completion of Specialty Training and Period of Grace</b></p>
     <p>According to our records, you are due to complete specialty training in <span
             th:text="${not #strings.isEmpty(programmeName)} ? ${programmeName} : 'programme'"></span> on <span
-            th:text="${not #strings.isEmpty(cctDate)} ? |${#temporals.format(cctDate, 'dd MMMM yyyy')}| : _">CCT completion date missing</span>. <b>If this is not the case, please contact us immediately via <th:block
+            th:text="${not #strings.isEmpty(cctDate)} ? |${#temporals.format(cctDate, 'd MMMM yyyy')}| : _">CCT completion date missing</span>. <b>If this is not the case, please contact us immediately via <th:block
             th:switch="${contactHref}"
     ><span th:case="url"><a th:href="${localOfficeContact}"><span th:text="${localOfficeContact}"></span></a></span
     ><span th:case="email"><a id="loMail1" th:href="|mailto:${localOfficeContact}?subject=CCT Completion date query - GMC: ${not #strings.isEmpty(gmcNumber) ? gmcNumber : 'unknown'}, Prog No: ${not #strings.isEmpty(programmeNumber) ? programmeNumber : 'unknown'}|"><span th:text="${localOfficeContact}"></span></a></span

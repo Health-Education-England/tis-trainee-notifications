@@ -17,7 +17,7 @@
     The status of your LTFT application<th:block
       th:text="${not #strings.isEmpty(var?.formRef)}? | (ref: ${var.formRef})| : _"></th:block> has changed<th:block
       th:text="${not #strings.isEmpty(var?.state)}? | to ${var.state}| : _"></th:block><th:block
-      th:text="${var?.timestamp}? | on ${#temporals.format(var.timestamp, 'dd MMMM yyyy')}| : _"></th:block>.
+      th:text="${var?.timestamp}? | on ${#temporals.format(var.timestamp, 'd MMMM yyyy')}| : _"></th:block>.
   </p>
   <p>Kind Regards,</p>
   <p>TIS Self-Service</p>

@@ -246,8 +246,8 @@ class EmailServiceIntegrationTest {
     variables.put("programmeMembership", Map.of("startDate", "2024-01-01",
             "name", "PM name", "wte", 1.0, "managingDeanery", "MD name"));
     variables.put("personalDetails", Map.of("gmcNumber", "1234567"));
-    variables.put("change", Map.of("startDate", "2024-01-01", "wte", 0.5,
-        "cctDate", "2024-01-01"));
+    variables.put("change", Map.of("startDate", LocalDate.parse("2024-01-01"), "wte", 0.5,
+        "cctDate", LocalDate.parse("2024-01-01")));
     variables.put("stateDetail", Map.of("reason", "some reason", "message", "some message"));
     variables.put("modifiedBy", Map.of("name", "modified by name", "role", "modified by role"));
 
@@ -745,7 +745,7 @@ class EmailServiceIntegrationTest {
 
     String submittedContents = Objects.requireNonNull(body.getElementById("SUBMITTED")).text();
     assertThat("Unexpected submitted content.", submittedContents.contains("We want to "
-        + "inform you that your local NHS England office has received your FormR on 01 September "
+        + "inform you that your local NHS England office has received your FormR on 1 September "
         + "2025"), is(true));
   }
 
@@ -771,7 +771,7 @@ class EmailServiceIntegrationTest {
         nullValue());
     String otherContents = Objects.requireNonNull(body.getElementById("OTHER")).text();
     assertThat("Unexpected other content.", otherContents.contains("We want to "
-        + "inform you that your FormR has been updated on 01 September 2025"), is(true));
+        + "inform you that your FormR has been updated on 1 September 2025"), is(true));
   }
 
   @ParameterizedTest
