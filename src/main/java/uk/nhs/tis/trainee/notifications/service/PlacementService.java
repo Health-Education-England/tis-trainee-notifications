@@ -26,6 +26,7 @@ import static uk.nhs.tis.trainee.notifications.model.NotificationType.NON_EMPLOY
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PLACEMENT_INFORMATION;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PLACEMENT_ROLLOUT_2024_CORRECTION;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PLACEMENT_UPDATED_WEEK_12;
+import static uk.nhs.tis.trainee.notifications.model.NotificationType.PLACEMENT_CONFIRMATION_WEEK_12_FOUNDATION;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.USEFUL_INFORMATION;
 import static uk.nhs.tis.trainee.notifications.model.TisReferenceType.PLACEMENT;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.ONE_DAY_IN_SECONDS;
@@ -73,6 +74,7 @@ public class PlacementService {
   public static final String LOCAL_OFFICE_CONTACT_FIELD = "localOfficeContact";
   public static final String LOCAL_OFFICE_CONTACT_TYPE_FIELD = "localOfficeContactType";
   public static final String GMC_NUMBER_FIELD = "gmcNumber";
+  public static final String FOUNDATION_SPECIALTY = "Foundation";
 
   public static final List<String> PLACEMENT_TYPES_TO_ACT_ON
       = List.of("In post"); // only placements with type starting with "In Post" are included
@@ -139,6 +141,16 @@ public class PlacementService {
   }
 
   /**
+   * Determines whether a placement is a Foundation placement.
+   *
+   * @param placement the Placement.
+   * @return true if the placement specialty is Foundation.
+   */
+  private boolean isFoundationPlacement(Placement placement) {
+    return FOUNDATION_SPECIALTY.equals(placement.getSpecialty());
+  }
+
+  /**
    * Get a map of notifications and their event status for a given trainee and placement from the
    * notification history.
    *
@@ -154,6 +166,7 @@ public class PlacementService {
 
     Set<NotificationType> notificationTypes = new HashSet<>();
     notificationTypes.add(PLACEMENT_UPDATED_WEEK_12);
+    notificationTypes.add(PLACEMENT_CONFIRMATION_WEEK_12_FOUNDATION);
     notificationTypes.add(PLACEMENT_INFORMATION);
     notificationTypes.add(USEFUL_INFORMATION);
     notificationTypes.add(NON_EMPLOYMENT);
@@ -204,6 +217,7 @@ public class PlacementService {
    */
   public Integer getNotificationDaysBeforeStart(NotificationType notificationType) {
     if (notificationType.equals(PLACEMENT_UPDATED_WEEK_12)
+        || notificationType.equals(PLACEMENT_CONFIRMATION_WEEK_12_FOUNDATION)
         || notificationType.equals(PLACEMENT_INFORMATION)
         || notificationType.equals(USEFUL_INFORMATION)
         || notificationType.equals(NON_EMPLOYMENT)) {
@@ -223,6 +237,7 @@ public class PlacementService {
       Map<NotificationType, NotificationEvent> notificationsRecorded) {
 
     LocalDate startDate = placement.getStartDate();
+    boolean isFoundationPlacement = isFoundationPlacement(placement);
 
     Map<String, Object> jobDataMap = new HashMap<>();
     jobDataMap.put(TIS_ID_FIELD, placement.getTisId());
@@ -233,7 +248,8 @@ public class PlacementService {
     jobDataMap.put(PLACEMENT_SITE_FIELD, placement.getSite());
     jobDataMap.put(TEMPLATE_OWNER_FIELD, placement.getOwner());
 
-    boolean shouldScheduleWeek12 = shouldScheduleNotification(notificationsRecorded, startDate);
+    boolean shouldScheduleWeek12 = !isFoundationPlacement
+        && shouldScheduleNotification(notificationsRecorded, startDate);
 
     if (shouldScheduleWeek12) {
       log.info("Scheduling notification {} for {}.",
@@ -250,8 +266,25 @@ public class PlacementService {
       notificationService.scheduleNotification(jobId, jobDataMap, when, ONE_DAY_IN_SECONDS);
     }
 
-    boolean shouldScheduleRolloutCorrection
-        = shouldScheduleRolloutCorrectionNotification(placement, notificationsRecorded);
+    boolean shouldScheduleFoundationWeek12 = isFoundationPlacement
+        && startDate != null
+        && !startDate.isBefore(LocalDate.now())
+        && !notificationsRecorded.containsKey(PLACEMENT_CONFIRMATION_WEEK_12_FOUNDATION);
+
+    if (shouldScheduleFoundationWeek12) {
+      log.info("Scheduling notification {} for {}.",
+          PLACEMENT_CONFIRMATION_WEEK_12_FOUNDATION, placement.getTisId());
+      Integer daysBeforeStart = getNotificationDaysBeforeStart(PLACEMENT_CONFIRMATION_WEEK_12_FOUNDATION);
+      Date when = notificationService.getScheduleDate(startDate, daysBeforeStart);
+
+      jobDataMap.put(TEMPLATE_NOTIFICATION_TYPE_FIELD, PLACEMENT_CONFIRMATION_WEEK_12_FOUNDATION);
+
+      String jobId = PLACEMENT_CONFIRMATION_WEEK_12_FOUNDATION + "-" + placement.getTisId();
+      notificationService.scheduleNotification(jobId, jobDataMap, when, ONE_DAY_IN_SECONDS);
+    }
+
+    boolean shouldScheduleRolloutCorrection = !isFoundationPlacement
+        && shouldScheduleRolloutCorrectionNotification(placement, notificationsRecorded);
 
     if (shouldScheduleRolloutCorrection) {
       log.info("Scheduling notification {} for {}.",

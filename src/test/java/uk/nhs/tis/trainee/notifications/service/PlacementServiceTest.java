@@ -44,6 +44,7 @@ import static uk.nhs.tis.trainee.notifications.model.NotificationType.NON_EMPLOY
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PLACEMENT_INFORMATION;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PLACEMENT_ROLLOUT_2024_CORRECTION;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PLACEMENT_UPDATED_WEEK_12;
+import static uk.nhs.tis.trainee.notifications.model.NotificationType.PLACEMENT_CONFIRMATION_WEEK_12_FOUNDATION;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.USEFUL_INFORMATION;
 import static uk.nhs.tis.trainee.notifications.model.TisReferenceType.PLACEMENT;
 import static uk.nhs.tis.trainee.notifications.model.TisReferenceType.PROGRAMME_MEMBERSHIP;
@@ -51,6 +52,7 @@ import static uk.nhs.tis.trainee.notifications.service.NotificationService.CONTA
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.ONE_DAY_IN_SECONDS;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.PERSON_ID_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.TEMPLATE_OWNER_FIELD;
+import static uk.nhs.tis.trainee.notifications.service.PlacementService.FOUNDATION_SPECIALTY;
 import static uk.nhs.tis.trainee.notifications.service.PlacementService.GMC_NUMBER_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.PlacementService.LOCAL_OFFICE_CONTACT_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.PlacementService.LOCAL_OFFICE_CONTACT_TYPE_FIELD;
@@ -269,6 +271,7 @@ class PlacementServiceTest {
     placement.setOwner(OWNER);
     placement.setPlacementType(IN_POST);
     placement.setSite(SITE);
+    placement.setSpecialty(SPECIALTY);
 
     NotificationType milestone = PLACEMENT_UPDATED_WEEK_12;
     LocalDate expectedDate = START_DATE
@@ -302,15 +305,130 @@ class PlacementServiceTest {
     assertThat("Unexpected tisId.", jobDataMap.get(TIS_ID_FIELD), is(TIS_ID));
     assertThat("Unexpected personId.", jobDataMap.get(PERSON_ID_FIELD), is(PERSON_ID));
     assertThat("Unexpected start date.", jobDataMap.get(START_DATE_FIELD), is(START_DATE));
-    assertThat("Unexpected placement type.", jobDataMap.get(PLACEMENT_TYPE_FIELD),
-        is(IN_POST));
-    assertThat("Unexpected placement owner.", jobDataMap.get(TEMPLATE_OWNER_FIELD),
-        is(OWNER));
-    assertThat("Unexpected placement site.", jobDataMap.get(PLACEMENT_SITE_FIELD),
-        is(SITE));
+    assertThat("Unexpected placement type.", jobDataMap.get(PLACEMENT_TYPE_FIELD), is(IN_POST));
+    assertThat("Unexpected placement owner.", jobDataMap.get(TEMPLATE_OWNER_FIELD), is(OWNER));
+    assertThat("Unexpected placement site.", jobDataMap.get(PLACEMENT_SITE_FIELD), is(SITE));
 
     Date when = dateCaptor.getValue();
     assertThat("Unexpected start time", when, is(expectedWhen));
+  }
+
+  @Test
+  void shouldNotAddStandardEmail12WeekNotificationForFoundationPlacement() {
+    Placement placement = new Placement();
+    placement.setTisId(TIS_ID);
+    placement.setPersonId(PERSON_ID);
+    placement.setStartDate(START_DATE);
+    placement.setOwner(OWNER);
+    placement.setPlacementType(IN_POST);
+    placement.setSite(SITE);
+    placement.setSpecialty(FOUNDATION_SPECIALTY);
+
+    service.addNotifications(placement);
+
+    ArgumentCaptor<String> stringCaptor = ArgumentCaptor.captor();
+    verify(notificationService).scheduleNotification(
+        stringCaptor.capture(), any(), any(), anyLong());
+
+    assertThat("Unexpected job id.", stringCaptor.getValue(),
+        is(PLACEMENT_CONFIRMATION_WEEK_12_FOUNDATION + "-" + TIS_ID));
+  }
+
+  @Test
+  void shouldAddFoundationEmail12WeekNotificationForFoundationPlacement() {
+    Placement placement = new Placement();
+    placement.setTisId(TIS_ID);
+    placement.setPersonId(PERSON_ID);
+    placement.setStartDate(START_DATE);
+    placement.setOwner(OWNER);
+    placement.setPlacementType(IN_POST);
+    placement.setSite(SITE);
+    placement.setSpecialty(FOUNDATION_SPECIALTY);
+
+    NotificationType milestone = PLACEMENT_CONFIRMATION_WEEK_12_FOUNDATION;
+    LocalDate expectedDate = START_DATE
+        .minusDays(service.getNotificationDaysBeforeStart(milestone));
+    Date expectedWhen = Date.from(expectedDate
+        .atStartOfDay()
+        .atZone(ZoneId.systemDefault())
+        .toInstant());
+
+    when(notificationService
+        .getScheduleDate(START_DATE, service.getNotificationDaysBeforeStart(milestone)))
+        .thenReturn(expectedWhen);
+
+    service.addNotifications(placement);
+
+    ArgumentCaptor<String> stringCaptor = ArgumentCaptor.captor();
+    ArgumentCaptor<Map<String, Object>> jobDataMapCaptor = ArgumentCaptor.captor();
+    ArgumentCaptor<Date> dateCaptor = ArgumentCaptor.captor();
+    verify(notificationService).scheduleNotification(
+        stringCaptor.capture(),
+        jobDataMapCaptor.capture(),
+        dateCaptor.capture(),
+        eq(ONE_DAY_IN_SECONDS)
+    );
+
+    String jobId = stringCaptor.getValue();
+    assertThat("Unexpected job id.", jobId, is(milestone + "-" + TIS_ID));
+
+    Map<String, Object> jobDataMap = jobDataMapCaptor.getValue();
+    assertThat("Unexpected tisId.", jobDataMap.get(TIS_ID_FIELD), is(TIS_ID));
+    assertThat("Unexpected personId.", jobDataMap.get(PERSON_ID_FIELD), is(PERSON_ID));
+    assertThat("Unexpected start date.", jobDataMap.get(START_DATE_FIELD), is(START_DATE));
+    assertThat("Unexpected placement type.", jobDataMap.get(PLACEMENT_TYPE_FIELD), is(IN_POST));
+    assertThat("Unexpected placement owner.", jobDataMap.get(TEMPLATE_OWNER_FIELD), is(OWNER));
+    assertThat("Unexpected placement site.", jobDataMap.get(PLACEMENT_SITE_FIELD), is(SITE));
+
+    Date when = dateCaptor.getValue();
+    assertThat("Unexpected start time.", when, is(expectedWhen));
+  }
+
+  @Test
+  void shouldNotResendFoundationEmail12WeekNotification() {
+    Placement placement = new Placement();
+    placement.setTisId(TIS_ID);
+    placement.setPersonId(PERSON_ID);
+    placement.setStartDate(START_DATE);
+    placement.setOwner(OWNER);
+    placement.setPlacementType(IN_POST);
+    placement.setSite(SITE);
+    placement.setSpecialty(FOUNDATION_SPECIALTY);
+
+    List<HistoryDto> sentNotifications = new ArrayList<>();
+    sentNotifications.add(new HistoryDto("id",
+        new TisReferenceInfo(TisReferenceType.PLACEMENT, TIS_ID),
+        EMAIL,
+        PLACEMENT_CONFIRMATION_WEEK_12_FOUNDATION, null,
+        "email address",
+        Instant.MIN, Instant.MAX, SENT, null));
+
+    when(historyService.findAllForTrainee(PERSON_ID)).thenReturn(sentNotifications);
+
+    service.addNotifications(placement);
+
+    verify(notificationService, never()).scheduleNotification(any(), any(), any(), anyLong());
+  }
+
+  @Test
+  void shouldNotAddFoundationEmail12WeekNotificationForNonFoundationPlacement() {
+    Placement placement = new Placement();
+    placement.setTisId(TIS_ID);
+    placement.setPersonId(PERSON_ID);
+    placement.setStartDate(START_DATE);
+    placement.setOwner(OWNER);
+    placement.setPlacementType(IN_POST);
+    placement.setSite(SITE);
+    placement.setSpecialty(SPECIALTY);
+
+    service.addNotifications(placement);
+
+    ArgumentCaptor<String> stringCaptor = ArgumentCaptor.captor();
+    verify(notificationService).scheduleNotification(
+        stringCaptor.capture(), any(), any(), anyLong());
+
+    assertThat("Unexpected job id.", stringCaptor.getValue(),
+        is(PLACEMENT_UPDATED_WEEK_12 + "-" + TIS_ID));
   }
 
   @Test
@@ -322,6 +440,7 @@ class PlacementServiceTest {
     placement.setOwner(OWNER);
     placement.setPlacementType(IN_POST);
     placement.setSite(SITE);
+    placement.setSpecialty(SPECIALTY);
 
     List<HistoryDto> sentNotifications = new ArrayList<>();
     sentNotifications.add(new HistoryDto("id",
@@ -355,12 +474,9 @@ class PlacementServiceTest {
     assertThat("Unexpected tisId.", jobDataMap.get(TIS_ID_FIELD), is(TIS_ID));
     assertThat("Unexpected personId.", jobDataMap.get(PERSON_ID_FIELD), is(PERSON_ID));
     assertThat("Unexpected start date.", jobDataMap.get(START_DATE_FIELD), is(START_DATE));
-    assertThat("Unexpected placement type.", jobDataMap.get(PLACEMENT_TYPE_FIELD),
-        is(IN_POST));
-    assertThat("Unexpected placement owner.", jobDataMap.get(TEMPLATE_OWNER_FIELD),
-        is(OWNER));
-    assertThat("Unexpected placement site.", jobDataMap.get(PLACEMENT_SITE_FIELD),
-        is(SITE));
+    assertThat("Unexpected placement type.", jobDataMap.get(PLACEMENT_TYPE_FIELD), is(IN_POST));
+    assertThat("Unexpected placement owner.", jobDataMap.get(TEMPLATE_OWNER_FIELD), is(OWNER));
+    assertThat("Unexpected placement site.", jobDataMap.get(PLACEMENT_SITE_FIELD), is(SITE));
 
     Date when = dateCaptor.getValue();
     Date twoMinutesHence = Date.from(Instant.now().plus(2, ChronoUnit.MINUTES));
@@ -382,6 +498,7 @@ class PlacementServiceTest {
     placement.setOwner(OWNER);
     placement.setPlacementType(IN_POST);
     placement.setSite(SITE);
+    placement.setSpecialty(SPECIALTY);
 
     List<HistoryDto> sentNotifications = new ArrayList<>();
     sentNotifications.add(new HistoryDto("id",
@@ -407,6 +524,7 @@ class PlacementServiceTest {
     placement.setStartDate(START_DATE);
     placement.setOwner(OWNER);
     placement.setPlacementType(IN_POST);
+    placement.setSpecialty(SPECIALTY);
 
     List<HistoryDto> sentNotifications = new ArrayList<>();
 
@@ -428,6 +546,7 @@ class PlacementServiceTest {
     placement.setStartDate(START_DATE);
     placement.setOwner(OWNER);
     placement.setPlacementType(IN_POST);
+    placement.setSpecialty(SPECIALTY);
 
     List<HistoryDto> sentNotifications = new ArrayList<>();
     sentNotifications.add(new HistoryDto("id",
@@ -460,6 +579,7 @@ class PlacementServiceTest {
     placement.setStartDate(START_DATE);
     placement.setOwner(OWNER);
     placement.setPlacementType(IN_POST);
+    placement.setSpecialty(SPECIALTY);
 
     List<HistoryDto> sentNotifications = new ArrayList<>();
     sentNotifications.add(new HistoryDto("id",
@@ -486,6 +606,7 @@ class PlacementServiceTest {
     placement.setStartDate(START_DATE);
     placement.setOwner(OWNER);
     placement.setPlacementType(IN_POST);
+    placement.setSpecialty(SPECIALTY);
 
     List<HistoryDto> sentNotifications = new ArrayList<>();
     sentNotifications.add(new HistoryDto("id",
@@ -512,6 +633,7 @@ class PlacementServiceTest {
     placement.setStartDate(START_DATE);
     placement.setOwner(OWNER);
     placement.setPlacementType(IN_POST);
+    placement.setSpecialty(SPECIALTY);
 
     List<HistoryDto> sentNotifications = new ArrayList<>();
     sentNotifications.add(new HistoryDto("id",
@@ -540,6 +662,7 @@ class PlacementServiceTest {
     placement.setStartDate(START_DATE);
     placement.setOwner(OWNER);
     placement.setPlacementType(IN_POST);
+    placement.setSpecialty(SPECIALTY);
 
     List<HistoryDto> sentNotifications = new ArrayList<>();
     sentNotifications.add(new HistoryDto("id",
@@ -570,6 +693,7 @@ class PlacementServiceTest {
     placement.setStartDate(dateToday);
     placement.setOwner(OWNER);
     placement.setPlacementType(IN_POST);
+    placement.setSpecialty(SPECIALTY);
 
     Date expectedLaterThan = Date.from(Instant.now());
     when(notificationService
@@ -598,6 +722,7 @@ class PlacementServiceTest {
     placement.setStartDate(START_DATE);
     placement.setOwner(OWNER);
     placement.setPlacementType(IN_POST);
+    placement.setSpecialty(SPECIALTY);
 
     List<HistoryDto> sentNotifications = new ArrayList<>();
     sentNotifications.add(new HistoryDto("id",
@@ -623,6 +748,7 @@ class PlacementServiceTest {
     placement.setStartDate(START_DATE);
     placement.setOwner(OWNER);
     placement.setPlacementType(IN_POST);
+    placement.setSpecialty(SPECIALTY);
 
     List<HistoryDto> sentNotifications = new ArrayList<>();
     sentNotifications.add(new HistoryDto("id",
