@@ -104,7 +104,7 @@ application:
       in-app: v1.0.0
     placement-updated-week-12:
       email: v1.2.0
-    placement-updated-week-12-foundation:
+    placement-confirmation-week-12-foundation:
       email: v1.0.0
     placement-useful-information:
       in-app: v1.0.0

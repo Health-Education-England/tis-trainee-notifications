@@ -68,7 +68,7 @@ public enum NotificationType {
   PLACEMENT_UPDATED_WEEK_12("placement-updated-week-12"),
   PROGRAMME_DAY_ONE("programme-day-one"),
   PROGRAMME_UPDATED_WEEK_12("programme-updated-week-12"),
-  PLACEMENT_CONFIRMATION_WEEK_12_FOUNDATION("placement_confirmation_week_12_foundation"),
+  PLACEMENT_CONFIRMATION_WEEK_12_FOUNDATION("placement-confirmation-week-12-foundation"),
   PROGRAMME_UPDATED_WEEK_8("programme-updated-week-8"),
   PROGRAMME_UPDATED_WEEK_4("programme-updated-week-4"),
   PROGRAMME_UPDATED_WEEK_2("programme-updated-week-2"),
@@ -102,7 +102,6 @@ public enum NotificationType {
   private static final Set<NotificationType> activeProgrammeUpdateNotificationTypes = EnumSet.of(
       PROGRAMME_DAY_ONE,
       PROGRAMME_UPDATED_WEEK_12,
-      PLACEMENT_CONFIRMATION_WEEK_12_FOUNDATION,
       PROGRAMME_UPDATED_WEEK_4,
       PROGRAMME_UPDATED_WEEK_2,
       PROGRAMME_CREATED);
