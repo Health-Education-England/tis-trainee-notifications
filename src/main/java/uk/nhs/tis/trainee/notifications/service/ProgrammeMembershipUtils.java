@@ -240,9 +240,9 @@ public class ProgrammeMembershipUtils {
    * <p>Excluded means the trainee will not be notified (contacted) in respect of this
    * programme membership.
    *
-   * <p>This will be TRUE if any of the following are true in relation to the curricula:
-   * 1. None have curriculumSubType = MEDICAL_CURRICULUM or MEDICAL_SPR. 2. Any have specialtyName =
-   * 'Public health medicine' or 'Foundation'.
+   * <p>This will be TRUE if none of the curricula have curriculumSubType = MEDICAL_CURRICULUM or
+   * MEDICAL_SPR.
+   * Note that specialtyName = 'Public health medicine' or 'Foundation' are no longer excluded.
    *
    * @param programmeMembership the Programme membership.
    * @return true if the programme membership is excluded.

@@ -80,7 +80,10 @@ public class ProgrammeMembershipService {
   public static final List<String> INCLUDE_CURRICULUM_SUBTYPES
       = List.of("MEDICAL_CURRICULUM", "MEDICAL_SPR");
   public static final List<String> EXCLUDE_CURRICULUM_SPECIALTIES
-      = List.of("FOUNDATION");
+      = List.of();
+
+  private static final String ACADEMIC_FOUNDATION_CURRICULUM_NAME = "ACADEMIC FOUNDATION TRAINING";
+  private static final String FOUNDATION_SPECIALTY = "FOUNDATION";
 
   private final HistoryService historyService;
   private final InAppService inAppService;
@@ -96,19 +99,28 @@ public class ProgrammeMembershipService {
   private final String ltftVersion;
   private final String sponsorshipVersion;
 
+  private final String dayOneFoundationVersion;
+  private final String deferralFoundationVersion;
+  private final String ltftFoundationVersion;
+  private final String sponsorshipFoundationVersion;
+
   /**
    * Initialise the programme membership service.
    *
-   * @param historyService            The history service to use.
-   * @param inAppService              The in-app service to use.
-   * @param notificationService       The notification service to use.
-   * @param pmUtils                   The programme membership utilities to use.
-   * @param dayOneVersion             The day one version.
-   * @param deferralVersion           The deferral version.
-   * @param eportfolioVersion         The ePortfolio version.
-   * @param indemnityInsuranceVersion The indemnity insurance version.
-   * @param ltftVersion               The LTFT version.
-   * @param sponsorshipVersion        The sponsorship version.
+   * @param historyService               The history service to use.
+   * @param inAppService                 The in-app service to use.
+   * @param notificationService          The notification service to use.
+   * @param pmUtils                      The programme membership utilities to use.
+   * @param dayOneVersion                The day one version.
+   * @param deferralVersion              The deferral version.
+   * @param eportfolioVersion            The ePortfolio version.
+   * @param indemnityInsuranceVersion    The indemnity insurance version.
+   * @param ltftVersion                  The LTFT version.
+   * @param sponsorshipVersion           The sponsorship version.
+   * @param dayOneFoundationVersion      The day one foundation version.
+   * @param deferralFoundationVersion    The deferral foundation version.
+   * @param ltftFoundationVersion        The LTFT foundation version.
+   * @param sponsorshipFoundationVersion The sponsorship foundation version.
    */
   public ProgrammeMembershipService(HistoryService historyService, InAppService inAppService,
       NotificationService notificationService, ProgrammeMembershipUtils pmUtils,
@@ -119,7 +131,11 @@ public class ProgrammeMembershipService {
       @Value("${application.template-versions.indemnity-insurance.in-app}")
       String indemnityInsuranceVersion,
       @Value("${application.template-versions.less-than-full-time.in-app}") String ltftVersion,
-      @Value("${application.template-versions.sponsorship.in-app}") String sponsorshipVersion) {
+      @Value("${application.template-versions.sponsorship.in-app}") String sponsorshipVersion,
+      @Value("${application.template-versions.day-one-foundation.in-app}") String dayOneFoundationVersion,
+      @Value("${application.template-versions.deferral-foundation.in-app}") String deferralFoundationVersion,
+      @Value("${application.template-versions.less-than-full-time-foundation.in-app}") String ltftFoundationVersion,
+      @Value("${application.template-versions.sponsorship-foundation.in-app}") String sponsorshipFoundationVersion) {
     this.historyService = historyService;
     this.inAppService = inAppService;
     this.notificationService = notificationService;
@@ -131,6 +147,10 @@ public class ProgrammeMembershipService {
     this.indemnityInsuranceVersion = indemnityInsuranceVersion;
     this.ltftVersion = ltftVersion;
     this.sponsorshipVersion = sponsorshipVersion;
+    this.dayOneFoundationVersion = dayOneFoundationVersion;
+    this.deferralFoundationVersion = deferralFoundationVersion;
+    this.ltftFoundationVersion = ltftFoundationVersion;
+    this.sponsorshipFoundationVersion = sponsorshipFoundationVersion;
   }
 
   /**
@@ -150,6 +170,7 @@ public class ProgrammeMembershipService {
         NotificationType.getProgrammeUpdateNotificationTypes());
     notificationTypes.addAll(NotificationType.getProgrammePogNotificationTypes());
     notificationTypes.addAll(NotificationType.getProgrammeInAppNotificationTypes());
+    notificationTypes.addAll(NotificationType.getProgrammeInAppFoundationNotificationTypes());
 
     for (NotificationType milestone : notificationTypes) {
       Optional<History> sentItem = correspondence.stream()
@@ -279,9 +300,9 @@ public class ProgrammeMembershipService {
   /**
    * Schedule a programme POG notification.
    *
-   * @param notificationType         The type of POG notification to schedule.
-   * @param programmeMembership      The programme membership.
-   * @param jobDataMap               The job data map.
+   * @param notificationType    The type of POG notification to schedule.
+   * @param programmeMembership The programme membership.
+   * @param jobDataMap          The job data map.
    */
   private void doScheduleProgrammePogNotification(NotificationType notificationType,
       ProgrammeMembership programmeMembership, Map<String, Object> jobDataMap) {
@@ -317,7 +338,15 @@ public class ProgrammeMembershipService {
       createUniqueInAppNotification(programmeMembership, notificationsAlreadySent,
           INDEMNITY_INSURANCE, indemnityInsuranceVersion,
           Map.of(BLOCK_INDEMNITY_FIELD, hasBlockIndemnity));
-
+    }
+    //TODO: foundation won't meet criteria since the isPilotOrRollout excludes FOUNDATION at this
+    // point
+    //not sure if we can skip the criteria check completely or if we need to validate newStarter
+    // for foundation doctors
+    boolean isFoundation = isFoundationProgramme(programmeMembership);
+    boolean meetsFoundationCriteria = isFoundation
+        && notificationService.meetsCriteria(programmeMembership, true, false);
+    if (meetsFoundationCriteria || meetsCriteria) {
       String owner = programmeMembership.getManagingDeanery();
       List<Map<String, String>> contactList = notificationService.getOwnerContactList(owner);
 
@@ -331,8 +360,10 @@ public class ProgrammeMembershipService {
           LocalOfficeContactType.LTFT, LocalOfficeContactType.TSS_SUPPORT, "");
       String localOfficeContactTypeLtft =
           notificationService.getHrefTypeForContact(localOfficeContactLtft);
-      createUniqueInAppNotification(programmeMembership, notificationsAlreadySent, LTFT,
-          ltftVersion, Map.of(
+      NotificationType notificationLtft = isFoundation ? NotificationType.LTFT_FOUNDATION : LTFT;
+      String notificationLtftVersion = isFoundation ? ltftFoundationVersion : ltftVersion;
+      createUniqueInAppNotification(programmeMembership, notificationsAlreadySent, notificationLtft,
+          notificationLtftVersion, Map.of(
               LOCAL_OFFICE_CONTACT_FIELD, localOfficeContactLtft,
               LOCAL_OFFICE_CONTACT_TYPE_FIELD, localOfficeContactTypeLtft,
               GMC_NUMBER_FIELD, gmcNumber));
@@ -342,8 +373,13 @@ public class ProgrammeMembershipService {
           LocalOfficeContactType.DEFERRAL, LocalOfficeContactType.TSS_SUPPORT, "");
       String localOfficeContactTypeDeferral =
           notificationService.getHrefTypeForContact(localOfficeContactDeferral);
-      createUniqueInAppNotification(programmeMembership, notificationsAlreadySent, DEFERRAL,
-          deferralVersion, Map.of(
+      NotificationType notificationDeferal = isFoundation ? NotificationType.DEFERRAL_FOUNDATION
+          : DEFERRAL;
+      String notificationDeferalVersion = isFoundation ? deferralFoundationVersion :
+          deferralVersion;
+      createUniqueInAppNotification(programmeMembership, notificationsAlreadySent,
+          notificationDeferal,
+          notificationDeferalVersion, Map.of(
               LOCAL_OFFICE_CONTACT_FIELD, localOfficeContactDeferral,
               LOCAL_OFFICE_CONTACT_TYPE_FIELD, localOfficeContactTypeDeferral,
               GMC_NUMBER_FIELD, gmcNumber));
@@ -353,15 +389,24 @@ public class ProgrammeMembershipService {
           LocalOfficeContactType.SPONSORSHIP, LocalOfficeContactType.TSS_SUPPORT, "");
       String localOfficeContactTypeSponsorship =
           notificationService.getHrefTypeForContact(localOfficeContactSponsorship);
-      createUniqueInAppNotification(programmeMembership, notificationsAlreadySent, SPONSORSHIP,
-          sponsorshipVersion, Map.of(
+      NotificationType notificationSponsorship = isFoundation ?
+          NotificationType.SPONSORSHIP_FOUNDATION : SPONSORSHIP;
+      String notificationSponsorshipVersion = isFoundation ? sponsorshipFoundationVersion :
+          sponsorshipVersion;
+      createUniqueInAppNotification(programmeMembership, notificationsAlreadySent,
+          notificationSponsorship,
+          notificationSponsorshipVersion, Map.of(
               LOCAL_OFFICE_CONTACT_FIELD, localOfficeContactSponsorship,
               LOCAL_OFFICE_CONTACT_TYPE_FIELD, localOfficeContactTypeSponsorship,
               GMC_NUMBER_FIELD, gmcNumber));
 
       // DAY_ONE
-      createUniqueInAppNotification(programmeMembership, notificationsAlreadySent, DAY_ONE,
-          dayOneVersion, Map.of());
+      NotificationType notificationDayOne = isFoundation ? NotificationType.DAY_ONE_FOUNDATION :
+          DAY_ONE;
+      String notificationDayOneVersion = isFoundation ? dayOneFoundationVersion : dayOneVersion;
+      createUniqueInAppNotification(programmeMembership, notificationsAlreadySent,
+          notificationDayOne,
+          notificationDayOneVersion, Map.of());
     }
   }
 
@@ -437,5 +482,23 @@ public class ProgrammeMembershipService {
           history.id(), programmeMembership.getPersonId(), programmeMembership.getTisId());
       historyService.deleteHistoryForTrainee(history.id(), programmeMembership.getPersonId());
     }
+  }
+
+  /**
+   * Identify if a programme membership is a foundation programme, by checking if any of the
+   * curricula have a name or specialty indicating it's a foundation programme.
+   *
+   * @param programmeMembership The programme membership to check.
+   * @return true if the programme membership is a foundation programme, otherwise false.
+   */
+  public boolean isFoundationProgramme(ProgrammeMembership programmeMembership) {
+    return programmeMembership.getCurricula().stream()
+        .anyMatch(curriculum -> {
+          String name = curriculum.curriculumName();
+          String specialty = curriculum.curriculumSpecialty();
+          return name != null && specialty != null
+              && (name.equalsIgnoreCase(ACADEMIC_FOUNDATION_CURRICULUM_NAME)
+              || specialty.equalsIgnoreCase(FOUNDATION_SPECIALTY));
+        });
   }
 }
