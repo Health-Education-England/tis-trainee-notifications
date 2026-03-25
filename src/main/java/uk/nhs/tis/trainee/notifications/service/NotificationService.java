@@ -86,6 +86,9 @@ public class NotificationService {
   // Do not send any emails for POG notifications before this date
   public static final LocalDate POG_EPOCH = LocalDate.of(2026, 2, 1);
 
+  // Do not send any emails for Foundation email notifications before this date
+  public static final LocalDate FD_EPOCH = LocalDate.of(2026, 4, 1);
+
   protected static final String DEFAULT_NO_CONTACT_MESSAGE = "your local office";
   protected static final List<String> DUMMY_USER_ROLES = List.of("Placeholder", "Dummy Record");
   protected static final String JOB_RESULT_STATUS = "status";
