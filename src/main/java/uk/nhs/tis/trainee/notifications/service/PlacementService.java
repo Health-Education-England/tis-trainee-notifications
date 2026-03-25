@@ -25,7 +25,7 @@ import static uk.nhs.tis.trainee.notifications.model.MessageType.IN_APP;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.NON_EMPLOYMENT;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PLACEMENT_INFORMATION;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PLACEMENT_ROLLOUT_2024_CORRECTION;
-import static uk.nhs.tis.trainee.notifications.model.NotificationType.PLACEMENT_CONFIRMATION_WEEK_12_FOUNDATION;
+import static uk.nhs.tis.trainee.notifications.model.NotificationType.PLACEMENT_UPDATED_WEEK_12_FOUNDATION;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PLACEMENT_UPDATED_WEEK_12;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.USEFUL_INFORMATION;
 import static uk.nhs.tis.trainee.notifications.model.TisReferenceType.PLACEMENT;
@@ -168,7 +168,7 @@ public class PlacementService {
 
     Set<NotificationType> notificationTypes = new HashSet<>();
     notificationTypes.add(PLACEMENT_UPDATED_WEEK_12);
-    notificationTypes.add(PLACEMENT_CONFIRMATION_WEEK_12_FOUNDATION);
+    notificationTypes.add(PLACEMENT_UPDATED_WEEK_12_FOUNDATION);
     notificationTypes.add(PLACEMENT_INFORMATION);
     notificationTypes.add(USEFUL_INFORMATION);
     notificationTypes.add(NON_EMPLOYMENT);
@@ -219,7 +219,7 @@ public class PlacementService {
    */
   public Integer getNotificationDaysBeforeStart(NotificationType notificationType) {
     if (notificationType.equals(PLACEMENT_UPDATED_WEEK_12)
-        || notificationType.equals(PLACEMENT_CONFIRMATION_WEEK_12_FOUNDATION)
+        || notificationType.equals(PLACEMENT_UPDATED_WEEK_12_FOUNDATION)
         || notificationType.equals(PLACEMENT_INFORMATION)
         || notificationType.equals(USEFUL_INFORMATION)
         || notificationType.equals(NON_EMPLOYMENT)) {
@@ -251,7 +251,7 @@ public class PlacementService {
     jobDataMap.put(TEMPLATE_OWNER_FIELD, placement.getOwner());
 
     boolean shouldScheduleWeek12 = !isFoundationPlacement
-        && shouldScheduleNotification(notificationsRecorded, startDate);
+        && shouldScheduleNotification(notificationsRecorded, startDate, PLACEMENT_UPDATED_WEEK_12);
 
     if (shouldScheduleWeek12) {
       log.info(SCHEDULING_NOTIFICATION_LOG,
@@ -269,20 +269,21 @@ public class PlacementService {
     }
 
     boolean shouldScheduleFoundationWeek12 = isFoundationPlacement
-        && startDate != null
-        && !startDate.isBefore(LocalDate.now())
-        && !notificationsRecorded.containsKey(PLACEMENT_CONFIRMATION_WEEK_12_FOUNDATION);
+        && shouldScheduleNotification(
+        notificationsRecorded,
+        startDate,
+        PLACEMENT_UPDATED_WEEK_12_FOUNDATION);
 
     if (shouldScheduleFoundationWeek12) {
       log.info(SCHEDULING_NOTIFICATION_LOG,
-          PLACEMENT_CONFIRMATION_WEEK_12_FOUNDATION, placement.getTisId());
+          PLACEMENT_UPDATED_WEEK_12_FOUNDATION, placement.getTisId());
       Integer daysBeforeStart =
-          getNotificationDaysBeforeStart(PLACEMENT_CONFIRMATION_WEEK_12_FOUNDATION);
+          getNotificationDaysBeforeStart(PLACEMENT_UPDATED_WEEK_12_FOUNDATION);
       Date when = notificationService.getScheduleDate(startDate, daysBeforeStart);
 
-      jobDataMap.put(TEMPLATE_NOTIFICATION_TYPE_FIELD, PLACEMENT_CONFIRMATION_WEEK_12_FOUNDATION);
+      jobDataMap.put(TEMPLATE_NOTIFICATION_TYPE_FIELD, PLACEMENT_UPDATED_WEEK_12_FOUNDATION);
 
-      String jobId = PLACEMENT_CONFIRMATION_WEEK_12_FOUNDATION + "-" + placement.getTisId();
+      String jobId = PLACEMENT_UPDATED_WEEK_12_FOUNDATION + "-" + placement.getTisId();
       notificationService.scheduleNotification(jobId, jobDataMap, when, ONE_DAY_IN_SECONDS);
     }
 
@@ -308,13 +309,14 @@ public class PlacementService {
    * @return true if it should be scheduled, false otherwise.
    */
   private boolean shouldScheduleNotification(
-      Map<NotificationType, NotificationEvent> notificationsRecorded, LocalDate startDate) {
+      Map<NotificationType, NotificationEvent> notificationsRecorded, LocalDate startDate,
+      NotificationType notificationType) {
 
     if (startDate == null || startDate.isBefore(LocalDate.now())) {
       return false;
     }
     //do not resend any notification
-    return (!notificationsRecorded.containsKey(PLACEMENT_UPDATED_WEEK_12));
+    return (!notificationsRecorded.containsKey(notificationType));
   }
 
   /**

@@ -24,12 +24,14 @@ package uk.nhs.tis.trainee.notifications.service;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.not;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -43,7 +45,7 @@ import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.UNREAD;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.NON_EMPLOYMENT;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PLACEMENT_INFORMATION;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PLACEMENT_ROLLOUT_2024_CORRECTION;
-import static uk.nhs.tis.trainee.notifications.model.NotificationType.PLACEMENT_CONFIRMATION_WEEK_12_FOUNDATION;
+import static uk.nhs.tis.trainee.notifications.model.NotificationType.PLACEMENT_UPDATED_WEEK_12_FOUNDATION;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PLACEMENT_UPDATED_WEEK_12;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.USEFUL_INFORMATION;
 import static uk.nhs.tis.trainee.notifications.model.TisReferenceType.PLACEMENT;
@@ -327,11 +329,14 @@ class PlacementServiceTest {
     service.addNotifications(placement);
 
     ArgumentCaptor<String> stringCaptor = ArgumentCaptor.captor();
-    verify(notificationService).scheduleNotification(
+    verify(notificationService, atLeastOnce()).scheduleNotification(
         stringCaptor.capture(), any(), any(), anyLong());
 
-    assertThat("Unexpected job id.", stringCaptor.getValue(),
-        is(PLACEMENT_CONFIRMATION_WEEK_12_FOUNDATION + "-" + TIS_ID));
+    List<String> jobIds = stringCaptor.getAllValues();
+    assertThat("Standard week 12 notification should not be scheduled for foundation placement.",
+        jobIds, not(hasItem(PLACEMENT_UPDATED_WEEK_12 + "-" + TIS_ID)));
+    assertThat("Foundation week 12 notification should be scheduled.",
+        jobIds, hasItem(PLACEMENT_UPDATED_WEEK_12_FOUNDATION + "-" + TIS_ID));
   }
 
   @Test
@@ -345,7 +350,7 @@ class PlacementServiceTest {
     placement.setSite(SITE);
     placement.setSpecialty(FOUNDATION_SPECIALTY);
 
-    NotificationType milestone = PLACEMENT_CONFIRMATION_WEEK_12_FOUNDATION;
+    NotificationType milestone = PLACEMENT_UPDATED_WEEK_12_FOUNDATION;
     LocalDate expectedDate = START_DATE
         .minusDays(service.getNotificationDaysBeforeStart(milestone));
     Date expectedWhen = Date.from(expectedDate
@@ -399,7 +404,7 @@ class PlacementServiceTest {
     sentNotifications.add(new HistoryDto("id",
         new TisReferenceInfo(TisReferenceType.PLACEMENT, TIS_ID),
         EMAIL,
-        PLACEMENT_CONFIRMATION_WEEK_12_FOUNDATION, null,
+        PLACEMENT_UPDATED_WEEK_12_FOUNDATION, null,
         "email address",
         Instant.MIN, Instant.MAX, SENT, null));
 
@@ -424,11 +429,14 @@ class PlacementServiceTest {
     service.addNotifications(placement);
 
     ArgumentCaptor<String> stringCaptor = ArgumentCaptor.captor();
-    verify(notificationService).scheduleNotification(
+    verify(notificationService, atLeastOnce()).scheduleNotification(
         stringCaptor.capture(), any(), any(), anyLong());
 
-    assertThat("Unexpected job id.", stringCaptor.getValue(),
-        is(PLACEMENT_UPDATED_WEEK_12 + "-" + TIS_ID));
+    List<String> jobIds = stringCaptor.getAllValues();
+    assertThat("Foundation week 12 notification should not be scheduled for non-foundation placement.",
+        jobIds, not(hasItem(PLACEMENT_UPDATED_WEEK_12_FOUNDATION + "-" + TIS_ID)));
+    assertThat("Standard week 12 notification should be scheduled.",
+        jobIds, hasItem(PLACEMENT_UPDATED_WEEK_12 + "-" + TIS_ID));
   }
 
   @Test
