@@ -25,7 +25,6 @@ package uk.nhs.tis.trainee.notifications.service;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.SENT;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_CREATED;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_DAY_ONE;
@@ -125,17 +124,6 @@ class ProgrammeMembershipUtilsTest {
 
     assertThat("Expected null for non-POG notification type.",
         pogDaysBeforeEndDate, is(nullValue()));
-  }
-
-  @Test()
-  void shouldThrowExceptionIfPmHasNullSpecialty() {
-    Curriculum nullCurriculum = new Curriculum(CURRICULUM_NAME, MEDICAL_CURRICULUM_1, null,
-        false, CURRICULUM_END_DATE, null);
-    ProgrammeMembership programmeMembership = new ProgrammeMembership();
-    programmeMembership.setStartDate(START_DATE);
-    programmeMembership.setCurricula(List.of(nullCurriculum, nullCurriculum));
-
-    assertThrows(NullPointerException.class, () -> service.isExcluded(programmeMembership));
   }
 
   @ParameterizedTest
@@ -1193,6 +1181,94 @@ class ProgrammeMembershipUtilsTest {
 
     assertThat("Expected null when oldStartDate is null.", result, is(nullValue()));
   }
+
+  @Test
+  void shouldNotBeFoundationProgrammeWhenCurriculaIsEmpty() {
+    ProgrammeMembership programmeMembership = new ProgrammeMembership();
+    programmeMembership.setCurricula(List.of());
+
+    assertThat("Unexpected foundation programme flag.",
+        service.isFoundationProgramme(programmeMembership), is(false));
+  }
+
+  @Test
+  void shouldNotBeFoundationProgrammeWhenCurriculumNameIsNull() {
+    ProgrammeMembership programmeMembership = new ProgrammeMembership();
+    programmeMembership.setCurricula(List.of(
+        new Curriculum(null, MEDICAL_CURRICULUM_1, "FOUNDATION", false, CURRICULUM_END_DATE,
+            null)));
+
+    assertThat("Unexpected foundation programme flag.",
+        service.isFoundationProgramme(programmeMembership), is(false));
+  }
+
+  @Test
+  void shouldNotBeFoundationProgrammeWhenCurriculumSpecialtyIsNull() {
+    ProgrammeMembership programmeMembership = new ProgrammeMembership();
+    programmeMembership.setCurricula(List.of(
+        new Curriculum("ACADEMIC FOUNDATION TRAINING", MEDICAL_CURRICULUM_1, null, false,
+            CURRICULUM_END_DATE, null)));
+
+    assertThat("Unexpected foundation programme flag.",
+        service.isFoundationProgramme(programmeMembership), is(false));
+  }
+
+  @ParameterizedTest
+  @CsvSource(textBlock = """
+      foundation
+      FOUNDATION
+      Foundation""")
+  void shouldBeFoundationProgrammeWhenCurriculumSpecialtyIsFoundation(String specialty) {
+    ProgrammeMembership programmeMembership = new ProgrammeMembership();
+    programmeMembership.setCurricula(List.of(
+        new Curriculum(CURRICULUM_NAME, MEDICAL_CURRICULUM_1, specialty, false, CURRICULUM_END_DATE,
+            null)));
+
+    assertThat("Unexpected foundation programme flag.",
+        service.isFoundationProgramme(programmeMembership), is(true));
+  }
+
+  @ParameterizedTest
+  @CsvSource(textBlock = """
+      academic foundation training
+      ACADEMIC FOUNDATION TRAINING
+      Academic Foundation Training""")
+  void shouldBeFoundationProgrammeWhenCurriculumNameIsAcademicFoundationTraining(String name) {
+    ProgrammeMembership programmeMembership = new ProgrammeMembership();
+    programmeMembership.setCurricula(List.of(
+        new Curriculum(name, MEDICAL_CURRICULUM_1, "any specialty", false, CURRICULUM_END_DATE,
+            null)));
+
+    assertThat("Unexpected foundation programme flag.",
+        service.isFoundationProgramme(programmeMembership), is(true));
+  }
+
+  @Test
+  void shouldNotBeFoundationProgrammeWhenNoCurriculumMatchesFoundationCriteria() {
+    ProgrammeMembership programmeMembership = new ProgrammeMembership();
+    programmeMembership.setCurricula(List.of(
+        new Curriculum(CURRICULUM_NAME, MEDICAL_CURRICULUM_1, "any specialty", false,
+            CURRICULUM_END_DATE, null)));
+
+    assertThat("Unexpected foundation programme flag.",
+        service.isFoundationProgramme(programmeMembership), is(false));
+  }
+
+  @Test
+  void shouldBeFoundationProgrammeWhenAnyOneCurriculumMatchesFoundationCriteria() {
+    ProgrammeMembership programmeMembership = new ProgrammeMembership();
+    programmeMembership.setCurricula(List.of(
+        new Curriculum(CURRICULUM_NAME, MEDICAL_CURRICULUM_1, "any specialty", false,
+            CURRICULUM_END_DATE, null),
+        new Curriculum(CURRICULUM_NAME, MEDICAL_CURRICULUM_1, "FOUNDATION", false,
+            CURRICULUM_END_DATE, null),
+        new Curriculum(CURRICULUM_NAME, MEDICAL_CURRICULUM_1, "another specialty", false,
+            CURRICULUM_END_DATE, null)));
+
+    assertThat("Unexpected foundation programme flag.",
+        service.isFoundationProgramme(programmeMembership), is(true));
+  }
+
 
   /**
    * Helper function to set up a default non-excluded programme membership.

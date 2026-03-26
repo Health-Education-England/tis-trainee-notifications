@@ -79,11 +79,9 @@ public class ProgrammeMembershipService {
 
   public static final List<String> INCLUDE_CURRICULUM_SUBTYPES
       = List.of("MEDICAL_CURRICULUM", "MEDICAL_SPR");
-  public static final List<String> EXCLUDE_CURRICULUM_SPECIALTIES
-      = List.of();
 
-  private static final String ACADEMIC_FOUNDATION_CURRICULUM_NAME = "ACADEMIC FOUNDATION TRAINING";
-  private static final String FOUNDATION_SPECIALTY = "FOUNDATION";
+  public static final String ACADEMIC_FOUNDATION_CURRICULUM_NAME = "ACADEMIC FOUNDATION TRAINING";
+  public static final String FOUNDATION_SPECIALTY = "FOUNDATION";
 
   private final HistoryService historyService;
   private final InAppService inAppService;
@@ -329,11 +327,9 @@ public class ProgrammeMembershipService {
   private void createInAppNotifications(ProgrammeMembership programmeMembership,
       Map<NotificationType, History> notificationsAlreadySent) {
     boolean meetsCriteria = notificationService.meetsCriteria(programmeMembership, true, true);
-    boolean isFoundation = isFoundationProgramme(programmeMembership);
-    //TODO: foundation won't meet criteria since the isPilotOrRollout excludes FOUNDATION at this
-    // point
-    //not sure if we can skip the criteria check completely or if we need to validate newStarter
-    // for foundation doctors
+    boolean isFoundation = pmUtils.isFoundationProgramme(programmeMembership);
+    // Foundation won't meet criteria since the isPilotOrRollout excludes FOUNDATION at this
+    // point. Assuming we need to validate newStarter only for foundation doctors.
     boolean meetsFoundationCriteria = isFoundation
         && notificationService.meetsCriteria(programmeMembership, true, false);
 
@@ -506,23 +502,5 @@ public class ProgrammeMembershipService {
           history.id(), programmeMembership.getPersonId(), programmeMembership.getTisId());
       historyService.deleteHistoryForTrainee(history.id(), programmeMembership.getPersonId());
     }
-  }
-
-  /**
-   * Identify if a programme membership is a foundation programme, by checking if any of the
-   * curricula have a name or specialty indicating it's a foundation programme.
-   *
-   * @param programmeMembership The programme membership to check.
-   * @return true if the programme membership is a foundation programme, otherwise false.
-   */
-  public boolean isFoundationProgramme(ProgrammeMembership programmeMembership) {
-    return programmeMembership.getCurricula().stream()
-        .anyMatch(curriculum -> {
-          String name = curriculum.curriculumName();
-          String specialty = curriculum.curriculumSpecialty();
-          return name != null && specialty != null
-              && (name.equalsIgnoreCase(ACADEMIC_FOUNDATION_CURRICULUM_NAME)
-              || specialty.equalsIgnoreCase(FOUNDATION_SPECIALTY));
-        });
   }
 }
