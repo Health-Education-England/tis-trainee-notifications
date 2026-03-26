@@ -43,7 +43,7 @@ import uk.nhs.tis.trainee.notifications.model.NotificationType;
 @Service
 public class InAppService {
 
-  private final static LocalDate FOUNDATION_EPOCH = LocalDate.of(2026, 4, 1);
+  private static final LocalDate FOUNDATION_EPOCH = LocalDate.of(2026, 4, 1);
 
   private final HistoryService historyService;
 
@@ -75,8 +75,8 @@ public class InAppService {
     if (!doNotStoreJustLog) {
       if (NotificationType.getProgrammeInAppFoundationNotificationTypes().contains(notificationType)
           && sendAt.isBefore(FOUNDATION_EPOCH.atStartOfDay().toInstant(ZoneOffset.UTC))) {
-        log.info("Skipping foundation programme notification with a send date before the " +
-                "foundation epoch. Notification details: {}", history);
+        log.info("Skipping foundation programme notification with a send date before the "
+                + "foundation epoch. Notification details: {}", history);
       } else {
         historyService.save(history);
       }
