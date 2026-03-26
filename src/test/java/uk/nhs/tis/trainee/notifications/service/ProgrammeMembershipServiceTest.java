@@ -43,6 +43,7 @@ import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.SENT;
 import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.UNREAD;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.DAY_ONE;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.DEFERRAL;
+import static uk.nhs.tis.trainee.notifications.model.NotificationType.E_PORTFOLIO;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.INDEMNITY_INSURANCE;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.LTFT;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_CREATED;
@@ -516,6 +517,71 @@ class ProgrammeMembershipServiceTest {
     service.addNotifications(programmeMembership);
 
     verifyNoInteractions(inAppService);
+  }
+
+  @Test
+  void shouldNotAddInAppNotificationsWhenNotFoundationAndNotMeetsCriteria() {
+    // Non-foundation PM that fails standard criteria: neither branch triggers.
+    ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
+
+    when(notificationService.meetsCriteria(programmeMembership, true, true)).thenReturn(false);
+    when(notificationService.meetsCriteria(programmeMembership, true, false)).thenReturn(false);
+
+    service.addNotifications(programmeMembership);
+
+    verifyNoInteractions(inAppService);
+  }
+
+  @Test
+  void shouldNotAddInAppNotificationsWhenFoundationButNotMeetsFoundationCriteria() {
+    // Foundation PM that fails both criteria: no notifications at all.
+    ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
+    programmeMembership.setCurricula(List.of(
+        new Curriculum(CURRICULUM_NAME, MEDICAL_CURRICULUM_1, "Foundation", false,
+            CURRICULUM_END_DATE, null)));
+
+    when(notificationService.meetsCriteria(programmeMembership, true, true)).thenReturn(false);
+    when(notificationService.meetsCriteria(programmeMembership, true, false)).thenReturn(false);
+
+    service.addNotifications(programmeMembership);
+
+    verifyNoInteractions(inAppService);
+  }
+
+  @Test
+  void shouldNotAddNonContactInAppNotificationsWhenFoundationMeetsFoundationCriteriaOnly() {
+    // Foundation PM that only meets foundation criteria: contact-based notifications are sent
+    // (foundation types) but E_PORTFOLIO and INDEMNITY_INSURANCE are not.
+    ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
+    programmeMembership.setCurricula(List.of(
+        new Curriculum(CURRICULUM_NAME, MEDICAL_CURRICULUM_1, "Foundation", false,
+            CURRICULUM_END_DATE, null)));
+
+    when(notificationService.meetsCriteria(programmeMembership, true, true)).thenReturn(false);
+    when(notificationService.meetsCriteria(programmeMembership, true, false)).thenReturn(true);
+    when(notificationService.getOwnerContact(any(), any(), any(), any())).thenReturn("");
+    when(notificationService.getHrefTypeForContact(any())).thenReturn("");
+    when(notificationService.getTraineeDetails(PERSON_ID)).thenReturn(null);
+
+    service.addNotifications(programmeMembership);
+
+    verify(inAppService, never()).createNotifications(eq(PERSON_ID), any(), eq(E_PORTFOLIO),
+        any(), any(), anyBoolean());
+    verify(inAppService, never()).createNotifications(eq(PERSON_ID), any(),
+        eq(INDEMNITY_INSURANCE), any(), any(), anyBoolean());
+
+    // Contact-based foundation notifications are still sent.
+    verify(inAppService).createNotifications(eq(PERSON_ID), any(),
+        eq(NotificationType.LTFT_FOUNDATION), eq(LTFT_FOUNDATION_VERSION), any(), anyBoolean());
+    verify(inAppService).createNotifications(eq(PERSON_ID), any(),
+        eq(NotificationType.DEFERRAL_FOUNDATION), eq(DEFERRAL_FOUNDATION_VERSION), any(),
+        anyBoolean());
+    verify(inAppService).createNotifications(eq(PERSON_ID), any(),
+        eq(NotificationType.SPONSORSHIP_FOUNDATION), eq(SPONSORSHIP_FOUNDATION_VERSION), any(),
+        anyBoolean());
+    verify(inAppService).createNotifications(eq(PERSON_ID), any(),
+        eq(NotificationType.DAY_ONE_FOUNDATION), eq(DAY_ONE_FOUNDATION_VERSION), any(),
+        anyBoolean());
   }
 
   @ParameterizedTest
