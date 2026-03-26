@@ -204,20 +204,28 @@ public class ProgrammeMembershipService {
     if (!isExcluded) {
       notificationsAlreadySent = getLatestNotificationsSent(programmeMembership.getPersonId(),
           programmeMembership.getTisId());
-      createDirectProgrammeNotifications(programmeMembership, notificationsAlreadySent);
+      if (!pmUtils.isFoundationProgramme(programmeMembership)) {
+        // For now, only create direct programme notifications for non-foundation.
+        // The foundation emails will be dealt with in TIS21-8048
+        createDirectProgrammeNotifications(programmeMembership, notificationsAlreadySent);
+      }
       createInAppNotifications(programmeMembership, notificationsAlreadySent);
     }
 
-    boolean isExcludedPog = pmUtils.isExcludedPog(programmeMembership);
-    log.info("Programme membership {}: excluded POG {}.", programmeMembership.getTisId(),
-        isExcludedPog);
-    if (!isExcludedPog) {
-      if (notificationsAlreadySent == null) {
-        //getLatestNotificationsSent is expensive, so only call it if we need to
-        notificationsAlreadySent = getLatestNotificationsSent(programmeMembership.getPersonId(),
-            programmeMembership.getTisId());
+    if (!pmUtils.isFoundationProgramme(programmeMembership)) {
+      // For now, only create direct programme POG notifications for non-foundation,
+      // as per comment above.
+      boolean isExcludedPog = pmUtils.isExcludedPog(programmeMembership);
+      log.info("Programme membership {}: excluded POG {}.", programmeMembership.getTisId(),
+          isExcludedPog);
+      if (!isExcludedPog) {
+        if (notificationsAlreadySent == null) {
+          //getLatestNotificationsSent is expensive, so only call it if we need to
+          notificationsAlreadySent = getLatestNotificationsSent(programmeMembership.getPersonId(),
+              programmeMembership.getTisId());
+        }
+        createDirectProgrammePogNotifications(programmeMembership, notificationsAlreadySent);
       }
-      createDirectProgrammePogNotifications(programmeMembership, notificationsAlreadySent);
     }
   }
 
@@ -460,7 +468,8 @@ public class ProgrammeMembershipService {
     boolean isUnique = !notificationsAlreadySent.containsKey(notificationType);
     if (isUnique) {
       // send on programme start day for future Day One notification
-      if (notificationType.equals(DAY_ONE)) {
+      if (notificationType.equals(DAY_ONE)
+          || notificationType.equals(NotificationType.DAY_ONE_FOUNDATION)) {
         inAppService.createNotifications(programmeMembership.getPersonId(), tisReference,
             notificationType, notificationVersion, variables, doNotSendJustLog,
             programmeMembership.getStartDate().atStartOfDay(timezone).toInstant());

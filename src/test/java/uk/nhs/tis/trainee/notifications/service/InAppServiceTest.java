@@ -24,7 +24,6 @@ package uk.nhs.tis.trainee.notifications.service;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.lessThan;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
@@ -35,11 +34,14 @@ import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.UNREAD;
 import static uk.nhs.tis.trainee.notifications.model.TisReferenceType.PLACEMENT;
 
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.params.provider.EnumSource.Mode;
 import org.mockito.ArgumentCaptor;
 import uk.nhs.tis.trainee.notifications.model.History;
 import uk.nhs.tis.trainee.notifications.model.History.RecipientInfo;
@@ -51,6 +53,12 @@ class InAppServiceTest {
 
   private static final String TRAINEE_ID = UUID.randomUUID().toString();
   private static final String VERSION = "V1.2.3";
+  private static final Instant BEFORE_FOUNDATION_EPOCH =
+      LocalDate.of(2026, 3, 31).atStartOfDay().toInstant(ZoneOffset.UTC);
+  private static final Instant ON_FOUNDATION_EPOCH =
+      LocalDate.of(2026, 4, 1).atStartOfDay().toInstant(ZoneOffset.UTC);
+  private static final Instant AFTER_FOUNDATION_EPOCH =
+      LocalDate.of(2026, 4, 2).atStartOfDay().toInstant(ZoneOffset.UTC);
 
   private InAppService service;
   private HistoryService historyService;
@@ -62,11 +70,49 @@ class InAppServiceTest {
   }
 
   @ParameterizedTest
-  @EnumSource(NotificationType.class)
-  void shouldCreateNotification(NotificationType notificationType) {
+  @EnumSource(value = NotificationType.class, mode = Mode.EXCLUDE,
+      names = {"DEFERRAL_FOUNDATION", "LTFT_FOUNDATION", "SPONSORSHIP_FOUNDATION",
+          "DAY_ONE_FOUNDATION"})
+  void shouldCreateNonFoundationNotifications(NotificationType notificationType) {
     service.createNotifications(TRAINEE_ID, null, notificationType, VERSION, Map.of());
 
     verify(historyService).save(any());
+  }
+
+  @ParameterizedTest
+  @EnumSource(value = NotificationType.class,
+      names = {"DEFERRAL_FOUNDATION", "LTFT_FOUNDATION", "SPONSORSHIP_FOUNDATION",
+          "DAY_ONE_FOUNDATION"})
+  void shouldCreateFoundationNotificationWhenSendAtIsOnFoundationEpoch(
+      NotificationType notificationType) {
+    service.createNotifications(TRAINEE_ID, null, notificationType, VERSION, Map.of(), false,
+        ON_FOUNDATION_EPOCH);
+
+    verify(historyService).save(any());
+  }
+
+  @ParameterizedTest
+  @EnumSource(value = NotificationType.class,
+      names = {"DEFERRAL_FOUNDATION", "LTFT_FOUNDATION", "SPONSORSHIP_FOUNDATION",
+          "DAY_ONE_FOUNDATION"})
+  void shouldCreateFoundationNotificationWhenSendAtIsAfterFoundationEpoch(
+      NotificationType notificationType) {
+    service.createNotifications(TRAINEE_ID, null, notificationType, VERSION, Map.of(), false,
+        AFTER_FOUNDATION_EPOCH);
+
+    verify(historyService).save(any());
+  }
+
+  @ParameterizedTest
+  @EnumSource(value = NotificationType.class,
+      names = {"DEFERRAL_FOUNDATION", "LTFT_FOUNDATION", "SPONSORSHIP_FOUNDATION",
+          "DAY_ONE_FOUNDATION"})
+  void shouldNotCreateFoundationNotificationWhenSendAtIsBeforeFoundationEpoch(
+      NotificationType notificationType) {
+    service.createNotifications(TRAINEE_ID, null, notificationType, VERSION, Map.of(), false,
+        BEFORE_FOUNDATION_EPOCH);
+
+    verify(historyService, never()).save(any());
   }
 
   @ParameterizedTest
@@ -83,7 +129,8 @@ class InAppServiceTest {
   @ParameterizedTest
   @EnumSource(NotificationType.class)
   void shouldNotSetIdWhenCreatingNotification(NotificationType notificationType) {
-    service.createNotifications(TRAINEE_ID, null, notificationType, VERSION, Map.of());
+    service.createNotifications(TRAINEE_ID, null, notificationType, VERSION, Map.of(), false,
+        AFTER_FOUNDATION_EPOCH);
 
     ArgumentCaptor<History> historyCaptor = ArgumentCaptor.captor();
     verify(historyService).save(historyCaptor.capture());
@@ -97,7 +144,8 @@ class InAppServiceTest {
   void shouldSetTisReferenceWhenCreatingNotification(NotificationType notificationType) {
     String referenceId = UUID.randomUUID().toString();
     TisReferenceInfo referenceInfo = new TisReferenceInfo(PLACEMENT, referenceId);
-    service.createNotifications(TRAINEE_ID, referenceInfo, notificationType, VERSION, Map.of());
+    service.createNotifications(TRAINEE_ID, referenceInfo, notificationType, VERSION, Map.of(),
+        false, AFTER_FOUNDATION_EPOCH);
 
     ArgumentCaptor<History> historyCaptor = ArgumentCaptor.captor();
     verify(historyService).save(historyCaptor.capture());
@@ -111,7 +159,8 @@ class InAppServiceTest {
   @ParameterizedTest
   @EnumSource(NotificationType.class)
   void shouldSetNotificationTypeWhenCreatingNotification(NotificationType notificationType) {
-    service.createNotifications(TRAINEE_ID, null, notificationType, VERSION, Map.of());
+    service.createNotifications(TRAINEE_ID, null, notificationType, VERSION, Map.of(), false,
+        AFTER_FOUNDATION_EPOCH);
 
     ArgumentCaptor<History> historyCaptor = ArgumentCaptor.captor();
     verify(historyService).save(historyCaptor.capture());
@@ -123,7 +172,8 @@ class InAppServiceTest {
   @ParameterizedTest
   @EnumSource(NotificationType.class)
   void shouldSetRecipientInfoWhenCreatingNotification(NotificationType notificationType) {
-    service.createNotifications(TRAINEE_ID, null, notificationType, VERSION, Map.of());
+    service.createNotifications(TRAINEE_ID, null, notificationType, VERSION, Map.of(), false,
+        AFTER_FOUNDATION_EPOCH);
 
     ArgumentCaptor<History> historyCaptor = ArgumentCaptor.captor();
     verify(historyService).save(historyCaptor.capture());
@@ -143,7 +193,8 @@ class InAppServiceTest {
         "field2", 2,
         "field3", Instant.EPOCH
     );
-    service.createNotifications(TRAINEE_ID, null, notificationType, VERSION, variables);
+    service.createNotifications(TRAINEE_ID, null, notificationType, VERSION, variables, false,
+        AFTER_FOUNDATION_EPOCH);
 
     ArgumentCaptor<History> historyCaptor = ArgumentCaptor.captor();
     verify(historyService).save(historyCaptor.capture());
@@ -163,8 +214,9 @@ class InAppServiceTest {
 
   @ParameterizedTest
   @EnumSource(NotificationType.class)
-  void shouldNotAttachmentsWhenCreatingNotification(NotificationType notificationType) {
-    service.createNotifications(TRAINEE_ID, null, notificationType, VERSION, Map.of());
+  void shouldNotSetAttachmentsWhenCreatingNotification(NotificationType notificationType) {
+    service.createNotifications(TRAINEE_ID, null, notificationType, VERSION, Map.of(), false,
+        AFTER_FOUNDATION_EPOCH);
 
     ArgumentCaptor<History> historyCaptor = ArgumentCaptor.captor();
     verify(historyService).save(historyCaptor.capture());
@@ -175,21 +227,9 @@ class InAppServiceTest {
 
   @ParameterizedTest
   @EnumSource(NotificationType.class)
-  void shouldSetSentAtWhenCreatingNotification(NotificationType notificationType) {
-    service.createNotifications(TRAINEE_ID, null, notificationType, VERSION, Map.of());
-
-    ArgumentCaptor<History> historyCaptor = ArgumentCaptor.captor();
-    verify(historyService).save(historyCaptor.capture());
-
-    History history = historyCaptor.getValue();
-    long diffSeconds = Instant.now().getEpochSecond() - history.sentAt().getEpochSecond();
-    assertThat("Unexpected sentAt time difference.", diffSeconds, lessThan(10L));
-  }
-
-  @ParameterizedTest
-  @EnumSource(NotificationType.class)
   void shouldNotSetReadAtWhenCreatingNotification(NotificationType notificationType) {
-    service.createNotifications(TRAINEE_ID, null, notificationType, VERSION, Map.of());
+    service.createNotifications(TRAINEE_ID, null, notificationType, VERSION, Map.of(), false,
+        AFTER_FOUNDATION_EPOCH);
 
     ArgumentCaptor<History> historyCaptor = ArgumentCaptor.captor();
     verify(historyService).save(historyCaptor.capture());
@@ -201,7 +241,8 @@ class InAppServiceTest {
   @ParameterizedTest
   @EnumSource(NotificationType.class)
   void shouldSetStatusWhenCreatingNotification(NotificationType notificationType) {
-    service.createNotifications(TRAINEE_ID, null, notificationType, VERSION, Map.of());
+    service.createNotifications(TRAINEE_ID, null, notificationType, VERSION, Map.of(), false,
+        AFTER_FOUNDATION_EPOCH);
 
     ArgumentCaptor<History> historyCaptor = ArgumentCaptor.captor();
     verify(historyService).save(historyCaptor.capture());
@@ -213,7 +254,8 @@ class InAppServiceTest {
   @ParameterizedTest
   @EnumSource(NotificationType.class)
   void shouldSetStatusDetailWhenCreatingNotification(NotificationType notificationType) {
-    service.createNotifications(TRAINEE_ID, null, notificationType, VERSION, Map.of());
+    service.createNotifications(TRAINEE_ID, null, notificationType, VERSION, Map.of(), false,
+        AFTER_FOUNDATION_EPOCH);
 
     ArgumentCaptor<History> historyCaptor = ArgumentCaptor.captor();
     verify(historyService).save(historyCaptor.capture());
@@ -225,14 +267,13 @@ class InAppServiceTest {
   @ParameterizedTest
   @EnumSource(NotificationType.class)
   void shouldSetSentAtTimeWhenCreatingNotification(NotificationType notificationType) {
-    Instant timeNow = Instant.now();
     service.createNotifications(TRAINEE_ID, null, notificationType, VERSION, Map.of(),
-        false, timeNow);
+        false, AFTER_FOUNDATION_EPOCH);
 
     ArgumentCaptor<History> historyCaptor = ArgumentCaptor.captor();
     verify(historyService).save(historyCaptor.capture());
 
     History history = historyCaptor.getValue();
-    assertThat("Unexpected sent at.", history.sentAt(), is(timeNow));
+    assertThat("Unexpected sent at.", history.sentAt(), is(AFTER_FOUNDATION_EPOCH));
   }
 }

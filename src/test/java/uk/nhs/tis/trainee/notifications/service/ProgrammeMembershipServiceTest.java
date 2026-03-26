@@ -268,7 +268,9 @@ class ProgrammeMembershipServiceTest {
         TisReferenceInfo.class);
     ArgumentCaptor<Map<String, Object>> variablesCaptor = ArgumentCaptor.captor();
     ArgumentCaptor<Boolean> doNotStoreJustLogCaptor = ArgumentCaptor.captor();
-    if (notificationType.equals(DAY_ONE)) {
+    // eq() matchers on type and version anchor the captor to the correct invocation among the
+    // four foundation calls. DAY_ONE_FOUNDATION uses the 7-arg timestamped overload.
+    if (notificationType.equals(NotificationType.DAY_ONE_FOUNDATION)) {
       verify(inAppService).createNotifications(eq(PERSON_ID), referenceInfoCaptor.capture(),
           eq(notificationType), eq(notificationVersion), variablesCaptor.capture(),
           doNotStoreJustLogCaptor.capture(), eq(START_DATE.atStartOfDay(timezone).toInstant()));
@@ -581,7 +583,7 @@ class ProgrammeMembershipServiceTest {
         anyBoolean());
     verify(inAppService).createNotifications(eq(PERSON_ID), any(),
         eq(NotificationType.DAY_ONE_FOUNDATION), eq(DAY_ONE_FOUNDATION_VERSION), any(),
-        anyBoolean());
+        anyBoolean(), eq(START_DATE.atStartOfDay(timezone).toInstant()));
   }
 
   @ParameterizedTest
@@ -753,6 +755,50 @@ class ProgrammeMembershipServiceTest {
         is(RO_FIRST_NAME + " " + RO_LAST_NAME));
     assertThat("Unexpected designated body.", dayOneJobDataMap.get(DESIGNATED_BODY_FIELD),
         is(DESIGNATED_BODY));
+  }
+
+  // temporary until TIS21-8048 is done.
+  @Test
+  void shouldNotCreateDirectProgrammeNotificationsForFoundationProgramme() {
+    when(historyService.findAllHistoryForTrainee(PERSON_ID)).thenReturn(new ArrayList<>());
+
+    ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
+    programmeMembership.setCurricula(List.of(
+        new Curriculum(CURRICULUM_NAME, MEDICAL_CURRICULUM_1, "Foundation", false,
+            CURRICULUM_END_DATE, null)));
+
+    service.addNotifications(programmeMembership);
+
+    for (NotificationType notificationType
+        : NotificationType.getActiveProgrammeUpdateNotificationTypes()) {
+      String jobId = notificationType + "-" + TIS_ID;
+      verify(notificationService, never()).executeNow(eq(jobId), anyMap());
+      verify(notificationService, never()).scheduleNotification(eq(jobId), anyMap(), any(),
+          anyLong());
+    }
+  }
+
+  // temporary until TIS21-8048 is done.
+  @ParameterizedTest
+  @EnumSource(value = NotificationType.class,
+      names = {"PROGRAMME_POG_MONTH_12", "PROGRAMME_POG_MONTH_6"})
+  void shouldNotCreateDirectProgrammePogNotificationsForFoundationProgramme(
+      NotificationType pogType) {
+    when(historyService.findAllHistoryForTrainee(PERSON_ID)).thenReturn(new ArrayList<>());
+
+    ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
+    // Give the PM a POG-eligible curriculum so the POG exclusion check is not the reason
+    // these notifications are skipped — the foundation check must be the reason.
+    Curriculum eligibleCurriculum = new Curriculum(CURRICULUM_NAME, MEDICAL_CURRICULUM_1,
+        "Foundation", false, CURRICULUM_END_DATE, true);
+    programmeMembership.setCurricula(List.of(eligibleCurriculum));
+
+    service.addNotifications(programmeMembership);
+
+    String jobId = pogType + "-" + TIS_ID;
+    verify(notificationService, never()).executeNow(eq(jobId), anyMap());
+    verify(notificationService, never()).scheduleNotification(eq(jobId), anyMap(), any(),
+        anyLong());
   }
 
   @ParameterizedTest
