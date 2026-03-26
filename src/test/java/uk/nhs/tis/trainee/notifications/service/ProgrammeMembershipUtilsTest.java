@@ -87,7 +87,6 @@ class ProgrammeMembershipUtilsTest {
 
   private static final String MEDICAL_CURRICULUM_1 = "Medical_curriculum";
   private static final String MEDICAL_CURRICULUM_2 = "Medical_spr";
-  private static final String EXCLUDE_SPECIALTY_1 = "Foundation";
   private static final String INCLUDED_SPECIALTY_1 = "some-specialty";
   private static final String INCLUDED_SPECIALTY_2 = "Public Health Medicine";
   private static final LocalDate START_DATE = LocalDate.now().plusYears(1);
@@ -1201,8 +1200,8 @@ class ProgrammeMembershipUtilsTest {
    * @return the default programme membership.
    */
   private ProgrammeMembership getDefaultProgrammeMembership() {
-    Curriculum theCurriculum = new Curriculum(CURRICULUM_NAME, MEDICAL_CURRICULUM_1, "any " +
-        "specialty", false,
+    Curriculum theCurriculum = new Curriculum(CURRICULUM_NAME, MEDICAL_CURRICULUM_1,
+        "any specialty", false,
         CURRICULUM_END_DATE, null);
     ResponsibleOfficer theRo = new ResponsibleOfficer("roEmail", RO_FIRST_NAME, RO_LAST_NAME,
         "roGmc", "roPhone");

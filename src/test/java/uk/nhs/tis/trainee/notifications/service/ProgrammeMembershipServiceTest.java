@@ -98,7 +98,6 @@ import uk.nhs.tis.trainee.notifications.model.TisReferenceType;
 class ProgrammeMembershipServiceTest {
 
   private static final String MEDICAL_CURRICULUM_1 = "Medical_curriculum";
-  private static final String EXCLUDE_SPECIALTY_1 = "Foundation";
 
   private static final String TIS_ID = "123";
   private static final String PERSON_ID = "abc";
