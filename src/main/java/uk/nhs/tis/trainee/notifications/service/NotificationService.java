@@ -85,6 +85,8 @@ public class NotificationService {
 
   // Do not send any emails for POG notifications before this date
   public static final LocalDate POG_EPOCH = LocalDate.of(2026, 2, 1);
+  // Do not send any notifications for Foundation placements or programmes before this date
+  public static final LocalDate FOUNDATION_EPOCH = LocalDate.of(2026, 4, 1);
 
   protected static final String DEFAULT_NO_CONTACT_MESSAGE = "your local office";
   protected static final List<String> DUMMY_USER_ROLES = List.of("Placeholder", "Dummy Record");
@@ -423,6 +425,8 @@ public class NotificationService {
     boolean actuallySendEmail = false; // default to log email only
     boolean inWhitelist = notificationsWhitelist.contains(personId);
 
+    LocalDate now = LocalDate.now(ZoneId.of(timezone));
+
     if (NotificationType.getActiveProgrammeUpdateNotificationTypes().contains(notificationType)) {
 
       ProgrammeMembership minimalPm = new ProgrammeMembership();
@@ -441,6 +445,9 @@ public class NotificationService {
       actuallySendEmail = inWhitelist
           || (messagingControllerService.isValidRecipient(personId, MessageType.EMAIL)
           && inPilotOrRollout);
+      if (notificationType == NotificationType.PLACEMENT_UPDATED_WEEK_12_FOUNDATION) {
+        actuallySendEmail = actuallySendEmail && now.isAfter(FOUNDATION_EPOCH);
+      }
 
     } else if (notificationType == NotificationType.PLACEMENT_ROLLOUT_2024_CORRECTION) {
       actuallySendEmail = inWhitelist
@@ -448,7 +455,6 @@ public class NotificationService {
 
     } else if (NotificationType.getProgrammePogNotificationTypes().contains(notificationType)) {
 
-      LocalDate now = LocalDate.now(ZoneId.of(timezone));
       actuallySendEmail = inWhitelist
           || (messagingControllerService.isValidRecipient(personId, MessageType.EMAIL)
           && now.isAfter(POG_EPOCH));
@@ -548,7 +554,6 @@ public class NotificationService {
    * @return The user account details, or null if not found or duplicate.
    */
   private UserDetails getCognitoAccountDetails(String email) {
-    //return new UserDetails(true, "reuben.roberts@nhs.net", "Mr", "Test", "Testy", "1234567");
     try {
       return email == null || email.isBlank() ? null
           : emailService.getRecipientAccountByEmail(email);
@@ -564,7 +569,6 @@ public class NotificationService {
    * @return The user trainee profile details, or null if not found.
    */
   public UserDetails getTraineeDetails(String personId) {
-    //return new UserDetails(true, "reuben.roberts@nhs.net", "Mr", "Test", "Testy", "1234567");
     try {
       return restTemplate.getForObject(serviceUrl + API_TRAINEE_DETAILS, UserDetails.class,
           Map.of(TIS_ID_FIELD, personId));
