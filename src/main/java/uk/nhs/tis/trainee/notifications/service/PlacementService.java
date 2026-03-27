@@ -66,9 +66,6 @@ import uk.nhs.tis.trainee.notifications.model.Placement;
 @Service
 public class PlacementService {
 
-  // Do not send any emails for Foundation email notifications before this date
-  public static final LocalDate FD_EPOCH = LocalDate.of(2026, 4, 1);
-
   public static final String TIS_ID_FIELD = "tisId";
   public static final String START_DATE_FIELD = "startDate";
   public static final String PLACEMENT_TYPE_FIELD = "placementType";
@@ -152,6 +149,7 @@ public class PlacementService {
    * @return true if the placement specialty is Foundation.
    */
   private boolean isFoundationPlacement(Placement placement) {
+    //TODO fix this
     return FOUNDATION_SPECIALTY.equals(placement.getSpecialty());
   }
 
