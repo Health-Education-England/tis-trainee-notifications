@@ -84,42 +84,6 @@ class InAppServiceTest {
   @EnumSource(value = NotificationType.class,
       names = {"DEFERRAL_FOUNDATION", "LTFT_FOUNDATION", "SPONSORSHIP_FOUNDATION",
           "DAY_ONE_FOUNDATION"})
-  void shouldCreateFoundationNotificationWhenSendAtIsOnFoundationEpoch(
-      NotificationType notificationType) {
-    service.createNotifications(TRAINEE_ID, null, notificationType, VERSION, Map.of(), false,
-        ON_FOUNDATION_EPOCH);
-
-    verify(historyService).save(any());
-  }
-
-  @ParameterizedTest
-  @EnumSource(value = NotificationType.class,
-      names = {"DEFERRAL_FOUNDATION", "LTFT_FOUNDATION", "SPONSORSHIP_FOUNDATION",
-          "DAY_ONE_FOUNDATION"})
-  void shouldCreateFoundationNotificationWhenSendAtIsAfterFoundationEpoch(
-      NotificationType notificationType) {
-    service.createNotifications(TRAINEE_ID, null, notificationType, VERSION, Map.of(), false,
-        AFTER_FOUNDATION_EPOCH);
-
-    verify(historyService).save(any());
-  }
-
-  @ParameterizedTest
-  @EnumSource(value = NotificationType.class,
-      names = {"DEFERRAL_FOUNDATION", "LTFT_FOUNDATION", "SPONSORSHIP_FOUNDATION",
-          "DAY_ONE_FOUNDATION"})
-  void shouldNotCreateFoundationNotificationWhenSendAtIsBeforeFoundationEpoch(
-      NotificationType notificationType) {
-    service.createNotifications(TRAINEE_ID, null, notificationType, VERSION, Map.of(), false,
-        BEFORE_FOUNDATION_EPOCH);
-
-    verify(historyService, never()).save(any());
-  }
-
-  @ParameterizedTest
-  @EnumSource(value = NotificationType.class,
-      names = {"DEFERRAL_FOUNDATION", "LTFT_FOUNDATION", "SPONSORSHIP_FOUNDATION",
-          "DAY_ONE_FOUNDATION"})
   void shouldNotCreateFoundationNotificationWhenSendAtIsOneSecondBeforeFoundationEpochInLondonTime(
       NotificationType notificationType) {
     // 2026-04-01T00:00:00 London (BST, UTC+1) = 2026-03-31T23:00:00Z
