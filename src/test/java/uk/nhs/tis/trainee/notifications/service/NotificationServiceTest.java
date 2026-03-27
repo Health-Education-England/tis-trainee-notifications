@@ -581,7 +581,8 @@ class NotificationServiceTest {
 
   @ParameterizedTest
   @EnumSource(value = NotificationType.class, mode = Mode.EXCLUDE,
-      names = {"PLACEMENT_UPDATED_WEEK_12", "PLACEMENT_ROLLOUT_2024_CORRECTION",
+      names = {"PLACEMENT_UPDATED_WEEK_12", "PLACEMENT_UPDATED_WEEK_12_FOUNDATION",
+          "PLACEMENT_ROLLOUT_2024_CORRECTION",
           "PROGRAMME_CREATED", "PROGRAMME_DAY_ONE", "PROGRAMME_UPDATED_WEEK_12",
           "PROGRAMME_UPDATED_WEEK_4", "PROGRAMME_UPDATED_WEEK_2", "PROGRAMME_POG_MONTH_12",
           "PROGRAMME_POG_MONTH_6"})
@@ -933,8 +934,9 @@ class NotificationServiceTest {
 
   @ParameterizedTest
   @EnumSource(value = NotificationType.class, mode = Mode.EXCLUDE,
-      names = {"PLACEMENT_UPDATED_WEEK_12", "PROGRAMME_CREATED", "PROGRAMME_DAY_ONE",
-          "PROGRAMME_UPDATED_WEEK_12", "PROGRAMME_UPDATED_WEEK_4", "PROGRAMME_UPDATED_WEEK_2",
+      names = {"PLACEMENT_UPDATED_WEEK_12", "PLACEMENT_UPDATED_WEEK_12_FOUNDATION",
+          "PROGRAMME_CREATED", "PROGRAMME_DAY_ONE", "PROGRAMME_UPDATED_WEEK_12",
+          "PROGRAMME_UPDATED_WEEK_4", "PROGRAMME_UPDATED_WEEK_2",
           "PROGRAMME_POG_MONTH_12", "PROGRAMME_POG_MONTH_6"})
   void shouldNotSaveScheduleNotificationWhenNotCorrectNotificationType(
       NotificationType notificationType) {

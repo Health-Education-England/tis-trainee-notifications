@@ -179,8 +179,8 @@ public class NotificationService {
     // TODO: refactor to avoid the duplicate calls to getTraineeDetails and getCognitoAccountDetails
     enrichJobDetails(jobDetails);
 
-    UserDetails userTraineeDetails = new UserDetails(true, "reuben.roberts@nhs.net", "Mr", "Test", "Testy", "1234567"); // getTraineeDetails(personId);
-    UserDetails userCognitoAccountDetails = new UserDetails(true, "reuben.roberts@nhs.net", "Mr", "Test", "Testy", "1234567");  // getCognitoAccountDetails(userTraineeDetails.email());
+    UserDetails userTraineeDetails = getTraineeDetails(personId);
+    UserDetails userCognitoAccountDetails = getCognitoAccountDetails(userTraineeDetails.email());
     UserDetails userAccountDetails = mapUserDetails(userCognitoAccountDetails, userTraineeDetails);
 
     NotificationType notificationType =
@@ -291,8 +291,8 @@ public class NotificationService {
     if (!milestoneDate.isAfter(LocalDate.now())) {
       // 'Missed' milestones: schedule to be sent soon, but not immediately
       // in case of human editing 'jitter'.
-      milestone = Date.from(Instant.now());
-          //.plus(immediateNotificationDelayMinutes, ChronoUnit.MINUTES));
+      milestone = Date.from(Instant.now()
+          .plus(immediateNotificationDelayMinutes, ChronoUnit.MINUTES));
     } else {
       // Future milestone.
       milestone = Date.from(milestoneDate
@@ -365,8 +365,7 @@ public class NotificationService {
    */
   protected Map<String, Object> enrichJobDetails(Map<String, Object> jobDetails) {
     String personId = (String) jobDetails.get(PERSON_ID_FIELD);
-    UserDetails userTraineeDetails = new UserDetails(true, "reuben.roberts@nhs.net", "Mr", "Test", "Testy", "1234567");
-    // getTraineeDetails(personId);
+    UserDetails userTraineeDetails = getTraineeDetails(personId);
 
     if (userTraineeDetails == null) {
       String message = String.format(
@@ -394,7 +393,7 @@ public class NotificationService {
       jobDetails.putIfAbsent(TEMPLATE_POG_HREF_FIELD, getHrefTypeForContact(pogContact));
     }
 
-    UserDetails userCognitoAccountDetails = new UserDetails(true, "reuben.roberts@nhs.net", "Mr", "Test", "Testy", "1234567"); //getCognitoAccountDetails(userTraineeDetails.email());
+    UserDetails userCognitoAccountDetails = getCognitoAccountDetails(userTraineeDetails.email());
 
     UserDetails userAccountDetails = mapUserDetails(userCognitoAccountDetails, userTraineeDetails);
     if (userAccountDetails != null) {
@@ -503,7 +502,8 @@ public class NotificationService {
     if (NotificationType.getActiveProgrammeUpdateNotificationTypes().contains(notificationType)) {
       tisReferenceInfo = new TisReferenceInfo(PROGRAMME_MEMBERSHIP,
           jobDetails.get(ProgrammeMembershipService.TIS_ID_FIELD).toString());
-    } else if (notificationType == NotificationType.PLACEMENT_UPDATED_WEEK_12 || notificationType == NotificationType.PLACEMENT_UPDATED_WEEK_12_FOUNDATION) {
+    } else if (notificationType == NotificationType.PLACEMENT_UPDATED_WEEK_12
+        || notificationType == NotificationType.PLACEMENT_UPDATED_WEEK_12_FOUNDATION) {
       tisReferenceInfo = new TisReferenceInfo(PLACEMENT,
           jobDetails.get(PlacementService.TIS_ID_FIELD).toString());
     } else if (NotificationType.getProgrammePogNotificationTypes().contains(notificationType)) {
@@ -556,6 +556,7 @@ public class NotificationService {
    * @return The user account details, or null if not found or duplicate.
    */
   private UserDetails getCognitoAccountDetails(String email) {
+    //return new UserDetails(true, "reuben.roberts@nhs.net", "Mr", "Test", "Testy", "1234567");
     try {
       return email == null || email.isBlank() ? null
           : emailService.getRecipientAccountByEmail(email);
@@ -571,6 +572,7 @@ public class NotificationService {
    * @return The user trainee profile details, or null if not found.
    */
   public UserDetails getTraineeDetails(String personId) {
+    //return new UserDetails(true, "reuben.roberts@nhs.net", "Mr", "Test", "Testy", "1234567");
     try {
       return restTemplate.getForObject(serviceUrl + API_TRAINEE_DETAILS, UserDetails.class,
           Map.of(TIS_ID_FIELD, personId));

@@ -34,6 +34,7 @@ public class Placement {
   private String personId;
   private LocalDate startDate;
   private String placementType;
+  private String gradeAbbreviation;
   private String owner;
   private String specialty;
   private String site;

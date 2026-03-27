@@ -54,7 +54,6 @@ import static uk.nhs.tis.trainee.notifications.service.NotificationService.CONTA
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.ONE_DAY_IN_SECONDS;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.PERSON_ID_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.TEMPLATE_OWNER_FIELD;
-import static uk.nhs.tis.trainee.notifications.service.PlacementService.FOUNDATION_SPECIALTY;
 import static uk.nhs.tis.trainee.notifications.service.PlacementService.GMC_NUMBER_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.PlacementService.LOCAL_OFFICE_CONTACT_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.PlacementService.LOCAL_OFFICE_CONTACT_TYPE_FIELD;
@@ -324,7 +323,7 @@ class PlacementServiceTest {
     placement.setOwner(OWNER);
     placement.setPlacementType(IN_POST);
     placement.setSite(SITE);
-    placement.setSpecialty(FOUNDATION_SPECIALTY);
+    placement.setGradeAbbreviation("F1");
 
     service.addNotifications(placement);
 
@@ -348,7 +347,7 @@ class PlacementServiceTest {
     placement.setOwner(OWNER);
     placement.setPlacementType(IN_POST);
     placement.setSite(SITE);
-    placement.setSpecialty(FOUNDATION_SPECIALTY);
+    placement.setGradeAbbreviation("F1");
 
     NotificationType milestone = PLACEMENT_UPDATED_WEEK_12_FOUNDATION;
     LocalDate expectedDate = START_DATE
@@ -398,7 +397,7 @@ class PlacementServiceTest {
     placement.setOwner(OWNER);
     placement.setPlacementType(IN_POST);
     placement.setSite(SITE);
-    placement.setSpecialty(FOUNDATION_SPECIALTY);
+    placement.setGradeAbbreviation("F1");
 
     List<HistoryDto> sentNotifications = new ArrayList<>();
     sentNotifications.add(new HistoryDto("id",
@@ -425,6 +424,7 @@ class PlacementServiceTest {
     placement.setPlacementType(IN_POST);
     placement.setSite(SITE);
     placement.setSpecialty(SPECIALTY);
+    placement.setGradeAbbreviation("another grade");
 
     service.addNotifications(placement);
 

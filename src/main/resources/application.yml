@@ -37,7 +37,7 @@ application:
     programme-membership-deleted: ${PROGRAMME_MEMBERSHIP_DELETED_QUEUE}
     profile-move: ${PROFILE_MOVE_QUEUE}
   schedules:
-    send-scheduled-emails: "0/30 * * * * *"
+    send-scheduled-emails: "@hourly"
   sns:
     notifications-event:
       arn: ${NOTIFICATIONS_EVENT_TOPIC_ARN:}

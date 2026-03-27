@@ -2,12 +2,11 @@
 <html lang="en" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
-    <title>Notification of Placement</title>
 </head>
 <body>
 <h1>Email Message</h1>
 <h2>Subject</h2>
-<th:block th:fragment="subject">NHS England - <th:block th:text="${not #strings.isEmpty(localOfficeName)} ? ${localOfficeName} : _"></th:block> - Notification of Placement</th:block>
+<th:block th:fragment="subject">NHS England Notification of Placement</th:block>
 <h2>Content</h2>
 <th:block th:fragment="content">
     <div th:replace="fragments/retry/v1.0.0 :: retry(${originallySentOn})"></div>
@@ -15,16 +14,20 @@
     <p th:if="${#strings.isEmpty(givenName) AND #strings.isEmpty(familyName)}">Dear Doctor,</p>
     <p th:if="${not (#strings.isEmpty(givenName) OR #strings.isEmpty(familyName))}">Dear <span th:text="${not #strings.isEmpty(title)} ? ${title} : 'Dr'"></span> <span th:text="${not #strings.isEmpty(givenName)} ? ${givenName} : _"></span> <span th:text="${not #strings.isEmpty(familyName)} ? ${familyName} : _"></span>,</p>
     <p>
-        GMC [<th:block th:text="${not #strings.isEmpty(gmcNumber)} ? ${gmcNumber} : _">UNKNOWN</th:block>]<th:block th:if="${#strings.isEmpty(isValidGmc) OR not isValidGmc}"> - We don't have a confirmed GMC no. please contact your local office to update this.</th:block>
+        GMC <th:block th:text="${not #strings.isEmpty(gmcNumber)} ? ${gmcNumber} : _">UNKNOWN</th:block
+    ><th:block th:if="${#strings.isEmpty(isValidGmc) OR not isValidGmc}"> - We don't have a confirmed GMC no. please contact your local office to update this.</th:block>
     </p>
     <p>
-        For your placement starting [<th:block th:text="${startDate} ? |${#temporals.format(startDate, 'dd MMMM yyyy')}| : _">(start date missing)</th:block>] at [<th:block th:text="${not #strings.isEmpty(site)} ? ${site} : _">(site name missing)</th:block>] in [<th:block th:text="${not #strings.isEmpty(specialty)} ? ${specialty} : _">(speciality name missing)</th:block>], please see the below information. We appreciate this must be a busy time for you but please set some time aside to read this letter as it contains some vital information regarding your training placement.
+        For your placement starting <th:block th:text="${startDate} ? |${#temporals.format(startDate, 'd MMMM yyyy')}| : _">(start date missing)</th:block
+    > at <b><th:block th:text="${not #strings.isEmpty(site)} ? ${site} : _">(site name missing)</th:block
+    ></b> in <th:block th:text="${not #strings.isEmpty(specialty)} ? ${specialty} : _">(speciality name missing)</th:block
+    >, please see the below information. We appreciate this must be a busy time for you but please set some time aside to read this letter as it contains some vital information regarding your training placement.
     </p>
     <p>
-        The NHS England team can now confirm your placement within <b><th:block th:text="${not #strings.isEmpty(localOfficeName)} ? ${localOfficeName} : _"></th:block></b>.
+        The NHS England team can now confirm your placement. Please note Health Education England is now part of NHS England. Our systems will be updated in due course.
     </p>
     <p>
-        Please note your allocation and grade progression (where appropriate) will be subject to you receiving a satisfactory ARCP outcome and your continued registration/licence to practise with the GMC for the duration of your training.
+        Please note your allocation and grade progression (if appropriate) will be subject to you receiving a satisfactory ARCP outcome and your continued registration/licence to practise with the GMC for the duration of your training.
     </p>
     <p><b>Accessing TIS Self-Service (TSS)</b></p>
     <p>Your placement details can be reviewed by signing in to TIS Self-Service, after you sign in TSS will inform you of any outstanding actions for you to complete.</p>
@@ -48,7 +51,7 @@
         The placement information reflects what we have recorded on our Training Information System (TIS) as your next placement. Please be aware that when your Grade, Whole Time Equivalent (WTE) or Post Number changes, on TIS, a new placement will be created reflecting these changes.
     </p>
     <p>
-        Further details on the specialist area of your placement will be confirmed by your employing organisation. This is because we are only able to confirm details that relate specifically to the <th:block th:text="${not #strings.isEmpty(programmeName)} ? ${programmeName} : 'college recognised'"></th:block> curriculum. For example, if you have given your Training Programme Director a preference of a job in a specific location or department, we will not record this level of detail on TIS.
+        Further details on the specialist area of your placement will be confirmed by your employing organisation. This is because we are only able to confirm details that relate specifically to your college recognised curriculum. For example, if you have given your Training Programme Director a preference of a job in a specific location or department, we will not record this level of detail on TIS.
     </p>
     <p>
         Kind Regards,

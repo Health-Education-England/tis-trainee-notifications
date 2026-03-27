@@ -74,7 +74,7 @@ public class PlacementService {
   public static final String LOCAL_OFFICE_CONTACT_FIELD = "localOfficeContact";
   public static final String LOCAL_OFFICE_CONTACT_TYPE_FIELD = "localOfficeContactType";
   public static final String GMC_NUMBER_FIELD = "gmcNumber";
-  public static final String FOUNDATION_SPECIALTY = "Foundation";
+  public static final List<String> FOUNDATION_GRADES = List.of("F1", "F2");
   private static final String SCHEDULING_NOTIFICATION_LOG =
       "Scheduling notification {} for {}.";
 
@@ -149,8 +149,8 @@ public class PlacementService {
    * @return true if the placement specialty is Foundation.
    */
   private boolean isFoundationPlacement(Placement placement) {
-    //TODO fix this
-    return FOUNDATION_SPECIALTY.equals(placement.getSpecialty());
+    return placement.getGradeAbbreviation() != null
+        && FOUNDATION_GRADES.contains(placement.getGradeAbbreviation());
   }
 
   /**
@@ -208,7 +208,7 @@ public class PlacementService {
 
       createDirectNotifications(placement, notificationsRecorded);
       if (!isFoundationPlacement(placement)) {
-        //this will be resolved by TIS21-8477 TIS21-8478
+        //this will be resolved by TIS21-8430
         createInAppNotifications(placement, notificationsRecorded);
       }
     }
@@ -293,7 +293,7 @@ public class PlacementService {
     jobDataMap.put(TEMPLATE_NOTIFICATION_TYPE_FIELD, notificationType);
 
     String jobId = notificationType + "-" + placement.getTisId();
-    notificationService.scheduleNotification(jobId, jobDataMap, when, 10L);
+    notificationService.scheduleNotification(jobId, jobDataMap, when, ONE_DAY_IN_SECONDS);
   }
 
   /**
