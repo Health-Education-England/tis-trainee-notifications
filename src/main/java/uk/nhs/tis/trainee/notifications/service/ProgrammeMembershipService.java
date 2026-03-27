@@ -79,8 +79,9 @@ public class ProgrammeMembershipService {
 
   public static final List<String> INCLUDE_CURRICULUM_SUBTYPES
       = List.of("MEDICAL_CURRICULUM", "MEDICAL_SPR");
-  public static final List<String> EXCLUDE_CURRICULUM_SPECIALTIES
-      = List.of("FOUNDATION");
+
+  public static final String ACADEMIC_FOUNDATION_CURRICULUM_NAME = "ACADEMIC FOUNDATION TRAINING";
+  public static final String FOUNDATION_SPECIALTY = "FOUNDATION";
 
   private final HistoryService historyService;
   private final InAppService inAppService;
@@ -96,19 +97,28 @@ public class ProgrammeMembershipService {
   private final String ltftVersion;
   private final String sponsorshipVersion;
 
+  private final String dayOneFoundationVersion;
+  private final String deferralFoundationVersion;
+  private final String ltftFoundationVersion;
+  private final String sponsorshipFoundationVersion;
+
   /**
    * Initialise the programme membership service.
    *
-   * @param historyService            The history service to use.
-   * @param inAppService              The in-app service to use.
-   * @param notificationService       The notification service to use.
-   * @param pmUtils                   The programme membership utilities to use.
-   * @param dayOneVersion             The day one version.
-   * @param deferralVersion           The deferral version.
-   * @param eportfolioVersion         The ePortfolio version.
-   * @param indemnityInsuranceVersion The indemnity insurance version.
-   * @param ltftVersion               The LTFT version.
-   * @param sponsorshipVersion        The sponsorship version.
+   * @param historyService               The history service to use.
+   * @param inAppService                 The in-app service to use.
+   * @param notificationService          The notification service to use.
+   * @param pmUtils                      The programme membership utilities to use.
+   * @param dayOneVersion                The day one version.
+   * @param deferralVersion              The deferral version.
+   * @param eportfolioVersion            The ePortfolio version.
+   * @param indemnityInsuranceVersion    The indemnity insurance version.
+   * @param ltftVersion                  The LTFT version.
+   * @param sponsorshipVersion           The sponsorship version.
+   * @param dayOneFoundationVersion      The day one foundation version.
+   * @param deferralFoundationVersion    The deferral foundation version.
+   * @param ltftFoundationVersion        The LTFT foundation version.
+   * @param sponsorshipFoundationVersion The sponsorship foundation version.
    */
   public ProgrammeMembershipService(HistoryService historyService, InAppService inAppService,
       NotificationService notificationService, ProgrammeMembershipUtils pmUtils,
@@ -119,7 +129,15 @@ public class ProgrammeMembershipService {
       @Value("${application.template-versions.indemnity-insurance.in-app}")
       String indemnityInsuranceVersion,
       @Value("${application.template-versions.less-than-full-time.in-app}") String ltftVersion,
-      @Value("${application.template-versions.sponsorship.in-app}") String sponsorshipVersion) {
+      @Value("${application.template-versions.sponsorship.in-app}") String sponsorshipVersion,
+      @Value("${application.template-versions.day-one-foundation.in-app}")
+      String dayOneFoundationVersion,
+      @Value("${application.template-versions.deferral-foundation.in-app}")
+      String deferralFoundationVersion,
+      @Value("${application.template-versions.less-than-full-time-foundation.in-app}")
+      String ltftFoundationVersion,
+      @Value("${application.template-versions.sponsorship-foundation.in-app}")
+      String sponsorshipFoundationVersion) {
     this.historyService = historyService;
     this.inAppService = inAppService;
     this.notificationService = notificationService;
@@ -131,6 +149,10 @@ public class ProgrammeMembershipService {
     this.indemnityInsuranceVersion = indemnityInsuranceVersion;
     this.ltftVersion = ltftVersion;
     this.sponsorshipVersion = sponsorshipVersion;
+    this.dayOneFoundationVersion = dayOneFoundationVersion;
+    this.deferralFoundationVersion = deferralFoundationVersion;
+    this.ltftFoundationVersion = ltftFoundationVersion;
+    this.sponsorshipFoundationVersion = sponsorshipFoundationVersion;
   }
 
   /**
@@ -150,6 +172,7 @@ public class ProgrammeMembershipService {
         NotificationType.getProgrammeUpdateNotificationTypes());
     notificationTypes.addAll(NotificationType.getProgrammePogNotificationTypes());
     notificationTypes.addAll(NotificationType.getProgrammeInAppNotificationTypes());
+    notificationTypes.addAll(NotificationType.getProgrammeInAppFoundationNotificationTypes());
 
     for (NotificationType milestone : notificationTypes) {
       Optional<History> sentItem = correspondence.stream()
@@ -181,20 +204,28 @@ public class ProgrammeMembershipService {
     if (!isExcluded) {
       notificationsAlreadySent = getLatestNotificationsSent(programmeMembership.getPersonId(),
           programmeMembership.getTisId());
-      createDirectProgrammeNotifications(programmeMembership, notificationsAlreadySent);
+      if (!pmUtils.isFoundationProgramme(programmeMembership)) {
+        // For now, only create direct programme notifications for non-foundation.
+        // The foundation emails will be dealt with in TIS21-8048
+        createDirectProgrammeNotifications(programmeMembership, notificationsAlreadySent);
+      }
       createInAppNotifications(programmeMembership, notificationsAlreadySent);
     }
 
-    boolean isExcludedPog = pmUtils.isExcludedPog(programmeMembership);
-    log.info("Programme membership {}: excluded POG {}.", programmeMembership.getTisId(),
-        isExcludedPog);
-    if (!isExcludedPog) {
-      if (notificationsAlreadySent == null) {
-        //getLatestNotificationsSent is expensive, so only call it if we need to
-        notificationsAlreadySent = getLatestNotificationsSent(programmeMembership.getPersonId(),
-            programmeMembership.getTisId());
+    if (!pmUtils.isFoundationProgramme(programmeMembership)) {
+      // For now, only create direct programme POG notifications for non-foundation,
+      // as per comment above.
+      boolean isExcludedPog = pmUtils.isExcludedPog(programmeMembership);
+      log.info("Programme membership {}: excluded POG {}.", programmeMembership.getTisId(),
+          isExcludedPog);
+      if (!isExcludedPog) {
+        if (notificationsAlreadySent == null) {
+          //getLatestNotificationsSent is expensive, so only call it if we need to
+          notificationsAlreadySent = getLatestNotificationsSent(programmeMembership.getPersonId(),
+              programmeMembership.getTisId());
+        }
+        createDirectProgrammePogNotifications(programmeMembership, notificationsAlreadySent);
       }
-      createDirectProgrammePogNotifications(programmeMembership, notificationsAlreadySent);
     }
   }
 
@@ -279,9 +310,9 @@ public class ProgrammeMembershipService {
   /**
    * Schedule a programme POG notification.
    *
-   * @param notificationType         The type of POG notification to schedule.
-   * @param programmeMembership      The programme membership.
-   * @param jobDataMap               The job data map.
+   * @param notificationType    The type of POG notification to schedule.
+   * @param programmeMembership The programme membership.
+   * @param jobDataMap          The job data map.
    */
   private void doScheduleProgrammePogNotification(NotificationType notificationType,
       ProgrammeMembership programmeMembership, Map<String, Object> jobDataMap) {
@@ -303,66 +334,108 @@ public class ProgrammeMembershipService {
    */
   private void createInAppNotifications(ProgrammeMembership programmeMembership,
       Map<NotificationType, History> notificationsAlreadySent) {
-    // Create ePortfolio notification if the PM qualifies.
     boolean meetsCriteria = notificationService.meetsCriteria(programmeMembership, true, true);
+    boolean isFoundation = pmUtils.isFoundationProgramme(programmeMembership);
+    // Foundation won't meet criteria since the isPilotOrRollout excludes FOUNDATION at this
+    // point. Assuming we need to validate newStarter only for foundation doctors.
+    boolean meetsFoundationCriteria = isFoundation
+        && notificationService.meetsCriteria(programmeMembership, true, false);
 
     if (meetsCriteria) {
-      // E_PORTFOLIO
-      createUniqueInAppNotification(programmeMembership, notificationsAlreadySent, E_PORTFOLIO,
-          eportfolioVersion, Map.of());
-
-      // INDEMNITY_INSURANCE
-      boolean hasBlockIndemnity = programmeMembership.getCurricula().stream()
-          .anyMatch(Curriculum::curriculumSpecialtyBlockIndemnity);
-      createUniqueInAppNotification(programmeMembership, notificationsAlreadySent,
-          INDEMNITY_INSURANCE, indemnityInsuranceVersion,
-          Map.of(BLOCK_INDEMNITY_FIELD, hasBlockIndemnity));
-
-      String owner = programmeMembership.getManagingDeanery();
-      List<Map<String, String>> contactList = notificationService.getOwnerContactList(owner);
-
-      UserDetails userTraineeDetails = notificationService.getTraineeDetails(
-          programmeMembership.getPersonId());
-      String gmcNumber = (userTraineeDetails != null && userTraineeDetails.gmcNumber() != null)
-          ? userTraineeDetails.gmcNumber().trim() : "unknown";
-
-      // LTFT
-      String localOfficeContactLtft = notificationService.getOwnerContact(contactList,
-          LocalOfficeContactType.LTFT, LocalOfficeContactType.TSS_SUPPORT, "");
-      String localOfficeContactTypeLtft =
-          notificationService.getHrefTypeForContact(localOfficeContactLtft);
-      createUniqueInAppNotification(programmeMembership, notificationsAlreadySent, LTFT,
-          ltftVersion, Map.of(
-              LOCAL_OFFICE_CONTACT_FIELD, localOfficeContactLtft,
-              LOCAL_OFFICE_CONTACT_TYPE_FIELD, localOfficeContactTypeLtft,
-              GMC_NUMBER_FIELD, gmcNumber));
-
-      // DEFERRAL
-      String localOfficeContactDeferral = notificationService.getOwnerContact(contactList,
-          LocalOfficeContactType.DEFERRAL, LocalOfficeContactType.TSS_SUPPORT, "");
-      String localOfficeContactTypeDeferral =
-          notificationService.getHrefTypeForContact(localOfficeContactDeferral);
-      createUniqueInAppNotification(programmeMembership, notificationsAlreadySent, DEFERRAL,
-          deferralVersion, Map.of(
-              LOCAL_OFFICE_CONTACT_FIELD, localOfficeContactDeferral,
-              LOCAL_OFFICE_CONTACT_TYPE_FIELD, localOfficeContactTypeDeferral,
-              GMC_NUMBER_FIELD, gmcNumber));
-
-      // SPONSORSHIP
-      String localOfficeContactSponsorship = notificationService.getOwnerContact(contactList,
-          LocalOfficeContactType.SPONSORSHIP, LocalOfficeContactType.TSS_SUPPORT, "");
-      String localOfficeContactTypeSponsorship =
-          notificationService.getHrefTypeForContact(localOfficeContactSponsorship);
-      createUniqueInAppNotification(programmeMembership, notificationsAlreadySent, SPONSORSHIP,
-          sponsorshipVersion, Map.of(
-              LOCAL_OFFICE_CONTACT_FIELD, localOfficeContactSponsorship,
-              LOCAL_OFFICE_CONTACT_TYPE_FIELD, localOfficeContactTypeSponsorship,
-              GMC_NUMBER_FIELD, gmcNumber));
-
-      // DAY_ONE
-      createUniqueInAppNotification(programmeMembership, notificationsAlreadySent, DAY_ONE,
-          dayOneVersion, Map.of());
+      createNonContactInAppNotifications(programmeMembership, notificationsAlreadySent);
     }
+    if (meetsCriteria || meetsFoundationCriteria) {
+      createContactInAppNotifications(programmeMembership, notificationsAlreadySent, isFoundation);
+    }
+  }
+
+  /**
+   * Create in-app notifications that do not require local office contact lookup (E_PORTFOLIO and
+   * INDEMNITY_INSURANCE).
+   *
+   * @param programmeMembership      The updated programme membership.
+   * @param notificationsAlreadySent Previously sent notifications.
+   */
+  private void createNonContactInAppNotifications(ProgrammeMembership programmeMembership,
+      Map<NotificationType, History> notificationsAlreadySent) {
+    createUniqueInAppNotification(programmeMembership, notificationsAlreadySent, E_PORTFOLIO,
+        eportfolioVersion, Map.of());
+
+    boolean hasBlockIndemnity = programmeMembership.getCurricula().stream()
+        .anyMatch(Curriculum::curriculumSpecialtyBlockIndemnity);
+    createUniqueInAppNotification(programmeMembership, notificationsAlreadySent,
+        INDEMNITY_INSURANCE, indemnityInsuranceVersion,
+        Map.of(BLOCK_INDEMNITY_FIELD, hasBlockIndemnity));
+  }
+
+  /**
+   * Create in-app notifications that require a local office contact lookup (LTFT, DEFERRAL,
+   * SPONSORSHIP, and DAY_ONE).
+   *
+   * @param programmeMembership      The updated programme membership.
+   * @param notificationsAlreadySent Previously sent notifications.
+   * @param isFoundation             Whether the programme membership is a foundation programme.
+   */
+  private void createContactInAppNotifications(ProgrammeMembership programmeMembership,
+      Map<NotificationType, History> notificationsAlreadySent, boolean isFoundation) {
+    String owner = programmeMembership.getManagingDeanery();
+    List<Map<String, String>> contactList = notificationService.getOwnerContactList(owner);
+
+    UserDetails userTraineeDetails = notificationService.getTraineeDetails(
+        programmeMembership.getPersonId());
+    String gmcNumber = (userTraineeDetails != null && userTraineeDetails.gmcNumber() != null)
+        ? userTraineeDetails.gmcNumber().trim() : "unknown";
+
+    createContactBasedInAppNotification(programmeMembership, notificationsAlreadySent, contactList,
+        LocalOfficeContactType.LTFT,
+        isFoundation ? NotificationType.LTFT_FOUNDATION : LTFT,
+        isFoundation ? ltftFoundationVersion : ltftVersion,
+        gmcNumber);
+
+    createContactBasedInAppNotification(programmeMembership, notificationsAlreadySent, contactList,
+        LocalOfficeContactType.DEFERRAL,
+        isFoundation ? NotificationType.DEFERRAL_FOUNDATION : DEFERRAL,
+        isFoundation ? deferralFoundationVersion : deferralVersion,
+        gmcNumber);
+
+    createContactBasedInAppNotification(programmeMembership, notificationsAlreadySent, contactList,
+        LocalOfficeContactType.SPONSORSHIP,
+        isFoundation ? NotificationType.SPONSORSHIP_FOUNDATION : SPONSORSHIP,
+        isFoundation ? sponsorshipFoundationVersion : sponsorshipVersion,
+        gmcNumber);
+
+    createUniqueInAppNotification(programmeMembership, notificationsAlreadySent,
+        isFoundation ? NotificationType.DAY_ONE_FOUNDATION : DAY_ONE,
+        isFoundation ? dayOneFoundationVersion : dayOneVersion,
+        Map.of());
+  }
+
+  /**
+   * Create an in-app notification that requires a local office contact lookup.
+   *
+   * @param programmeMembership      The updated programme membership.
+   * @param notificationsAlreadySent Previously sent notifications.
+   * @param contactList              The local office contact list.
+   * @param contactType              The type of local office contact to look up.
+   * @param notificationType         The resolved notification type.
+   * @param notificationVersion      The version of the notification template.
+   * @param gmcNumber                The trainee's GMC number.
+   */
+  private void createContactBasedInAppNotification(ProgrammeMembership programmeMembership,
+      Map<NotificationType, History> notificationsAlreadySent,
+      List<Map<String, String>> contactList,
+      LocalOfficeContactType contactType,
+      NotificationType notificationType,
+      String notificationVersion,
+      String gmcNumber) {
+    String contact = notificationService.getOwnerContact(contactList,
+        contactType, LocalOfficeContactType.TSS_SUPPORT, "");
+    String contactHrefType = notificationService.getHrefTypeForContact(contact);
+    createUniqueInAppNotification(programmeMembership, notificationsAlreadySent,
+        notificationType, notificationVersion, Map.of(
+            LOCAL_OFFICE_CONTACT_FIELD, contact,
+            LOCAL_OFFICE_CONTACT_TYPE_FIELD, contactHrefType,
+            GMC_NUMBER_FIELD, gmcNumber));
   }
 
   /**
@@ -395,7 +468,8 @@ public class ProgrammeMembershipService {
     boolean isUnique = !notificationsAlreadySent.containsKey(notificationType);
     if (isUnique) {
       // send on programme start day for future Day One notification
-      if (notificationType.equals(DAY_ONE)) {
+      if (notificationType.equals(DAY_ONE)
+          || notificationType.equals(NotificationType.DAY_ONE_FOUNDATION)) {
         inAppService.createNotifications(programmeMembership.getPersonId(), tisReference,
             notificationType, notificationVersion, variables, doNotSendJustLog,
             programmeMembership.getStartDate().atStartOfDay(timezone).toInstant());

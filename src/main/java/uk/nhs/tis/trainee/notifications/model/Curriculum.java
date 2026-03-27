@@ -27,6 +27,7 @@ import java.time.LocalDate;
 /**
  * A Programme membership's Curriculum.
  *
+ * @param curriculumName      The Curriculum name.
  * @param curriculumSubType   The Curriculum subtype.
  * @param curriculumSpecialty The Curriculum specialty.
  * @param curriculumSpecialtyBlockIndemnity Whether the specialty is part of block indemnity.
@@ -35,6 +36,7 @@ import java.time.LocalDate;
  */
 @JsonIgnoreProperties(ignoreUnknown = true)
 public record Curriculum(
+    String curriculumName,
     String curriculumSubType,
     String curriculumSpecialty,
     boolean curriculumSpecialtyBlockIndemnity,

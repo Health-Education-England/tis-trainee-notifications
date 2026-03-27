@@ -25,7 +25,6 @@ package uk.nhs.tis.trainee.notifications.service;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.SENT;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_CREATED;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_DAY_ONE;
@@ -87,15 +86,16 @@ class ProgrammeMembershipUtilsTest {
 
   private static final String MEDICAL_CURRICULUM_1 = "Medical_curriculum";
   private static final String MEDICAL_CURRICULUM_2 = "Medical_spr";
-  private static final String EXCLUDE_SPECIALTY_1 = "Foundation";
   private static final String INCLUDED_SPECIALTY_1 = "some-specialty";
   private static final String INCLUDED_SPECIALTY_2 = "Public Health Medicine";
   private static final LocalDate START_DATE = LocalDate.now().plusYears(1);
+  private static final String CURRICULUM_NAME = "curriculum name";
   private static final LocalDate CURRICULUM_END_DATE = LocalDate.now().plusYears(2);
   private static final ZoneId TIMEZONE = ZoneId.of("Europe/London");
 
   private static final Curriculum IGNORED_CURRICULUM
-      = new Curriculum("some-subtype", "INCLUDED_SPECIALTY_1", false,
+      = new Curriculum(CURRICULUM_NAME, "some-subtype",
+      "INCLUDED_SPECIALTY_1", false,
       CURRICULUM_END_DATE, false);
 
   ProgrammeMembershipUtils service = new ProgrammeMembershipUtils(TIMEZONE);
@@ -126,22 +126,11 @@ class ProgrammeMembershipUtilsTest {
         pogDaysBeforeEndDate, is(nullValue()));
   }
 
-  @Test()
-  void shouldThrowExceptionIfPmHasNullSpecialty() {
-    Curriculum nullCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, null, false,
-        CURRICULUM_END_DATE, null);
-    ProgrammeMembership programmeMembership = new ProgrammeMembership();
-    programmeMembership.setStartDate(START_DATE);
-    programmeMembership.setCurricula(List.of(nullCurriculum, nullCurriculum));
-
-    assertThrows(NullPointerException.class, () -> service.isExcluded(programmeMembership));
-  }
-
   @ParameterizedTest
   @ValueSource(strings = {MEDICAL_CURRICULUM_1, MEDICAL_CURRICULUM_2})
   void shouldNotExcludePmWithMedicalSubtypeAndNoExcludedSpecialties(String subtype) {
-    Curriculum theCurriculum = new Curriculum(subtype, "INCLUDED_SPECIALTY_1", false,
-        CURRICULUM_END_DATE, null);
+    Curriculum theCurriculum = new Curriculum(CURRICULUM_NAME, subtype, "INCLUDED_SPECIALTY_1",
+        false, CURRICULUM_END_DATE, null);
     ProgrammeMembership programmeMembership = new ProgrammeMembership();
     programmeMembership.setStartDate(START_DATE);
     programmeMembership.setCurricula(List.of(theCurriculum, IGNORED_CURRICULUM));
@@ -154,8 +143,8 @@ class ProgrammeMembershipUtilsTest {
   @ParameterizedTest
   @ValueSource(strings = {INCLUDED_SPECIALTY_1, INCLUDED_SPECIALTY_2})
   void shouldNotExcludePmWithMedicalSubtypeAndIncludedSpecialties(String specialty) {
-    Curriculum theCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, specialty, false,
-        CURRICULUM_END_DATE, null);
+    Curriculum theCurriculum = new Curriculum(CURRICULUM_NAME, MEDICAL_CURRICULUM_1, specialty,
+        false, CURRICULUM_END_DATE, null);
     ProgrammeMembership programmeMembership = new ProgrammeMembership();
     programmeMembership.setStartDate(START_DATE);
     programmeMembership.setCurricula(List.of(theCurriculum, IGNORED_CURRICULUM));
@@ -167,7 +156,8 @@ class ProgrammeMembershipUtilsTest {
 
   @Test
   void shouldExcludePmThatHasNoStartDate() {
-    Curriculum theCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, "INCLUDED_SPECIALTY_1", false,
+    Curriculum theCurriculum = new Curriculum(CURRICULUM_NAME, MEDICAL_CURRICULUM_1,
+        "INCLUDED_SPECIALTY_1", false,
         CURRICULUM_END_DATE, null);
     ProgrammeMembership programmeMembership = new ProgrammeMembership();
     programmeMembership.setCurricula(List.of(theCurriculum, IGNORED_CURRICULUM));
@@ -179,7 +169,8 @@ class ProgrammeMembershipUtilsTest {
 
   @Test
   void shouldExcludePmThatIsNotFuture() {
-    Curriculum theCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, "INCLUDED_SPECIALTY_1", false,
+    Curriculum theCurriculum = new Curriculum(CURRICULUM_NAME, MEDICAL_CURRICULUM_1,
+        "INCLUDED_SPECIALTY_1", false,
         CURRICULUM_END_DATE, null);
     ProgrammeMembership programmeMembership = new ProgrammeMembership();
     programmeMembership.setStartDate(LocalDate.now().minusYears(1));
@@ -204,7 +195,8 @@ class ProgrammeMembershipUtilsTest {
 
   @Test
   void shouldExcludePmWithNullSubtype() {
-    Curriculum theCurriculum = new Curriculum(null, "INCLUDED_SPECIALTY_1", false,
+    Curriculum theCurriculum = new Curriculum(CURRICULUM_NAME, null,
+        "INCLUDED_SPECIALTY_1", false,
         CURRICULUM_END_DATE, null);
     List<Curriculum> curricula = List.of(theCurriculum);
     ProgrammeMembership programmeMembership = new ProgrammeMembership();
@@ -227,13 +219,12 @@ class ProgrammeMembershipUtilsTest {
     assertThat("Unexpected excluded value.", isExcluded, is(true));
   }
 
-  @ParameterizedTest
-  @ValueSource(strings = {EXCLUDE_SPECIALTY_1})
-  void shouldExcludePmWithExcludedSpecialty(String specialty) {
-    Curriculum theCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, specialty, false,
-        CURRICULUM_END_DATE, null);
-    Curriculum anotherCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, "INCLUDED_SPECIALTY_1",
-        false,
+  @Test
+  void shouldNotExcludePmWithFoundationSpecialty() {
+    Curriculum theCurriculum = new Curriculum(CURRICULUM_NAME, MEDICAL_CURRICULUM_1, "Foundation",
+        false, CURRICULUM_END_DATE, null);
+    Curriculum anotherCurriculum = new Curriculum(CURRICULUM_NAME, MEDICAL_CURRICULUM_1,
+        "INCLUDED_SPECIALTY_1", false,
         CURRICULUM_END_DATE, null);
     ProgrammeMembership programmeMembership = new ProgrammeMembership();
     programmeMembership.setStartDate(START_DATE);
@@ -241,7 +232,7 @@ class ProgrammeMembershipUtilsTest {
 
     boolean isExcluded = service.isExcluded(programmeMembership);
 
-    assertThat("Unexpected excluded value.", isExcluded, is(true));
+    assertThat("Unexpected excluded value.", isExcluded, is(false));
   }
 
   @ParameterizedTest
@@ -282,7 +273,7 @@ class ProgrammeMembershipUtilsTest {
         .minusDays(1);
     ProgrammeMembership programmeMembership = new ProgrammeMembership();
     programmeMembership.setCurricula(List.of(
-        new Curriculum("MEDICAL_CURRICULUM", "specialty", false, cctDate, true)
+        new Curriculum(CURRICULUM_NAME, "MEDICAL_CURRICULUM", "specialty", false, cctDate, true)
     ));
 
     boolean isExcludedPog = service.isExcludedPog(programmeMembership);
@@ -297,7 +288,7 @@ class ProgrammeMembershipUtilsTest {
         .plusWeeks(POG_ALL_NOTIFICATION_CUTOFF_WEEKS);
     ProgrammeMembership programmeMembership = new ProgrammeMembership();
     programmeMembership.setCurricula(List.of(
-        new Curriculum("MEDICAL_CURRICULUM", "specialty", false, cctDate, true)
+        new Curriculum(CURRICULUM_NAME, "MEDICAL_CURRICULUM", "specialty", false, cctDate, true)
     ));
 
     boolean isExcludedPog = service.isExcludedPog(programmeMembership);
@@ -312,7 +303,7 @@ class ProgrammeMembershipUtilsTest {
   void shouldExcludePogWhenCurriculumEligibleForPeriodOfGraceIsNullOrFalse(Boolean eligibleForPog) {
     ProgrammeMembership programmeMembership = new ProgrammeMembership();
     programmeMembership.setCurricula(List.of(
-        new Curriculum("MEDICAL_CURRICULUM", "specialty", false,
+        new Curriculum(CURRICULUM_NAME, "MEDICAL_CURRICULUM", "specialty", false,
             LocalDate.now(TIMEZONE).plusDays(10), eligibleForPog)
     ));
 
@@ -325,9 +316,11 @@ class ProgrammeMembershipUtilsTest {
   @Test
   void shouldIgnoreCurriculaNotEligibleForPeriodOfGrace() {
     LocalDate now = LocalDate.now(TIMEZONE);
-    Curriculum eligibleCurriculum = new Curriculum("MEDICAL_CURRICULUM", "specialty", false,
+    Curriculum eligibleCurriculum = new Curriculum(CURRICULUM_NAME, "MEDICAL_CURRICULUM",
+        "specialty", false,
         now.plusYears(1), true);
-    Curriculum notEligibleCurriculum = new Curriculum("MEDICAL_CURRICULUM", "specialty", false,
+    Curriculum notEligibleCurriculum = new Curriculum(CURRICULUM_NAME, "MEDICAL_CURRICULUM",
+        "specialty", false,
         now.plusYears(1), false); //would be excluded
 
     ProgrammeMembership programmeMembership = new ProgrammeMembership();
@@ -544,7 +537,7 @@ class ProgrammeMembershipUtilsTest {
     LocalDate cctDate = LocalDate.now(TIMEZONE).minusDays(1);
     ProgrammeMembership programmeMembership = new ProgrammeMembership();
     programmeMembership.setCurricula(List.of(
-        new Curriculum("MEDICAL_CURRICULUM", "specialty", false, cctDate, true)
+        new Curriculum(CURRICULUM_NAME, "MEDICAL_CURRICULUM", "specialty", false, cctDate, true)
     ));
 
     Date result = service.whenScheduleProgrammePogNotification(pogType, programmeMembership);
@@ -560,7 +553,7 @@ class ProgrammeMembershipUtilsTest {
     LocalDate cctDate = LocalDate.now(TIMEZONE);
     ProgrammeMembership programmeMembership = new ProgrammeMembership();
     programmeMembership.setCurricula(List.of(
-        new Curriculum("MEDICAL_CURRICULUM", "specialty", false, cctDate, true)
+        new Curriculum(CURRICULUM_NAME, "MEDICAL_CURRICULUM", "specialty", false, cctDate, true)
     ));
 
     Date result = service.whenScheduleProgrammePogNotification(pogType, programmeMembership);
@@ -575,7 +568,7 @@ class ProgrammeMembershipUtilsTest {
     LocalDate cctDate = LocalDate.now(TIMEZONE).plusDays(400);
     ProgrammeMembership programmeMembership = new ProgrammeMembership();
     programmeMembership.setCurricula(List.of(
-        new Curriculum("MEDICAL_CURRICULUM", "specialty", false, cctDate, true)
+        new Curriculum(CURRICULUM_NAME, "MEDICAL_CURRICULUM", "specialty", false, cctDate, true)
     ));
 
     Date result = service.whenScheduleProgrammePogNotification(pogType, programmeMembership);
@@ -595,7 +588,7 @@ class ProgrammeMembershipUtilsTest {
 
     ProgrammeMembership programmeMembership = new ProgrammeMembership();
     programmeMembership.setCurricula(List.of(
-        new Curriculum("MEDICAL_CURRICULUM", "specialty", false, newCctDate, true)
+        new Curriculum(CURRICULUM_NAME, "MEDICAL_CURRICULUM", "specialty", false, newCctDate, true)
     ));
 
     boolean shouldSchedule = service.shouldSchedulePogNotification(
@@ -610,7 +603,7 @@ class ProgrammeMembershipUtilsTest {
   void shouldSchedulePogNotificationIfNoHistoryExists(NotificationType pogType) {
     ProgrammeMembership programmeMembership = new ProgrammeMembership();
     programmeMembership.setCurricula(List.of(
-        new Curriculum("MEDICAL_CURRICULUM", "specialty", false,
+        new Curriculum(CURRICULUM_NAME, "MEDICAL_CURRICULUM", "specialty", false,
             LocalDate.now(TIMEZONE).plusDays(service.getDaysBeforeEndForNotification(pogType) + 1),
             true)
     ));
@@ -636,7 +629,7 @@ class ProgrammeMembershipUtilsTest {
 
     ProgrammeMembership programmeMembership = new ProgrammeMembership();
     programmeMembership.setCurricula(List.of(
-        new Curriculum("MEDICAL_CURRICULUM", "specialty", false, newCctDate, true)
+        new Curriculum(CURRICULUM_NAME, "MEDICAL_CURRICULUM", "specialty", false, newCctDate, true)
     ));
 
     Map<NotificationType, History> alreadySent = Map.of(pogType, history);
@@ -662,7 +655,7 @@ class ProgrammeMembershipUtilsTest {
 
     ProgrammeMembership programmeMembership = new ProgrammeMembership();
     programmeMembership.setCurricula(List.of(
-        new Curriculum("MEDICAL_CURRICULUM", "specialty", false, newCctDate, true)
+        new Curriculum(CURRICULUM_NAME, "MEDICAL_CURRICULUM", "specialty", false, newCctDate, true)
     ));
 
     Map<NotificationType, History> alreadySent = Map.of(pogType, history);
@@ -684,7 +677,7 @@ class ProgrammeMembershipUtilsTest {
 
     ProgrammeMembership programmeMembership = new ProgrammeMembership();
     programmeMembership.setCurricula(List.of(
-        new Curriculum("MEDICAL_CURRICULUM", "specialty", false,
+        new Curriculum(CURRICULUM_NAME, "MEDICAL_CURRICULUM", "specialty", false,
             LocalDate.now(TIMEZONE).plusDays(400), true)
     ));
 
@@ -704,7 +697,7 @@ class ProgrammeMembershipUtilsTest {
         .minusDays(1);
     ProgrammeMembership programmeMembership = new ProgrammeMembership();
     programmeMembership.setCurricula(List.of(
-        new Curriculum("MEDICAL_CURRICULUM", "specialty", false, cctDate, true)
+        new Curriculum(CURRICULUM_NAME, "MEDICAL_CURRICULUM", "specialty", false, cctDate, true)
     ));
 
     boolean shouldSchedule = service.shouldSchedulePogNotification(
@@ -885,7 +878,7 @@ class ProgrammeMembershipUtilsTest {
     // For notification types other than PROGRAMME_POG_MONTH_12 / _6, should always return false
     ProgrammeMembership programmeMembership = new ProgrammeMembership();
     programmeMembership.setCurricula(List.of(
-        new Curriculum("MEDICAL_CURRICULUM", "specialty", false,
+        new Curriculum(CURRICULUM_NAME, "MEDICAL_CURRICULUM", "specialty", false,
             LocalDate.now(TIMEZONE).plusDays(400), true)
     ));
 
@@ -901,7 +894,7 @@ class ProgrammeMembershipUtilsTest {
     LocalDate cctDate = LocalDate.now(TIMEZONE).plusMonths(6).minusDays(1);
     ProgrammeMembership programmeMembership = new ProgrammeMembership();
     programmeMembership.setCurricula(List.of(
-        new Curriculum("MEDICAL_CURRICULUM", "specialty", false, cctDate, true)
+        new Curriculum(CURRICULUM_NAME, "MEDICAL_CURRICULUM", "specialty", false, cctDate, true)
     ));
 
     boolean shouldSchedule = service.shouldSchedulePogNotification(
@@ -917,7 +910,7 @@ class ProgrammeMembershipUtilsTest {
     LocalDate cctDate = LocalDate.now(TIMEZONE).plusMonths(6).minusDays(1);
     ProgrammeMembership programmeMembership = new ProgrammeMembership();
     programmeMembership.setCurricula(List.of(
-        new Curriculum("MEDICAL_CURRICULUM", "specialty", false, cctDate, true)
+        new Curriculum(CURRICULUM_NAME, "MEDICAL_CURRICULUM", "specialty", false, cctDate, true)
     ));
 
     boolean shouldSchedule = service.shouldSchedulePogNotification(
@@ -933,7 +926,7 @@ class ProgrammeMembershipUtilsTest {
     LocalDate cctDate = LocalDate.now(TIMEZONE).plusMonths(6);
     ProgrammeMembership programmeMembership = new ProgrammeMembership();
     programmeMembership.setCurricula(List.of(
-        new Curriculum("MEDICAL_CURRICULUM", "specialty", false, cctDate, true)
+        new Curriculum(CURRICULUM_NAME, "MEDICAL_CURRICULUM", "specialty", false, cctDate, true)
     ));
 
     boolean shouldSchedule = service.shouldSchedulePogNotification(
@@ -955,7 +948,7 @@ class ProgrammeMembershipUtilsTest {
     LocalDate cctDate = LocalDate.now(TIMEZONE).plusMonths(13);
     ProgrammeMembership programmeMembership = new ProgrammeMembership();
     programmeMembership.setCurricula(List.of(
-        new Curriculum("MEDICAL_CURRICULUM", "specialty", false, cctDate, true)
+        new Curriculum(CURRICULUM_NAME, "MEDICAL_CURRICULUM", "specialty", false, cctDate, true)
     ));
 
     Map<NotificationType, History> alreadySent = Map.of(pogType, history);
@@ -1189,13 +1182,102 @@ class ProgrammeMembershipUtilsTest {
     assertThat("Expected null when oldStartDate is null.", result, is(nullValue()));
   }
 
+  @Test
+  void shouldNotBeFoundationProgrammeWhenCurriculaIsEmpty() {
+    ProgrammeMembership programmeMembership = new ProgrammeMembership();
+    programmeMembership.setCurricula(List.of());
+
+    assertThat("Unexpected foundation programme flag.",
+        service.isFoundationProgramme(programmeMembership), is(false));
+  }
+
+  @Test
+  void shouldNotBeFoundationProgrammeWhenCurriculumNameIsNull() {
+    ProgrammeMembership programmeMembership = new ProgrammeMembership();
+    programmeMembership.setCurricula(List.of(
+        new Curriculum(null, MEDICAL_CURRICULUM_1, "FOUNDATION", false, CURRICULUM_END_DATE,
+            null)));
+
+    assertThat("Unexpected foundation programme flag.",
+        service.isFoundationProgramme(programmeMembership), is(false));
+  }
+
+  @Test
+  void shouldNotBeFoundationProgrammeWhenCurriculumSpecialtyIsNull() {
+    ProgrammeMembership programmeMembership = new ProgrammeMembership();
+    programmeMembership.setCurricula(List.of(
+        new Curriculum("ACADEMIC FOUNDATION TRAINING", MEDICAL_CURRICULUM_1, null, false,
+            CURRICULUM_END_DATE, null)));
+
+    assertThat("Unexpected foundation programme flag.",
+        service.isFoundationProgramme(programmeMembership), is(false));
+  }
+
+  @ParameterizedTest
+  @CsvSource(textBlock = """
+      foundation
+      FOUNDATION
+      Foundation""")
+  void shouldBeFoundationProgrammeWhenCurriculumSpecialtyIsFoundation(String specialty) {
+    ProgrammeMembership programmeMembership = new ProgrammeMembership();
+    programmeMembership.setCurricula(List.of(
+        new Curriculum(CURRICULUM_NAME, MEDICAL_CURRICULUM_1, specialty, false, CURRICULUM_END_DATE,
+            null)));
+
+    assertThat("Unexpected foundation programme flag.",
+        service.isFoundationProgramme(programmeMembership), is(true));
+  }
+
+  @ParameterizedTest
+  @CsvSource(textBlock = """
+      academic foundation training
+      ACADEMIC FOUNDATION TRAINING
+      Academic Foundation Training""")
+  void shouldBeFoundationProgrammeWhenCurriculumNameIsAcademicFoundationTraining(String name) {
+    ProgrammeMembership programmeMembership = new ProgrammeMembership();
+    programmeMembership.setCurricula(List.of(
+        new Curriculum(name, MEDICAL_CURRICULUM_1, "any specialty", false, CURRICULUM_END_DATE,
+            null)));
+
+    assertThat("Unexpected foundation programme flag.",
+        service.isFoundationProgramme(programmeMembership), is(true));
+  }
+
+  @Test
+  void shouldNotBeFoundationProgrammeWhenNoCurriculumMatchesFoundationCriteria() {
+    ProgrammeMembership programmeMembership = new ProgrammeMembership();
+    programmeMembership.setCurricula(List.of(
+        new Curriculum(CURRICULUM_NAME, MEDICAL_CURRICULUM_1, "any specialty", false,
+            CURRICULUM_END_DATE, null)));
+
+    assertThat("Unexpected foundation programme flag.",
+        service.isFoundationProgramme(programmeMembership), is(false));
+  }
+
+  @Test
+  void shouldBeFoundationProgrammeWhenAnyOneCurriculumMatchesFoundationCriteria() {
+    ProgrammeMembership programmeMembership = new ProgrammeMembership();
+    programmeMembership.setCurricula(List.of(
+        new Curriculum(CURRICULUM_NAME, MEDICAL_CURRICULUM_1, "any specialty", false,
+            CURRICULUM_END_DATE, null),
+        new Curriculum(CURRICULUM_NAME, MEDICAL_CURRICULUM_1, "FOUNDATION", false,
+            CURRICULUM_END_DATE, null),
+        new Curriculum(CURRICULUM_NAME, MEDICAL_CURRICULUM_1, "another specialty", false,
+            CURRICULUM_END_DATE, null)));
+
+    assertThat("Unexpected foundation programme flag.",
+        service.isFoundationProgramme(programmeMembership), is(true));
+  }
+
+
   /**
    * Helper function to set up a default non-excluded programme membership.
    *
    * @return the default programme membership.
    */
   private ProgrammeMembership getDefaultProgrammeMembership() {
-    Curriculum theCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, "any specialty", false,
+    Curriculum theCurriculum = new Curriculum(CURRICULUM_NAME, MEDICAL_CURRICULUM_1,
+        "any specialty", false,
         CURRICULUM_END_DATE, null);
     ResponsibleOfficer theRo = new ResponsibleOfficer("roEmail", RO_FIRST_NAME, RO_LAST_NAME,
         "roGmc", "roPhone");

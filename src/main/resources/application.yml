@@ -48,7 +48,11 @@ application:
       email: v1.0.0
     day-one:
       in-app: v1.1.0
+    day-one-foundation:
+      in-app: v1.0.0
     deferral:
+      in-app: v1.0.0
+    deferral-foundation:
       in-app: v1.0.0
     e-portfolio:
       in-app: v1.0.0
@@ -90,6 +94,8 @@ application:
       in-app: v1.0.0
     less-than-full-time:
       in-app: v1.0.2
+    less-than-full-time-foundation:
+      in-app: v1.0.0
     non-employment:
       in-app: v1.0.0
     placement-information:
@@ -121,6 +127,8 @@ application:
     programme-updated-week-12:
       email: v1.0.0
     sponsorship:
+      in-app: v1.0.0
+    sponsorship-foundation:
       in-app: v1.0.0
     welcome:
       in-app: v1.0.0

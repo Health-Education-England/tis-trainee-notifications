@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+    <title>Deferral</title>
+  </head>
+  <body>
+     <h1>In-App Notification</h1>
+     <h2>Subject</h2>
+     <th:block th:fragment="subject">Deferral</th:block>
+     <h2>Content</h2>
+     <th:block th:fragment="content">
+       <p>
+         This notification pertains to the following programme
+         <th:block th:text="${not #strings.isEmpty(programmeName)} ? ${programmeName} : _"
+           >(programme name missing)</th:block
+         >
+         starting on
+         <th:block th:text="${startDate} ? |${#temporals.format(startDate, 'd MMMM yyyy')}| : _"
+           >(start date missing)</th:block
+         >.
+       </p>
+       <p>
+         As per the <a href="https://www.copmed.org.uk/publications/gold-guide" th:target="_blank">
+           Gold_Guide</a>, doctors in training that wish to defer the start date of their foundation
+         training programme can normally only do so on statutory grounds i.e., personal ill health
+         or maternity/paternity/adoption leave.
+       </p>
+       <p>
+         Doctors in training wishing to defer must apply.
+         <th:block: th:switch="${localOfficeContactType}">
+           <th:block th:case="NON_HREF"
+             >Contact your local office for information on Deferral.
+           </th:block
+           >
+           <th:block th:case="*"
+             >Please contact your local office:
+             <a
+               th:href="${localOfficeContactType} == 'email' ?
+               |mailto:${localOfficeContact}?subject=Deferral - GMC: ${not #strings.isEmpty(gmcNumber) ? gmcNumber : 'unknown'}, Prog No: ${not #strings.isEmpty(programmeNumber) ? programmeNumber : 'unknown'}|
+               : ${localOfficeContact}"
+               th:text="${localOfficeContact}"
+               th:target="_blank"
+             ></a
+           ></th:block>
+       </th:block:>
+     </p>
+   </th:block>
+  </body>
+</html>
+
+

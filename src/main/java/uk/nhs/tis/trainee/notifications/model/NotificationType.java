@@ -37,7 +37,9 @@ public enum NotificationType {
   COJ_CONFIRMATION("coj-confirmation"),
   CREDENTIAL_REVOKED("credential-revoked"),
   DAY_ONE("day-one"),
+  DAY_ONE_FOUNDATION("day-one-foundation"),
   DEFERRAL("deferral"),
+  DEFERRAL_FOUNDATION("deferral-foundation"),
   E_PORTFOLIO("e-portfolio"),
   EMAIL_UPDATED_NEW("email-updated-new"),
   EMAIL_UPDATED_OLD("email-updated-old"),
@@ -58,6 +60,7 @@ public enum NotificationType {
   LTFT_WITHDRAWN("ltft-withdrawn"),
   INDEMNITY_INSURANCE("indemnity-insurance"),
   LTFT("less-than-full-time"),
+  LTFT_FOUNDATION("less-than-full-time-foundation"),
   NON_EMPLOYMENT("non-employment"),
   PLACEMENT_INFORMATION("placement-information"),
   PLACEMENT_ROLLOUT_2024_CORRECTION("placement-rollout-2024-correction"),
@@ -74,6 +77,7 @@ public enum NotificationType {
   PROGRAMME_POG_MONTH_12("programme-pog-month-12"),
   PROGRAMME_POG_MONTH_6("programme-pog-month-6"),
   SPONSORSHIP("sponsorship"),
+  SPONSORSHIP_FOUNDATION("sponsorship-foundation"),
   WELCOME("welcome");
 
   /**
@@ -128,6 +132,16 @@ public enum NotificationType {
       LTFT,
       SPONSORSHIP,
       DAY_ONE);
+
+  /**
+   * The set of Programme Updated in-app notification types for Foundation.
+   */
+  @Getter
+  private static final Set<NotificationType> programmeInAppFoundationNotificationTypes = EnumSet.of(
+      DEFERRAL_FOUNDATION,
+      LTFT_FOUNDATION,
+      SPONSORSHIP_FOUNDATION,
+      DAY_ONE_FOUNDATION);
 
   private final String templateName;
 

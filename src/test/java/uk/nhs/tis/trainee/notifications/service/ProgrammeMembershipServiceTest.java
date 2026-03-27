@@ -43,6 +43,7 @@ import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.SENT;
 import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.UNREAD;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.DAY_ONE;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.DEFERRAL;
+import static uk.nhs.tis.trainee.notifications.model.NotificationType.E_PORTFOLIO;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.INDEMNITY_INSURANCE;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.LTFT;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_CREATED;
@@ -98,7 +99,6 @@ import uk.nhs.tis.trainee.notifications.model.TisReferenceType;
 class ProgrammeMembershipServiceTest {
 
   private static final String MEDICAL_CURRICULUM_1 = "Medical_curriculum";
-  private static final String EXCLUDE_SPECIALTY_1 = "Foundation";
 
   private static final String TIS_ID = "123";
   private static final String PERSON_ID = "abc";
@@ -106,6 +106,7 @@ class ProgrammeMembershipServiceTest {
   private static final String PROGRAMME_NUMBER = "the programme number";
   private static final String MANAGING_DEANERY = "the local office";
   private static final LocalDate START_DATE = LocalDate.now().plusYears(1);
+  private static final String CURRICULUM_NAME = "curriculum name";
   private static final LocalDate CURRICULUM_END_DATE = LocalDate.now().plusYears(2);
   //set a year in the future to allow all notifications to be scheduled
   private static final ZoneId timezone = ZoneId.of("Europe/London");
@@ -116,6 +117,10 @@ class ProgrammeMembershipServiceTest {
   private static final String DEFERRAL_VERSION = "v4.5.6";
   private static final String SPONSORSHIP_VERSION = "v5.6.7";
   private static final String DAY_ONE_VERSION = "v6.7.8";
+  private static final String LTFT_FOUNDATION_VERSION = "v13.4.5";
+  private static final String DEFERRAL_FOUNDATION_VERSION = "v14.5.6";
+  private static final String SPONSORSHIP_FOUNDATION_VERSION = "v15.6.7";
+  private static final String DAY_ONE_FOUNDATION_VERSION = "v16.7.8";
   private static final String USER_EMAIL = "email@address";
   private static final String USER_TITLE = "title";
   private static final String USER_FAMILY_NAME = "family-name";
@@ -140,7 +145,8 @@ class ProgrammeMembershipServiceTest {
     notificationService = mock(NotificationService.class);
     service = new ProgrammeMembershipService(historyService, inAppService, notificationService,
         programmeMembershipUtils, timezone, DAY_ONE_VERSION, DEFERRAL_VERSION, E_PORTFOLIO_VERSION,
-        INDEMNITY_INSURANCE_VERSION, LTFT_VERSION, SPONSORSHIP_VERSION);
+        INDEMNITY_INSURANCE_VERSION, LTFT_VERSION, SPONSORSHIP_VERSION, DAY_ONE_FOUNDATION_VERSION,
+        DEFERRAL_FOUNDATION_VERSION, LTFT_FOUNDATION_VERSION, SPONSORSHIP_FOUNDATION_VERSION);
   }
 
   @Test
@@ -157,21 +163,6 @@ class ProgrammeMembershipServiceTest {
     service.addNotifications(getDefaultProgrammeMembership());
 
     verify(historyService).deleteHistoryForTrainee(HISTORY_ID_1, PERSON_ID);
-  }
-
-  @Test
-  void shouldNotAddNotificationsWhenExcluded() {
-    Curriculum theCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, EXCLUDE_SPECIALTY_1, false,
-        CURRICULUM_END_DATE, null);
-    ProgrammeMembership programmeMembership = new ProgrammeMembership();
-    programmeMembership.setTisId(TIS_ID);
-    programmeMembership.setStartDate(START_DATE);
-    programmeMembership.setCurricula(List.of(theCurriculum));
-
-    service.addNotifications(programmeMembership);
-
-    verify(notificationService, never()).scheduleNotification(any(), any(), any(), anyLong());
-    verifyNoInteractions(inAppService);
   }
 
   @ParameterizedTest
@@ -239,9 +230,79 @@ class ProgrammeMembershipServiceTest {
     assertThat("Unexpected doNotStoreJustLog value.", doNotStoreJustLog, is(!notifiablePm));
   }
 
+  @ParameterizedTest
+  @CsvSource(delimiter = '|', textBlock = """
+      LTFT_FOUNDATION | v13.4.5 | true
+      LTFT_FOUNDATION | v13.4.5 | false
+      DEFERRAL_FOUNDATION | v14.5.6 | true
+      DEFERRAL_FOUNDATION | v14.5.6 | false
+      SPONSORSHIP_FOUNDATION | v15.6.7 | true
+      SPONSORSHIP_FOUNDATION | v15.6.7 | false
+      DAY_ONE_FOUNDATION | v16.7.8 | true
+      DAY_ONE_FOUNDATION | v16.7.8 | false""")
+  void shouldAddInAppFoundationNotifications(NotificationType notificationType,
+      String notificationVersion, boolean notifiablePm) {
+    ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
+    programmeMembership.setCurricula(List.of(
+        new Curriculum(CURRICULUM_NAME, MEDICAL_CURRICULUM_1, "Foundation", false,
+            CURRICULUM_END_DATE, null)));
+
+    UserDetails userAccountDetails =
+        new UserDetails(
+            null, USER_EMAIL, USER_TITLE, USER_FAMILY_NAME, USER_GIVEN_NAME, USER_GMC);
+
+    //foundation aren't pilot, but are new starters
+    when(notificationService.meetsCriteria(programmeMembership, true,
+        true)).thenReturn(false);
+    when(notificationService.meetsCriteria(programmeMembership, true,
+        false)).thenReturn(true);
+    when(notificationService.programmeMembershipIsNotifiable(programmeMembership,
+        MessageType.IN_APP)).thenReturn(notifiablePm);
+    when(notificationService.getOwnerContact(any(), any(), any(), any())).thenReturn("");
+    when(notificationService.getHrefTypeForContact(any())).thenReturn("");
+    when(notificationService.getTraineeDetails(PERSON_ID)).thenReturn(userAccountDetails);
+
+    service.addNotifications(programmeMembership);
+
+    ArgumentCaptor<TisReferenceInfo> referenceInfoCaptor = ArgumentCaptor.forClass(
+        TisReferenceInfo.class);
+    ArgumentCaptor<Map<String, Object>> variablesCaptor = ArgumentCaptor.captor();
+    ArgumentCaptor<Boolean> doNotStoreJustLogCaptor = ArgumentCaptor.captor();
+    // eq() matchers on type and version anchor the captor to the correct invocation among the
+    // four foundation calls. DAY_ONE_FOUNDATION uses the 7-arg timestamped overload.
+    if (notificationType.equals(NotificationType.DAY_ONE_FOUNDATION)) {
+      verify(inAppService).createNotifications(eq(PERSON_ID), referenceInfoCaptor.capture(),
+          eq(notificationType), eq(notificationVersion), variablesCaptor.capture(),
+          doNotStoreJustLogCaptor.capture(), eq(START_DATE.atStartOfDay(timezone).toInstant()));
+    } else {
+      verify(inAppService).createNotifications(eq(PERSON_ID), referenceInfoCaptor.capture(),
+          eq(notificationType), eq(notificationVersion), variablesCaptor.capture(),
+          doNotStoreJustLogCaptor.capture());
+    }
+
+    TisReferenceInfo referenceInfo = referenceInfoCaptor.getValue();
+    assertThat("Unexpected reference type.", referenceInfo.type(), is(PROGRAMME_MEMBERSHIP));
+    assertThat("Unexpected reference id.", referenceInfo.id(), is(TIS_ID));
+
+    Map<String, Object> variables = variablesCaptor.getValue();
+    assertThat("Unexpected programme name.", variables.get(PROGRAMME_NAME_FIELD),
+        is(PROGRAMME_NAME));
+    assertThat("Unexpected programme number.", variables.get(PROGRAMME_NUMBER_FIELD),
+        is(PROGRAMME_NUMBER));
+    assertThat("Unexpected start date.", variables.get(START_DATE_FIELD), is(START_DATE));
+    if (notificationType.equals(LTFT) || notificationType.equals(DEFERRAL)
+        || notificationType.equals(SPONSORSHIP)) {
+      assertThat("Unexpected GMC number.", variables.get(GMC_NUMBER_FIELD), is(USER_GMC));
+    }
+
+    Boolean doNotStoreJustLog = doNotStoreJustLogCaptor.getValue();
+    assertThat("Unexpected doNotStoreJustLog value.", doNotStoreJustLog, is(!notifiablePm));
+  }
+
   @Test
   void shouldIncludeBlockFlagInIndemnityInsuranceInAppNotification() {
-    Curriculum theCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, "any specialty", true,
+    Curriculum theCurriculum = new Curriculum(CURRICULUM_NAME, MEDICAL_CURRICULUM_1,
+        "any specialty", true,
         CURRICULUM_END_DATE, null);
     ProgrammeMembership programmeMembership = new ProgrammeMembership();
     programmeMembership.setTisId(TIS_ID);
@@ -276,9 +337,12 @@ class ProgrammeMembershipServiceTest {
     programmeMembership.setPersonId(PERSON_ID);
     programmeMembership.setStartDate(START_DATE);
     programmeMembership.setCurricula(List.of(
-        new Curriculum(MEDICAL_CURRICULUM_1, "specialty 1", false, CURRICULUM_END_DATE, null),
-        new Curriculum(MEDICAL_CURRICULUM_1, "specialty 2", true, CURRICULUM_END_DATE, null),
-        new Curriculum(MEDICAL_CURRICULUM_1, "specialty 3", false, CURRICULUM_END_DATE, null)
+        new Curriculum(CURRICULUM_NAME, MEDICAL_CURRICULUM_1, "specialty 1", false,
+            CURRICULUM_END_DATE, null),
+        new Curriculum(CURRICULUM_NAME, MEDICAL_CURRICULUM_1, "specialty 2", true,
+            CURRICULUM_END_DATE, null),
+        new Curriculum(CURRICULUM_NAME, MEDICAL_CURRICULUM_1, "specialty 3", false,
+            CURRICULUM_END_DATE, null)
     ));
 
     when(notificationService.meetsCriteria(programmeMembership, true, true)).thenReturn(true);
@@ -303,9 +367,12 @@ class ProgrammeMembershipServiceTest {
     programmeMembership.setPersonId(PERSON_ID);
     programmeMembership.setStartDate(START_DATE);
     programmeMembership.setCurricula(List.of(
-        new Curriculum(MEDICAL_CURRICULUM_1, "specialty 1", false, CURRICULUM_END_DATE, null),
-        new Curriculum(MEDICAL_CURRICULUM_1, "specialty 2", false, CURRICULUM_END_DATE, null),
-        new Curriculum(MEDICAL_CURRICULUM_1, "specialty 3", false, CURRICULUM_END_DATE, null)
+        new Curriculum(CURRICULUM_NAME, MEDICAL_CURRICULUM_1, "specialty 1", false,
+            CURRICULUM_END_DATE, null),
+        new Curriculum(CURRICULUM_NAME, MEDICAL_CURRICULUM_1, "specialty 2", false,
+            CURRICULUM_END_DATE, null),
+        new Curriculum(CURRICULUM_NAME, MEDICAL_CURRICULUM_1, "specialty 3", false,
+            CURRICULUM_END_DATE, null)
     ));
 
     when(notificationService.meetsCriteria(programmeMembership, true, true)).thenReturn(true);
@@ -371,7 +438,8 @@ class ProgrammeMembershipServiceTest {
 
   @Test
   void shouldAddUnknownGmcInInAppNotificationWhenTraineeDetailsNull() {
-    Curriculum theCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, "any specialty", true,
+    Curriculum theCurriculum = new Curriculum(CURRICULUM_NAME, MEDICAL_CURRICULUM_1,
+        "any specialty", true,
         CURRICULUM_END_DATE, null);
     ProgrammeMembership programmeMembership = new ProgrammeMembership();
     programmeMembership.setTisId(TIS_ID);
@@ -404,7 +472,8 @@ class ProgrammeMembershipServiceTest {
 
   @Test
   void shouldAddUnknownGmcInInAppNotificationWhenMissingGmcInTraineeDetails() {
-    Curriculum theCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, "any specialty", true,
+    Curriculum theCurriculum = new Curriculum(CURRICULUM_NAME, MEDICAL_CURRICULUM_1,
+        "any specialty", true,
         CURRICULUM_END_DATE, null);
     ProgrammeMembership programmeMembership = new ProgrammeMembership();
     programmeMembership.setTisId(TIS_ID);
@@ -450,6 +519,71 @@ class ProgrammeMembershipServiceTest {
     service.addNotifications(programmeMembership);
 
     verifyNoInteractions(inAppService);
+  }
+
+  @Test
+  void shouldNotAddInAppNotificationsWhenNotFoundationAndNotMeetsCriteria() {
+    // Non-foundation PM that fails standard criteria: neither branch triggers.
+    ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
+
+    when(notificationService.meetsCriteria(programmeMembership, true, true)).thenReturn(false);
+    when(notificationService.meetsCriteria(programmeMembership, true, false)).thenReturn(false);
+
+    service.addNotifications(programmeMembership);
+
+    verifyNoInteractions(inAppService);
+  }
+
+  @Test
+  void shouldNotAddInAppNotificationsWhenFoundationButNotMeetsFoundationCriteria() {
+    // Foundation PM that fails both criteria: no notifications at all.
+    ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
+    programmeMembership.setCurricula(List.of(
+        new Curriculum(CURRICULUM_NAME, MEDICAL_CURRICULUM_1, "Foundation", false,
+            CURRICULUM_END_DATE, null)));
+
+    when(notificationService.meetsCriteria(programmeMembership, true, true)).thenReturn(false);
+    when(notificationService.meetsCriteria(programmeMembership, true, false)).thenReturn(false);
+
+    service.addNotifications(programmeMembership);
+
+    verifyNoInteractions(inAppService);
+  }
+
+  @Test
+  void shouldNotAddNonContactInAppNotificationsWhenFoundationMeetsFoundationCriteriaOnly() {
+    // Foundation PM that only meets foundation criteria: contact-based notifications are sent
+    // (foundation types) but E_PORTFOLIO and INDEMNITY_INSURANCE are not.
+    ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
+    programmeMembership.setCurricula(List.of(
+        new Curriculum(CURRICULUM_NAME, MEDICAL_CURRICULUM_1, "Foundation", false,
+            CURRICULUM_END_DATE, null)));
+
+    when(notificationService.meetsCriteria(programmeMembership, true, true)).thenReturn(false);
+    when(notificationService.meetsCriteria(programmeMembership, true, false)).thenReturn(true);
+    when(notificationService.getOwnerContact(any(), any(), any(), any())).thenReturn("");
+    when(notificationService.getHrefTypeForContact(any())).thenReturn("");
+    when(notificationService.getTraineeDetails(PERSON_ID)).thenReturn(null);
+
+    service.addNotifications(programmeMembership);
+
+    verify(inAppService, never()).createNotifications(eq(PERSON_ID), any(), eq(E_PORTFOLIO),
+        any(), any(), anyBoolean());
+    verify(inAppService, never()).createNotifications(eq(PERSON_ID), any(),
+        eq(INDEMNITY_INSURANCE), any(), any(), anyBoolean());
+
+    // Contact-based foundation notifications are still sent.
+    verify(inAppService).createNotifications(eq(PERSON_ID), any(),
+        eq(NotificationType.LTFT_FOUNDATION), eq(LTFT_FOUNDATION_VERSION), any(), anyBoolean());
+    verify(inAppService).createNotifications(eq(PERSON_ID), any(),
+        eq(NotificationType.DEFERRAL_FOUNDATION), eq(DEFERRAL_FOUNDATION_VERSION), any(),
+        anyBoolean());
+    verify(inAppService).createNotifications(eq(PERSON_ID), any(),
+        eq(NotificationType.SPONSORSHIP_FOUNDATION), eq(SPONSORSHIP_FOUNDATION_VERSION), any(),
+        anyBoolean());
+    verify(inAppService).createNotifications(eq(PERSON_ID), any(),
+        eq(NotificationType.DAY_ONE_FOUNDATION), eq(DAY_ONE_FOUNDATION_VERSION), any(),
+        anyBoolean(), eq(START_DATE.atStartOfDay(timezone).toInstant()));
   }
 
   @ParameterizedTest
@@ -623,6 +757,50 @@ class ProgrammeMembershipServiceTest {
         is(DESIGNATED_BODY));
   }
 
+  // temporary until TIS21-8048 is done.
+  @Test
+  void shouldNotCreateDirectProgrammeNotificationsForFoundationProgramme() {
+    when(historyService.findAllHistoryForTrainee(PERSON_ID)).thenReturn(new ArrayList<>());
+
+    ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
+    programmeMembership.setCurricula(List.of(
+        new Curriculum(CURRICULUM_NAME, MEDICAL_CURRICULUM_1, "Foundation", false,
+            CURRICULUM_END_DATE, null)));
+
+    service.addNotifications(programmeMembership);
+
+    for (NotificationType notificationType
+        : NotificationType.getActiveProgrammeUpdateNotificationTypes()) {
+      String jobId = notificationType + "-" + TIS_ID;
+      verify(notificationService, never()).executeNow(eq(jobId), anyMap());
+      verify(notificationService, never()).scheduleNotification(eq(jobId), anyMap(), any(),
+          anyLong());
+    }
+  }
+
+  // temporary until TIS21-8048 is done.
+  @ParameterizedTest
+  @EnumSource(value = NotificationType.class,
+      names = {"PROGRAMME_POG_MONTH_12", "PROGRAMME_POG_MONTH_6"})
+  void shouldNotCreateDirectProgrammePogNotificationsForFoundationProgramme(
+      NotificationType pogType) {
+    when(historyService.findAllHistoryForTrainee(PERSON_ID)).thenReturn(new ArrayList<>());
+
+    ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
+    // Give the PM a POG-eligible curriculum so the POG exclusion check is not the reason
+    // these notifications are skipped — the foundation check must be the reason.
+    Curriculum eligibleCurriculum = new Curriculum(CURRICULUM_NAME, MEDICAL_CURRICULUM_1,
+        "Foundation", false, CURRICULUM_END_DATE, true);
+    programmeMembership.setCurricula(List.of(eligibleCurriculum));
+
+    service.addNotifications(programmeMembership);
+
+    String jobId = pogType + "-" + TIS_ID;
+    verify(notificationService, never()).executeNow(eq(jobId), anyMap());
+    verify(notificationService, never()).scheduleNotification(eq(jobId), anyMap(), any(),
+        anyLong());
+  }
+
   @ParameterizedTest
   @EnumSource(value = NotificationType.class,
       names = {"PROGRAMME_POG_MONTH_12", "PROGRAMME_POG_MONTH_6"})
@@ -650,8 +828,8 @@ class ProgrammeMembershipServiceTest {
     when(historyService.findAllHistoryForTrainee(PERSON_ID)).thenReturn(new ArrayList<>());
 
     ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
-    Curriculum eligibleCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, "specialty",
-        false, CURRICULUM_END_DATE, true);
+    Curriculum eligibleCurriculum = new Curriculum(CURRICULUM_NAME, MEDICAL_CURRICULUM_1,
+        "specialty", false, CURRICULUM_END_DATE, true);
     programmeMembership.setCurricula(
         List.of(programmeMembership.getCurricula().get(0), eligibleCurriculum));
 
@@ -665,7 +843,8 @@ class ProgrammeMembershipServiceTest {
     ProgrammeMembershipService serviceWithSpyUtils = new ProgrammeMembershipService(
         historyService, inAppService, notificationService, spyUtils, timezone,
         DAY_ONE_VERSION, DEFERRAL_VERSION, E_PORTFOLIO_VERSION,
-        INDEMNITY_INSURANCE_VERSION, LTFT_VERSION, SPONSORSHIP_VERSION);
+        INDEMNITY_INSURANCE_VERSION, LTFT_VERSION, SPONSORSHIP_VERSION, DAY_ONE_FOUNDATION_VERSION,
+        DEFERRAL_FOUNDATION_VERSION, LTFT_FOUNDATION_VERSION, SPONSORSHIP_FOUNDATION_VERSION);
 
     serviceWithSpyUtils.addNotifications(programmeMembership);
 
@@ -683,8 +862,8 @@ class ProgrammeMembershipServiceTest {
 
     ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
 
-    Curriculum eligibleCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, "specialty",
-        false, CURRICULUM_END_DATE, true);
+    Curriculum eligibleCurriculum = new Curriculum(CURRICULUM_NAME, MEDICAL_CURRICULUM_1,
+        "specialty", false, CURRICULUM_END_DATE, true);
     programmeMembership.setCurricula(
         List.of(programmeMembership.getCurricula().get(0), eligibleCurriculum));
 
@@ -706,8 +885,8 @@ class ProgrammeMembershipServiceTest {
     LocalDate curriculumEndDateSendNow = LocalDate.now()
         .plusDays(programmeMembershipUtils.getDaysBeforeEndForNotification(pogType))
         .minusDays(1);
-    Curriculum eligibleCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, "specialty",
-        false, curriculumEndDateSendNow, true);
+    Curriculum eligibleCurriculum = new Curriculum(CURRICULUM_NAME, MEDICAL_CURRICULUM_1,
+        "specialty", false, curriculumEndDateSendNow, true);
     programmeMembership.setCurricula(
         List.of(programmeMembership.getCurricula().get(0), eligibleCurriculum));
 
@@ -727,8 +906,8 @@ class ProgrammeMembershipServiceTest {
 
     ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
 
-    Curriculum eligibleCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, "specialty",
-        false, CURRICULUM_END_DATE, true);
+    Curriculum eligibleCurriculum = new Curriculum(CURRICULUM_NAME, MEDICAL_CURRICULUM_1,
+        "specialty", false, CURRICULUM_END_DATE, true);
     programmeMembership.setCurricula(
         List.of(programmeMembership.getCurricula().get(0), eligibleCurriculum));
 
@@ -752,8 +931,8 @@ class ProgrammeMembershipServiceTest {
     ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
     programmeMembership.setStartDate(null); //exclude from other notification logic
 
-    Curriculum eligibleCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, "specialty",
-        false, CURRICULUM_END_DATE, true);
+    Curriculum eligibleCurriculum = new Curriculum(CURRICULUM_NAME, MEDICAL_CURRICULUM_1,
+        "specialty", false, CURRICULUM_END_DATE, true);
     programmeMembership.setCurricula(
         List.of(programmeMembership.getCurricula().get(0), eligibleCurriculum));
 
@@ -1240,7 +1419,8 @@ class ProgrammeMembershipServiceTest {
     when(historyService.findAllHistoryForTrainee(PERSON_ID)).thenReturn(sentNotifications);
 
     ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
-    Curriculum theCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, "any specialty", false,
+    Curriculum theCurriculum = new Curriculum(CURRICULUM_NAME, MEDICAL_CURRICULUM_1,
+        "any specialty", false,
         CURRICULUM_END_DATE, false); //exclude POG notification
     programmeMembership.setCurricula(List.of(theCurriculum));
     service.addNotifications(programmeMembership);
@@ -1456,7 +1636,8 @@ class ProgrammeMembershipServiceTest {
    * @return the default programme membership.
    */
   private ProgrammeMembership getDefaultProgrammeMembership() {
-    Curriculum theCurriculum = new Curriculum(MEDICAL_CURRICULUM_1, "any specialty", false,
+    Curriculum theCurriculum = new Curriculum(CURRICULUM_NAME, MEDICAL_CURRICULUM_1,
+        "any specialty", false,
         CURRICULUM_END_DATE, null);
     ResponsibleOfficer theRo = new ResponsibleOfficer("roEmail", RO_FIRST_NAME, RO_LAST_NAME,
         "roGmc", "roPhone");

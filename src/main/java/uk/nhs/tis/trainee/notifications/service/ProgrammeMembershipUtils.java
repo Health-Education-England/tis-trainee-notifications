@@ -26,11 +26,12 @@ import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_POG_MONTH_12;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_POG_MONTH_6;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.TEMPLATE_OWNER_FIELD;
+import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.ACADEMIC_FOUNDATION_CURRICULUM_NAME;
 import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.CCT_DATE_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.COJ_SYNCED_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.DEFERRAL_IF_MORE_THAN_DAYS;
 import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.DESIGNATED_BODY_FIELD;
-import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.EXCLUDE_CURRICULUM_SPECIALTIES;
+import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.FOUNDATION_SPECIALTY;
 import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.INCLUDE_CURRICULUM_SUBTYPES;
 import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.PERSON_ID_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.POG_12MONTH_NOTIFICATION_CUTOFF_MONTHS;
@@ -240,9 +241,9 @@ public class ProgrammeMembershipUtils {
    * <p>Excluded means the trainee will not be notified (contacted) in respect of this
    * programme membership.
    *
-   * <p>This will be TRUE if any of the following are true in relation to the curricula:
-   * 1. None have curriculumSubType = MEDICAL_CURRICULUM or MEDICAL_SPR. 2. Any have specialtyName =
-   * 'Public health medicine' or 'Foundation'.
+   * <p>This will be TRUE if none of the curricula have curriculumSubType = MEDICAL_CURRICULUM or
+   * MEDICAL_SPR.
+   * Note that specialtyName = 'Public health medicine' or 'Foundation' are no longer excluded.
    *
    * @param programmeMembership the Programme membership.
    * @return true if the programme membership is excluded.
@@ -263,11 +264,7 @@ public class ProgrammeMembershipUtils {
         .map(c -> c.curriculumSubType().toUpperCase())
         .anyMatch(INCLUDE_CURRICULUM_SUBTYPES::contains);
 
-    boolean hasExcludedSpecialty = curricula.stream()
-        .map(c -> c.curriculumSpecialty().toUpperCase())
-        .anyMatch(EXCLUDE_CURRICULUM_SPECIALTIES::contains);
-
-    return !hasMedicalSubType || hasExcludedSpecialty;
+    return !hasMedicalSubType;
   }
 
   /**
@@ -407,5 +404,23 @@ public class ProgrammeMembershipUtils {
       // if sooner than cutoff, may send 6-month reminder
     }
     return false; //should not reach here
+  }
+
+  /**
+   * Identify if a programme membership is a foundation programme, by checking if any of the
+   * curricula have a name or specialty indicating it's a foundation programme.
+   *
+   * @param programmeMembership The programme membership to check.
+   * @return true if the programme membership is a foundation programme, otherwise false.
+   */
+  public boolean isFoundationProgramme(ProgrammeMembership programmeMembership) {
+    return programmeMembership.getCurricula().stream()
+        .anyMatch(curriculum -> {
+          String name = curriculum.curriculumName();
+          String specialty = curriculum.curriculumSpecialty();
+          return name != null && specialty != null
+              && (name.equalsIgnoreCase(ACADEMIC_FOUNDATION_CURRICULUM_NAME)
+              || specialty.equalsIgnoreCase(FOUNDATION_SPECIALTY));
+        });
   }
 }
