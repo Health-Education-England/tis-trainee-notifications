@@ -272,7 +272,6 @@ class PlacementServiceTest {
     placement.setOwner(OWNER);
     placement.setPlacementType(IN_POST);
     placement.setSite(SITE);
-    placement.setSpecialty(SPECIALTY);
 
     NotificationType milestone = PLACEMENT_UPDATED_WEEK_12;
     LocalDate expectedDate = START_DATE
@@ -306,9 +305,12 @@ class PlacementServiceTest {
     assertThat("Unexpected tisId.", jobDataMap.get(TIS_ID_FIELD), is(TIS_ID));
     assertThat("Unexpected personId.", jobDataMap.get(PERSON_ID_FIELD), is(PERSON_ID));
     assertThat("Unexpected start date.", jobDataMap.get(START_DATE_FIELD), is(START_DATE));
-    assertThat("Unexpected placement type.", jobDataMap.get(PLACEMENT_TYPE_FIELD), is(IN_POST));
-    assertThat("Unexpected placement owner.", jobDataMap.get(TEMPLATE_OWNER_FIELD), is(OWNER));
-    assertThat("Unexpected placement site.", jobDataMap.get(PLACEMENT_SITE_FIELD), is(SITE));
+    assertThat("Unexpected placement type.", jobDataMap.get(PLACEMENT_TYPE_FIELD),
+        is(IN_POST));
+    assertThat("Unexpected placement owner.", jobDataMap.get(TEMPLATE_OWNER_FIELD),
+        is(OWNER));
+    assertThat("Unexpected placement site.", jobDataMap.get(PLACEMENT_SITE_FIELD),
+        is(SITE));
 
     Date when = dateCaptor.getValue();
     assertThat("Unexpected start time", when, is(expectedWhen));
@@ -349,16 +351,15 @@ class PlacementServiceTest {
     placement.setSite(SITE);
     placement.setGradeAbbreviation("F1");
 
-    NotificationType milestone = PLACEMENT_UPDATED_WEEK_12_FOUNDATION;
     LocalDate expectedDate = START_DATE
-        .minusDays(service.getNotificationDaysBeforeStart(milestone));
+        .minusDays(service.getNotificationDaysBeforeStart(PLACEMENT_UPDATED_WEEK_12_FOUNDATION));
     Date expectedWhen = Date.from(expectedDate
         .atStartOfDay()
         .atZone(ZoneId.systemDefault())
         .toInstant());
 
-    when(notificationService
-        .getScheduleDate(START_DATE, service.getNotificationDaysBeforeStart(milestone)))
+    when(notificationService.getScheduleDate(START_DATE,
+        service.getNotificationDaysBeforeStart(PLACEMENT_UPDATED_WEEK_12_FOUNDATION)))
         .thenReturn(expectedWhen);
 
     service.addNotifications(placement);
@@ -374,7 +375,8 @@ class PlacementServiceTest {
     );
 
     String jobId = stringCaptor.getValue();
-    assertThat("Unexpected job id.", jobId, is(milestone + "-" + TIS_ID));
+    assertThat("Unexpected job id.", jobId,
+        is(PLACEMENT_UPDATED_WEEK_12_FOUNDATION + "-" + TIS_ID));
 
     Map<String, Object> jobDataMap = jobDataMapCaptor.getValue();
     assertThat("Unexpected tisId.", jobDataMap.get(TIS_ID_FIELD), is(TIS_ID));
@@ -448,7 +450,6 @@ class PlacementServiceTest {
     placement.setOwner(OWNER);
     placement.setPlacementType(IN_POST);
     placement.setSite(SITE);
-    placement.setSpecialty(SPECIALTY);
 
     List<HistoryDto> sentNotifications = new ArrayList<>();
     sentNotifications.add(new HistoryDto("id",
@@ -482,9 +483,12 @@ class PlacementServiceTest {
     assertThat("Unexpected tisId.", jobDataMap.get(TIS_ID_FIELD), is(TIS_ID));
     assertThat("Unexpected personId.", jobDataMap.get(PERSON_ID_FIELD), is(PERSON_ID));
     assertThat("Unexpected start date.", jobDataMap.get(START_DATE_FIELD), is(START_DATE));
-    assertThat("Unexpected placement type.", jobDataMap.get(PLACEMENT_TYPE_FIELD), is(IN_POST));
-    assertThat("Unexpected placement owner.", jobDataMap.get(TEMPLATE_OWNER_FIELD), is(OWNER));
-    assertThat("Unexpected placement site.", jobDataMap.get(PLACEMENT_SITE_FIELD), is(SITE));
+    assertThat("Unexpected placement type.", jobDataMap.get(PLACEMENT_TYPE_FIELD),
+        is(IN_POST));
+    assertThat("Unexpected placement owner.", jobDataMap.get(TEMPLATE_OWNER_FIELD),
+        is(OWNER));
+    assertThat("Unexpected placement site.", jobDataMap.get(PLACEMENT_SITE_FIELD),
+        is(SITE));
 
     Date when = dateCaptor.getValue();
     Date twoMinutesHence = Date.from(Instant.now().plus(2, ChronoUnit.MINUTES));
@@ -506,7 +510,6 @@ class PlacementServiceTest {
     placement.setOwner(OWNER);
     placement.setPlacementType(IN_POST);
     placement.setSite(SITE);
-    placement.setSpecialty(SPECIALTY);
 
     List<HistoryDto> sentNotifications = new ArrayList<>();
     sentNotifications.add(new HistoryDto("id",
@@ -532,7 +535,6 @@ class PlacementServiceTest {
     placement.setStartDate(START_DATE);
     placement.setOwner(OWNER);
     placement.setPlacementType(IN_POST);
-    placement.setSpecialty(SPECIALTY);
 
     List<HistoryDto> sentNotifications = new ArrayList<>();
 
@@ -554,7 +556,6 @@ class PlacementServiceTest {
     placement.setStartDate(START_DATE);
     placement.setOwner(OWNER);
     placement.setPlacementType(IN_POST);
-    placement.setSpecialty(SPECIALTY);
 
     List<HistoryDto> sentNotifications = new ArrayList<>();
     sentNotifications.add(new HistoryDto("id",
@@ -587,7 +588,6 @@ class PlacementServiceTest {
     placement.setStartDate(START_DATE);
     placement.setOwner(OWNER);
     placement.setPlacementType(IN_POST);
-    placement.setSpecialty(SPECIALTY);
 
     List<HistoryDto> sentNotifications = new ArrayList<>();
     sentNotifications.add(new HistoryDto("id",
@@ -614,7 +614,6 @@ class PlacementServiceTest {
     placement.setStartDate(START_DATE);
     placement.setOwner(OWNER);
     placement.setPlacementType(IN_POST);
-    placement.setSpecialty(SPECIALTY);
 
     List<HistoryDto> sentNotifications = new ArrayList<>();
     sentNotifications.add(new HistoryDto("id",
@@ -641,7 +640,6 @@ class PlacementServiceTest {
     placement.setStartDate(START_DATE);
     placement.setOwner(OWNER);
     placement.setPlacementType(IN_POST);
-    placement.setSpecialty(SPECIALTY);
 
     List<HistoryDto> sentNotifications = new ArrayList<>();
     sentNotifications.add(new HistoryDto("id",
@@ -670,7 +668,6 @@ class PlacementServiceTest {
     placement.setStartDate(START_DATE);
     placement.setOwner(OWNER);
     placement.setPlacementType(IN_POST);
-    placement.setSpecialty(SPECIALTY);
 
     List<HistoryDto> sentNotifications = new ArrayList<>();
     sentNotifications.add(new HistoryDto("id",
@@ -701,7 +698,6 @@ class PlacementServiceTest {
     placement.setStartDate(dateToday);
     placement.setOwner(OWNER);
     placement.setPlacementType(IN_POST);
-    placement.setSpecialty(SPECIALTY);
 
     Date expectedLaterThan = Date.from(Instant.now());
     when(notificationService
@@ -730,7 +726,6 @@ class PlacementServiceTest {
     placement.setStartDate(START_DATE);
     placement.setOwner(OWNER);
     placement.setPlacementType(IN_POST);
-    placement.setSpecialty(SPECIALTY);
 
     List<HistoryDto> sentNotifications = new ArrayList<>();
     sentNotifications.add(new HistoryDto("id",
@@ -756,7 +751,6 @@ class PlacementServiceTest {
     placement.setStartDate(START_DATE);
     placement.setOwner(OWNER);
     placement.setPlacementType(IN_POST);
-    placement.setSpecialty(SPECIALTY);
 
     List<HistoryDto> sentNotifications = new ArrayList<>();
     sentNotifications.add(new HistoryDto("id",

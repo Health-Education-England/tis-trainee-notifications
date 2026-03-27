@@ -433,23 +433,15 @@ public class NotificationService {
           || (messagingControllerService.isValidRecipient(personId, MessageType.EMAIL)
           && meetsCriteria(minimalPm, true, true));
 
-    } else if (notificationType == NotificationType.PLACEMENT_UPDATED_WEEK_12) {
-
+    } else if (notificationType == NotificationType.PLACEMENT_UPDATED_WEEK_12
+        || notificationType == NotificationType.PLACEMENT_UPDATED_WEEK_12_FOUNDATION) {
       boolean inPilotOrRollout
           = messagingControllerService.isPlacementInPilot2024(personId, tisReferenceId)
           || (messagingControllerService.isPlacementInRollout2024(personId, tisReferenceId));
       actuallySendEmail = inWhitelist
           || (messagingControllerService.isValidRecipient(personId, MessageType.EMAIL)
           && inPilotOrRollout);
-    } else if (notificationType == NotificationType.PLACEMENT_UPDATED_WEEK_12_FOUNDATION) {
 
-      LocalDate now = LocalDate.now(ZoneId.of(timezone));
-      boolean inPilotOrRollout
-          = messagingControllerService.isPlacementInPilot2024(personId, tisReferenceId)
-          || messagingControllerService.isPlacementInRollout2024(personId, tisReferenceId);
-      actuallySendEmail = inWhitelist
-          || (messagingControllerService.isValidRecipient(personId, MessageType.EMAIL)
-          && inPilotOrRollout);
     } else if (notificationType == NotificationType.PLACEMENT_ROLLOUT_2024_CORRECTION) {
       actuallySendEmail = inWhitelist
           || messagingControllerService.isValidRecipient(personId, MessageType.EMAIL);
