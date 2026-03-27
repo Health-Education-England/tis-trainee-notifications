@@ -35,7 +35,7 @@ import static uk.nhs.tis.trainee.notifications.model.TisReferenceType.PLACEMENT;
 
 import java.time.Instant;
 import java.time.LocalDate;
-import java.time.ZoneOffset;
+import java.time.ZoneId;
 import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -53,12 +53,13 @@ class InAppServiceTest {
 
   private static final String TRAINEE_ID = UUID.randomUUID().toString();
   private static final String VERSION = "V1.2.3";
+  private static final ZoneId LONDON = ZoneId.of("Europe/London");
   private static final Instant BEFORE_FOUNDATION_EPOCH =
-      LocalDate.of(2026, 3, 31).atStartOfDay().toInstant(ZoneOffset.UTC);
+      LocalDate.of(2026, 3, 31).atStartOfDay(LONDON).toInstant();
   private static final Instant ON_FOUNDATION_EPOCH =
-      LocalDate.of(2026, 4, 1).atStartOfDay().toInstant(ZoneOffset.UTC);
+      LocalDate.of(2026, 4, 1).atStartOfDay(LONDON).toInstant();
   private static final Instant AFTER_FOUNDATION_EPOCH =
-      LocalDate.of(2026, 4, 2).atStartOfDay().toInstant(ZoneOffset.UTC);
+      LocalDate.of(2026, 4, 2).atStartOfDay(LONDON).toInstant();
 
   private InAppService service;
   private HistoryService historyService;
@@ -113,6 +114,35 @@ class InAppServiceTest {
         BEFORE_FOUNDATION_EPOCH);
 
     verify(historyService, never()).save(any());
+  }
+
+  @ParameterizedTest
+  @EnumSource(value = NotificationType.class,
+      names = {"DEFERRAL_FOUNDATION", "LTFT_FOUNDATION", "SPONSORSHIP_FOUNDATION",
+          "DAY_ONE_FOUNDATION"})
+  void shouldNotCreateFoundationNotificationWhenSendAtIsOneSecondBeforeFoundationEpochInLondonTime(
+      NotificationType notificationType) {
+    // 2026-04-01T00:00:00 London (BST, UTC+1) = 2026-03-31T23:00:00Z
+    // One second before that is still before the epoch in London time
+    Instant oneSecondBeforeEpochLondon = ON_FOUNDATION_EPOCH.minusSeconds(1);
+    service.createNotifications(TRAINEE_ID, null, notificationType, VERSION, Map.of(), false,
+        oneSecondBeforeEpochLondon);
+
+    verify(historyService, never()).save(any());
+  }
+
+  @ParameterizedTest
+  @EnumSource(value = NotificationType.class,
+      names = {"DEFERRAL_FOUNDATION", "LTFT_FOUNDATION", "SPONSORSHIP_FOUNDATION",
+          "DAY_ONE_FOUNDATION"})
+  void shouldCreateFoundationNotificationWhenSendAtIsMidnightLondonTimeOnFoundationEpoch(
+      NotificationType notificationType) {
+    // 2026-04-01T00:00:00 London (BST, UTC+1) = 2026-03-31T23:00:00Z
+    // Verifies the epoch is London time, not UTC (UTC midnight would be one hour later)
+    service.createNotifications(TRAINEE_ID, null, notificationType, VERSION, Map.of(), false,
+        ON_FOUNDATION_EPOCH);
+
+    verify(historyService).save(any());
   }
 
   @ParameterizedTest

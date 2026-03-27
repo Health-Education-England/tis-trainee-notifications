@@ -26,7 +26,7 @@ import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.UNREAD;
 
 import java.time.Instant;
 import java.time.LocalDate;
-import java.time.ZoneOffset;
+import java.time.ZoneId;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -74,7 +74,8 @@ public class InAppService {
         null, sendAt, null, UNREAD, null, null);
     if (!doNotStoreJustLog) {
       if (NotificationType.getProgrammeInAppFoundationNotificationTypes().contains(notificationType)
-          && sendAt.isBefore(FOUNDATION_EPOCH.atStartOfDay().toInstant(ZoneOffset.UTC))) {
+          && sendAt.isBefore(FOUNDATION_EPOCH
+          .atStartOfDay(ZoneId.of("Europe/London")).toInstant())) {
         log.info("Skipping foundation programme notification with a send date before the "
                 + "foundation epoch. Notification details: {}", history);
       } else {
