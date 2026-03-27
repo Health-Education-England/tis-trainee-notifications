@@ -3,6 +3,9 @@ application:
     user-pool-id: eu-west-2_abc123
   email:
     sender: no-reply@example.com
+    enabled: true
+  in-app:
+    enabled: true
   environment: local
   queues:
     account-confirmed: ${local.sqs-path}/tis-trainee-notifications-local-account-confirmed

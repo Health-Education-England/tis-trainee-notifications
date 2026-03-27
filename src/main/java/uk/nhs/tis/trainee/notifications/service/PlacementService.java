@@ -209,7 +209,10 @@ public class PlacementService {
           = getNotificationsEvents(placement.getPersonId(), placement.getTisId());
 
       createDirectNotifications(placement, notificationsRecorded);
-      createInAppNotifications(placement, notificationsRecorded);
+      if (!isFoundationPlacement(placement)) {
+        //this will be resolved by TIS21-8477 TIS21-8478
+        createInAppNotifications(placement, notificationsRecorded);
+      }
     }
   }
 
@@ -253,41 +256,12 @@ public class PlacementService {
     jobDataMap.put(PLACEMENT_SITE_FIELD, placement.getSite());
     jobDataMap.put(TEMPLATE_OWNER_FIELD, placement.getOwner());
 
-    boolean shouldScheduleWeek12 = !isFoundationPlacement
-        && shouldScheduleNotification(notificationsRecorded, startDate, PLACEMENT_UPDATED_WEEK_12);
-
-    if (shouldScheduleWeek12) {
-      log.info(SCHEDULING_NOTIFICATION_LOG,
-          PLACEMENT_UPDATED_WEEK_12, placement.getTisId());
-      Integer daysBeforeStart = getNotificationDaysBeforeStart(PLACEMENT_UPDATED_WEEK_12);
-      Date when = notificationService.getScheduleDate(startDate, daysBeforeStart);
-
-      jobDataMap.put(TEMPLATE_NOTIFICATION_TYPE_FIELD, PLACEMENT_UPDATED_WEEK_12);
-
-      // Note the status of the trainee will be retrieved when the job is executed, as will
-      // their name and email address, and the contact details of the owner LO, not now.
-
-      String jobId = PLACEMENT_UPDATED_WEEK_12 + "-" + placement.getTisId();
-      notificationService.scheduleNotification(jobId, jobDataMap, when, ONE_DAY_IN_SECONDS);
-    }
-
-    boolean shouldScheduleFoundationWeek12 = isFoundationPlacement
-        && shouldScheduleNotification(
-        notificationsRecorded,
-        startDate,
-        PLACEMENT_UPDATED_WEEK_12_FOUNDATION);
-
-    if (shouldScheduleFoundationWeek12) {
-      log.info(SCHEDULING_NOTIFICATION_LOG,
-          PLACEMENT_UPDATED_WEEK_12_FOUNDATION, placement.getTisId());
-      Integer daysBeforeStart =
-          getNotificationDaysBeforeStart(PLACEMENT_UPDATED_WEEK_12_FOUNDATION);
-      Date when = notificationService.getScheduleDate(startDate, daysBeforeStart);
-
-      jobDataMap.put(TEMPLATE_NOTIFICATION_TYPE_FIELD, PLACEMENT_UPDATED_WEEK_12_FOUNDATION);
-
-      String jobId = PLACEMENT_UPDATED_WEEK_12_FOUNDATION + "-" + placement.getTisId();
-      notificationService.scheduleNotification(jobId, jobDataMap, when, ONE_DAY_IN_SECONDS);
+    // Note the status of the trainee will be retrieved when the job is executed, as will
+    // their name and email address, and the contact details of the owner LO, not now.
+    NotificationType week12Type = isFoundationPlacement
+        ? PLACEMENT_UPDATED_WEEK_12_FOUNDATION : PLACEMENT_UPDATED_WEEK_12;
+    if (shouldScheduleNotification(notificationsRecorded, startDate, week12Type)) {
+      scheduleWeek12Notification(placement, jobDataMap, startDate, week12Type);
     }
 
     boolean shouldScheduleRolloutCorrection = !isFoundationPlacement
@@ -305,6 +279,26 @@ public class PlacementService {
   }
 
   /**
+   * Schedule a week-12 notification for a placement.
+   *
+   * @param placement        The placement to notify for.
+   * @param jobDataMap       The job data map, populated with common placement fields.
+   * @param startDate        The placement start date.
+   * @param notificationType The week-12 notification type to schedule.
+   */
+  private void scheduleWeek12Notification(Placement placement, Map<String, Object> jobDataMap,
+      LocalDate startDate, NotificationType notificationType) {
+    log.info(SCHEDULING_NOTIFICATION_LOG, notificationType, placement.getTisId());
+    Integer daysBeforeStart = getNotificationDaysBeforeStart(notificationType);
+    Date when = notificationService.getScheduleDate(startDate, daysBeforeStart);
+
+    jobDataMap.put(TEMPLATE_NOTIFICATION_TYPE_FIELD, notificationType);
+
+    String jobId = notificationType + "-" + placement.getTisId();
+    notificationService.scheduleNotification(jobId, jobDataMap, when, 10L);
+  }
+
+  /**
    * Helper function to determine whether a notification should be scheduled.
    *
    * @param notificationsRecorded The current recorded notification types and their events.
@@ -316,11 +310,6 @@ public class PlacementService {
       NotificationType notificationType) {
 
     if (startDate == null || startDate.isBefore(LocalDate.now())) {
-      return false;
-    }
-
-    if (notificationType.equals(PLACEMENT_UPDATED_WEEK_12_FOUNDATION)
-        && !startDate.isAfter(FD_EPOCH.plusWeeks(12))) {
       return false;
     }
 

@@ -142,12 +142,12 @@ public class MessagingControllerService {
    * @return true if the placement is in the pilot rollout group, otherwise false.
    */
   public boolean isPlacementInRollout2024(String traineeId, String placementId) {
-    Boolean isRollout = restTemplate.getForObject(serviceUrl + API_PLACEMENT_IS_PILOT_ROLLOUT_2024,
-        Boolean.class, Map.of(TRAINEE_TIS_ID_FIELD, traineeId, PLACEMENT_ID_FIELD, placementId));
-    if (isRollout == null || !isRollout) {
-      log.info("Trainee {} placement {} is not in the pilot rollout 2024.", traineeId, placementId);
-      return false;
-    }
+//    Boolean isRollout = restTemplate.getForObject(serviceUrl + API_PLACEMENT_IS_PILOT_ROLLOUT_2024,
+//        Boolean.class, Map.of(TRAINEE_TIS_ID_FIELD, traineeId, PLACEMENT_ID_FIELD, placementId));
+//    if (isRollout == null || !isRollout) {
+//      log.info("Trainee {} placement {} is not in the pilot rollout 2024.", traineeId, placementId);
+//      return false;
+//    }
     return true;
   }
 

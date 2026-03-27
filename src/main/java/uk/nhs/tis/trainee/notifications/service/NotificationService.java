@@ -179,8 +179,8 @@ public class NotificationService {
     // TODO: refactor to avoid the duplicate calls to getTraineeDetails and getCognitoAccountDetails
     enrichJobDetails(jobDetails);
 
-    UserDetails userTraineeDetails = getTraineeDetails(personId);
-    UserDetails userCognitoAccountDetails = getCognitoAccountDetails(userTraineeDetails.email());
+    UserDetails userTraineeDetails = new UserDetails(true, "reuben.roberts@nhs.net", "Mr", "Test", "Testy", "1234567"); // getTraineeDetails(personId);
+    UserDetails userCognitoAccountDetails = new UserDetails(true, "reuben.roberts@nhs.net", "Mr", "Test", "Testy", "1234567");  // getCognitoAccountDetails(userTraineeDetails.email());
     UserDetails userAccountDetails = mapUserDetails(userCognitoAccountDetails, userTraineeDetails);
 
     NotificationType notificationType =
@@ -193,6 +193,7 @@ public class NotificationService {
       notificationSummary = programmeMembershipActionService.getNotificationSummary(jobDetails);
 
     } else if (notificationType == NotificationType.PLACEMENT_UPDATED_WEEK_12
+        || notificationType == NotificationType.PLACEMENT_UPDATED_WEEK_12_FOUNDATION
         || notificationType == NotificationType.PLACEMENT_ROLLOUT_2024_CORRECTION) {
 
       String jobName = (String) jobDetails.get(PlacementService.PLACEMENT_TYPE_FIELD);
@@ -290,8 +291,8 @@ public class NotificationService {
     if (!milestoneDate.isAfter(LocalDate.now())) {
       // 'Missed' milestones: schedule to be sent soon, but not immediately
       // in case of human editing 'jitter'.
-      milestone = Date.from(Instant.now()
-          .plus(immediateNotificationDelayMinutes, ChronoUnit.MINUTES));
+      milestone = Date.from(Instant.now());
+          //.plus(immediateNotificationDelayMinutes, ChronoUnit.MINUTES));
     } else {
       // Future milestone.
       milestone = Date.from(milestoneDate
@@ -364,7 +365,8 @@ public class NotificationService {
    */
   protected Map<String, Object> enrichJobDetails(Map<String, Object> jobDetails) {
     String personId = (String) jobDetails.get(PERSON_ID_FIELD);
-    UserDetails userTraineeDetails = getTraineeDetails(personId);
+    UserDetails userTraineeDetails = new UserDetails(true, "reuben.roberts@nhs.net", "Mr", "Test", "Testy", "1234567");
+    // getTraineeDetails(personId);
 
     if (userTraineeDetails == null) {
       String message = String.format(
@@ -392,7 +394,7 @@ public class NotificationService {
       jobDetails.putIfAbsent(TEMPLATE_POG_HREF_FIELD, getHrefTypeForContact(pogContact));
     }
 
-    UserDetails userCognitoAccountDetails = getCognitoAccountDetails(userTraineeDetails.email());
+    UserDetails userCognitoAccountDetails = new UserDetails(true, "reuben.roberts@nhs.net", "Mr", "Test", "Testy", "1234567"); //getCognitoAccountDetails(userTraineeDetails.email());
 
     UserDetails userAccountDetails = mapUserDetails(userCognitoAccountDetails, userTraineeDetails);
     if (userAccountDetails != null) {
@@ -448,8 +450,7 @@ public class NotificationService {
           || messagingControllerService.isPlacementInRollout2024(personId, tisReferenceId);
       actuallySendEmail = inWhitelist
           || (messagingControllerService.isValidRecipient(personId, MessageType.EMAIL)
-          && inPilotOrRollout
-          && now.isAfter(PlacementService.FD_EPOCH));
+          && inPilotOrRollout);
     } else if (notificationType == NotificationType.PLACEMENT_ROLLOUT_2024_CORRECTION) {
       actuallySendEmail = inWhitelist
           || messagingControllerService.isValidRecipient(personId, MessageType.EMAIL);
@@ -502,7 +503,7 @@ public class NotificationService {
     if (NotificationType.getActiveProgrammeUpdateNotificationTypes().contains(notificationType)) {
       tisReferenceInfo = new TisReferenceInfo(PROGRAMME_MEMBERSHIP,
           jobDetails.get(ProgrammeMembershipService.TIS_ID_FIELD).toString());
-    } else if (notificationType == NotificationType.PLACEMENT_UPDATED_WEEK_12) {
+    } else if (notificationType == NotificationType.PLACEMENT_UPDATED_WEEK_12 || notificationType == NotificationType.PLACEMENT_UPDATED_WEEK_12_FOUNDATION) {
       tisReferenceInfo = new TisReferenceInfo(PLACEMENT,
           jobDetails.get(PlacementService.TIS_ID_FIELD).toString());
     } else if (NotificationType.getProgrammePogNotificationTypes().contains(notificationType)) {

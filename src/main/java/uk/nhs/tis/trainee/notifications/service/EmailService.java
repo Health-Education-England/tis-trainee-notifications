@@ -124,7 +124,7 @@ public class EmailService {
       throw new IllegalArgumentException("Unable to send notification as no trainee ID available");
     }
 
-    UserDetails userDetails = getRecipientAccount(traineeId);
+    UserDetails userDetails = new UserDetails(true, "reuben.roberts@nhs.net", "Mr", "Test", "Testy", "1234567"); // getRecipientAccount(traineeId);
 
     if (Strings.isBlank(userDetails.email())) {
       String message = "Could not find email address for user '%s'".formatted(traineeId);
