@@ -30,6 +30,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.testcontainers.containers.localstack.LocalStackContainer.Service.SQS;
@@ -39,6 +40,8 @@ import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_UPDATED_WEEK_12;
 import static uk.nhs.tis.trainee.notifications.model.ProgrammeActionType.SIGN_COJ;
 import static uk.nhs.tis.trainee.notifications.model.TisReferenceType.PROGRAMME_MEMBERSHIP;
+import static uk.nhs.tis.trainee.notifications.model.TraineeType.FOUNDATION;
+import static uk.nhs.tis.trainee.notifications.model.TraineeType.SPECIALTY;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.API_GET_OWNER_CONTACT;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.API_TRAINEE_DETAILS;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.OWNER_FIELD;
@@ -78,6 +81,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -108,6 +112,7 @@ import uk.nhs.tis.trainee.notifications.model.MessageType;
 import uk.nhs.tis.trainee.notifications.model.NotificationStatus;
 import uk.nhs.tis.trainee.notifications.model.NotificationType;
 import uk.nhs.tis.trainee.notifications.model.ProgrammeActionType;
+import uk.nhs.tis.trainee.notifications.model.TraineeType;
 import uk.nhs.tis.trainee.notifications.service.EmailService;
 import uk.nhs.tis.trainee.notifications.service.MessageSendingService;
 import uk.nhs.tis.trainee.notifications.service.NotificationService;
@@ -214,7 +219,7 @@ class ProgrammeMembershipListenerIntegrationTest {
 
   @BeforeEach
   void setUp() {
-    when(mailSender.createMimeMessage()).thenReturn(new MimeMessage((Session) null));
+    when(mailSender.createMimeMessage()).thenAnswer(inv -> new MimeMessage((Session) null));
     when(userAccountService.getUserDetailsById(PERSON_ID)).thenReturn(
         new UserDetails(true, EMAIL, TITLE, FAMILY_NAME, GIVEN_NAME, GMC));
 
@@ -292,7 +297,7 @@ class ProgrammeMembershipListenerIntegrationTest {
       assertThat("Unexpected template version.", templateInfo.version(), is("v1.0.0"));
 
       Map<String, Object> storedVariables = templateInfo.variables();
-      assertThat("Unexpected template variable count.", storedVariables.size(), is(20));
+      assertThat("Unexpected template variable count.", storedVariables.size(), is(21));
       for (ProgrammeActionType actionType : ProgrammeActionType.values()) {
         assertThat("Unexpected template variable for action type: " + actionType,
             storedVariables.get(actionType.toString()), nullValue());
@@ -488,7 +493,7 @@ class ProgrammeMembershipListenerIntegrationTest {
     assertThat("Unexpected template version.", templateInfo.version(), is("v1.0.0"));
 
     Map<String, Object> storedVariables = templateInfo.variables();
-    int expectedVariableCount = 20 //basic set
+    int expectedVariableCount = 21 //basic set
         + ProgrammeActionType.values().length
         + 2; //domain and hashedEmail added when sending email
     assertThat("Unexpected template variable count.", storedVariables.size(),
@@ -563,19 +568,14 @@ class ProgrammeMembershipListenerIntegrationTest {
   }
 
   @ParameterizedTest
-  @EnumSource(value = NotificationType.class, names = "PROGRAMME_UPDATED_WEEK_12")
-  void shouldSendFullNotificationsWhenTemplateVariablesPresent(NotificationType type)
-      throws MessagingException, IOException, URISyntaxException {
-
+  @CsvSource(delimiter = '|', nullValues = "null", textBlock = """
+      PROGRAMME_CREATED         | null
+      PROGRAMME_CREATED         | FOUNDATION
+      PROGRAMME_UPDATED_WEEK_12 | null
+      """)
+  void shouldSendFullNotificationsWhenTemplateVariablesPresent(NotificationType notificationType,
+      TraineeType traineeType) throws MessagingException, IOException, URISyntaxException {
     when(emailService.getRecipientAccountByEmail(EMAIL)).thenReturn(USER_DETAILS);
-
-    //insert a welcome notification for the trainee, so that we don't send this email as well.
-    ObjectId id = ObjectId.get();
-    History welcomeNotification = new History(
-        id, new History.TisReferenceInfo(PROGRAMME_MEMBERSHIP, PROGRAMME_MEMBERSHIP_ID.toString()),
-        PROGRAMME_CREATED, new History.RecipientInfo(PERSON_ID, MessageType.EMAIL, EMAIL), null,
-        null, Instant.now(), null, NotificationStatus.SENT, null, null);
-    mongoTemplate.insert(welcomeNotification);
 
     Set<ActionDto> completeActions = new HashSet<>();
     for (ProgrammeActionType actionType : ProgrammeActionType.values()) {
@@ -594,21 +594,45 @@ class ProgrammeMembershipListenerIntegrationTest {
 
     LocalDate week12ReminderDate = LocalDate.now().plusWeeks(12);
     sqsTemplate.send(PM_UPDATED_QUEUE,
-        buildStandardProgrammeMembershipEvent(week12ReminderDate));
+        buildStandardProgrammeMembershipEvent(week12ReminderDate, traineeType));
 
     ArgumentCaptor<MimeMessage> messageCaptor = ArgumentCaptor.captor();
+    String expectedTemplateNamePattern =
+        "email/" + notificationType.getTemplateName() + "/v[0-9]+\\.[0-9]+\\.[0-9]+";
 
     await()
         .pollInterval(Duration.ofSeconds(2))
         .atMost(Duration.ofSeconds(10))
         .ignoreExceptions()
-        .untilAsserted(() -> verify(mailSender).send(messageCaptor.capture()));
+        .untilAsserted(() -> {
+          verify(mailSender, atLeastOnce()).send(messageCaptor.capture());
+          assertThat("Expected email not sent.", messageCaptor.getAllValues().stream()
+              .filter(msg -> {
+                try {
+                  String templateName = msg.getHeader("Template-Name", "");
+                  return templateName.matches(expectedTemplateNamePattern);
+                } catch (MessagingException e) {
+                  throw new RuntimeException(e);
+                }
+              }).count(), is(1L));
+        });
 
-    MimeMessage message = messageCaptor.getValue();
+    MimeMessage message = messageCaptor.getAllValues().stream()
+        .filter(msg -> {
+          try {
+            String templateName = msg.getHeader("Template-Name", "");
+            return templateName.matches(expectedTemplateNamePattern);
+          } catch (MessagingException e) {
+            throw new RuntimeException(e);
+          }
+        })
+        .findAny().get();
 
     Document content = Jsoup.parse((String) message.getContent());
 
-    URL resource = getClass().getResource("/email/" + type.getTemplateName() + "-full.html");
+    URL resource = getClass().getResource("/email/" + notificationType.getTemplateName()
+        + (traineeType == FOUNDATION ? "-foundation" : "")
+        + "-full.html");
     assert resource != null;
     Document expectedContent = Jsoup.parse(Paths.get(resource.toURI()).toFile());
     DateTimeFormatter longDateFormatter = DateTimeFormatter.ofPattern("d MMMM yyyy");
@@ -619,18 +643,13 @@ class ProgrammeMembershipListenerIntegrationTest {
   }
 
   @ParameterizedTest
-  @EnumSource(value = NotificationType.class, names = "PROGRAMME_UPDATED_WEEK_12")
-  void shouldSendMinimalNotificationsWhenTemplateVariablesMissing(NotificationType type)
-      throws MessagingException, IOException, URISyntaxException {
-
-    //insert a welcome notification for the trainee, so that we don't send this email as well.
-    ObjectId id = ObjectId.get();
-    History welcomeNotification = new History(
-        id, new History.TisReferenceInfo(PROGRAMME_MEMBERSHIP, PROGRAMME_MEMBERSHIP_ID.toString()),
-        PROGRAMME_CREATED, new History.RecipientInfo(PERSON_ID, MessageType.EMAIL, EMAIL), null,
-        null, Instant.now(), null, NotificationStatus.FAILED, null, null);
-    mongoTemplate.insert(welcomeNotification);
-
+  @CsvSource(delimiter = '|', nullValues = "null", textBlock = """
+      PROGRAMME_CREATED         | null
+      PROGRAMME_CREATED         | FOUNDATION
+      PROGRAMME_UPDATED_WEEK_12 | null
+      """)
+  void shouldSendMinimalNotificationsWhenTemplateVariablesMissing(NotificationType notificationType,
+      TraineeType traineeType) throws MessagingException, IOException, URISyntaxException {
     Set<ActionDto> completeActions = new HashSet<>();
     completeActions.add(new ActionDto(
         "id", SIGN_COJ.toString(), PERSON_ID,
@@ -647,21 +666,46 @@ class ProgrammeMembershipListenerIntegrationTest {
 
     LocalDate week12ReminderDate = LocalDate.now().plusWeeks(12);
     sqsTemplate.send(PM_UPDATED_QUEUE,
-        buildStandardProgrammeMembershipEvent(week12ReminderDate));
+        buildStandardProgrammeMembershipEvent(week12ReminderDate, traineeType));
 
     ArgumentCaptor<MimeMessage> messageCaptor = ArgumentCaptor.captor();
+    String expectedTemplateNamePattern =
+        "email/" + notificationType.getTemplateName() + "/v[0-9]+\\.[0-9]+\\.[0-9]+";
 
     await()
         .pollInterval(Duration.ofSeconds(2))
         .atMost(Duration.ofSeconds(10))
         .ignoreExceptions()
-        .untilAsserted(() -> verify(mailSender).send(messageCaptor.capture()));
+        .untilAsserted(() -> {
+          verify(mailSender, atLeastOnce()).send(messageCaptor.capture());
+          assertThat("Expected email not sent.", messageCaptor.getAllValues().stream()
+              .filter(msg -> {
+                try {
+                  String templateName = msg.getHeader("Template-Name", "");
+                  return templateName.matches(expectedTemplateNamePattern);
+                } catch (MessagingException e) {
+                  throw new RuntimeException(e);
+                }
+              }).count(), is(1L));
+        });
 
-    MimeMessage message = messageCaptor.getValue();
+    MimeMessage message = messageCaptor.getAllValues().stream()
+        .filter(msg -> {
+          try {
+            String templateName = msg.getHeader("Template-Name", "");
+            return templateName.matches(expectedTemplateNamePattern);
+          } catch (MessagingException e) {
+            throw new RuntimeException(e);
+          }
+        })
+        .findAny().get();
 
     Document content = Jsoup.parse((String) message.getContent());
 
-    URL resource = getClass().getResource("/email/" + type.getTemplateName() + "-minimal.html");
+    URL resource = getClass().getResource(
+        "/email/" + notificationType.getTemplateName()
+            + (traineeType == FOUNDATION ? "-foundation" : "")
+            + "-minimal.html");
     assert resource != null;
     Document expectedContent = Jsoup.parse(Paths.get(resource.toURI()).toFile());
     DateTimeFormatter longDateFormatter = DateTimeFormatter.ofPattern("d MMMM yyyy");
@@ -727,7 +771,22 @@ class ProgrammeMembershipListenerIntegrationTest {
    */
   JsonNode buildStandardProgrammeMembershipEvent(LocalDate startDate)
       throws JsonProcessingException {
-    return buildStandardProgrammeMembershipEvent(startDate, false, LocalDate.now().plusYears(1));
+    return buildStandardProgrammeMembershipEvent(startDate, false, LocalDate.now().plusYears(1),
+        SPECIALTY);
+  }
+
+  /**
+   * Helper method to build a standard programme membership event JSON with default curriculum.
+   *
+   * @param startDate   The start date of the programme membership
+   * @param traineeType The trainee type for the programme membership.
+   * @return A JsonNode representing the programme membership event.
+   * @throws JsonProcessingException If there is an error processing the JSON.
+   */
+  JsonNode buildStandardProgrammeMembershipEvent(LocalDate startDate, TraineeType traineeType)
+      throws JsonProcessingException {
+    return buildStandardProgrammeMembershipEvent(startDate, false, LocalDate.now().plusYears(1),
+        traineeType);
   }
 
   /**
@@ -741,8 +800,24 @@ class ProgrammeMembershipListenerIntegrationTest {
    * @throws JsonProcessingException If there is an error processing the JSON.
    */
   JsonNode buildStandardProgrammeMembershipEvent(LocalDate startDate, boolean pogEligible,
-      LocalDate cctDate)
-      throws JsonProcessingException {
+      LocalDate cctDate) throws JsonProcessingException {
+    return buildStandardProgrammeMembershipEvent(startDate, pogEligible, cctDate, SPECIALTY);
+  }
+
+  /**
+   * Helper method to build a standard programme membership event JSON with defined curriculum
+   * POG-eligibility.
+   *
+   * @param startDate   The start date of the programme membership
+   * @param pogEligible Whether the curriculum is eligible for period of grace
+   * @param cctDate     The curriculum CCT date
+   * @param traineeType The trainee type for the programme membership.
+   * @return A JsonNode representing the programme membership event.
+   * @throws JsonProcessingException If there is an error processing the JSON.
+   */
+  JsonNode buildStandardProgrammeMembershipEvent(LocalDate startDate, boolean pogEligible,
+      LocalDate cctDate, TraineeType traineeType) throws JsonProcessingException {
+    String curriculumSpecialty = traineeType == FOUNDATION ? "Foundation" : "specialty";
     String eventString = """
         {
           "tisId": "%s",
@@ -756,7 +831,7 @@ class ProgrammeMembershipListenerIntegrationTest {
                 "programmeNumber": "123456",
                 "designatedBody": "desBody",
                 "responsibleOfficer": "{\\"firstName\\": \\"%s\\", \\"lastName\\": \\"%s\\"}",
-                "curricula": "[{\\"curriculumSubType\\":\\"MEDICAL_CURRICULUM\\",\\"curriculumSpecialty\\":\\"specialty\\",\\"curriculumSpecialtyBlockIndemnity\\":false,\\"curriculumEndDate\\":\\"%s\\",\\"curriculumEligibleForPeriodOfGrace\\":%s}]"
+                "curricula": "[{\\"curriculumSubType\\":\\"MEDICAL_CURRICULUM\\",\\"curriculumSpecialty\\":\\"%s\\",\\"curriculumName\\":\\"name\\",\\"curriculumSpecialtyBlockIndemnity\\":false,\\"curriculumEndDate\\":\\"%s\\",\\"curriculumEligibleForPeriodOfGrace\\":%s}]"
              },
              "metadata": {
                 "operation": "LOAD"
@@ -765,7 +840,7 @@ class ProgrammeMembershipListenerIntegrationTest {
         }
         """.formatted(PROGRAMME_MEMBERSHIP_ID, PROGRAMME_MEMBERSHIP_ID, PERSON_ID, startDate,
         MANAGING_DEANERY, RESPONSIBLE_OFFICER_FIRST_NAME, RESPONSIBLE_OFFICER_LAST_NAME,
-        cctDate, pogEligible);
+        curriculumSpecialty, cctDate, pogEligible);
 
     return JsonMapper.builder()
         .build()

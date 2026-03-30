@@ -31,6 +31,7 @@ import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockingDetails;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -722,7 +723,7 @@ class ProgrammeMembershipServiceTest {
     assertThat("Unexpected job id.", jobId, is(expectedJobId));
 
     Map<String, Object> jobDataMap = jobDataMapCaptor.getValue();
-    assertThat("Unexpected variable count.", jobDataMap.size(), is(11));
+    assertThat("Unexpected variable count.", jobDataMap.size(), is(12));
     assertThat("Unexpected tisId.", jobDataMap.get(TIS_ID_FIELD), is(TIS_ID));
     assertThat("Unexpected personId.", jobDataMap.get(PERSON_ID_FIELD), is(PERSON_ID));
     assertThat("Unexpected programme.", jobDataMap.get(PROGRAMME_NAME_FIELD),
@@ -745,7 +746,7 @@ class ProgrammeMembershipServiceTest {
     assertThat("Unexpected job id.", dayOneJobId, is(dayOneExpectedJobId));
 
     Map<String, Object> dayOneJobDataMap = dayOneJobDataMapCaptor.getValue();
-    assertThat("Unexpected variable count.", dayOneJobDataMap.size(), is(11));
+    assertThat("Unexpected variable count.", dayOneJobDataMap.size(), is(12));
     assertThat("Unexpected tisId.", dayOneJobDataMap.get(TIS_ID_FIELD), is(TIS_ID));
     assertThat("Unexpected personId.", dayOneJobDataMap.get(PERSON_ID_FIELD), is(PERSON_ID));
     assertThat("Unexpected programme.", dayOneJobDataMap.get(PROGRAMME_NAME_FIELD),
@@ -757,9 +758,8 @@ class ProgrammeMembershipServiceTest {
         is(DESIGNATED_BODY));
   }
 
-  // temporary until TIS21-8048 is done.
   @Test
-  void shouldNotCreateDirectProgrammeNotificationsForFoundationProgramme() {
+  void shouldCreateDirectProgrammeNotificationsForFoundationProgramme() {
     when(historyService.findAllHistoryForTrainee(PERSON_ID)).thenReturn(new ArrayList<>());
 
     ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
@@ -770,11 +770,24 @@ class ProgrammeMembershipServiceTest {
     service.addNotifications(programmeMembership);
 
     for (NotificationType notificationType
-        : NotificationType.getActiveProgrammeUpdateNotificationTypes()) {
+        : NotificationType.getActiveFoundationProgrammeUpdateNotificationTypes()) {
       String jobId = notificationType + "-" + TIS_ID;
-      verify(notificationService, never()).executeNow(eq(jobId), anyMap());
-      verify(notificationService, never()).scheduleNotification(eq(jobId), anyMap(), any(),
-          anyLong());
+
+      boolean executedNow = mockingDetails(notificationService)
+          .getInvocations()
+          .stream()
+          .anyMatch(inv -> inv.getMethod().getName().equals("executeNow")
+              && inv.getArgument(0).equals(jobId)
+          );
+
+      boolean scheduled = mockingDetails(notificationService)
+          .getInvocations()
+          .stream()
+          .anyMatch(inv -> inv.getMethod().getName().equals("scheduleNotification")
+              && inv.getArgument(0).equals(jobId)
+          );
+
+      assertThat("Expected notification not sent or scheduled.", executedNow ^ scheduled, is(true));
     }
   }
 

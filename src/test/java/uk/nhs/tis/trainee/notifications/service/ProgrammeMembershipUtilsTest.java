@@ -44,6 +44,8 @@ import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipServic
 import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.RO_NAME_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.START_DATE_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.TIS_ID_FIELD;
+import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipUtils.isFoundationProgramme;
+import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipUtils.isPublicHealthProgramme;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -1188,7 +1190,7 @@ class ProgrammeMembershipUtilsTest {
     programmeMembership.setCurricula(List.of());
 
     assertThat("Unexpected foundation programme flag.",
-        service.isFoundationProgramme(programmeMembership), is(false));
+        isFoundationProgramme(programmeMembership), is(false));
   }
 
   @Test
@@ -1199,7 +1201,7 @@ class ProgrammeMembershipUtilsTest {
             null)));
 
     assertThat("Unexpected foundation programme flag.",
-        service.isFoundationProgramme(programmeMembership), is(false));
+        isFoundationProgramme(programmeMembership), is(false));
   }
 
   @Test
@@ -1210,7 +1212,7 @@ class ProgrammeMembershipUtilsTest {
             CURRICULUM_END_DATE, null)));
 
     assertThat("Unexpected foundation programme flag.",
-        service.isFoundationProgramme(programmeMembership), is(false));
+        isFoundationProgramme(programmeMembership), is(false));
   }
 
   @ParameterizedTest
@@ -1225,7 +1227,7 @@ class ProgrammeMembershipUtilsTest {
             null)));
 
     assertThat("Unexpected foundation programme flag.",
-        service.isFoundationProgramme(programmeMembership), is(true));
+        isFoundationProgramme(programmeMembership), is(true));
   }
 
   @ParameterizedTest
@@ -1240,7 +1242,7 @@ class ProgrammeMembershipUtilsTest {
             null)));
 
     assertThat("Unexpected foundation programme flag.",
-        service.isFoundationProgramme(programmeMembership), is(true));
+        isFoundationProgramme(programmeMembership), is(true));
   }
 
   @Test
@@ -1251,24 +1253,72 @@ class ProgrammeMembershipUtilsTest {
             CURRICULUM_END_DATE, null)));
 
     assertThat("Unexpected foundation programme flag.",
-        service.isFoundationProgramme(programmeMembership), is(false));
+        isFoundationProgramme(programmeMembership), is(false));
   }
 
   @Test
-  void shouldBeFoundationProgrammeWhenAnyOneCurriculumMatchesFoundationCriteria() {
+  void shouldNotBePublicHealthProgrammeWhenCurriculaIsEmpty() {
+    ProgrammeMembership programmeMembership = new ProgrammeMembership();
+    programmeMembership.setCurricula(List.of());
+
+    assertThat("Unexpected public health programme flag.",
+        isPublicHealthProgramme(programmeMembership), is(false));
+  }
+
+  @Test
+  void shouldNotBePublicHealthProgrammeWhenCurriculumSpecialtyIsNull() {
+    ProgrammeMembership programmeMembership = new ProgrammeMembership();
+    programmeMembership.setCurricula(List.of(
+        new Curriculum(CURRICULUM_NAME, MEDICAL_CURRICULUM_1, null, false, CURRICULUM_END_DATE,
+            null)));
+
+    assertThat("Unexpected public health programme flag.",
+        isPublicHealthProgramme(programmeMembership), is(false));
+  }
+
+  @ParameterizedTest
+  @NullAndEmptySource
+  @ValueSource(strings = "any specialty")
+  void shouldNotBePublicHealthProgrammeWhenCurriculumSpecialtyNotPublicHealth(String specialty) {
+    ProgrammeMembership programmeMembership = new ProgrammeMembership();
+    programmeMembership.setCurricula(List.of(
+        new Curriculum(CURRICULUM_NAME, MEDICAL_CURRICULUM_1, specialty, false, CURRICULUM_END_DATE,
+            null)));
+
+    assertThat("Unexpected public health programme flag.",
+        isPublicHealthProgramme(programmeMembership), is(false));
+  }
+
+  @ParameterizedTest
+  @CsvSource(textBlock = """
+      public health medicine
+      PUBLIC HEALTH MEDICINE
+      Public Health Medicine""")
+  void shouldBePublicHealthProgrammeWhenCurriculumSpecialtyIsPublicHealth(String specialty) {
+    ProgrammeMembership programmeMembership = new ProgrammeMembership();
+    programmeMembership.setCurricula(List.of(
+        new Curriculum(CURRICULUM_NAME, MEDICAL_CURRICULUM_1, specialty, false, CURRICULUM_END_DATE,
+            null)));
+
+    assertThat("Unexpected public health programme flag.",
+        isPublicHealthProgramme(programmeMembership), is(true));
+  }
+
+  @Test
+  void shouldBePublicHealthProgrammeWhenAnyOneCurriculumMatchesPublicHealthCriteria() {
     ProgrammeMembership programmeMembership = new ProgrammeMembership();
     programmeMembership.setCurricula(List.of(
         new Curriculum(CURRICULUM_NAME, MEDICAL_CURRICULUM_1, "any specialty", false,
             CURRICULUM_END_DATE, null),
-        new Curriculum(CURRICULUM_NAME, MEDICAL_CURRICULUM_1, "FOUNDATION", false,
+        new Curriculum(CURRICULUM_NAME, MEDICAL_CURRICULUM_1, "PUBLIC HEALTH MEDICINE", false,
             CURRICULUM_END_DATE, null),
         new Curriculum(CURRICULUM_NAME, MEDICAL_CURRICULUM_1, "another specialty", false,
-            CURRICULUM_END_DATE, null)));
+            CURRICULUM_END_DATE, null))
+    );
 
-    assertThat("Unexpected foundation programme flag.",
-        service.isFoundationProgramme(programmeMembership), is(true));
+    assertThat("Unexpected public health programme flag.",
+        isPublicHealthProgramme(programmeMembership), is(true));
   }
-
 
   /**
    * Helper function to set up a default non-excluded programme membership.
