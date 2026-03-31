@@ -422,9 +422,8 @@ public class ProgrammeMembershipUtils {
         .anyMatch(curriculum -> {
           String name = curriculum.curriculumName();
           String specialty = curriculum.curriculumSpecialty();
-          return name != null && specialty != null
-              && (name.equalsIgnoreCase(ACADEMIC_FOUNDATION_CURRICULUM_NAME)
-              || specialty.equalsIgnoreCase(FOUNDATION_SPECIALTY));
+          return (name != null && (name.equalsIgnoreCase(ACADEMIC_FOUNDATION_CURRICULUM_NAME))
+              || (specialty != null && specialty.equalsIgnoreCase(FOUNDATION_SPECIALTY)));
         });
   }
 
