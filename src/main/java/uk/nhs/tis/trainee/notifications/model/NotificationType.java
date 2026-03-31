@@ -113,6 +113,7 @@ public enum NotificationType {
   @Getter
   private static final Set<NotificationType> activeFoundationProgrammeUpdateNotificationTypes =
       EnumSet.of(
+          PROGRAMME_DAY_ONE,
           PROGRAMME_CREATED
       );
 
