@@ -740,8 +740,8 @@ class NotificationServiceTest {
       boolean result = serviceWhitelisted.shouldActuallySendEmail(
           NotificationType.PLACEMENT_UPDATED_WEEK_12_FOUNDATION, PERSON_ID, TIS_ID);
 
-      assertThat("Expected to send foundation placement email for whitelisted person before " +
-              "FOUNDATION_EPOCH.", result, is(true));
+      assertThat("Expected to send foundation placement email for whitelisted person before "
+          + "FOUNDATION_EPOCH.", result, is(true));
     }
   }
 
