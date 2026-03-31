@@ -85,6 +85,8 @@ public class NotificationService {
 
   // Do not send any emails for POG notifications before this date
   public static final LocalDate POG_EPOCH = LocalDate.of(2026, 2, 1);
+  // Do not send any notifications for Foundation placements or programmes before this date
+  public static final LocalDate FOUNDATION_EPOCH = LocalDate.of(2026, 4, 1);
 
   protected static final String DEFAULT_NO_CONTACT_MESSAGE = "your local office";
   protected static final List<String> DUMMY_USER_ROLES = List.of("Placeholder", "Dummy Record");
@@ -193,6 +195,7 @@ public class NotificationService {
       notificationSummary = programmeMembershipActionService.getNotificationSummary(jobDetails);
 
     } else if (notificationType == NotificationType.PLACEMENT_UPDATED_WEEK_12
+        || notificationType == NotificationType.PLACEMENT_UPDATED_WEEK_12_FOUNDATION
         || notificationType == NotificationType.PLACEMENT_ROLLOUT_2024_CORRECTION) {
 
       String jobName = (String) jobDetails.get(PlacementService.PLACEMENT_TYPE_FIELD);
@@ -419,43 +422,97 @@ public class NotificationService {
    */
   protected boolean shouldActuallySendEmail(NotificationType notificationType, String personId,
       String tisReferenceId) {
-    boolean actuallySendEmail = false; // default to log email only
     boolean inWhitelist = notificationsWhitelist.contains(personId);
+    boolean actuallySendEmail;
 
     if (NotificationType.getActiveProgrammeUpdateNotificationTypes().contains(notificationType)) {
-
-      ProgrammeMembership minimalPm = new ProgrammeMembership();
-      minimalPm.setPersonId(personId);
-      minimalPm.setTisId(tisReferenceId);
-      actuallySendEmail
-          = inWhitelist
-          || (messagingControllerService.isValidRecipient(personId, MessageType.EMAIL)
-          && meetsCriteria(minimalPm, true, true));
-
+      actuallySendEmail = shouldSendForProgrammeUpdate(personId, tisReferenceId, inWhitelist);
     } else if (notificationType == NotificationType.PLACEMENT_UPDATED_WEEK_12) {
-
-      boolean inPilotOrRollout
-          = messagingControllerService.isPlacementInPilot2024(personId, tisReferenceId)
-          || (messagingControllerService.isPlacementInRollout2024(personId, tisReferenceId));
-      actuallySendEmail = inWhitelist
-          || (messagingControllerService.isValidRecipient(personId, MessageType.EMAIL)
-          && inPilotOrRollout);
+      actuallySendEmail = shouldSendForPlacement(personId, tisReferenceId, inWhitelist);
+    } else if (notificationType == NotificationType.PLACEMENT_UPDATED_WEEK_12_FOUNDATION) {
+      actuallySendEmail = shouldSendForFoundationPlacement(personId, tisReferenceId, inWhitelist);
     } else if (notificationType == NotificationType.PLACEMENT_ROLLOUT_2024_CORRECTION) {
       actuallySendEmail = inWhitelist
           || messagingControllerService.isValidRecipient(personId, MessageType.EMAIL);
-
     } else if (NotificationType.getProgrammePogNotificationTypes().contains(notificationType)) {
-
-      LocalDate now = LocalDate.now(ZoneId.of(timezone));
-      actuallySendEmail = inWhitelist
-          || (messagingControllerService.isValidRecipient(personId, MessageType.EMAIL)
-          && now.isAfter(POG_EPOCH));
+      actuallySendEmail = shouldSendForPogProgramme(personId, inWhitelist);
+    } else {
+      actuallySendEmail = false;
     }
 
     log.info("Actually send email [{}]: for person {} and entity {} and notification {}",
         actuallySendEmail, personId, tisReferenceId, notificationType);
     return actuallySendEmail;
   }
+
+  /**
+   * Determine if an active programme update notification email should be sent.
+   *
+   * @param personId       The person Id.
+   * @param tisReferenceId The TIS reference Id.
+   * @param inWhitelist    Whether the person is in the notifications whitelist.
+   * @return true if the email should be sent, false otherwise.
+   */
+  private boolean shouldSendForProgrammeUpdate(String personId, String tisReferenceId,
+      boolean inWhitelist) {
+    ProgrammeMembership minimalPm = new ProgrammeMembership();
+    minimalPm.setPersonId(personId);
+    minimalPm.setTisId(tisReferenceId);
+    return inWhitelist
+        || (messagingControllerService.isValidRecipient(personId, MessageType.EMAIL)
+        && meetsCriteria(minimalPm, true, true));
+  }
+
+  /**
+   * Determine if a standard placement notification email should be sent.
+   *
+   * @param personId       The person Id.
+   * @param tisReferenceId The TIS reference Id.
+   * @param inWhitelist    Whether the person is in the notifications whitelist.
+   * @return true if the email should be sent, false otherwise.
+   */
+  private boolean shouldSendForPlacement(String personId, String tisReferenceId,
+      boolean inWhitelist) {
+    boolean inPilotOrRollout
+        = messagingControllerService.isPlacementInPilot2024(personId, tisReferenceId)
+        || messagingControllerService.isPlacementInRollout2024(personId, tisReferenceId);
+    return inWhitelist
+        || (messagingControllerService.isValidRecipient(personId, MessageType.EMAIL)
+        && inPilotOrRollout);
+  }
+
+  /**
+   * Determine if a foundation placement notification email should be sent. In addition to the
+   * standard placement criteria, the current date must be after the FOUNDATION_EPOCH.
+   *
+   * @param personId       The person Id.
+   * @param tisReferenceId The TIS reference Id.
+   * @param inWhitelist    Whether the person is in the notifications whitelist.
+   * @return true if the email should be sent, false otherwise.
+   */
+  private boolean shouldSendForFoundationPlacement(String personId, String tisReferenceId,
+      boolean inWhitelist) {
+    LocalDate now = LocalDate.now(ZoneId.of(timezone));
+    return inWhitelist
+        || (shouldSendForPlacement(personId, tisReferenceId, false)
+        && now.isAfter(FOUNDATION_EPOCH));
+  }
+
+  /**
+   * Determine if a POG programme notification email should be sent. The current date must be after
+   * the POG_EPOCH.
+   *
+   * @param personId    The person Id.
+   * @param inWhitelist Whether the person is in the notifications whitelist.
+   * @return true if the email should be sent, false otherwise.
+   */
+  private boolean shouldSendForPogProgramme(String personId, boolean inWhitelist) {
+    LocalDate now = LocalDate.now(ZoneId.of(timezone));
+    return inWhitelist
+        || (messagingControllerService.isValidRecipient(personId, MessageType.EMAIL)
+        && now.isAfter(POG_EPOCH));
+  }
+
 
   /**
    * Determine if the POG email should be stored (scheduled), ignoring whether we are currently
@@ -492,7 +549,8 @@ public class NotificationService {
     if (NotificationType.getActiveProgrammeUpdateNotificationTypes().contains(notificationType)) {
       tisReferenceInfo = new TisReferenceInfo(PROGRAMME_MEMBERSHIP,
           jobDetails.get(ProgrammeMembershipService.TIS_ID_FIELD).toString());
-    } else if (notificationType == NotificationType.PLACEMENT_UPDATED_WEEK_12) {
+    } else if (notificationType == NotificationType.PLACEMENT_UPDATED_WEEK_12
+        || notificationType == NotificationType.PLACEMENT_UPDATED_WEEK_12_FOUNDATION) {
       tisReferenceInfo = new TisReferenceInfo(PLACEMENT,
           jobDetails.get(PlacementService.TIS_ID_FIELD).toString());
     } else if (NotificationType.getProgrammePogNotificationTypes().contains(notificationType)) {

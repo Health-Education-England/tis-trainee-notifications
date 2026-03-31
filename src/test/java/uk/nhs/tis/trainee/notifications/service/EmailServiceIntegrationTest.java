@@ -41,6 +41,7 @@ import static uk.nhs.tis.trainee.notifications.model.NotificationType.LTFT_REJEC
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.LTFT_SUBMITTED_TPD;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PLACEMENT_ROLLOUT_2024_CORRECTION;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PLACEMENT_UPDATED_WEEK_12;
+import static uk.nhs.tis.trainee.notifications.model.NotificationType.PLACEMENT_UPDATED_WEEK_12_FOUNDATION;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_CREATED;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_DAY_ONE;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.CC_OF_FIELD;
@@ -204,6 +205,7 @@ class EmailServiceIntegrationTest {
     Element body = content.body();
 
     if (notificationType.equals(PLACEMENT_UPDATED_WEEK_12)
+        || notificationType.equals(PLACEMENT_UPDATED_WEEK_12_FOUNDATION)
         || notificationType.equals(PLACEMENT_ROLLOUT_2024_CORRECTION)
         || notificationType.equals(PROGRAMME_DAY_ONE)) {
       Element greeting = body.children().get(getGreetingElementIndex(notificationType));
@@ -262,6 +264,7 @@ class EmailServiceIntegrationTest {
     Element body = content.body();
 
     if (notificationType.equals(PLACEMENT_UPDATED_WEEK_12)
+        || notificationType.equals(PLACEMENT_UPDATED_WEEK_12_FOUNDATION)
         || notificationType.equals(PLACEMENT_ROLLOUT_2024_CORRECTION)
         || notificationType.equals(PROGRAMME_DAY_ONE)) {
       Element greeting = body.children().get(getGreetingElementIndex(notificationType));
@@ -804,7 +807,8 @@ class EmailServiceIntegrationTest {
 
   int getGreetingElementIndex(NotificationType notificationType) {
     return switch (notificationType) {
-      case PLACEMENT_UPDATED_WEEK_12, PLACEMENT_ROLLOUT_2024_CORRECTION, PROGRAMME_CREATED,
+      case PLACEMENT_UPDATED_WEEK_12, PLACEMENT_UPDATED_WEEK_12_FOUNDATION,
+           PLACEMENT_ROLLOUT_2024_CORRECTION, PROGRAMME_CREATED,
            PROGRAMME_DAY_ONE, PROGRAMME_UPDATED_WEEK_12, PROGRAMME_UPDATED_WEEK_4,
            PROGRAMME_UPDATED_WEEK_2, PROGRAMME_POG_MONTH_12, PROGRAMME_POG_MONTH_6,
            EMAIL_UPDATED_NEW, EMAIL_UPDATED_OLD, COJ_CONFIRMATION, CREDENTIAL_REVOKED,

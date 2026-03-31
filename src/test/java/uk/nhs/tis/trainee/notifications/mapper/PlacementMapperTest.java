@@ -24,12 +24,14 @@ package uk.nhs.tis.trainee.notifications.mapper;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 
+import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
+import uk.nhs.tis.trainee.notifications.model.Placement;
 
 class PlacementMapperTest {
 
@@ -61,5 +63,29 @@ class PlacementMapperTest {
     String site = mapper.calculateSite(recordData);
 
     assertThat("Unexpected site.", site, is("the siteKnownAs"));
+  }
+
+  @Test
+  void shouldMapPlacementFromRecordData() {
+    Map<String, String> recordData = new HashMap<>();
+    recordData.put("id", "the id");
+    recordData.put("traineeId", "the traineeId");
+    recordData.put("dateFrom", "2024-01-01");
+    recordData.put("placementType", "the placementType");
+    recordData.put("gradeAbbreviation", "the gradeAbbreviation");
+    recordData.put("owner", "the owner");
+    recordData.put("siteKnownAs", "the siteKnownAs");
+
+    Placement placement = mapper.toEntity(recordData);
+
+    assertThat("Unexpected TIS ID.", placement.getTisId(), is("the id"));
+    assertThat("Unexpected person ID.", placement.getPersonId(), is("the traineeId"));
+    assertThat("Unexpected start date.", placement.getStartDate(), is(LocalDate.of(2024, 1, 1)));
+    assertThat("Unexpected placement type.", placement.getPlacementType(),
+        is("the placementType"));
+    assertThat("Unexpected grade abbreviation.", placement.getGradeAbbreviation(),
+        is("the gradeAbbreviation"));
+    assertThat("Unexpected owner.", placement.getOwner(), is("the owner"));
+    assertThat("Unexpected site.", placement.getSite(), is("the siteKnownAs"));
   }
 }

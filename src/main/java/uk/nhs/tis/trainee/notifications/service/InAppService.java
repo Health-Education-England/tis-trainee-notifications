@@ -23,9 +23,9 @@ package uk.nhs.tis.trainee.notifications.service;
 
 import static uk.nhs.tis.trainee.notifications.model.MessageType.IN_APP;
 import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.UNREAD;
+import static uk.nhs.tis.trainee.notifications.service.NotificationService.FOUNDATION_EPOCH;
 
 import java.time.Instant;
-import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
@@ -42,8 +42,6 @@ import uk.nhs.tis.trainee.notifications.model.NotificationType;
 @Slf4j
 @Service
 public class InAppService {
-
-  private static final LocalDate FOUNDATION_EPOCH = LocalDate.of(2026, 4, 1);
 
   private final HistoryService historyService;
 

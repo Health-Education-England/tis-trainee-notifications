@@ -24,12 +24,14 @@ package uk.nhs.tis.trainee.notifications.service;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.not;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -44,6 +46,7 @@ import static uk.nhs.tis.trainee.notifications.model.NotificationType.NON_EMPLOY
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PLACEMENT_INFORMATION;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PLACEMENT_ROLLOUT_2024_CORRECTION;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PLACEMENT_UPDATED_WEEK_12;
+import static uk.nhs.tis.trainee.notifications.model.NotificationType.PLACEMENT_UPDATED_WEEK_12_FOUNDATION;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.USEFUL_INFORMATION;
 import static uk.nhs.tis.trainee.notifications.model.TisReferenceType.PLACEMENT;
 import static uk.nhs.tis.trainee.notifications.model.TisReferenceType.PROGRAMME_MEMBERSHIP;
@@ -311,6 +314,132 @@ class PlacementServiceTest {
 
     Date when = dateCaptor.getValue();
     assertThat("Unexpected start time", when, is(expectedWhen));
+  }
+
+  @Test
+  void shouldNotAddStandardEmail12WeekNotificationForFoundationPlacement() {
+    Placement placement = new Placement();
+    placement.setTisId(TIS_ID);
+    placement.setPersonId(PERSON_ID);
+    placement.setStartDate(START_DATE);
+    placement.setOwner(OWNER);
+    placement.setPlacementType(IN_POST);
+    placement.setSite(SITE);
+    placement.setGradeAbbreviation("F1");
+
+    service.addNotifications(placement);
+
+    ArgumentCaptor<String> stringCaptor = ArgumentCaptor.captor();
+    verify(notificationService, atLeastOnce()).scheduleNotification(
+        stringCaptor.capture(), any(), any(), anyLong());
+
+    List<String> jobIds = stringCaptor.getAllValues();
+    assertThat("Standard week 12 notification should not be scheduled for foundation placement.",
+        jobIds, not(hasItem(PLACEMENT_UPDATED_WEEK_12 + "-" + TIS_ID)));
+    assertThat("Foundation week 12 notification should be scheduled.",
+        jobIds, hasItem(PLACEMENT_UPDATED_WEEK_12_FOUNDATION + "-" + TIS_ID));
+  }
+
+  @Test
+  void shouldAddFoundationEmail12WeekNotificationForFoundationPlacement() {
+    Placement placement = new Placement();
+    placement.setTisId(TIS_ID);
+    placement.setPersonId(PERSON_ID);
+    placement.setStartDate(START_DATE);
+    placement.setOwner(OWNER);
+    placement.setPlacementType(IN_POST);
+    placement.setSite(SITE);
+    placement.setGradeAbbreviation("F1");
+
+    LocalDate expectedDate = START_DATE
+        .minusDays(service.getNotificationDaysBeforeStart(PLACEMENT_UPDATED_WEEK_12_FOUNDATION));
+    Date expectedWhen = Date.from(expectedDate
+        .atStartOfDay()
+        .atZone(ZoneId.systemDefault())
+        .toInstant());
+
+    when(notificationService.getScheduleDate(START_DATE,
+        service.getNotificationDaysBeforeStart(PLACEMENT_UPDATED_WEEK_12_FOUNDATION)))
+        .thenReturn(expectedWhen);
+
+    service.addNotifications(placement);
+
+    ArgumentCaptor<String> stringCaptor = ArgumentCaptor.captor();
+    ArgumentCaptor<Map<String, Object>> jobDataMapCaptor = ArgumentCaptor.captor();
+    ArgumentCaptor<Date> dateCaptor = ArgumentCaptor.captor();
+    verify(notificationService).scheduleNotification(
+        stringCaptor.capture(),
+        jobDataMapCaptor.capture(),
+        dateCaptor.capture(),
+        eq(ONE_DAY_IN_SECONDS)
+    );
+
+    String jobId = stringCaptor.getValue();
+    assertThat("Unexpected job id.", jobId,
+        is(PLACEMENT_UPDATED_WEEK_12_FOUNDATION + "-" + TIS_ID));
+
+    Map<String, Object> jobDataMap = jobDataMapCaptor.getValue();
+    assertThat("Unexpected tisId.", jobDataMap.get(TIS_ID_FIELD), is(TIS_ID));
+    assertThat("Unexpected personId.", jobDataMap.get(PERSON_ID_FIELD), is(PERSON_ID));
+    assertThat("Unexpected start date.", jobDataMap.get(START_DATE_FIELD), is(START_DATE));
+    assertThat("Unexpected placement type.", jobDataMap.get(PLACEMENT_TYPE_FIELD), is(IN_POST));
+    assertThat("Unexpected placement owner.", jobDataMap.get(TEMPLATE_OWNER_FIELD), is(OWNER));
+    assertThat("Unexpected placement site.", jobDataMap.get(PLACEMENT_SITE_FIELD), is(SITE));
+
+    Date when = dateCaptor.getValue();
+    assertThat("Unexpected start time.", when, is(expectedWhen));
+  }
+
+  @Test
+  void shouldNotResendFoundationEmail12WeekNotification() {
+    Placement placement = new Placement();
+    placement.setTisId(TIS_ID);
+    placement.setPersonId(PERSON_ID);
+    placement.setStartDate(START_DATE);
+    placement.setOwner(OWNER);
+    placement.setPlacementType(IN_POST);
+    placement.setSite(SITE);
+    placement.setGradeAbbreviation("F1");
+
+    List<HistoryDto> sentNotifications = new ArrayList<>();
+    sentNotifications.add(new HistoryDto("id",
+        new TisReferenceInfo(TisReferenceType.PLACEMENT, TIS_ID),
+        EMAIL,
+        PLACEMENT_UPDATED_WEEK_12_FOUNDATION, null,
+        "email address",
+        Instant.MIN, Instant.MAX, SENT, null));
+
+    when(historyService.findAllForTrainee(PERSON_ID)).thenReturn(sentNotifications);
+
+    service.addNotifications(placement);
+
+    verify(notificationService, never()).scheduleNotification(any(), any(), any(), anyLong());
+  }
+
+  @Test
+  void shouldNotAddFoundationEmail12WeekNotificationForNonFoundationPlacement() {
+    Placement placement = new Placement();
+    placement.setTisId(TIS_ID);
+    placement.setPersonId(PERSON_ID);
+    placement.setStartDate(START_DATE);
+    placement.setOwner(OWNER);
+    placement.setPlacementType(IN_POST);
+    placement.setSite(SITE);
+    placement.setSpecialty(SPECIALTY);
+    placement.setGradeAbbreviation("another grade");
+
+    service.addNotifications(placement);
+
+    ArgumentCaptor<String> stringCaptor = ArgumentCaptor.captor();
+    verify(notificationService, atLeastOnce()).scheduleNotification(
+        stringCaptor.capture(), any(), any(), anyLong());
+
+    List<String> jobIds = stringCaptor.getAllValues();
+    assertThat("Foundation week 12 notification should not be scheduled for non-foundation "
+            + "placement.", jobIds,
+        not(hasItem(PLACEMENT_UPDATED_WEEK_12_FOUNDATION + "-" + TIS_ID)));
+    assertThat("Standard week 12 notification should be scheduled.",
+        jobIds, hasItem(PLACEMENT_UPDATED_WEEK_12 + "-" + TIS_ID));
   }
 
   @Test
