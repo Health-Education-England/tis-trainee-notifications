@@ -1194,25 +1194,14 @@ class ProgrammeMembershipUtilsTest {
   }
 
   @Test
-  void shouldNotBeFoundationProgrammeWhenCurriculumNameIsNull() {
+  void shouldNotBeFoundationProgrammeWhenBothCurriculumNameAndSpecialtyIsNull() {
     ProgrammeMembership programmeMembership = new ProgrammeMembership();
     programmeMembership.setCurricula(List.of(
-        new Curriculum(null, MEDICAL_CURRICULUM_1, "FOUNDATION", false, CURRICULUM_END_DATE,
+        new Curriculum(null, MEDICAL_CURRICULUM_1, null, false, CURRICULUM_END_DATE,
             null)));
 
     assertThat("Unexpected foundation programme flag.",
-        isFoundationProgramme(programmeMembership), is(false));
-  }
-
-  @Test
-  void shouldNotBeFoundationProgrammeWhenCurriculumSpecialtyIsNull() {
-    ProgrammeMembership programmeMembership = new ProgrammeMembership();
-    programmeMembership.setCurricula(List.of(
-        new Curriculum("ACADEMIC FOUNDATION TRAINING", MEDICAL_CURRICULUM_1, null, false,
-            CURRICULUM_END_DATE, null)));
-
-    assertThat("Unexpected foundation programme flag.",
-        isFoundationProgramme(programmeMembership), is(false));
+        service.isFoundationProgramme(programmeMembership), is(false));
   }
 
   @ParameterizedTest
@@ -1223,7 +1212,7 @@ class ProgrammeMembershipUtilsTest {
   void shouldBeFoundationProgrammeWhenCurriculumSpecialtyIsFoundation(String specialty) {
     ProgrammeMembership programmeMembership = new ProgrammeMembership();
     programmeMembership.setCurricula(List.of(
-        new Curriculum(CURRICULUM_NAME, MEDICAL_CURRICULUM_1, specialty, false, CURRICULUM_END_DATE,
+        new Curriculum(null, MEDICAL_CURRICULUM_1, specialty, false, CURRICULUM_END_DATE,
             null)));
 
     assertThat("Unexpected foundation programme flag.",
@@ -1238,7 +1227,7 @@ class ProgrammeMembershipUtilsTest {
   void shouldBeFoundationProgrammeWhenCurriculumNameIsAcademicFoundationTraining(String name) {
     ProgrammeMembership programmeMembership = new ProgrammeMembership();
     programmeMembership.setCurricula(List.of(
-        new Curriculum(name, MEDICAL_CURRICULUM_1, "any specialty", false, CURRICULUM_END_DATE,
+        new Curriculum(name, MEDICAL_CURRICULUM_1, null, false, CURRICULUM_END_DATE,
             null)));
 
     assertThat("Unexpected foundation programme flag.",
