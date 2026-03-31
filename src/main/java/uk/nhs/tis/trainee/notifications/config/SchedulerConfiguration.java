@@ -34,7 +34,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
  */
 @Configuration
 @EnableScheduling
-@EnableSchedulerLock(defaultLockAtMostFor = "PT35S")
+@EnableSchedulerLock(defaultLockAtMostFor = "PT30M")
 public class SchedulerConfiguration {
 
   /**

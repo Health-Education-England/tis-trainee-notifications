@@ -667,7 +667,8 @@ class NotificationServiceTest {
 
   @ParameterizedTest
   @EnumSource(value = NotificationType.class, mode = Mode.EXCLUDE,
-      names = {"PLACEMENT_UPDATED_WEEK_12", "PLACEMENT_ROLLOUT_2024_CORRECTION",
+      names = {"PLACEMENT_UPDATED_WEEK_12", "PLACEMENT_UPDATED_WEEK_12_FOUNDATION",
+          "PLACEMENT_ROLLOUT_2024_CORRECTION",
           "PROGRAMME_CREATED", "PROGRAMME_DAY_ONE", "PROGRAMME_UPDATED_WEEK_12",
           "PROGRAMME_UPDATED_WEEK_4", "PROGRAMME_UPDATED_WEEK_2", "PROGRAMME_POG_MONTH_12",
           "PROGRAMME_POG_MONTH_6"})
@@ -683,6 +684,106 @@ class NotificationServiceTest {
     boolean result = service.shouldActuallySendEmail(notificationType, PERSON_ID, TIS_ID);
 
     assertThat("Unexpected actuallySendEmail boolean.", result, is(false));
+  }
+
+  @Test
+  void shouldNotSendFoundationPlacementEmailIfBeforeFoundationEpoch() {
+    when(messagingControllerService.isValidRecipient(PERSON_ID, EMAIL)).thenReturn(true);
+    when(messagingControllerService.isPlacementInPilot2024(PERSON_ID, TIS_ID)).thenReturn(true);
+
+    // Simulate before FOUNDATION_EPOCH (2026-04-01)
+    try (var ignored = org.mockito.Mockito.mockStatic(LocalDate.class, invocation -> {
+      if (invocation.getMethod().getName().equals("now")) {
+        return LocalDate.of(2026, 3, 31);
+      }
+      return invocation.callRealMethod();
+    })) {
+      boolean result = service.shouldActuallySendEmail(
+          NotificationType.PLACEMENT_UPDATED_WEEK_12_FOUNDATION, PERSON_ID, TIS_ID);
+
+      assertThat("Expected not to send foundation placement email before FOUNDATION_EPOCH.",
+          result, is(false));
+    }
+  }
+
+  @Test
+  void shouldSendFoundationPlacementEmailIfAfterFoundationEpochAndRecipientIsValid() {
+    when(messagingControllerService.isValidRecipient(PERSON_ID, EMAIL)).thenReturn(true);
+    when(messagingControllerService.isPlacementInPilot2024(PERSON_ID, TIS_ID)).thenReturn(true);
+
+    // Simulate after FOUNDATION_EPOCH (2026-04-01)
+    try (var ignored = org.mockito.Mockito.mockStatic(LocalDate.class, invocation -> {
+      if (invocation.getMethod().getName().equals("now")) {
+        return LocalDate.of(2026, 4, 2);
+      }
+      return invocation.callRealMethod();
+    })) {
+      boolean result = service.shouldActuallySendEmail(
+          NotificationType.PLACEMENT_UPDATED_WEEK_12_FOUNDATION, PERSON_ID, TIS_ID);
+
+      assertThat("Expected to send foundation placement email after FOUNDATION_EPOCH.",
+          result, is(true));
+    }
+  }
+
+  @Test
+  void shouldSendFoundationPlacementEmailIfPersonIsInWhitelistRegardlessOfFoundationEpoch() {
+    when(messagingControllerService.isPlacementInPilot2024(PERSON_ID, TIS_ID)).thenReturn(true);
+
+    // Simulate before FOUNDATION_EPOCH to confirm whitelist overrides epoch gate
+    try (var ignored = org.mockito.Mockito.mockStatic(LocalDate.class, invocation -> {
+      if (invocation.getMethod().getName().equals("now")) {
+        return LocalDate.of(2026, 3, 31);
+      }
+      return invocation.callRealMethod();
+    })) {
+      boolean result = serviceWhitelisted.shouldActuallySendEmail(
+          NotificationType.PLACEMENT_UPDATED_WEEK_12_FOUNDATION, PERSON_ID, TIS_ID);
+
+      assertThat("Expected to send foundation placement email for whitelisted person before " +
+              "FOUNDATION_EPOCH.", result, is(true));
+    }
+  }
+
+  @Test
+  void shouldNotSendFoundationPlacementEmailIfRecipientIsNotValidEvenAfterFoundationEpoch() {
+    when(messagingControllerService.isValidRecipient(PERSON_ID, EMAIL)).thenReturn(false);
+    when(messagingControllerService.isPlacementInPilot2024(PERSON_ID, TIS_ID)).thenReturn(true);
+
+    // Simulate after FOUNDATION_EPOCH
+    try (var ignored = org.mockito.Mockito.mockStatic(LocalDate.class, invocation -> {
+      if (invocation.getMethod().getName().equals("now")) {
+        return LocalDate.of(2026, 4, 2);
+      }
+      return invocation.callRealMethod();
+    })) {
+      boolean result = service.shouldActuallySendEmail(
+          NotificationType.PLACEMENT_UPDATED_WEEK_12_FOUNDATION, PERSON_ID, TIS_ID);
+
+      assertThat("Expected not to send foundation placement email when recipient is not valid.",
+          result, is(false));
+    }
+  }
+
+  @Test
+  void shouldNotSendFoundationPlacementEmailIfNotInPilotOrRolloutEvenAfterFoundationEpoch() {
+    when(messagingControllerService.isValidRecipient(PERSON_ID, EMAIL)).thenReturn(true);
+    when(messagingControllerService.isPlacementInPilot2024(PERSON_ID, TIS_ID)).thenReturn(false);
+    when(messagingControllerService.isPlacementInRollout2024(PERSON_ID, TIS_ID)).thenReturn(false);
+
+    // Simulate after FOUNDATION_EPOCH
+    try (var ignored = org.mockito.Mockito.mockStatic(LocalDate.class, invocation -> {
+      if (invocation.getMethod().getName().equals("now")) {
+        return LocalDate.of(2026, 4, 2);
+      }
+      return invocation.callRealMethod();
+    })) {
+      boolean result = service.shouldActuallySendEmail(
+          NotificationType.PLACEMENT_UPDATED_WEEK_12_FOUNDATION, PERSON_ID, TIS_ID);
+
+      assertThat("Expected not to send foundation placement email when not in pilot or rollout.",
+          result, is(false));
+    }
   }
 
   @ParameterizedTest

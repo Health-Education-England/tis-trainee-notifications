@@ -51,14 +51,7 @@ public final class TemplateVersionsProperties {
   public TemplateVersionsProperties(Map<String, MessageTypeVersions> templateVersions) {
     this.templateVersions = templateVersions.entrySet().stream()
         .collect(Collectors.toUnmodifiableMap(
-            e -> {
-              NotificationType type = NotificationType.fromTemplateName(e.getKey());
-              if (type == null) {
-                throw new IllegalArgumentException(
-                    "No NotificationType found for template name: " + e.getKey());
-              }
-              return type;
-            },
+            e -> NotificationType.fromTemplateName(e.getKey()),
             Entry::getValue)
         );
   }

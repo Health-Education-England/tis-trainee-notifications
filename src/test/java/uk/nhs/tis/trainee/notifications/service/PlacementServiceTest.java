@@ -435,8 +435,9 @@ class PlacementServiceTest {
         stringCaptor.capture(), any(), any(), anyLong());
 
     List<String> jobIds = stringCaptor.getAllValues();
-    assertThat("Foundation week 12 notification should not be scheduled for non-foundation placement.",
-        jobIds, not(hasItem(PLACEMENT_UPDATED_WEEK_12_FOUNDATION + "-" + TIS_ID)));
+    assertThat("Foundation week 12 notification should not be scheduled for non-foundation "
+            + "placement.", jobIds,
+        not(hasItem(PLACEMENT_UPDATED_WEEK_12_FOUNDATION + "-" + TIS_ID)));
     assertThat("Standard week 12 notification should be scheduled.",
         jobIds, hasItem(PLACEMENT_UPDATED_WEEK_12 + "-" + TIS_ID));
   }

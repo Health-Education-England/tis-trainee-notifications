@@ -242,7 +242,6 @@ public class PlacementService {
   private void createDirectNotifications(Placement placement,
       Map<NotificationType, NotificationEvent> notificationsRecorded) {
 
-    LocalDate startDate = placement.getStartDate();
     boolean isFoundationPlacement = isFoundationPlacement(placement);
 
     Map<String, Object> jobDataMap = new HashMap<>();
@@ -256,6 +255,7 @@ public class PlacementService {
 
     // Note the status of the trainee will be retrieved when the job is executed, as will
     // their name and email address, and the contact details of the owner LO, not now.
+    LocalDate startDate = placement.getStartDate();
     NotificationType week12Type = isFoundationPlacement
         ? PLACEMENT_UPDATED_WEEK_12_FOUNDATION : PLACEMENT_UPDATED_WEEK_12;
     if (shouldScheduleNotification(notificationsRecorded, startDate, week12Type)) {
