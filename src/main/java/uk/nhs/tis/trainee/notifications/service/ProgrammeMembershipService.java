@@ -31,6 +31,7 @@ import static uk.nhs.tis.trainee.notifications.model.NotificationType.SPONSORSHI
 import static uk.nhs.tis.trainee.notifications.model.TisReferenceType.PROGRAMME_MEMBERSHIP;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.ONE_DAY_IN_SECONDS;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.TEMPLATE_NOTIFICATION_TYPE_FIELD;
+import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipUtils.isFoundationProgramme;
 
 import java.time.ZoneId;
 import java.util.Comparator;
@@ -52,6 +53,7 @@ import uk.nhs.tis.trainee.notifications.model.LocalOfficeContactType;
 import uk.nhs.tis.trainee.notifications.model.NotificationType;
 import uk.nhs.tis.trainee.notifications.model.ProgrammeMembership;
 import uk.nhs.tis.trainee.notifications.model.TisReferenceType;
+import uk.nhs.tis.trainee.notifications.model.TraineeType;
 
 /**
  * A service for Programme memberships.
@@ -73,6 +75,7 @@ public class ProgrammeMembershipService {
   public static final String GMC_NUMBER_FIELD = "gmcNumber";
   public static final String RO_NAME_FIELD = "roName";
   public static final String DESIGNATED_BODY_FIELD = "designatedBody";
+  public static final String TRAINEE_TYPE_FIELD = "traineeType";
   public static final Integer DEFERRAL_IF_MORE_THAN_DAYS = 89;
   public static final Integer POG_12MONTH_NOTIFICATION_CUTOFF_MONTHS = 6;
   public static final Integer POG_ALL_NOTIFICATION_CUTOFF_WEEKS = 16;
@@ -82,6 +85,7 @@ public class ProgrammeMembershipService {
 
   public static final String ACADEMIC_FOUNDATION_CURRICULUM_NAME = "ACADEMIC FOUNDATION TRAINING";
   public static final String FOUNDATION_SPECIALTY = "FOUNDATION";
+  public static final String PUBLIC_HEALTH_SPECIALTY = "Public Health Medicine";
 
   private final HistoryService historyService;
   private final InAppService inAppService;
@@ -204,17 +208,12 @@ public class ProgrammeMembershipService {
     if (!isExcluded) {
       notificationsAlreadySent = getLatestNotificationsSent(programmeMembership.getPersonId(),
           programmeMembership.getTisId());
-      if (!pmUtils.isFoundationProgramme(programmeMembership)) {
-        // For now, only create direct programme notifications for non-foundation.
-        // The foundation emails will be dealt with in TIS21-8048
-        createDirectProgrammeNotifications(programmeMembership, notificationsAlreadySent);
-      }
+      createDirectProgrammeNotifications(programmeMembership, notificationsAlreadySent);
       createInAppNotifications(programmeMembership, notificationsAlreadySent);
     }
 
-    if (!pmUtils.isFoundationProgramme(programmeMembership)) {
-      // For now, only create direct programme POG notifications for non-foundation,
-      // as per comment above.
+    if (!isFoundationProgramme(programmeMembership)) {
+      // For now, only create direct programme POG notifications for non-foundation.
       boolean isExcludedPog = pmUtils.isExcludedPog(programmeMembership);
       log.info("Programme membership {}: excluded POG {}.", programmeMembership.getTisId(),
           isExcludedPog);
@@ -244,8 +243,13 @@ public class ProgrammeMembershipService {
     Map<String, Object> jobDataMap = new HashMap<>();
     pmUtils.addStandardProgrammeDetailsToJobMap(jobDataMap, programmeMembership);
 
-    for (NotificationType notificationType
-        : NotificationType.getActiveProgrammeUpdateNotificationTypes()) {
+    // Select active notifications based on programme type.
+    Set<NotificationType> activeNotificationTypes = switch (TraineeType.from(programmeMembership)) {
+      case FOUNDATION -> NotificationType.getActiveFoundationProgrammeUpdateNotificationTypes();
+      case SPECIALTY, PUBLIC_HEALTH -> NotificationType.getActiveProgrammeUpdateNotificationTypes();
+    };
+
+    for (NotificationType notificationType : activeNotificationTypes) {
 
       boolean shouldSchedule = pmUtils.shouldScheduleNotification(
           notificationType, programmeMembership, notificationsAlreadySent);
@@ -335,7 +339,7 @@ public class ProgrammeMembershipService {
   private void createInAppNotifications(ProgrammeMembership programmeMembership,
       Map<NotificationType, History> notificationsAlreadySent) {
     boolean meetsCriteria = notificationService.meetsCriteria(programmeMembership, true, true);
-    boolean isFoundation = pmUtils.isFoundationProgramme(programmeMembership);
+    boolean isFoundation = isFoundationProgramme(programmeMembership);
     // Foundation won't meet criteria since the isPilotOrRollout excludes FOUNDATION at this
     // point. Assuming we need to validate newStarter only for foundation doctors.
     boolean meetsFoundationCriteria = isFoundation

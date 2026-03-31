@@ -106,6 +106,16 @@ public enum NotificationType {
       PROGRAMME_CREATED);
 
   /**
+   * The set of currently active Programme Updated email notification types for Foundation
+   * trainees.
+   */
+  @Getter
+  private static final Set<NotificationType> activeFoundationProgrammeUpdateNotificationTypes =
+      EnumSet.of(
+          PROGRAMME_CREATED
+      );
+
+  /**
    * The set of reminder Programme Updated email notification types.
    */
   @Getter

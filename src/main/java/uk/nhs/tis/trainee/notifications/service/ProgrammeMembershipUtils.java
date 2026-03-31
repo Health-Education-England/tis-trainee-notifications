@@ -38,9 +38,11 @@ import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipServic
 import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.POG_ALL_NOTIFICATION_CUTOFF_WEEKS;
 import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.PROGRAMME_NAME_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.PROGRAMME_NUMBER_FIELD;
+import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.PUBLIC_HEALTH_SPECIALTY;
 import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.RO_NAME_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.START_DATE_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.TIS_ID_FIELD;
+import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.TRAINEE_TYPE_FIELD;
 
 import java.time.Duration;
 import java.time.LocalDate;
@@ -58,6 +60,7 @@ import uk.nhs.tis.trainee.notifications.model.History;
 import uk.nhs.tis.trainee.notifications.model.NotificationType;
 import uk.nhs.tis.trainee.notifications.model.ProgrammeMembership;
 import uk.nhs.tis.trainee.notifications.model.ResponsibleOfficer;
+import uk.nhs.tis.trainee.notifications.model.TraineeType;
 
 /**
  * Utility/helper methods for ProgrammeMembershipService.
@@ -97,6 +100,7 @@ public class ProgrammeMembershipUtils {
     jobDataMap.put(RO_NAME_FIELD, getRoName(programmeMembership.getResponsibleOfficer()));
     jobDataMap.put(DESIGNATED_BODY_FIELD, programmeMembership.getDesignatedBody());
     jobDataMap.put(CCT_DATE_FIELD, getProgrammeCctDate(programmeMembership));
+    jobDataMap.put(TRAINEE_TYPE_FIELD, TraineeType.from(programmeMembership));
   }
 
   /**
@@ -413,7 +417,7 @@ public class ProgrammeMembershipUtils {
    * @param programmeMembership The programme membership to check.
    * @return true if the programme membership is a foundation programme, otherwise false.
    */
-  public boolean isFoundationProgramme(ProgrammeMembership programmeMembership) {
+  public static boolean isFoundationProgramme(ProgrammeMembership programmeMembership) {
     return programmeMembership.getCurricula().stream()
         .anyMatch(curriculum -> {
           String name = curriculum.curriculumName();
@@ -421,6 +425,21 @@ public class ProgrammeMembershipUtils {
           return name != null && specialty != null
               && (name.equalsIgnoreCase(ACADEMIC_FOUNDATION_CURRICULUM_NAME)
               || specialty.equalsIgnoreCase(FOUNDATION_SPECIALTY));
+        });
+  }
+
+  /**
+   * Identify if a programme membership is a public health programme, by checking if any of the
+   * curricula have a specialty indicating it's a public health programme.
+   *
+   * @param programmeMembership The programme membership to check.
+   * @return true if the programme membership is a public health programme, otherwise false.
+   */
+  public static boolean isPublicHealthProgramme(ProgrammeMembership programmeMembership) {
+    return programmeMembership.getCurricula().stream()
+        .anyMatch(curriculum -> {
+          String specialty = curriculum.curriculumSpecialty();
+          return specialty != null && specialty.equalsIgnoreCase(PUBLIC_HEALTH_SPECIALTY);
         });
   }
 }

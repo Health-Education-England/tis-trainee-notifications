@@ -305,6 +305,7 @@ public class EmailService {
 
     MimeMessage mimeMessage = mailSender.createMimeMessage();
     mimeMessage.addHeader("NotificationId", notificationId.toString());
+    mimeMessage.addHeader("Template-Name", templateName);
 
     MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, attachments != null,
         StandardCharsets.UTF_8.name());

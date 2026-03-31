@@ -443,6 +443,26 @@ class EmailServiceTest {
         is(true));
   }
 
+  @Test
+  void shouldSendMessageWithTemplateNameHeader() throws MessagingException {
+    when(templateService.getTemplatePath(EMAIL, NOTIFICATION_TYPE, ""))
+        .thenReturn("template/name");
+
+    String template = "<div>Test message body</div>";
+    when(templateService.process(any(), eq(Set.of("content")), (Context) any())).thenReturn(
+        template);
+
+    service.sendMessageToExistingUser(TRAINEE_ID, NOTIFICATION_TYPE, "",
+        Map.of(), null);
+
+    ArgumentCaptor<MimeMessage> messageCaptor = ArgumentCaptor.captor();
+    verify(mailSender).send(messageCaptor.capture());
+
+    MimeMessage message = messageCaptor.getValue();
+    String templateName = message.getHeader("Template-Name", "");
+    assertThat("Unexpected template name header.", templateName, is("template/name"));
+  }
+
   @ParameterizedTest
   @EnumSource(NotificationType.class)
   void shouldProcessTheTemplateWhenSendingMessage(NotificationType notificationType)
