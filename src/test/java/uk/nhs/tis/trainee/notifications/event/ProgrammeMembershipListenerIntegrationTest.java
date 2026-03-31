@@ -37,6 +37,7 @@ import static org.testcontainers.containers.localstack.LocalStackContainer.Servi
 import static uk.nhs.tis.trainee.notifications.model.LocalOfficeContactType.POG;
 import static uk.nhs.tis.trainee.notifications.model.LocalOfficeContactType.TSS_SUPPORT;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_CREATED;
+import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_DAY_ONE;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_UPDATED_WEEK_12;
 import static uk.nhs.tis.trainee.notifications.model.ProgrammeActionType.SIGN_COJ;
 import static uk.nhs.tis.trainee.notifications.model.TisReferenceType.PROGRAMME_MEMBERSHIP;
@@ -571,6 +572,8 @@ class ProgrammeMembershipListenerIntegrationTest {
   @CsvSource(delimiter = '|', nullValues = "null", textBlock = """
       PROGRAMME_CREATED         | null
       PROGRAMME_CREATED         | FOUNDATION
+      PROGRAMME_DAY_ONE         | null
+      PROGRAMME_DAY_ONE         | FOUNDATION
       PROGRAMME_UPDATED_WEEK_12 | null
       """)
   void shouldSendFullNotificationsWhenTemplateVariablesPresent(NotificationType notificationType,
@@ -592,9 +595,12 @@ class ProgrammeMembershipListenerIntegrationTest {
     when(userAccountService.getUserDetailsById(PERSON_ID)).thenReturn(
         new UserDetails(true, EMAIL, TITLE, FAMILY_NAME, GIVEN_NAME, GMC));
 
-    LocalDate week12ReminderDate = LocalDate.now().plusWeeks(12);
+    //for day one notification, set start date = today, to ensure it's sent immediately
+    LocalDate startDate = notificationType != PROGRAMME_DAY_ONE
+        ? LocalDate.now().plusWeeks(12)
+        : LocalDate.now();
     sqsTemplate.send(PM_UPDATED_QUEUE,
-        buildStandardProgrammeMembershipEvent(week12ReminderDate, traineeType));
+        buildStandardProgrammeMembershipEvent(startDate, traineeType));
 
     ArgumentCaptor<MimeMessage> messageCaptor = ArgumentCaptor.captor();
     String expectedTemplateNamePattern =
@@ -638,7 +644,7 @@ class ProgrammeMembershipListenerIntegrationTest {
     DateTimeFormatter longDateFormatter = DateTimeFormatter.ofPattern("d MMMM yyyy");
     String expectedContentStr = expectedContent.html()
         .replace("{{DATE TODAY}}", LocalDate.now().format(longDateFormatter))
-        .replace("{{DATE START}}", week12ReminderDate.format(longDateFormatter));
+        .replace("{{DATE START}}", startDate.format(longDateFormatter));
     assertThat("Unexpected content.", content.html(), is(expectedContentStr));
   }
 
@@ -646,6 +652,8 @@ class ProgrammeMembershipListenerIntegrationTest {
   @CsvSource(delimiter = '|', nullValues = "null", textBlock = """
       PROGRAMME_CREATED         | null
       PROGRAMME_CREATED         | FOUNDATION
+      PROGRAMME_DAY_ONE         | null
+      PROGRAMME_DAY_ONE         | FOUNDATION
       PROGRAMME_UPDATED_WEEK_12 | null
       """)
   void shouldSendMinimalNotificationsWhenTemplateVariablesMissing(NotificationType notificationType,
@@ -664,9 +672,12 @@ class ProgrammeMembershipListenerIntegrationTest {
     when(userAccountService.getUserDetailsById(PERSON_ID)).thenReturn(
         new UserDetails(true, EMAIL, null, null, null, null));
 
-    LocalDate week12ReminderDate = LocalDate.now().plusWeeks(12);
+    //for day one notification, set start date = today, to ensure it's sent immediately
+    LocalDate startDate = notificationType != PROGRAMME_DAY_ONE
+        ? LocalDate.now().plusWeeks(12)
+        : LocalDate.now();
     sqsTemplate.send(PM_UPDATED_QUEUE,
-        buildStandardProgrammeMembershipEvent(week12ReminderDate, traineeType));
+        buildStandardProgrammeMembershipEvent(startDate, traineeType));
 
     ArgumentCaptor<MimeMessage> messageCaptor = ArgumentCaptor.captor();
     String expectedTemplateNamePattern =
@@ -710,7 +721,7 @@ class ProgrammeMembershipListenerIntegrationTest {
     Document expectedContent = Jsoup.parse(Paths.get(resource.toURI()).toFile());
     DateTimeFormatter longDateFormatter = DateTimeFormatter.ofPattern("d MMMM yyyy");
     String expectedContentStr = expectedContent.html()
-        .replace("{{DATE START}}", week12ReminderDate.format(longDateFormatter));
+        .replace("{{DATE START}}", startDate.format(longDateFormatter));
     assertThat("Unexpected content.", content.html(), is(expectedContentStr));
   }
 

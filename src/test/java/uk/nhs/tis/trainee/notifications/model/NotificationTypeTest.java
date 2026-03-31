@@ -56,7 +56,8 @@ class NotificationTypeTest {
   void shouldGetActiveFoundationProgrammeUpdateNotificationTypes() {
     Set<NotificationType> activeTypes = getActiveFoundationProgrammeUpdateNotificationTypes();
 
-    assertThat("Unexpected active type count.", activeTypes, hasSize(1));
-    assertThat("Unexpected active types.", activeTypes, hasItem(PROGRAMME_CREATED));
+    assertThat("Unexpected active type count.", activeTypes, hasSize(2));
+    assertThat("Unexpected active types.", activeTypes,
+        hasItems(PROGRAMME_CREATED, PROGRAMME_DAY_ONE));
   }
 }
