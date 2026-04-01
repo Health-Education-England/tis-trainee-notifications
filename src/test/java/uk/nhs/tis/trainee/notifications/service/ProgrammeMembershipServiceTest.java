@@ -252,11 +252,8 @@ class ProgrammeMembershipServiceTest {
         new UserDetails(
             null, USER_EMAIL, USER_TITLE, USER_FAMILY_NAME, USER_GIVEN_NAME, USER_GMC);
 
-    //foundation aren't pilot, but are new starters
     when(notificationService.meetsCriteria(programmeMembership, true,
-        true)).thenReturn(false);
-    when(notificationService.meetsCriteria(programmeMembership, true,
-        false)).thenReturn(true);
+        true)).thenReturn(true);
     when(notificationService.programmeMembershipIsNotifiable(programmeMembership,
         MessageType.IN_APP)).thenReturn(notifiablePm);
     when(notificationService.getOwnerContact(any(), any(), any(), any())).thenReturn("");
@@ -528,7 +525,6 @@ class ProgrammeMembershipServiceTest {
     ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
 
     when(notificationService.meetsCriteria(programmeMembership, true, true)).thenReturn(false);
-    when(notificationService.meetsCriteria(programmeMembership, true, false)).thenReturn(false);
 
     service.addNotifications(programmeMembership);
 
@@ -537,14 +533,13 @@ class ProgrammeMembershipServiceTest {
 
   @Test
   void shouldNotAddInAppNotificationsWhenFoundationButNotMeetsFoundationCriteria() {
-    // Foundation PM that fails both criteria: no notifications at all.
+    // Foundation PM that fails criteria: no notifications at all.
     ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
     programmeMembership.setCurricula(List.of(
         new Curriculum(CURRICULUM_NAME, MEDICAL_CURRICULUM_1, "Foundation", false,
             CURRICULUM_END_DATE, null)));
 
     when(notificationService.meetsCriteria(programmeMembership, true, true)).thenReturn(false);
-    when(notificationService.meetsCriteria(programmeMembership, true, false)).thenReturn(false);
 
     service.addNotifications(programmeMembership);
 
@@ -553,15 +548,14 @@ class ProgrammeMembershipServiceTest {
 
   @Test
   void shouldNotAddNonContactInAppNotificationsWhenFoundationMeetsFoundationCriteriaOnly() {
-    // Foundation PM that only meets foundation criteria: contact-based notifications are sent
+    // Foundation PM: contact-based notifications are sent
     // (foundation types) but E_PORTFOLIO and INDEMNITY_INSURANCE are not.
     ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
     programmeMembership.setCurricula(List.of(
         new Curriculum(CURRICULUM_NAME, MEDICAL_CURRICULUM_1, "Foundation", false,
             CURRICULUM_END_DATE, null)));
 
-    when(notificationService.meetsCriteria(programmeMembership, true, true)).thenReturn(false);
-    when(notificationService.meetsCriteria(programmeMembership, true, false)).thenReturn(true);
+    when(notificationService.meetsCriteria(programmeMembership, true, true)).thenReturn(true);
     when(notificationService.getOwnerContact(any(), any(), any(), any())).thenReturn("");
     when(notificationService.getHrefTypeForContact(any())).thenReturn("");
     when(notificationService.getTraineeDetails(PERSON_ID)).thenReturn(null);

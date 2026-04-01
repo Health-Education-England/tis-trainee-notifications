@@ -340,15 +340,11 @@ public class ProgrammeMembershipService {
       Map<NotificationType, History> notificationsAlreadySent) {
     boolean meetsCriteria = notificationService.meetsCriteria(programmeMembership, true, true);
     boolean isFoundation = isFoundationProgramme(programmeMembership);
-    // Foundation won't meet criteria since the isPilotOrRollout excludes FOUNDATION at this
-    // point. Assuming we need to validate newStarter only for foundation doctors.
-    boolean meetsFoundationCriteria = isFoundation
-        && notificationService.meetsCriteria(programmeMembership, true, false);
 
     if (meetsCriteria) {
-      createNonContactInAppNotifications(programmeMembership, notificationsAlreadySent);
-    }
-    if (meetsCriteria || meetsFoundationCriteria) {
+      if (!isFoundation) {
+        createNonContactInAppNotifications(programmeMembership, notificationsAlreadySent);
+      }
       createContactInAppNotifications(programmeMembership, notificationsAlreadySent, isFoundation);
     }
   }
