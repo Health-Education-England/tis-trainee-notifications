@@ -30,6 +30,7 @@ import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockingDetails;
 import static org.mockito.Mockito.never;
@@ -51,10 +52,14 @@ import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_DAY_ONE;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.SPONSORSHIP;
 import static uk.nhs.tis.trainee.notifications.model.TisReferenceType.PROGRAMME_MEMBERSHIP;
+import static uk.nhs.tis.trainee.notifications.model.TraineeType.FOUNDATION;
+import static uk.nhs.tis.trainee.notifications.model.TraineeType.PUBLIC_HEALTH;
+import static uk.nhs.tis.trainee.notifications.model.TraineeType.SPECIALTY;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.CONTACT_TYPE_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.ONE_DAY_IN_SECONDS;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.PERSON_ID_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.PlacementService.GMC_NUMBER_FIELD;
+import static uk.nhs.tis.trainee.notifications.service.PlacementService.TRAINEE_TYPE_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.BLOCK_INDEMNITY_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.COJ_SYNCED_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.DEFERRAL_IF_MORE_THAN_DAYS;
@@ -96,6 +101,7 @@ import uk.nhs.tis.trainee.notifications.model.NotificationType;
 import uk.nhs.tis.trainee.notifications.model.ProgrammeMembership;
 import uk.nhs.tis.trainee.notifications.model.ResponsibleOfficer;
 import uk.nhs.tis.trainee.notifications.model.TisReferenceType;
+import uk.nhs.tis.trainee.notifications.model.TraineeType;
 
 class ProgrammeMembershipServiceTest {
 
@@ -132,6 +138,8 @@ class ProgrammeMembershipServiceTest {
   private static final String DESIGNATED_BODY = "deisgnatedBody";
   private static final String RO_FIRST_NAME = "RO First Name";
   private static final String RO_LAST_NAME = "RO Last Name";
+
+  private static final String CONTACT = "contact@example.com";
 
   ProgrammeMembershipService service;
   HistoryService historyService;
@@ -321,7 +329,7 @@ class ProgrammeMembershipServiceTest {
         eq(INDEMNITY_INSURANCE_VERSION), variablesCaptor.capture(), anyBoolean());
 
     Map<String, Object> variables = variablesCaptor.getValue();
-    assertThat("Unexpected variable count.", variables.size(), is(6));
+    assertThat("Unexpected variable count.", variables.size(), is(7));
     assertThat("Unexpected programme name.", variables.get(PROGRAMME_NAME_FIELD),
         is(PROGRAMME_NAME));
     assertThat("Unexpected start date.", variables.get(START_DATE_FIELD), is(START_DATE));
@@ -399,7 +407,8 @@ class ProgrammeMembershipServiceTest {
 
     List<Map<String, String>> contactList = List.of(
         Map.of(CONTACT_TYPE_FIELD, LocalOfficeContactType.LTFT.getContactTypeName()));
-    when(notificationService.getOwnerContactList(MANAGING_DEANERY)).thenReturn(contactList);
+    when(notificationService.getOwnerContactList(MANAGING_DEANERY, SPECIALTY))
+        .thenReturn(contactList);
     when(notificationService.getOwnerContact(contactList, LocalOfficeContactType.LTFT,
         LocalOfficeContactType.TSS_SUPPORT, "")).thenReturn(contact);
     when(notificationService.getOwnerContact(contactList, LocalOfficeContactType.DEFERRAL,
@@ -420,7 +429,7 @@ class ProgrammeMembershipServiceTest {
         eq(SPONSORSHIP_VERSION), variablesCaptor.capture(), anyBoolean());
 
     Map<String, Object> variables = variablesCaptor.getValue();
-    assertThat("Unexpected variable count.", variables.size(), is(8));
+    assertThat("Unexpected variable count.", variables.size(), is(9));
     assertThat("Unexpected programme name.", variables.get(PROGRAMME_NAME_FIELD),
         is(PROGRAMME_NAME));
     assertThat("Unexpected start date.", variables.get(START_DATE_FIELD), is(START_DATE));
@@ -432,6 +441,45 @@ class ProgrammeMembershipServiceTest {
         is(contact));
     assertThat("Unexpected local office contact type.",
         variables.get(LOCAL_OFFICE_CONTACT_TYPE_FIELD), is(contactType.getHrefTypeName()));
+    assertThat("Unexpected trainee type.", variables.get(TRAINEE_TYPE_FIELD), is(SPECIALTY));
+  }
+
+  @ParameterizedTest
+  @EnumSource(TraineeType.class)
+  void shouldGetInAppContactDetailsBasedOnTraineeType(TraineeType traineeType) {
+    ProgrammeMembership programmeMembership = getDefaultProgrammeMembership(traineeType);
+
+    when(notificationService.meetsCriteria(programmeMembership, true, true)).thenReturn(true);
+
+    List<Map<String, String>> contactList = List.of(
+        Map.of(CONTACT_TYPE_FIELD, LocalOfficeContactType.LTFT.getContactTypeName()));
+    // Default to SPECIALTY if public health as there are no public health specific contacts yet.
+    when(notificationService.getOwnerContactList(MANAGING_DEANERY,
+        traineeType == PUBLIC_HEALTH ? SPECIALTY : traineeType))
+        .thenReturn(contactList);
+    when(notificationService.getOwnerContact(contactList, LocalOfficeContactType.LTFT,
+        LocalOfficeContactType.TSS_SUPPORT, "")).thenReturn(CONTACT);
+    when(notificationService.getOwnerContact(contactList, LocalOfficeContactType.DEFERRAL,
+        LocalOfficeContactType.TSS_SUPPORT, "")).thenReturn(CONTACT);
+    when(notificationService.getOwnerContact(contactList, LocalOfficeContactType.SPONSORSHIP,
+        LocalOfficeContactType.TSS_SUPPORT, "")).thenReturn(CONTACT);
+    when(notificationService.getHrefTypeForContact(CONTACT)).thenReturn("email");
+
+    service.addNotifications(programmeMembership);
+
+    ArgumentCaptor<Map<String, Object>> variablesCaptor = ArgumentCaptor.captor();
+    verify(inAppService, atLeastOnce()).createNotifications(eq(PERSON_ID), any(), any(), any(),
+        variablesCaptor.capture(), anyBoolean());
+
+    Map<String, Object> variables = variablesCaptor.getValue();
+    assertThat("Unexpected local office contact.", variables.get(LOCAL_OFFICE_CONTACT_FIELD),
+        is(CONTACT));
+    assertThat("Unexpected local office contact type.",
+        variables.get(LOCAL_OFFICE_CONTACT_TYPE_FIELD), is("email"));
+
+    // Default to SPECIALTY if public health as there are no public health specific contacts yet.
+    assertThat("Unexpected trainee type.", variables.get(TRAINEE_TYPE_FIELD),
+        is(traineeType == PUBLIC_HEALTH ? SPECIALTY : traineeType));
   }
 
   @Test
@@ -750,6 +798,7 @@ class ProgrammeMembershipServiceTest {
         is(RO_FIRST_NAME + " " + RO_LAST_NAME));
     assertThat("Unexpected designated body.", dayOneJobDataMap.get(DESIGNATED_BODY_FIELD),
         is(DESIGNATED_BODY));
+    assertThat("Unexpected trainee type.", dayOneJobDataMap.get(TRAINEE_TYPE_FIELD), is(SPECIALTY));
   }
 
   @Test
@@ -1065,7 +1114,7 @@ class ProgrammeMembershipServiceTest {
 
     List<Map<String, String>> contactList = List.of(
         Map.of(CONTACT_TYPE_FIELD, LocalOfficeContactType.LTFT.getContactTypeName()));
-    when(notificationService.getOwnerContactList(any())).thenReturn(contactList);
+    when(notificationService.getOwnerContactList(any(), any())).thenReturn(contactList);
     when(notificationService.getOwnerContact(any(), any(), any(), any())).thenReturn("contact");
     when(notificationService.getHrefTypeForContact(any())).thenReturn("href");
     when(notificationService.meetsCriteria(any(), anyBoolean(), anyBoolean())).thenReturn(true);
@@ -1136,7 +1185,7 @@ class ProgrammeMembershipServiceTest {
 
     List<Map<String, String>> contactList = List.of(
         Map.of(CONTACT_TYPE_FIELD, LocalOfficeContactType.LTFT.getContactTypeName()));
-    when(notificationService.getOwnerContactList(any())).thenReturn(contactList);
+    when(notificationService.getOwnerContactList(any(), any())).thenReturn(contactList);
     when(notificationService.getOwnerContact(any(), any(), any(), any())).thenReturn("contact");
     when(notificationService.getHrefTypeForContact(any())).thenReturn("href");
     when(notificationService.meetsCriteria(any(), anyBoolean(), anyBoolean())).thenReturn(true);
@@ -1210,7 +1259,7 @@ class ProgrammeMembershipServiceTest {
 
     List<Map<String, String>> contactList = List.of(
         Map.of(CONTACT_TYPE_FIELD, LocalOfficeContactType.LTFT.getContactTypeName()));
-    when(notificationService.getOwnerContactList(any())).thenReturn(contactList);
+    when(notificationService.getOwnerContactList(any(), any())).thenReturn(contactList);
     when(notificationService.getOwnerContact(any(), any(), any(), any())).thenReturn("contact");
     when(notificationService.getHrefTypeForContact(any())).thenReturn("href");
     when(notificationService.meetsCriteria(any(), anyBoolean(), anyBoolean())).thenReturn(true);
@@ -1279,7 +1328,7 @@ class ProgrammeMembershipServiceTest {
 
     List<Map<String, String>> contactList = List.of(
         Map.of(CONTACT_TYPE_FIELD, LocalOfficeContactType.LTFT.getContactTypeName()));
-    when(notificationService.getOwnerContactList(any())).thenReturn(contactList);
+    when(notificationService.getOwnerContactList(any(), any())).thenReturn(contactList);
     when(notificationService.getOwnerContact(any(), any(), any(), any())).thenReturn("contact");
     when(notificationService.getHrefTypeForContact(any())).thenReturn("href");
     when(notificationService.meetsCriteria(any(), anyBoolean(), anyBoolean())).thenReturn(true);
@@ -1372,7 +1421,7 @@ class ProgrammeMembershipServiceTest {
 
     List<Map<String, String>> contactList = List.of(
         Map.of(CONTACT_TYPE_FIELD, LocalOfficeContactType.LTFT.getContactTypeName()));
-    when(notificationService.getOwnerContactList(any())).thenReturn(contactList);
+    when(notificationService.getOwnerContactList(any(), any())).thenReturn(contactList);
     when(notificationService.getOwnerContact(any(), any(), any(), any())).thenReturn("contact");
     when(notificationService.getHrefTypeForContact(any())).thenReturn("href");
     when(notificationService.meetsCriteria(any(), anyBoolean(), anyBoolean())).thenReturn(true);
@@ -1468,7 +1517,7 @@ class ProgrammeMembershipServiceTest {
 
     List<Map<String, String>> contactList = List.of(
         Map.of(CONTACT_TYPE_FIELD, LocalOfficeContactType.LTFT.getContactTypeName()));
-    when(notificationService.getOwnerContactList(any())).thenReturn(contactList);
+    when(notificationService.getOwnerContactList(any(), any())).thenReturn(contactList);
     when(notificationService.getOwnerContact(any(), any(), any(), any())).thenReturn("contact");
     when(notificationService.getHrefTypeForContact(any())).thenReturn("href");
     when(notificationService.meetsCriteria(any(), anyBoolean(), anyBoolean())).thenReturn(true);
@@ -1643,9 +1692,19 @@ class ProgrammeMembershipServiceTest {
    * @return the default programme membership.
    */
   private ProgrammeMembership getDefaultProgrammeMembership() {
+    return getDefaultProgrammeMembership(SPECIALTY);
+  }
+
+  /**
+   * Helper function to set up a default non-excluded programme membership.
+   *
+   * @param traineeType The trainee type to set.
+   * @return the default programme membership.
+   */
+  private ProgrammeMembership getDefaultProgrammeMembership(TraineeType traineeType) {
     Curriculum theCurriculum = new Curriculum(CURRICULUM_NAME, MEDICAL_CURRICULUM_1,
-        "any specialty", false,
-        CURRICULUM_END_DATE, null);
+        traineeType == FOUNDATION ? "Foundation" : "any specialty",
+        false, CURRICULUM_END_DATE, null);
     ResponsibleOfficer theRo = new ResponsibleOfficer("roEmail", RO_FIRST_NAME, RO_LAST_NAME,
         "roGmc", "roPhone");
     ProgrammeMembership programmeMembership = new ProgrammeMembership();

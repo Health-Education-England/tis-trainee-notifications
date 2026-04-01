@@ -24,6 +24,7 @@ package uk.nhs.tis.trainee.notifications.migration;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.DEFERRAL;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.LTFT;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.SPONSORSHIP;
+import static uk.nhs.tis.trainee.notifications.model.TraineeType.SPECIALTY;
 import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.DESIGNATED_BODY_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.LOCAL_OFFICE_CONTACT_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.LOCAL_OFFICE_CONTACT_TYPE_FIELD;
@@ -62,7 +63,7 @@ public class UpdateInAppTvContact {
    * Constructor.
    */
   public UpdateInAppTvContact(MongoTemplate mongoTemplate,
-                              NotificationService notificationService) {
+      NotificationService notificationService) {
     this.mongoTemplate = mongoTemplate;
     this.notificationService = notificationService;
   }
@@ -73,7 +74,7 @@ public class UpdateInAppTvContact {
   @Execution
   public void migrate() {
     List<Map<String, String>> contactList =
-        notificationService.getOwnerContactList("Thames Valley");
+        notificationService.getOwnerContactList("Thames Valley", SPECIALTY);
 
     migrateByType(contactList, LTFT, LocalOfficeContactType.LTFT);
     migrateByType(contactList, DEFERRAL, LocalOfficeContactType.DEFERRAL);
@@ -93,8 +94,7 @@ public class UpdateInAppTvContact {
    * Update Thames Valley contacts by notification type.
    */
   private void migrateByType(List<Map<String, String>> contactList,
-                             NotificationType notificationType,
-                           LocalOfficeContactType localOfficeContactType) {
+      NotificationType notificationType, LocalOfficeContactType localOfficeContactType) {
     String fieldPrefix = "template.variables.";
     CriteriaDefinition criteriaTv = Criteria.where(fieldPrefix + DESIGNATED_BODY_FIELD)
         .is(DESIGNATED_BODY);

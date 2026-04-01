@@ -34,6 +34,7 @@ import static uk.nhs.tis.trainee.notifications.migration.UpdateInAppTvContact.DE
 import static uk.nhs.tis.trainee.notifications.model.HrefType.ABSOLUTE_URL;
 import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.UNREAD;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.LTFT;
+import static uk.nhs.tis.trainee.notifications.model.TraineeType.SPECIALTY;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.CONTACT_TYPE_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.DESIGNATED_BODY_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.LOCAL_OFFICE_CONTACT_FIELD;
@@ -99,15 +100,14 @@ class UpdateInAppTvTest {
 
   @ParameterizedTest
   @CsvSource(delimiter = '|', textBlock = """
-      LTFT | LTFT | email@example.com | PROTOCOL_EMAIL
-      DEFERRAL | DEFERRAL | https://example.com | ABSOLUTE_URL
-      SPONSORSHIP | SPONSORSHIP | not a href | NON_HREF""")
+      LTFT        | LTFT        | email@example.com   | PROTOCOL_EMAIL
+      DEFERRAL    | DEFERRAL    | https://example.com | ABSOLUTE_URL
+      SPONSORSHIP | SPONSORSHIP | not a href          | NON_HREF""")
   void shouldUpdateInAppTvContact(NotificationType notificationType,
-                                  LocalOfficeContactType localOfficeContactType,
-                                  String contact, HrefType contactType) {
+      LocalOfficeContactType localOfficeContactType, String contact, HrefType contactType) {
     List<Map<String, String>> contactList = List.of(
         Map.of(CONTACT_TYPE_FIELD, localOfficeContactType.getContactTypeName()));
-    when(notificationService.getOwnerContactList("Thames Valley"))
+    when(notificationService.getOwnerContactList("Thames Valley", SPECIALTY))
         .thenReturn(contactList);
     when(notificationService.getOwnerContact(contactList, localOfficeContactType,
         LocalOfficeContactType.TSS_SUPPORT, "")).thenReturn(contact);
@@ -184,7 +184,7 @@ class UpdateInAppTvTest {
   void shouldUpdateInAppTvEmptyContactOnly(String loContact) {
     List<Map<String, String>> contactList = List.of(
         Map.of(CONTACT_TYPE_FIELD, LocalOfficeContactType.LTFT.getContactTypeName()));
-    when(notificationService.getOwnerContactList("Thames Valley"))
+    when(notificationService.getOwnerContactList("Thames Valley", SPECIALTY))
         .thenReturn(contactList);
     when(notificationService.getOwnerContact(contactList, LocalOfficeContactType.LTFT,
         LocalOfficeContactType.TSS_SUPPORT, "")).thenReturn(CONTACT_URL);
@@ -232,10 +232,8 @@ class UpdateInAppTvTest {
     verifyNoInteractions(mongoTemplate);
   }
 
-  private History buildHistoryByType(NotificationType notificationType,
-                                     String designatedBody,
-                                     NotificationStatus notificationStatus,
-                                     String loContact) {
+  private History buildHistoryByType(NotificationType notificationType, String designatedBody,
+      NotificationStatus notificationStatus, String loContact) {
     ObjectId objectId = ObjectId.get();
     Map<String, Object> variables = new HashMap<>();
     variables.put(DESIGNATED_BODY_FIELD, designatedBody);

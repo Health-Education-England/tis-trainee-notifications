@@ -37,6 +37,7 @@ import static uk.nhs.tis.trainee.notifications.model.LocalOfficeContactType.SUPP
 import static uk.nhs.tis.trainee.notifications.model.LocalOfficeContactType.TSS_SUPPORT;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.LTFT_ADMIN_UNSUBMITTED;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.LTFT_SUBMITTED;
+import static uk.nhs.tis.trainee.notifications.model.TraineeType.SPECIALTY;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -205,8 +206,7 @@ class LtftListenerIntegrationTest {
       Other-Status | LTFT_UPDATED           | TRAINEE
       """)
   void shouldSendDefaultNotificationsWhenTemplateVariablesNull(String state, NotificationType type,
-                                                               String modifiedByRole)
-      throws Exception {
+      String modifiedByRole) throws Exception {
     when(userAccountService.getUserDetailsById(USER_ID)).thenReturn(
         new UserDetails(true, EMAIL, TITLE, null, null, GMC));
 
@@ -263,8 +263,7 @@ class LtftListenerIntegrationTest {
       Other-Status | LTFT_UPDATED           | TRAINEE
       """)
   void shouldSendDefaultNotificationsWhenTemplateVariablesEmpty(String state, NotificationType type,
-                                                                String modifiedByRole)
-      throws Exception {
+      String modifiedByRole) throws Exception {
     when(userAccountService.getUserDetailsById(USER_ID)).thenReturn(
         new UserDetails(true, EMAIL, TITLE, "", "", GMC));
 
@@ -343,7 +342,7 @@ class LtftListenerIntegrationTest {
     when(userAccountService.getUserDetailsById(USER_ID)).thenReturn(
         new UserDetails(true, EMAIL, TITLE, FAMILY_NAME, GIVEN_NAME, GMC));
 
-    when(notificationService.getOwnerContactList(MANAGING_DEANERY)).thenReturn(
+    when(notificationService.getOwnerContactList(MANAGING_DEANERY, SPECIALTY)).thenReturn(
         EXPECTED_CONTACTS.stream()
             .map(ct -> Map.of(
                 "contact", "https://test/" + ct,
@@ -430,7 +429,7 @@ class LtftListenerIntegrationTest {
     when(userAccountService.getUserDetailsById(USER_ID)).thenReturn(
         new UserDetails(true, EMAIL, TITLE, FAMILY_NAME, GIVEN_NAME, GMC));
 
-    when(notificationService.getOwnerContactList(MANAGING_DEANERY)).thenReturn(
+    when(notificationService.getOwnerContactList(MANAGING_DEANERY, SPECIALTY)).thenReturn(
         EXPECTED_CONTACTS.stream()
             .map(ct -> Map.of(
                 "contact", ct + "@example.com",
@@ -576,12 +575,11 @@ class LtftListenerIntegrationTest {
       Other-Status | LTFT_UPDATED           | v1.0.0
       """)
   void shouldStoreNotificationHistoryWhenMessageSent(String state, NotificationType type,
-      String expectedVersion)
-      throws JsonProcessingException {
+      String expectedVersion) throws JsonProcessingException {
     when(userAccountService.getUserDetailsById(USER_ID)).thenReturn(
         new UserDetails(true, EMAIL, TITLE, FAMILY_NAME, GIVEN_NAME, GMC));
 
-    when(notificationService.getOwnerContactList(MANAGING_DEANERY)).thenReturn(
+    when(notificationService.getOwnerContactList(MANAGING_DEANERY, SPECIALTY)).thenReturn(
         EXPECTED_CONTACTS.stream()
             .map(ct -> Map.of(
                 "contact", "https://test/" + ct,
@@ -691,7 +689,7 @@ class LtftListenerIntegrationTest {
     when(userAccountService.getUserDetailsById(USER_ID)).thenReturn(
         new UserDetails(true, EMAIL, TITLE, FAMILY_NAME, GIVEN_NAME, GMC));
 
-    when(notificationService.getOwnerContactList(MANAGING_DEANERY)).thenReturn(
+    when(notificationService.getOwnerContactList(MANAGING_DEANERY, SPECIALTY)).thenReturn(
         EXPECTED_CONTACTS.stream()
             .map(ct -> Map.of(
                 "contact", "https://test/" + ct,
@@ -769,7 +767,7 @@ class LtftListenerIntegrationTest {
     when(userAccountService.getUserDetailsById(USER_ID)).thenReturn(
         new UserDetails(true, EMAIL, TITLE, FAMILY_NAME, GIVEN_NAME, GMC));
 
-    when(notificationService.getOwnerContactList(MANAGING_DEANERY)).thenReturn(
+    when(notificationService.getOwnerContactList(MANAGING_DEANERY, SPECIALTY)).thenReturn(
         EXPECTED_CONTACTS.stream()
             .map(ct -> Map.of(
                 "contact", ct + "@example.com",
@@ -843,12 +841,11 @@ class LtftListenerIntegrationTest {
       SUBMITTED | LTFT_SUBMITTED_TPD | v1.0.1
       """)
   void shouldStoreTpdNotificationHistoryWhenMessageSent(String state, NotificationType type,
-      String expectedVersion)
-      throws JsonProcessingException {
+      String expectedVersion) throws JsonProcessingException {
     when(userAccountService.getUserDetailsById(USER_ID)).thenReturn(
         new UserDetails(true, EMAIL, TITLE, FAMILY_NAME, GIVEN_NAME, GMC));
 
-    when(notificationService.getOwnerContactList(MANAGING_DEANERY)).thenReturn(
+    when(notificationService.getOwnerContactList(MANAGING_DEANERY, SPECIALTY)).thenReturn(
         EXPECTED_CONTACTS.stream()
             .map(ct -> Map.of(
                 "contact", "https://test/" + ct,

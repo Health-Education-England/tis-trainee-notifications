@@ -29,6 +29,8 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.verify;
@@ -43,9 +45,7 @@ import static uk.nhs.tis.trainee.notifications.model.ProgrammeActionType.SIGN_CO
 import static uk.nhs.tis.trainee.notifications.model.TisReferenceType.PROGRAMME_MEMBERSHIP;
 import static uk.nhs.tis.trainee.notifications.model.TraineeType.FOUNDATION;
 import static uk.nhs.tis.trainee.notifications.model.TraineeType.SPECIALTY;
-import static uk.nhs.tis.trainee.notifications.service.NotificationService.API_GET_OWNER_CONTACT;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.API_TRAINEE_DETAILS;
-import static uk.nhs.tis.trainee.notifications.service.NotificationService.OWNER_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipActionsService.TEMPLATE_WELCOME_NOTIFICATION_DATE_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.TIS_ID_FIELD;
 
@@ -144,7 +144,9 @@ class ProgrammeMembershipListenerIntegrationTest {
   private static final String RESPONSIBLE_OFFICER_FIRST_NAME = "Responsible";
   private static final String RESPONSIBLE_OFFICER_LAST_NAME = "TestRO";
   private static final String MANAGING_DEANERY = "deaneryTest";
-  private static final String LOCAL_OFFICE_CONTACT_EMAIL = "local@office.com";
+  private static final String LOCAL_OFFICE_CONTACT_EMAIL = "local.office@example.com";
+  private static final String
+      LOCAL_OFFICE_FOUNDATION_CONTACT_EMAIL = "local.office.foundation@example.com";
 
   @Value("${service.trainee.url}")
   private String serviceUrl;
@@ -237,10 +239,24 @@ class ProgrammeMembershipListenerIntegrationTest {
         "localOfficeName", MANAGING_DEANERY,
         "contactTypeName", TSS_SUPPORT.getContactTypeName()
     );
+    Map<String, String> loTssFoundationEmailContact = Map.of(
+        "contact", LOCAL_OFFICE_FOUNDATION_CONTACT_EMAIL,
+        "localOfficeName", MANAGING_DEANERY,
+        "contactTypeName", TSS_SUPPORT.getContactTypeName()
+    );
 
-    when(restTemplate.getForObject(referenceUrl + API_GET_OWNER_CONTACT,
-        List.class, Map.of(OWNER_FIELD, MANAGING_DEANERY)))
-        .thenReturn(List.of(pogEmailContact, loTssEmailContact));
+    URI contactByLoMatcher = argThat(uri -> uri != null && uri.getPath()
+        .equals("/reference/api/local-office-contact-by-lo-name/" + MANAGING_DEANERY));
+    when(restTemplate.getForObject(contactByLoMatcher, eq(List.class)))
+        .thenAnswer(inv -> {
+          URI uri = inv.getArgument(0, URI.class); //consume the argument for assertion
+
+          if (uri.getQuery() != null && uri.getQuery().contains("traineeType=FOUNDATION")) {
+            return List.of(pogEmailContact, loTssFoundationEmailContact);
+          } else {
+            return List.of(pogEmailContact, loTssEmailContact);
+          }
+        });
 
     //default empty actions set returned
     ResponseEntity<Set<ActionDto>> responseEntity = new ResponseEntity<>(Set.of(), HttpStatus.OK);

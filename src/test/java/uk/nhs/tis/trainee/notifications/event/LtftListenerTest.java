@@ -42,6 +42,7 @@ import static uk.nhs.tis.trainee.notifications.model.NotificationType.LTFT_ADMIN
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.LTFT_APPROVED_TPD;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.LTFT_REJECTED_TPD;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.LTFT_SUBMITTED_TPD;
+import static uk.nhs.tis.trainee.notifications.model.TraineeType.SPECIALTY;
 
 import jakarta.mail.MessagingException;
 import java.time.Instant;
@@ -245,7 +246,7 @@ class LtftListenerTest {
       throws MessagingException {
     Set<LocalOfficeContactType> expectedContacts = Set.of(
         LTFT, LTFT_SUPPORT, SUPPORTED_RETURN_TO_TRAINING, TSS_SUPPORT);
-    when(notificationService.getOwnerContactList("Test Deanery")).thenReturn(
+    when(notificationService.getOwnerContactList("Test Deanery", SPECIALTY)).thenReturn(
         expectedContacts.stream()
             .map(ct -> Map.of(
                 "contact", "https://test/" + ct,
@@ -545,7 +546,7 @@ class LtftListenerTest {
       throws MessagingException {
     Set<LocalOfficeContactType> expectedContacts = Set.of(
         LTFT, LTFT_SUPPORT, SUPPORTED_RETURN_TO_TRAINING, TSS_SUPPORT);
-    when(notificationService.getOwnerContactList("Test Deanery")).thenReturn(
+    when(notificationService.getOwnerContactList("Test Deanery", SPECIALTY)).thenReturn(
         expectedContacts.stream()
             .map(ct -> Map.of(
                 "contact", "https://test/" + ct,

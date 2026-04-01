@@ -32,6 +32,8 @@ public enum TraineeType {
   PUBLIC_HEALTH,
   SPECIALTY;
 
+  private static final String FOUNDATION_GRADES = "F1,F2";
+
   /**
    * Determine the trainee type from a programme membership.
    *
@@ -51,6 +53,26 @@ public enum TraineeType {
     }
 
     // Assume SPECIALTY if not FOUNDATION or PUBLIC_HEALTH.
+    return SPECIALTY;
+  }
+
+  /**
+   * Determine the trainee type from a placement.
+   *
+   * <p>Any placement with a foundation grade is classified as foundation. All other placements are
+   * treated as specialty.
+   *
+   * @param placement the placement to classify
+   * @return {@link #FOUNDATION} for placements with a foundation grade, otherwise
+   *     {@link #SPECIALTY}
+   */
+  public static TraineeType from(Placement placement) {
+    if (placement.getGradeAbbreviation() != null && FOUNDATION_GRADES.contains(
+        placement.getGradeAbbreviation())) {
+      return FOUNDATION;
+    }
+
+    // Assume SPECIALTY if not FOUNDATION.
     return SPECIALTY;
   }
 }
