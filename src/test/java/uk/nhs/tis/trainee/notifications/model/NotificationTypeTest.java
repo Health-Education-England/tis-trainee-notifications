@@ -22,7 +22,6 @@
 package uk.nhs.tis.trainee.notifications.model;
 
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.hasItems;
 import static org.hamcrest.Matchers.hasSize;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_CREATED;
@@ -56,7 +55,8 @@ class NotificationTypeTest {
   void shouldGetActiveFoundationProgrammeUpdateNotificationTypes() {
     Set<NotificationType> activeTypes = getActiveFoundationProgrammeUpdateNotificationTypes();
 
-    assertThat("Unexpected active type count.", activeTypes, hasSize(1));
-    assertThat("Unexpected active types.", activeTypes, hasItem(PROGRAMME_CREATED));
+    assertThat("Unexpected active type count.", activeTypes, hasSize(2));
+    assertThat("Unexpected active types.", activeTypes,
+        hasItems(PROGRAMME_CREATED, PROGRAMME_DAY_ONE));
   }
 }
