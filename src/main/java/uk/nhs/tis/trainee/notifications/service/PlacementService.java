@@ -354,7 +354,7 @@ public class PlacementService {
   }
 
   /**
-   * Create any relevant in-app notifications.
+   * Prepare data for in-app notifications.
    *
    * @param placement             The updated placement.
    * @param notificationsRecorded The current recorded notification types and their events.
@@ -373,10 +373,10 @@ public class PlacementService {
       String localOfficeContactType =
           notificationService.getHrefTypeForContact(localOfficeContact);
 
-      UserDetails userTraineeDetails = notificationService.getTraineeDetails(
-          placement.getPersonId());
-      String gmcNumber = (userTraineeDetails != null && userTraineeDetails.gmcNumber() != null)
-          ? userTraineeDetails.gmcNumber().trim() : "unknown";
+    UserDetails userTraineeDetails = notificationService.getTraineeDetails(
+        placement.getPersonId());
+    String gmcNumber = (userTraineeDetails != null && userTraineeDetails.gmcNumber() != null)
+        ? userTraineeDetails.gmcNumber().trim() : "unknown";
 
       // PLACEMENT_INFORMATION
       createUniqueInAppNotification(placement, notificationsRecorded,

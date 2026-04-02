@@ -1015,7 +1015,8 @@ class PlacementServiceTest {
       email@example.com | PROTOCOL_EMAIL
       https://example.com | ABSOLUTE_URL
       not a href | NON_HREF""")
-  void shouldIncludeContactDetailsInInAppFoundationNotification(String contact, HrefType contactType) {
+  void shouldIncludeContactDetailsInInAppFoundationNotification(
+      String contact, HrefType contactType) {
     Placement placement = new Placement();
     placement.setTisId(TIS_ID);
     placement.setPersonId(PERSON_ID);
