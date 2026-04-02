@@ -24,6 +24,8 @@ package uk.nhs.tis.trainee.notifications.model;
 import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipUtils.isFoundationProgramme;
 import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipUtils.isPublicHealthProgramme;
 
+import java.util.Set;
+
 /**
  * The type of the trainee.
  */
@@ -32,7 +34,7 @@ public enum TraineeType {
   PUBLIC_HEALTH,
   SPECIALTY;
 
-  private static final String FOUNDATION_GRADES = "F1,F2";
+  private static final Set<String> FOUNDATION_GRADES = Set.of("F1","F2");
 
   /**
    * Determine the trainee type from a programme membership.
