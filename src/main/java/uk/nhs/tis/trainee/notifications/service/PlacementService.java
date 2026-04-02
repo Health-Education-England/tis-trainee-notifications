@@ -23,11 +23,14 @@ package uk.nhs.tis.trainee.notifications.service;
 
 import static uk.nhs.tis.trainee.notifications.model.MessageType.IN_APP;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.NON_EMPLOYMENT;
+import static uk.nhs.tis.trainee.notifications.model.NotificationType.NON_EMPLOYMENT_FOUNDATION;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PLACEMENT_INFORMATION;
+import static uk.nhs.tis.trainee.notifications.model.NotificationType.PLACEMENT_INFORMATION_FOUNDATION;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PLACEMENT_ROLLOUT_2024_CORRECTION;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PLACEMENT_UPDATED_WEEK_12;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PLACEMENT_UPDATED_WEEK_12_FOUNDATION;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.USEFUL_INFORMATION;
+import static uk.nhs.tis.trainee.notifications.model.NotificationType.USEFUL_INFORMATION_FOUNDATION;
 import static uk.nhs.tis.trainee.notifications.model.TisReferenceType.PLACEMENT;
 import static uk.nhs.tis.trainee.notifications.model.TraineeType.FOUNDATION;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.ONE_DAY_IN_SECONDS;
@@ -90,17 +93,27 @@ public class PlacementService {
   private final String placementInfoVersion;
   private final String placementUsefulInfoVersion;
   private final String nonEmploymentVersion;
+  private final String placementInfoFoundationVersion;
+  private final String placementUsefulInfoFoundationVersion;
+  private final String nonEmploymentFoundationVersion;
 
   /**
    * Initialise the Placement Service.
    *
-   * @param historyService             The history Service to use.
-   * @param notificationService        The notification Service to use.
-   * @param inAppService               The in-app service to use.
-   * @param placementInfoVersion       The placement information in-app notification version.
-   * @param placementUsefulInfoVersion The placement useful information in-app notification
-   *                                   version.
-   * @param nonEmploymentVersion       The non employment in-app notification version.
+   * @param historyService                       The history Service to use.
+   * @param notificationService                  The notification Service to use.
+   * @param inAppService                         The in-app service to use.
+   * @param placementInfoVersion                 The placement information in-app notification
+   *                                             version.
+   * @param placementUsefulInfoVersion           The placement useful information in-app
+   *                                             notification version.
+   * @param nonEmploymentVersion                 The non employment in-app notification version.
+   * @param placementInfoFoundationVersion       The placement information foundation in-app
+   *                                             notification version.
+   * @param placementUsefulInfoFoundationVersion The placement useful information foundation
+   *                                             in-app notification version.
+   * @param nonEmploymentFoundationVersion       The non employment foundation in-app notification
+   *                                             version.
    */
   public PlacementService(HistoryService historyService, NotificationService notificationService,
       InAppService inAppService, @Value("${application.timezone}") ZoneId timezone,
@@ -109,7 +122,13 @@ public class PlacementService {
       @Value("${application.template-versions.placement-useful-information.in-app}")
       String placementUsefulInfoVersion,
       @Value("${application.template-versions.non-employment.in-app}")
-      String nonEmploymentVersion) {
+      String nonEmploymentVersion,
+      @Value("${application.template-versions.placement-information-foundation.in-app}")
+      String placementInfoFoundationVersion,
+      @Value("${application.template-versions.placement-useful-information-foundation.in-app}")
+      String placementUsefulInfoFoundationVersion,
+      @Value("${application.template-versions.non-employment-foundation.in-app}")
+      String nonEmploymentFoundationVersion) {
     this.historyService = historyService;
     this.notificationService = notificationService;
     this.inAppService = inAppService;
@@ -117,6 +136,9 @@ public class PlacementService {
     this.placementInfoVersion = placementInfoVersion;
     this.placementUsefulInfoVersion = placementUsefulInfoVersion;
     this.nonEmploymentVersion = nonEmploymentVersion;
+    this.placementInfoFoundationVersion = placementInfoFoundationVersion;
+    this.placementUsefulInfoFoundationVersion = placementUsefulInfoFoundationVersion;
+    this.nonEmploymentFoundationVersion = nonEmploymentFoundationVersion;
   }
 
   /**
@@ -197,13 +219,9 @@ public class PlacementService {
       Map<NotificationType, NotificationEvent> notificationsRecorded
           = getNotificationsEvents(placement.getPersonId(), placement.getTisId());
 
-      createDirectNotifications(placement, notificationsRecorded);
-
       TraineeType traineeType = TraineeType.from(placement);
-      if (traineeType != FOUNDATION) {
-        // TODO: this will be resolved by TIS21-8430
-        createInAppNotifications(placement, notificationsRecorded, traineeType);
-      }
+      createDirectNotifications(placement, notificationsRecorded);
+      createInAppNotifications(placement, notificationsRecorded, traineeType);
     }
   }
 
@@ -218,8 +236,11 @@ public class PlacementService {
     if (notificationType.equals(PLACEMENT_UPDATED_WEEK_12)
         || notificationType.equals(PLACEMENT_UPDATED_WEEK_12_FOUNDATION)
         || notificationType.equals(PLACEMENT_INFORMATION)
+        || notificationType.equals(PLACEMENT_INFORMATION_FOUNDATION)
         || notificationType.equals(USEFUL_INFORMATION)
-        || notificationType.equals(NON_EMPLOYMENT)) {
+        || notificationType.equals(USEFUL_INFORMATION_FOUNDATION)
+        || notificationType.equals(NON_EMPLOYMENT)
+        || notificationType.equals(NON_EMPLOYMENT_FOUNDATION)) {
       return 84;
     } else {
       return null;
@@ -358,22 +379,28 @@ public class PlacementService {
           ? userTraineeDetails.gmcNumber().trim() : "unknown";
 
       // PLACEMENT_INFORMATION
-      createUniqueInAppNotification(placement, notificationsRecorded, PLACEMENT_INFORMATION,
-          placementInfoVersion, Map.of(
+      createUniqueInAppNotification(placement, notificationsRecorded,
+          traineeType != FOUNDATION ? PLACEMENT_INFORMATION : PLACEMENT_INFORMATION_FOUNDATION,
+          traineeType != FOUNDATION ? placementInfoVersion : placementInfoFoundationVersion,
+          Map.of(
               LOCAL_OFFICE_CONTACT_FIELD, localOfficeContact,
               LOCAL_OFFICE_CONTACT_TYPE_FIELD, localOfficeContactType,
               GMC_NUMBER_FIELD, gmcNumber));
 
       // PLACEMENT_USEFUL_INFORMATION
       createUniqueInAppNotification(placement, notificationsRecorded,
-          USEFUL_INFORMATION, placementUsefulInfoVersion, Map.of(
+          traineeType != FOUNDATION ? USEFUL_INFORMATION : USEFUL_INFORMATION_FOUNDATION,
+          traineeType != FOUNDATION ? placementUsefulInfoVersion : placementUsefulInfoFoundationVersion,
+          Map.of(
               LOCAL_OFFICE_CONTACT_FIELD, localOfficeContact,
               LOCAL_OFFICE_CONTACT_TYPE_FIELD, localOfficeContactType,
               GMC_NUMBER_FIELD, gmcNumber));
 
       // NON_EMPLOYMENT
-      createUniqueInAppNotification(placement, notificationsRecorded, NON_EMPLOYMENT,
-          nonEmploymentVersion, Map.of(
+      createUniqueInAppNotification(placement, notificationsRecorded,
+          traineeType != FOUNDATION ? NON_EMPLOYMENT : NON_EMPLOYMENT_FOUNDATION,
+          traineeType != FOUNDATION ? nonEmploymentVersion : nonEmploymentFoundationVersion,
+          Map.of(
               LOCAL_OFFICE_CONTACT_FIELD, localOfficeContact,
               LOCAL_OFFICE_CONTACT_TYPE_FIELD, localOfficeContactType,
               GMC_NUMBER_FIELD, gmcNumber));

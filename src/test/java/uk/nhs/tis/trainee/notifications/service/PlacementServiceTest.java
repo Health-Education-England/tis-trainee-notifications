@@ -43,11 +43,14 @@ import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.SCHEDULE
 import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.SENT;
 import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.UNREAD;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.NON_EMPLOYMENT;
+import static uk.nhs.tis.trainee.notifications.model.NotificationType.NON_EMPLOYMENT_FOUNDATION;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PLACEMENT_INFORMATION;
+import static uk.nhs.tis.trainee.notifications.model.NotificationType.PLACEMENT_INFORMATION_FOUNDATION;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PLACEMENT_ROLLOUT_2024_CORRECTION;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PLACEMENT_UPDATED_WEEK_12;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PLACEMENT_UPDATED_WEEK_12_FOUNDATION;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.USEFUL_INFORMATION;
+import static uk.nhs.tis.trainee.notifications.model.NotificationType.USEFUL_INFORMATION_FOUNDATION;
 import static uk.nhs.tis.trainee.notifications.model.TisReferenceType.PLACEMENT;
 import static uk.nhs.tis.trainee.notifications.model.TisReferenceType.PROGRAMME_MEMBERSHIP;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.CONTACT_TYPE_FIELD;
@@ -112,11 +115,15 @@ class PlacementServiceTest {
   private static final String PERSON_ID = "abc";
   private static final String SITE = "site known as";
   private static final String SPECIALTY = "General Practice";
+  private static final String FOUNDATION_GRADE = "F1";
   private static final LocalDate START_DATE = LocalDate.now().plusYears(1);
   //set a year in the future to allow all notifications to be scheduled
   private static final String PLACEMENT_INFO_VERSION = "v1.2.3";
   private static final String NON_EMPLOYMENT_VERSION = "v2.3.4";
   private static final String PLACEMENT_USEFUL_INFO_VERSION = "v3.4.5";
+  private static final String PLACEMENT_INFO_FOUNDATION_VERSION = "v4.5.6";
+  private static final String NON_EMPLOYMENT_FOUNDATION_VERSION = "v5.6.7";
+  private static final String PLACEMENT_USEFUL_INFO_FOUNDATION_VERSION = "v6.7.8";
   private static final ObjectId HISTORY_ID_1 = ObjectId.get();
   private static final ObjectId HISTORY_ID_2 = ObjectId.get();
   private static final String USER_EMAIL = "email@address";
@@ -138,7 +145,8 @@ class PlacementServiceTest {
     restTemplate = mock(RestTemplate.class);
     service = new PlacementService(historyService, notificationService, inAppService,
         ZoneId.of("Europe/London"), PLACEMENT_INFO_VERSION, PLACEMENT_USEFUL_INFO_VERSION,
-        NON_EMPLOYMENT_VERSION);
+        NON_EMPLOYMENT_VERSION, PLACEMENT_INFO_FOUNDATION_VERSION,
+        PLACEMENT_USEFUL_INFO_FOUNDATION_VERSION, NON_EMPLOYMENT_FOUNDATION_VERSION);
   }
 
   @ParameterizedTest
@@ -848,6 +856,107 @@ class PlacementServiceTest {
 
   @ParameterizedTest
   @CsvSource(delimiter = '|', textBlock = """
+      PLACEMENT_INFORMATION_FOUNDATION | v4.5.6 | true
+      PLACEMENT_INFORMATION_FOUNDATION | v4.5.6 | false
+      NON_EMPLOYMENT_FOUNDATION | v5.6.7 | true
+      NON_EMPLOYMENT_FOUNDATION | v5.6.7 | false
+      USEFUL_INFORMATION_FOUNDATION | v6.7.8 | true
+      USEFUL_INFORMATION_FOUNDATION | v6.7.8 | false""")
+  void shouldAddFoundationInAppNotificationsWhenFoundationAndMeetsCriteria(
+      NotificationType notificationType,
+      String notificationVersion, boolean notifiable) {
+    Placement placement = new Placement();
+    placement.setTisId(TIS_ID);
+    placement.setPersonId(PERSON_ID);
+    placement.setStartDate(START_DATE);
+    placement.setOwner(OWNER);
+    placement.setPlacementType(IN_POST);
+    placement.setSpecialty(SPECIALTY);
+    placement.setSite(SITE);
+    placement.setGradeAbbreviation(FOUNDATION_GRADE);
+
+    Instant expectedDisplayInstant = START_DATE.minusDays(84)
+        .atStartOfDay()
+        .atZone(ZoneId.systemDefault())
+        .toInstant();
+    UserDetails userAccountDetails =
+        new UserDetails(
+            null, USER_EMAIL, USER_TITLE, USER_FAMILY_NAME, USER_GIVEN_NAME, USER_GMC);
+
+    when(notificationService.meetsCriteria(placement, true)).thenReturn(true);
+    when(notificationService.placementIsNotifiable(placement, MessageType.IN_APP))
+        .thenReturn(notifiable);
+    when(notificationService.getOwnerContact(any(), any(), any())).thenReturn("");
+    when(notificationService.getHrefTypeForContact(any())).thenReturn("");
+    when(notificationService.calculateInAppDisplayDate(START_DATE, 84))
+        .thenReturn(expectedDisplayInstant);
+    when(notificationService.getTraineeDetails(PERSON_ID)).thenReturn(userAccountDetails);
+
+    service.addNotifications(placement);
+
+    ArgumentCaptor<TisReferenceInfo> referenceInfoCaptor = ArgumentCaptor.forClass(
+        TisReferenceInfo.class);
+    ArgumentCaptor<Map<String, Object>> variablesCaptor = ArgumentCaptor.forClass(Map.class);
+    ArgumentCaptor<Boolean> doNotStoreJustLogCaptor = ArgumentCaptor.forClass(Boolean.class);
+    verify(inAppService).createNotifications(eq(PERSON_ID), referenceInfoCaptor.capture(),
+        eq(notificationType), eq(notificationVersion), variablesCaptor.capture(),
+        doNotStoreJustLogCaptor.capture(), eq(expectedDisplayInstant));
+
+    TisReferenceInfo referenceInfo = referenceInfoCaptor.getValue();
+    assertThat("Unexpected reference type.", referenceInfo.type(), is(PLACEMENT));
+    assertThat("Unexpected reference id.", referenceInfo.id(), is(TIS_ID));
+
+    Map<String, Object> variables = variablesCaptor.getValue();
+    assertThat("Unexpected specialty.", variables.get(PLACEMENT_SPECIALTY_FIELD),
+        is(SPECIALTY));
+    assertThat("Unexpected site.", variables.get(PLACEMENT_SITE_FIELD),
+        is(SITE));
+    assertThat("Unexpected start date.", variables.get(START_DATE_FIELD),
+        is(START_DATE));
+    assertThat("Unexpected GMC number.", variables.get(GMC_NUMBER_FIELD),
+        is(USER_GMC));
+
+    Boolean doNotStoreJustLog = doNotStoreJustLogCaptor.getValue();
+    assertThat("Unexpected doNotStoreJustLog value.", doNotStoreJustLog, is(!notifiable));
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"F1", "F2"})
+  void shouldAddFoundationInAppNotificationsWhenMeetFoundationGrade(String grade) {
+    Placement placement = new Placement();
+    placement.setTisId(TIS_ID);
+    placement.setPersonId(PERSON_ID);
+    placement.setStartDate(START_DATE);
+    placement.setOwner(OWNER);
+    placement.setPlacementType(IN_POST);
+    placement.setSpecialty(SPECIALTY);
+    placement.setSite(SITE);
+    placement.setGradeAbbreviation(grade);
+
+    UserDetails userAccountDetails =
+        new UserDetails(
+            null, USER_EMAIL, USER_TITLE, USER_FAMILY_NAME, USER_GIVEN_NAME, null);
+
+    when(notificationService.meetsCriteria(placement, true)).thenReturn(true);
+
+    when(notificationService.getOwnerContact(any(), any(), any())).thenReturn("");
+    when(notificationService.getHrefTypeForContact(any())).thenReturn("");
+    when(notificationService.getTraineeDetails(PERSON_ID)).thenReturn(userAccountDetails);
+
+    service.addNotifications(placement);
+
+    verify(inAppService).createNotifications(eq(PERSON_ID), any(),
+        eq(PLACEMENT_INFORMATION_FOUNDATION), eq(PLACEMENT_INFO_FOUNDATION_VERSION),
+        any(), anyBoolean(), any());
+    verify(inAppService).createNotifications(eq(PERSON_ID), any(), eq(NON_EMPLOYMENT_FOUNDATION),
+        eq(NON_EMPLOYMENT_FOUNDATION_VERSION), any(), anyBoolean(), any());
+    verify(inAppService).createNotifications(eq(PERSON_ID), any(),
+        eq(USEFUL_INFORMATION_FOUNDATION), eq(PLACEMENT_USEFUL_INFO_FOUNDATION_VERSION),
+        any(), anyBoolean(), any());
+  }
+
+  @ParameterizedTest
+  @CsvSource(delimiter = '|', textBlock = """
       email@example.com | PROTOCOL_EMAIL
       https://example.com | ABSOLUTE_URL
       not a href | NON_HREF""")
@@ -886,6 +995,63 @@ class PlacementServiceTest {
         eq(NON_EMPLOYMENT_VERSION), variablesCaptor.capture(), anyBoolean(), any());
     verify(inAppService).createNotifications(eq(PERSON_ID), any(), eq(USEFUL_INFORMATION),
         eq(PLACEMENT_USEFUL_INFO_VERSION), variablesCaptor.capture(), anyBoolean(), any());
+
+    Map<String, Object> variables = variablesCaptor.getValue();
+    assertThat("Unexpected variable count.", variables.size(), is(6));
+    assertThat("Unexpected specialty.", variables.get(PLACEMENT_SPECIALTY_FIELD),
+        is(SPECIALTY));
+    assertThat("Unexpected site.", variables.get(PLACEMENT_SITE_FIELD),
+        is(SITE));
+    assertThat("Unexpected start date.", variables.get(START_DATE_FIELD), is(START_DATE));
+    assertThat("Unexpected local office contact.", variables.get(LOCAL_OFFICE_CONTACT_FIELD),
+        is(contact));
+    assertThat("Unexpected local office contact type.",
+        variables.get(LOCAL_OFFICE_CONTACT_TYPE_FIELD), is(contactType.getHrefTypeName()));
+    assertThat("Unexpected GMC number.", variables.get(GMC_NUMBER_FIELD), is(USER_GMC));
+  }
+
+  @ParameterizedTest
+  @CsvSource(delimiter = '|', textBlock = """
+      email@example.com | PROTOCOL_EMAIL
+      https://example.com | ABSOLUTE_URL
+      not a href | NON_HREF""")
+  void shouldIncludeContactDetailsInInAppFoundationNotification(String contact, HrefType contactType) {
+    Placement placement = new Placement();
+    placement.setTisId(TIS_ID);
+    placement.setPersonId(PERSON_ID);
+    placement.setStartDate(START_DATE);
+    placement.setOwner(OWNER);
+    placement.setPlacementType(IN_POST);
+    placement.setSpecialty(SPECIALTY);
+    placement.setSite(SITE);
+    placement.setGradeAbbreviation(FOUNDATION_GRADE);
+
+    UserDetails userAccountDetails =
+        new UserDetails(
+            null, USER_EMAIL, USER_TITLE, USER_FAMILY_NAME, USER_GIVEN_NAME, USER_GMC);
+
+    when(notificationService.meetsCriteria(placement, true)).thenReturn(true);
+
+    List<Map<String, String>> contactList = List.of(
+        Map.of(CONTACT_TYPE_FIELD, LocalOfficeContactType.TSS_SUPPORT.getContactTypeName()));
+    when(notificationService.getOwnerContactList(OWNER)).thenReturn(contactList);
+    when(notificationService.getOwnerContact(contactList, LocalOfficeContactType.TSS_SUPPORT,
+        null)).thenReturn(contact);
+    when(notificationService.getHrefTypeForContact(contact)).thenReturn(
+        contactType.getHrefTypeName());
+    when(notificationService.getTraineeDetails(PERSON_ID)).thenReturn(userAccountDetails);
+
+    service.addNotifications(placement);
+
+    ArgumentCaptor<Map<String, Object>> variablesCaptor = ArgumentCaptor.forClass(Map.class);
+    verify(inAppService).createNotifications(eq(PERSON_ID), any(),
+        eq(PLACEMENT_INFORMATION_FOUNDATION), eq(PLACEMENT_INFO_FOUNDATION_VERSION),
+        variablesCaptor.capture(), anyBoolean(), any());
+    verify(inAppService).createNotifications(eq(PERSON_ID), any(), eq(NON_EMPLOYMENT_FOUNDATION),
+        eq(NON_EMPLOYMENT_FOUNDATION_VERSION), variablesCaptor.capture(), anyBoolean(), any());
+    verify(inAppService).createNotifications(eq(PERSON_ID), any(),
+        eq(USEFUL_INFORMATION_FOUNDATION), eq(PLACEMENT_USEFUL_INFO_FOUNDATION_VERSION),
+        variablesCaptor.capture(), anyBoolean(), any());
 
     Map<String, Object> variables = variablesCaptor.getValue();
     assertThat("Unexpected variable count.", variables.size(), is(6));
