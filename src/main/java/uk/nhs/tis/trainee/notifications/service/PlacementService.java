@@ -184,8 +184,11 @@ public class PlacementService {
     notificationTypes.add(PLACEMENT_UPDATED_WEEK_12);
     notificationTypes.add(PLACEMENT_UPDATED_WEEK_12_FOUNDATION);
     notificationTypes.add(PLACEMENT_INFORMATION);
+    notificationTypes.add(PLACEMENT_INFORMATION_FOUNDATION);
     notificationTypes.add(USEFUL_INFORMATION);
+    notificationTypes.add(USEFUL_INFORMATION_FOUNDATION);
     notificationTypes.add(NON_EMPLOYMENT);
+    notificationTypes.add(NON_EMPLOYMENT_FOUNDATION);
     notificationTypes.add(PLACEMENT_ROLLOUT_2024_CORRECTION);
 
     for (NotificationType milestone : notificationTypes) {
@@ -221,7 +224,7 @@ public class PlacementService {
 
       TraineeType traineeType = TraineeType.from(placement);
       createDirectNotifications(placement, notificationsRecorded);
-      createInAppNotifications(placement, notificationsRecorded, traineeType);
+      processInAppNotifications(placement, notificationsRecorded, traineeType);
     }
   }
 
@@ -354,13 +357,13 @@ public class PlacementService {
   }
 
   /**
-   * Prepare data for in-app notifications.
+   * Creates and sends data for in-app notifications.
    *
    * @param placement             The updated placement.
    * @param notificationsRecorded The current recorded notification types and their events.
    * @param traineeType           The trainee type for the placement.
    */
-  private void createInAppNotifications(Placement placement,
+  private void processInAppNotifications(Placement placement,
       Map<NotificationType, NotificationEvent> notificationsRecorded, TraineeType traineeType) {
     boolean meetsCriteria = notificationService.meetsCriteria(placement, true);
 
