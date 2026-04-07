@@ -26,6 +26,7 @@ import static org.hamcrest.CoreMatchers.not;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.startsWith;
 import static org.junit.Assert.assertThrows;
@@ -33,6 +34,7 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyMap;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.doThrow;
@@ -75,6 +77,7 @@ import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipServic
 import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.TIS_ID_FIELD;
 
 import jakarta.mail.MessagingException;
+import java.net.URI;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
@@ -121,6 +124,7 @@ import uk.nhs.tis.trainee.notifications.model.NotificationSummary;
 import uk.nhs.tis.trainee.notifications.model.NotificationType;
 import uk.nhs.tis.trainee.notifications.model.Placement;
 import uk.nhs.tis.trainee.notifications.model.ProgrammeMembership;
+import uk.nhs.tis.trainee.notifications.model.TraineeType;
 
 class NotificationServiceTest {
 
@@ -1125,9 +1129,9 @@ class NotificationServiceTest {
     contact1.put(CONTACT_FIELD, LOCAL_OFFICE_CONTACT);
     contacts.add(contact1);
 
-    when(restTemplate
-        .getForObject("reference-url/api/local-office-contact-by-lo-name/{localOfficeName}",
-            List.class, Map.of("localOfficeName", LOCAL_OFFICE))).thenReturn(contacts);
+    when(restTemplate.getForObject(argThat(uri -> uri != null && uri.getPath()
+            .equals("reference-url/api/local-office-contact-by-lo-name/" + LOCAL_OFFICE)),
+        eq(List.class))).thenReturn(contacts);
 
     service.executeNow(JOB_KEY, programmeJobDataMap);
 
@@ -1153,6 +1157,132 @@ class NotificationServiceTest {
         is(PROGRAMME_MEMBERSHIP));
     assertThat("Unexpected TIS reference info id", tisReferenceInfo.id(),
         is(TIS_ID));
+  }
+
+  @ParameterizedTest
+  @CsvSource(delimiter = '|', nullValues = "null", textBlock = """
+      FOUNDATION    | contact_foundation
+      PUBLIC_HEALTH | contact_public_health
+      SPECIALTY     | contact_specialty
+      """)
+  void shouldAddTraineeTypeBasedContactJobDetailsToNotification(TraineeType traineeType,
+      String contact) throws MessagingException {
+    UserDetails userAccountDetails = new UserDetails(false, USER_EMAIL, USER_TITLE,
+        USER_FAMILY_NAME, USER_GIVEN_NAME, USER_GMC);
+
+    when(emailService.getRecipientAccountByEmail(USER_EMAIL)).thenReturn(userAccountDetails);
+    when(restTemplate.getForObject(ACCOUNT_DETAILS_URL, UserDetails.class,
+        Map.of(TIS_ID_FIELD, PERSON_ID))).thenReturn(userAccountDetails);
+    when(messagingControllerService.isValidRecipient(any(), any()))
+        .thenReturn(true);
+    when(messagingControllerService.isProgrammeMembershipNewStarter(any(), any()))
+        .thenReturn(true);
+    when(messagingControllerService.isProgrammeMembershipInPilot2024(any(), any()))
+        .thenReturn(true);
+
+    List<Map<String, String>> contacts = new ArrayList<>();
+    Map<String, String> contact1 = new HashMap<>();
+    contact1.put(CONTACT_TYPE_FIELD, ONBOARDING_SUPPORT.getContactTypeName());
+    contact1.put(CONTACT_FIELD, contact);
+    contacts.add(contact1);
+
+    when(restTemplate.getForObject(argThat(uri -> uri != null && uri.getPath()
+        .equals("reference-url/api/local-office-contact-by-lo-name/" + LOCAL_OFFICE)
+        && uri.getQuery().contains("traineeType=" + traineeType)), eq(List.class))).thenReturn(
+        contacts);
+
+    programmeJobDataMap.put("traineeType", traineeType);
+    service.executeNow(JOB_KEY, programmeJobDataMap);
+
+    ArgumentCaptor<Map<String, Object>> jobDetailsCaptor = ArgumentCaptor.captor();
+
+    verify(emailService).sendMessage(eq(PERSON_ID), eq(USER_EMAIL), eq(PROGRAMME_CREATED),
+        eq(TEMPLATE_VERSION), jobDetailsCaptor.capture(), any(), anyBoolean());
+
+    Map<String, Object> jobDetailMap = jobDetailsCaptor.getValue();
+
+    assertThat("Unexpected owner contact.", jobDetailMap.get(TEMPLATE_OWNER_CONTACT_FIELD),
+        is(contact));
+  }
+
+  @Test
+  void shouldDefaultMissingTraineeTypeAddingContactJobDetailsToNotification()
+      throws MessagingException {
+    UserDetails userAccountDetails = new UserDetails(false, USER_EMAIL, USER_TITLE,
+        USER_FAMILY_NAME, USER_GIVEN_NAME, USER_GMC);
+
+    when(emailService.getRecipientAccountByEmail(USER_EMAIL)).thenReturn(userAccountDetails);
+    when(restTemplate.getForObject(ACCOUNT_DETAILS_URL, UserDetails.class,
+        Map.of(TIS_ID_FIELD, PERSON_ID))).thenReturn(userAccountDetails);
+    when(messagingControllerService.isValidRecipient(any(), any()))
+        .thenReturn(true);
+    when(messagingControllerService.isProgrammeMembershipNewStarter(any(), any()))
+        .thenReturn(true);
+    when(messagingControllerService.isProgrammeMembershipInPilot2024(any(), any()))
+        .thenReturn(true);
+
+    List<Map<String, String>> contacts = new ArrayList<>();
+    Map<String, String> contact1 = new HashMap<>();
+    contact1.put(CONTACT_TYPE_FIELD, ONBOARDING_SUPPORT.getContactTypeName());
+    contact1.put(CONTACT_FIELD, LOCAL_OFFICE_CONTACT);
+    contacts.add(contact1);
+
+    when(restTemplate.getForObject(argThat(uri -> uri != null && uri.getPath()
+        .equals("reference-url/api/local-office-contact-by-lo-name/" + LOCAL_OFFICE)
+        && uri.getQuery().contains("traineeType=SPECIALTY")), eq(List.class))).thenReturn(contacts);
+
+    programmeJobDataMap.remove("traineeType");
+    service.executeNow(JOB_KEY, programmeJobDataMap);
+
+    ArgumentCaptor<Map<String, Object>> jobDetailsCaptor = ArgumentCaptor.captor();
+
+    verify(emailService).sendMessage(eq(PERSON_ID), eq(USER_EMAIL), eq(PROGRAMME_CREATED),
+        eq(TEMPLATE_VERSION), jobDetailsCaptor.capture(), any(), anyBoolean());
+
+    Map<String, Object> jobDetailMap = jobDetailsCaptor.getValue();
+
+    assertThat("Unexpected owner contact.", jobDetailMap.get(TEMPLATE_OWNER_CONTACT_FIELD),
+        is(LOCAL_OFFICE_CONTACT));
+  }
+
+  @Test
+  void shouldDefaultNullTraineeTypeAddingContactJobDetailsToNotification()
+      throws MessagingException {
+    UserDetails userAccountDetails = new UserDetails(false, USER_EMAIL, USER_TITLE,
+        USER_FAMILY_NAME, USER_GIVEN_NAME, USER_GMC);
+
+    when(emailService.getRecipientAccountByEmail(USER_EMAIL)).thenReturn(userAccountDetails);
+    when(restTemplate.getForObject(ACCOUNT_DETAILS_URL, UserDetails.class,
+        Map.of(TIS_ID_FIELD, PERSON_ID))).thenReturn(userAccountDetails);
+    when(messagingControllerService.isValidRecipient(any(), any()))
+        .thenReturn(true);
+    when(messagingControllerService.isProgrammeMembershipNewStarter(any(), any()))
+        .thenReturn(true);
+    when(messagingControllerService.isProgrammeMembershipInPilot2024(any(), any()))
+        .thenReturn(true);
+
+    List<Map<String, String>> contacts = new ArrayList<>();
+    Map<String, String> contact1 = new HashMap<>();
+    contact1.put(CONTACT_TYPE_FIELD, ONBOARDING_SUPPORT.getContactTypeName());
+    contact1.put(CONTACT_FIELD, LOCAL_OFFICE_CONTACT);
+    contacts.add(contact1);
+
+    when(restTemplate.getForObject(argThat(uri -> uri != null && uri.getPath()
+        .equals("reference-url/api/local-office-contact-by-lo-name/" + LOCAL_OFFICE)
+        && uri.getQuery().contains("traineeType=SPECIALTY")), eq(List.class))).thenReturn(contacts);
+
+    programmeJobDataMap.put("traineeType", null);
+    service.executeNow(JOB_KEY, programmeJobDataMap);
+
+    ArgumentCaptor<Map<String, Object>> jobDetailsCaptor = ArgumentCaptor.captor();
+
+    verify(emailService).sendMessage(eq(PERSON_ID), eq(USER_EMAIL), eq(PROGRAMME_CREATED),
+        eq(TEMPLATE_VERSION), jobDetailsCaptor.capture(), any(), anyBoolean());
+
+    Map<String, Object> jobDetailMap = jobDetailsCaptor.getValue();
+
+    assertThat("Unexpected owner contact.", jobDetailMap.get(TEMPLATE_OWNER_CONTACT_FIELD),
+        is(LOCAL_OFFICE_CONTACT));
   }
 
   @ParameterizedTest
@@ -1229,9 +1359,9 @@ class NotificationServiceTest {
     contact1.put(CONTACT_FIELD, LOCAL_OFFICE_CONTACT);
     contacts.add(contact1);
 
-    when(restTemplate
-        .getForObject("reference-url/api/local-office-contact-by-lo-name/{localOfficeName}",
-            List.class, Map.of("localOfficeName", LOCAL_OFFICE))).thenReturn(contacts);
+    when(restTemplate.getForObject(argThat(uri -> uri != null && uri.getPath()
+            .equals("reference/api/local-office-contact-by-lo-name/" + LOCAL_OFFICE)),
+        eq(List.class))).thenReturn(contacts);
 
     service.executeNow(JOB_KEY, programmeJobDataMap);
 
@@ -1768,21 +1898,37 @@ class NotificationServiceTest {
     assertThat("Unexpected owner contact.", ownerContact, is("testDefault"));
   }
 
-  @Test
-  void shouldGetEmptyContactListIfReferenceServiceFailure() {
+  @ParameterizedTest
+  @EnumSource(TraineeType.class)
+  void shouldGetEmptyContactListIfReferenceServiceFailure(TraineeType traineeType) {
     doThrow(new RestClientException("error"))
-        .when(restTemplate).getForObject(any(), any(), anyMap());
+        .when(restTemplate).getForObject(any(), any());
 
-    List<Map<String, String>> contactList = service.getOwnerContactList("a local office");
+    List<Map<String, String>> contactList = service.getOwnerContactList("a local office",
+        traineeType);
 
     assertThat("Unexpected owner contact list.", contactList.size(), is(0));
   }
 
-  @Test
-  void shouldGetEmptyContactListIfLocalOfficeNull() {
-    List<Map<String, String>> contactList = service.getOwnerContactList(null);
+  @ParameterizedTest
+  @EnumSource(TraineeType.class)
+  void shouldGetEmptyContactListIfLocalOfficeNull(TraineeType traineeType) {
+    List<Map<String, String>> contactList = service.getOwnerContactList(null, traineeType);
 
     assertThat("Unexpected owner contact.", contactList.size(), is(0));
+  }
+
+  @ParameterizedTest
+  @EnumSource(TraineeType.class)
+  void shouldPassTraineeTypeWhenGettingContactList(TraineeType traineeType) {
+    service.getOwnerContactList("a local office", traineeType);
+
+    ArgumentCaptor<URI> uriCaptor = ArgumentCaptor.captor();
+    verify(restTemplate).getForObject(uriCaptor.capture(), eq(List.class));
+
+    URI uri = uriCaptor.getValue();
+    assertThat("Unexpected trainee type.", uri.getQuery(),
+        containsString("traineeType=" + traineeType));
   }
 
   @ParameterizedTest
@@ -2263,7 +2409,7 @@ class NotificationServiceTest {
     when(messagingControllerService.isValidRecipient(PERSON_ID, EMAIL)).thenReturn(true);
 
     assertThat("Unexpected should schedule POG.",
-          service.shouldStorePogEmail(pogType, PERSON_ID), is(true));
+        service.shouldStorePogEmail(pogType, PERSON_ID), is(true));
   }
 
   @ParameterizedTest

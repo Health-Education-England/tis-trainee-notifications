@@ -36,6 +36,7 @@ import static uk.nhs.tis.trainee.notifications.model.NotificationType.LTFT_SUBMI
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.LTFT_UNSUBMITTED;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.LTFT_UPDATED;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.LTFT_WITHDRAWN;
+import static uk.nhs.tis.trainee.notifications.model.TraineeType.SPECIALTY;
 
 import io.awspring.cloud.sqs.annotation.SqsListener;
 import jakarta.mail.MessagingException;
@@ -207,8 +208,9 @@ public class LtftListener {
    * @return A map where the key is the contact type and the value is the {@link Contact} details.
    */
   private Map<String, Contact> getContacts(String managingDeanery) {
+    // TODO: update to actual trainee type when LTFT rolled out to non-specialty.
     List<Map<String, String>> ownerContactList = notificationService.getOwnerContactList(
-        managingDeanery);
+        managingDeanery, SPECIALTY);
 
     return TEMPLATE_CONTACTS.stream()
         .collect(Collectors.toMap(Enum::name, ct -> {

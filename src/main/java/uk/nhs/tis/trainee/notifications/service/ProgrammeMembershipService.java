@@ -29,6 +29,8 @@ import static uk.nhs.tis.trainee.notifications.model.NotificationType.INDEMNITY_
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.LTFT;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.SPONSORSHIP;
 import static uk.nhs.tis.trainee.notifications.model.TisReferenceType.PROGRAMME_MEMBERSHIP;
+import static uk.nhs.tis.trainee.notifications.model.TraineeType.FOUNDATION;
+import static uk.nhs.tis.trainee.notifications.model.TraineeType.SPECIALTY;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.ONE_DAY_IN_SECONDS;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.TEMPLATE_NOTIFICATION_TYPE_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipUtils.isFoundationProgramme;
@@ -379,7 +381,8 @@ public class ProgrammeMembershipService {
   private void createContactInAppNotifications(ProgrammeMembership programmeMembership,
       Map<NotificationType, History> notificationsAlreadySent, boolean isFoundation) {
     String owner = programmeMembership.getManagingDeanery();
-    List<Map<String, String>> contactList = notificationService.getOwnerContactList(owner);
+    List<Map<String, String>> contactList = notificationService.getOwnerContactList(owner,
+        isFoundation ? FOUNDATION : SPECIALTY);
 
     UserDetails userTraineeDetails = notificationService.getTraineeDetails(
         programmeMembership.getPersonId());
@@ -459,6 +462,7 @@ public class ProgrammeMembershipService {
     variables.put(RO_NAME_FIELD,
         pmUtils.getRoName(programmeMembership.getResponsibleOfficer()));
     variables.put(DESIGNATED_BODY_FIELD, programmeMembership.getDesignatedBody());
+    variables.put(TRAINEE_TYPE_FIELD, TraineeType.from(programmeMembership));
 
     History.TisReferenceInfo tisReference = new History.TisReferenceInfo(
         TisReferenceType.PROGRAMME_MEMBERSHIP, programmeMembership.getTisId());

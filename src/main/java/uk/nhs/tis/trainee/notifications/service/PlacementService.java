@@ -29,6 +29,7 @@ import static uk.nhs.tis.trainee.notifications.model.NotificationType.PLACEMENT_
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PLACEMENT_UPDATED_WEEK_12_FOUNDATION;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.USEFUL_INFORMATION;
 import static uk.nhs.tis.trainee.notifications.model.TisReferenceType.PLACEMENT;
+import static uk.nhs.tis.trainee.notifications.model.TraineeType.FOUNDATION;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.ONE_DAY_IN_SECONDS;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.PERSON_ID_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.TEMPLATE_NOTIFICATION_TYPE_FIELD;
@@ -57,6 +58,7 @@ import uk.nhs.tis.trainee.notifications.model.NotificationEvent;
 import uk.nhs.tis.trainee.notifications.model.NotificationStatus;
 import uk.nhs.tis.trainee.notifications.model.NotificationType;
 import uk.nhs.tis.trainee.notifications.model.Placement;
+import uk.nhs.tis.trainee.notifications.model.TraineeType;
 
 /**
  * A service for Placement.
@@ -74,7 +76,7 @@ public class PlacementService {
   public static final String LOCAL_OFFICE_CONTACT_FIELD = "localOfficeContact";
   public static final String LOCAL_OFFICE_CONTACT_TYPE_FIELD = "localOfficeContactType";
   public static final String GMC_NUMBER_FIELD = "gmcNumber";
-  public static final List<String> FOUNDATION_GRADES = List.of("F1", "F2");
+  public static final String TRAINEE_TYPE_FIELD = "traineeType";
   private static final String SCHEDULING_NOTIFICATION_LOG =
       "Scheduling notification {} for {}.";
 
@@ -143,17 +145,6 @@ public class PlacementService {
   }
 
   /**
-   * Determines whether a placement is a Foundation placement.
-   *
-   * @param placement the Placement.
-   * @return true if the placement specialty is Foundation.
-   */
-  private boolean isFoundationPlacement(Placement placement) {
-    return placement.getGradeAbbreviation() != null
-        && FOUNDATION_GRADES.contains(placement.getGradeAbbreviation());
-  }
-
-  /**
    * Get a map of notifications and their event status for a given trainee and placement from the
    * notification history.
    *
@@ -207,9 +198,11 @@ public class PlacementService {
           = getNotificationsEvents(placement.getPersonId(), placement.getTisId());
 
       createDirectNotifications(placement, notificationsRecorded);
-      if (!isFoundationPlacement(placement)) {
-        //this will be resolved by TIS21-8430
-        createInAppNotifications(placement, notificationsRecorded);
+
+      TraineeType traineeType = TraineeType.from(placement);
+      if (traineeType != FOUNDATION) {
+        // TODO: this will be resolved by TIS21-8430
+        createInAppNotifications(placement, notificationsRecorded, traineeType);
       }
     }
   }
@@ -242,7 +235,7 @@ public class PlacementService {
   private void createDirectNotifications(Placement placement,
       Map<NotificationType, NotificationEvent> notificationsRecorded) {
 
-    boolean isFoundationPlacement = isFoundationPlacement(placement);
+    TraineeType traineeType = TraineeType.from(placement);
 
     Map<String, Object> jobDataMap = new HashMap<>();
     jobDataMap.put(TIS_ID_FIELD, placement.getTisId());
@@ -252,17 +245,18 @@ public class PlacementService {
     jobDataMap.put(PLACEMENT_SPECIALTY_FIELD, placement.getSpecialty());
     jobDataMap.put(PLACEMENT_SITE_FIELD, placement.getSite());
     jobDataMap.put(TEMPLATE_OWNER_FIELD, placement.getOwner());
+    jobDataMap.put(TRAINEE_TYPE_FIELD, traineeType);
 
     // Note the status of the trainee will be retrieved when the job is executed, as will
     // their name and email address, and the contact details of the owner LO, not now.
     LocalDate startDate = placement.getStartDate();
-    NotificationType week12Type = isFoundationPlacement
+    NotificationType week12Type = traineeType == FOUNDATION
         ? PLACEMENT_UPDATED_WEEK_12_FOUNDATION : PLACEMENT_UPDATED_WEEK_12;
     if (shouldScheduleNotification(notificationsRecorded, startDate, week12Type)) {
       scheduleWeek12Notification(placement, jobDataMap, startDate, week12Type);
     }
 
-    boolean shouldScheduleRolloutCorrection = !isFoundationPlacement
+    boolean shouldScheduleRolloutCorrection = traineeType != FOUNDATION
         && shouldScheduleRolloutCorrectionNotification(placement, notificationsRecorded);
 
     if (shouldScheduleRolloutCorrection) {
@@ -343,14 +337,16 @@ public class PlacementService {
    *
    * @param placement             The updated placement.
    * @param notificationsRecorded The current recorded notification types and their events.
+   * @param traineeType           The trainee type for the placement.
    */
   private void createInAppNotifications(Placement placement,
-      Map<NotificationType, NotificationEvent> notificationsRecorded) {
+      Map<NotificationType, NotificationEvent> notificationsRecorded, TraineeType traineeType) {
     boolean meetsCriteria = notificationService.meetsCriteria(placement, true);
 
     if (meetsCriteria) {
       String owner = placement.getOwner();
-      List<Map<String, String>> contactList = notificationService.getOwnerContactList(owner);
+      List<Map<String, String>> contactList = notificationService.getOwnerContactList(owner,
+          traineeType);
       String localOfficeContact = notificationService.getOwnerContact(contactList,
           LocalOfficeContactType.TSS_SUPPORT, null);
       String localOfficeContactType =

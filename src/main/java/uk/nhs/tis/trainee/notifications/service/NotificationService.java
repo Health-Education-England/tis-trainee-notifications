@@ -29,12 +29,15 @@ import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_POG_MONTH_6;
 import static uk.nhs.tis.trainee.notifications.model.TisReferenceType.PLACEMENT;
 import static uk.nhs.tis.trainee.notifications.model.TisReferenceType.PROGRAMME_MEMBERSHIP;
+import static uk.nhs.tis.trainee.notifications.model.TraineeType.SPECIALTY;
 import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.PROGRAMME_NAME_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.START_DATE_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.TIS_ID_FIELD;
+import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.TRAINEE_TYPE_FIELD;
 
 import jakarta.mail.MessagingException;
 import java.net.MalformedURLException;
+import java.net.URI;
 import java.net.URL;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -61,6 +64,7 @@ import org.springframework.http.HttpMethod;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.web.util.UriComponentsBuilder;
 import software.amazon.awssdk.services.cognitoidentityprovider.model.UserNotFoundException;
 import uk.nhs.tis.trainee.notifications.config.TemplateVersionsProperties;
 import uk.nhs.tis.trainee.notifications.dto.ActionDto;
@@ -75,6 +79,7 @@ import uk.nhs.tis.trainee.notifications.model.NotificationSummary;
 import uk.nhs.tis.trainee.notifications.model.NotificationType;
 import uk.nhs.tis.trainee.notifications.model.Placement;
 import uk.nhs.tis.trainee.notifications.model.ProgrammeMembership;
+import uk.nhs.tis.trainee.notifications.model.TraineeType;
 
 /**
  * A service for executing notification scheduling jobs.
@@ -93,9 +98,9 @@ public class NotificationService {
   protected static final String JOB_RESULT_STATUS = "status";
 
   public static final String API_TRAINEE_DETAILS = "/api/trainee-profile/account-details/{tisId}";
-  public static final String API_TRAINEE_LOCAL_OFFICE_CONTACTS
+  private static final String API_TRAINEE_LOCAL_OFFICE_CONTACTS
       = "/api/trainee-profile/local-office-contacts/{tisId}/{contactTypeName}";
-  public static final String API_GET_OWNER_CONTACT
+  private static final String API_GET_OWNER_CONTACT
       = "/api/local-office-contact-by-lo-name/{localOfficeName}";
   public static final long ONE_DAY_IN_SECONDS = 24 * 60 * 60L;
 
@@ -376,7 +381,11 @@ public class NotificationService {
     }
 
     String owner = (String) jobDetails.get(TEMPLATE_OWNER_FIELD);
-    List<Map<String, String>> ownerContactList = getOwnerContactList(owner);
+    TraineeType traineeType = Optional.ofNullable(jobDetails.get(TRAINEE_TYPE_FIELD))
+        .map(Object::toString)
+        .map(TraineeType::valueOf)
+        .orElse(SPECIALTY);
+    List<Map<String, String>> ownerContactList = getOwnerContactList(owner, traineeType);
     String contact = getOwnerContact(ownerContactList, LocalOfficeContactType.ONBOARDING_SUPPORT,
         LocalOfficeContactType.TSS_SUPPORT);
     jobDetails.putIfAbsent(TEMPLATE_OWNER_CONTACT_FIELD, contact);
@@ -640,8 +649,7 @@ public class NotificationService {
       LocalOfficeContactType contactType) {
     try {
       ParameterizedTypeReference<Set<LocalOfficeContact>> loContactListListType
-          = new ParameterizedTypeReference<>() {
-              };
+          = new ParameterizedTypeReference<>() {};
       Set<LocalOfficeContact> localOfficeContacts =
           restTemplate.exchange(serviceUrl + API_TRAINEE_LOCAL_OFFICE_CONTACTS,
                   HttpMethod.GET, null, loContactListListType,
@@ -863,15 +871,19 @@ public class NotificationService {
    * Retrieve the full list of contacts for a local office from Trainee Reference Service.
    *
    * @param localOfficeName The local office name.
+   * @param traineeType     The trainee type, used for filtering contacts.
    * @return The list of contacts, or an empty list if there is an error.
    */
-  public List<Map<String, String>> getOwnerContactList(String localOfficeName) {
+  public List<Map<String, String>> getOwnerContactList(String localOfficeName,
+      TraineeType traineeType) {
     if (localOfficeName != null) {
       try {
-        @SuppressWarnings("unchecked")
-        List<Map<String, String>> ownerContactList
-            = restTemplate.getForObject(referenceUrl + API_GET_OWNER_CONTACT,
-            List.class, Map.of(OWNER_FIELD, localOfficeName));
+        URI uri = UriComponentsBuilder.fromUriString(referenceUrl + API_GET_OWNER_CONTACT)
+            .queryParamIfPresent("traineeType", Optional.ofNullable(traineeType))
+            .buildAndExpand(Map.of(OWNER_FIELD, localOfficeName))
+            .encode()
+            .toUri();
+        List<Map<String, String>> ownerContactList = restTemplate.getForObject(uri, List.class);
         return ownerContactList == null ? new ArrayList<>() : ownerContactList;
       } catch (RestClientException rce) {
         log.warn("Exception occurred when requesting reference local-office-contact-by-lo-name "

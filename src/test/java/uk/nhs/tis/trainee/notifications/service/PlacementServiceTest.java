@@ -62,6 +62,7 @@ import static uk.nhs.tis.trainee.notifications.service.PlacementService.PLACEMEN
 import static uk.nhs.tis.trainee.notifications.service.PlacementService.PLACEMENT_TYPE_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.PlacementService.START_DATE_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.PlacementService.TIS_ID_FIELD;
+import static uk.nhs.tis.trainee.notifications.service.PlacementService.TRAINEE_TYPE_FIELD;
 
 import java.time.Instant;
 import java.time.LocalDate;
@@ -93,6 +94,7 @@ import uk.nhs.tis.trainee.notifications.model.NotificationStatus;
 import uk.nhs.tis.trainee.notifications.model.NotificationType;
 import uk.nhs.tis.trainee.notifications.model.Placement;
 import uk.nhs.tis.trainee.notifications.model.TisReferenceType;
+import uk.nhs.tis.trainee.notifications.model.TraineeType;
 
 class PlacementServiceTest {
 
@@ -305,12 +307,11 @@ class PlacementServiceTest {
     assertThat("Unexpected tisId.", jobDataMap.get(TIS_ID_FIELD), is(TIS_ID));
     assertThat("Unexpected personId.", jobDataMap.get(PERSON_ID_FIELD), is(PERSON_ID));
     assertThat("Unexpected start date.", jobDataMap.get(START_DATE_FIELD), is(START_DATE));
-    assertThat("Unexpected placement type.", jobDataMap.get(PLACEMENT_TYPE_FIELD),
-        is(IN_POST));
-    assertThat("Unexpected placement owner.", jobDataMap.get(TEMPLATE_OWNER_FIELD),
-        is(OWNER));
-    assertThat("Unexpected placement site.", jobDataMap.get(PLACEMENT_SITE_FIELD),
-        is(SITE));
+    assertThat("Unexpected placement type.", jobDataMap.get(PLACEMENT_TYPE_FIELD), is(IN_POST));
+    assertThat("Unexpected placement owner.", jobDataMap.get(TEMPLATE_OWNER_FIELD), is(OWNER));
+    assertThat("Unexpected placement site.", jobDataMap.get(PLACEMENT_SITE_FIELD), is(SITE));
+    assertThat("Unexpected trainee type.", jobDataMap.get(TRAINEE_TYPE_FIELD),
+        is(TraineeType.SPECIALTY));
 
     Date when = dateCaptor.getValue();
     assertThat("Unexpected start time", when, is(expectedWhen));
@@ -385,6 +386,8 @@ class PlacementServiceTest {
     assertThat("Unexpected placement type.", jobDataMap.get(PLACEMENT_TYPE_FIELD), is(IN_POST));
     assertThat("Unexpected placement owner.", jobDataMap.get(TEMPLATE_OWNER_FIELD), is(OWNER));
     assertThat("Unexpected placement site.", jobDataMap.get(PLACEMENT_SITE_FIELD), is(SITE));
+    assertThat("Unexpected trainee type.", jobDataMap.get(TRAINEE_TYPE_FIELD),
+        is(TraineeType.FOUNDATION));
 
     Date when = dateCaptor.getValue();
     assertThat("Unexpected start time.", when, is(expectedWhen));
@@ -484,12 +487,11 @@ class PlacementServiceTest {
     assertThat("Unexpected tisId.", jobDataMap.get(TIS_ID_FIELD), is(TIS_ID));
     assertThat("Unexpected personId.", jobDataMap.get(PERSON_ID_FIELD), is(PERSON_ID));
     assertThat("Unexpected start date.", jobDataMap.get(START_DATE_FIELD), is(START_DATE));
-    assertThat("Unexpected placement type.", jobDataMap.get(PLACEMENT_TYPE_FIELD),
-        is(IN_POST));
-    assertThat("Unexpected placement owner.", jobDataMap.get(TEMPLATE_OWNER_FIELD),
-        is(OWNER));
-    assertThat("Unexpected placement site.", jobDataMap.get(PLACEMENT_SITE_FIELD),
-        is(SITE));
+    assertThat("Unexpected placement type.", jobDataMap.get(PLACEMENT_TYPE_FIELD), is(IN_POST));
+    assertThat("Unexpected placement owner.", jobDataMap.get(TEMPLATE_OWNER_FIELD), is(OWNER));
+    assertThat("Unexpected placement site.", jobDataMap.get(PLACEMENT_SITE_FIELD), is(SITE));
+    assertThat("Unexpected trainee type.", jobDataMap.get(TRAINEE_TYPE_FIELD),
+        is(TraineeType.SPECIALTY));
 
     Date when = dateCaptor.getValue();
     Date twoMinutesHence = Date.from(Instant.now().plus(2, ChronoUnit.MINUTES));
@@ -570,7 +572,8 @@ class PlacementServiceTest {
 
     List<Map<String, String>> contactList = List.of(
         Map.of(CONTACT_TYPE_FIELD, LocalOfficeContactType.TSS_SUPPORT.getContactTypeName()));
-    when(notificationService.getOwnerContactList(OWNER)).thenReturn(contactList);
+    when(notificationService.getOwnerContactList(OWNER, TraineeType.SPECIALTY))
+        .thenReturn(contactList);
     when(notificationService.getOwnerContact(contactList, LocalOfficeContactType.TSS_SUPPORT,
         null)).thenReturn("x@y.com");
     when(notificationService.getHrefTypeForContact("x@y.com")).thenReturn(
@@ -818,10 +821,9 @@ class PlacementServiceTest {
 
     service.addNotifications(placement);
 
-    ArgumentCaptor<TisReferenceInfo> referenceInfoCaptor = ArgumentCaptor.forClass(
-        TisReferenceInfo.class);
-    ArgumentCaptor<Map<String, Object>> variablesCaptor = ArgumentCaptor.forClass(Map.class);
-    ArgumentCaptor<Boolean> doNotStoreJustLogCaptor = ArgumentCaptor.forClass(Boolean.class);
+    ArgumentCaptor<TisReferenceInfo> referenceInfoCaptor = ArgumentCaptor.captor();
+    ArgumentCaptor<Map<String, Object>> variablesCaptor = ArgumentCaptor.captor();
+    ArgumentCaptor<Boolean> doNotStoreJustLogCaptor = ArgumentCaptor.captor();
     verify(inAppService).createNotifications(eq(PERSON_ID), referenceInfoCaptor.capture(),
         eq(notificationType), eq(notificationVersion), variablesCaptor.capture(),
         doNotStoreJustLogCaptor.capture(), eq(expectedDisplayInstant));
@@ -867,7 +869,8 @@ class PlacementServiceTest {
 
     List<Map<String, String>> contactList = List.of(
         Map.of(CONTACT_TYPE_FIELD, LocalOfficeContactType.TSS_SUPPORT.getContactTypeName()));
-    when(notificationService.getOwnerContactList(OWNER)).thenReturn(contactList);
+    when(notificationService.getOwnerContactList(OWNER, TraineeType.SPECIALTY))
+        .thenReturn(contactList);
     when(notificationService.getOwnerContact(contactList, LocalOfficeContactType.TSS_SUPPORT,
         null)).thenReturn(contact);
     when(notificationService.getHrefTypeForContact(contact)).thenReturn(
@@ -876,7 +879,7 @@ class PlacementServiceTest {
 
     service.addNotifications(placement);
 
-    ArgumentCaptor<Map<String, Object>> variablesCaptor = ArgumentCaptor.forClass(Map.class);
+    ArgumentCaptor<Map<String, Object>> variablesCaptor = ArgumentCaptor.captor();
     verify(inAppService).createNotifications(eq(PERSON_ID), any(), eq(PLACEMENT_INFORMATION),
         eq(PLACEMENT_INFO_VERSION), variablesCaptor.capture(), anyBoolean(), any());
     verify(inAppService).createNotifications(eq(PERSON_ID), any(), eq(NON_EMPLOYMENT),
@@ -898,6 +901,39 @@ class PlacementServiceTest {
     assertThat("Unexpected GMC number.", variables.get(GMC_NUMBER_FIELD), is(USER_GMC));
   }
 
+  @ParameterizedTest
+  @CsvSource(delimiter = '|', nullValues = "null", textBlock = """
+      null       | SPECIALTY
+      OtherGrade | SPECIALTY
+      """)
+  // TODO: add F1 and F2 mapped to FOUNDATION when foundation in-app enabled.
+  void shouldGetInAppContactDetailsBasedOnTraineeType(String gradeAbbreviation,
+      TraineeType traineeType) {
+    Placement placement = new Placement();
+    placement.setTisId(TIS_ID);
+    placement.setPersonId(PERSON_ID);
+    placement.setStartDate(START_DATE);
+    placement.setOwner(OWNER);
+    placement.setPlacementType(IN_POST);
+    placement.setSpecialty(SPECIALTY);
+    placement.setSite(SITE);
+    placement.setGradeAbbreviation(gradeAbbreviation);
+
+    when(notificationService.meetsCriteria(placement, true)).thenReturn(true);
+
+    List<Map<String, String>> contactList = List.of(
+        Map.of(CONTACT_TYPE_FIELD, LocalOfficeContactType.TSS_SUPPORT.getContactTypeName()));
+    when(notificationService.getOwnerContactList(OWNER, TraineeType.SPECIALTY))
+        .thenReturn(contactList);
+    when(notificationService.getOwnerContact(contactList, LocalOfficeContactType.TSS_SUPPORT,
+        null)).thenReturn("contact");
+    when(notificationService.getHrefTypeForContact("contact")).thenReturn("NON_HREF");
+
+    service.addNotifications(placement);
+
+    verify(notificationService).getOwnerContactList(OWNER, traineeType);
+  }
+
   @Test
   void shouldAddUnknownGmcInInAppNotificationWhenTraineeDetailsNull() {
     Placement placement = new Placement();
@@ -917,7 +953,7 @@ class PlacementServiceTest {
 
     service.addNotifications(placement);
 
-    ArgumentCaptor<Map<String, Object>> variablesCaptor = ArgumentCaptor.forClass(Map.class);
+    ArgumentCaptor<Map<String, Object>> variablesCaptor = ArgumentCaptor.captor();
     verify(inAppService).createNotifications(eq(PERSON_ID), any(), eq(PLACEMENT_INFORMATION),
         eq(PLACEMENT_INFO_VERSION), variablesCaptor.capture(), anyBoolean(), any());
     verify(inAppService).createNotifications(eq(PERSON_ID), any(), eq(NON_EMPLOYMENT),
@@ -953,7 +989,7 @@ class PlacementServiceTest {
 
     service.addNotifications(placement);
 
-    ArgumentCaptor<Map<String, Object>> variablesCaptor = ArgumentCaptor.forClass(Map.class);
+    ArgumentCaptor<Map<String, Object>> variablesCaptor = ArgumentCaptor.captor();
     verify(inAppService).createNotifications(eq(PERSON_ID), any(), eq(PLACEMENT_INFORMATION),
         eq(PLACEMENT_INFO_VERSION), variablesCaptor.capture(), anyBoolean(), any());
     verify(inAppService).createNotifications(eq(PERSON_ID), any(), eq(NON_EMPLOYMENT),
