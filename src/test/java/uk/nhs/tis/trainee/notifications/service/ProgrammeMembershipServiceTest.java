@@ -1703,7 +1703,7 @@ class ProgrammeMembershipServiceTest {
    */
   private ProgrammeMembership getDefaultProgrammeMembership(TraineeType traineeType) {
     Curriculum theCurriculum = new Curriculum(CURRICULUM_NAME, MEDICAL_CURRICULUM_1,
-        traineeType == FOUNDATION ? "Foundation" : "any specialty",
+        traineeType == FOUNDATION ? "Foundation" : "not foundation",
         false, CURRICULUM_END_DATE, null);
     ResponsibleOfficer theRo = new ResponsibleOfficer("roEmail", RO_FIRST_NAME, RO_LAST_NAME,
         "roGmc", "roPhone");

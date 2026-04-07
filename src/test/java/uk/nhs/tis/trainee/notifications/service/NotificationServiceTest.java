@@ -1129,9 +1129,9 @@ class NotificationServiceTest {
     contact1.put(CONTACT_FIELD, LOCAL_OFFICE_CONTACT);
     contacts.add(contact1);
 
-    URI contactByLoMatcher = argThat(uri -> uri != null && uri.getPath()
-        .equals("reference-url/api/local-office-contact-by-lo-name/" + LOCAL_OFFICE));
-    when(restTemplate.getForObject(contactByLoMatcher, eq(List.class))).thenReturn(contacts);
+    when(restTemplate.getForObject(argThat(uri -> uri != null && uri.getPath()
+            .equals("reference-url/api/local-office-contact-by-lo-name/" + LOCAL_OFFICE)),
+        eq(List.class))).thenReturn(contacts);
 
     service.executeNow(JOB_KEY, programmeJobDataMap);
 
@@ -1186,10 +1186,10 @@ class NotificationServiceTest {
     contact1.put(CONTACT_FIELD, contact);
     contacts.add(contact1);
 
-    URI contactByLoMatcher = argThat(uri -> uri != null
-        && uri.getPath().equals("reference-url/api/local-office-contact-by-lo-name/" + LOCAL_OFFICE)
-        && uri.getQuery().contains("traineeType=" + traineeType));
-    when(restTemplate.getForObject(contactByLoMatcher, eq(List.class))).thenReturn(contacts);
+    when(restTemplate.getForObject(argThat(uri -> uri != null && uri.getPath()
+        .equals("reference-url/api/local-office-contact-by-lo-name/" + LOCAL_OFFICE)
+        && uri.getQuery().contains("traineeType=" + traineeType)), eq(List.class))).thenReturn(
+        contacts);
 
     programmeJobDataMap.put("traineeType", traineeType);
     service.executeNow(JOB_KEY, programmeJobDataMap);
@@ -1227,10 +1227,9 @@ class NotificationServiceTest {
     contact1.put(CONTACT_FIELD, LOCAL_OFFICE_CONTACT);
     contacts.add(contact1);
 
-    URI contactByLoMatcher = argThat(uri -> uri != null
-        && uri.getPath().equals("reference-url/api/local-office-contact-by-lo-name/" + LOCAL_OFFICE)
-        && uri.getQuery().contains("traineeType=SPECIALTY"));
-    when(restTemplate.getForObject(contactByLoMatcher, eq(List.class))).thenReturn(contacts);
+    when(restTemplate.getForObject(argThat(uri -> uri != null && uri.getPath()
+        .equals("reference-url/api/local-office-contact-by-lo-name/" + LOCAL_OFFICE)
+        && uri.getQuery().contains("traineeType=SPECIALTY")), eq(List.class))).thenReturn(contacts);
 
     programmeJobDataMap.remove("traineeType");
     service.executeNow(JOB_KEY, programmeJobDataMap);
@@ -1268,10 +1267,9 @@ class NotificationServiceTest {
     contact1.put(CONTACT_FIELD, LOCAL_OFFICE_CONTACT);
     contacts.add(contact1);
 
-    URI contactByLoMatcher = argThat(uri -> uri != null
-        && uri.getPath().equals("reference-url/api/local-office-contact-by-lo-name/" + LOCAL_OFFICE)
-        && uri.getQuery().contains("traineeType=SPECIALTY"));
-    when(restTemplate.getForObject(contactByLoMatcher, eq(List.class))).thenReturn(contacts);
+    when(restTemplate.getForObject(argThat(uri -> uri != null && uri.getPath()
+        .equals("reference-url/api/local-office-contact-by-lo-name/" + LOCAL_OFFICE)
+        && uri.getQuery().contains("traineeType=SPECIALTY")), eq(List.class))).thenReturn(contacts);
 
     programmeJobDataMap.put("traineeType", null);
     service.executeNow(JOB_KEY, programmeJobDataMap);
@@ -1361,9 +1359,9 @@ class NotificationServiceTest {
     contact1.put(CONTACT_FIELD, LOCAL_OFFICE_CONTACT);
     contacts.add(contact1);
 
-    URI contactByLoMatcher = argThat(uri -> uri != null && uri.getPath()
-        .equals("reference/api/local-office-contact-by-lo-name/" + LOCAL_OFFICE));
-    when(restTemplate.getForObject(contactByLoMatcher, eq(List.class))).thenReturn(contacts);
+    when(restTemplate.getForObject(argThat(uri -> uri != null && uri.getPath()
+            .equals("reference/api/local-office-contact-by-lo-name/" + LOCAL_OFFICE)),
+        eq(List.class))).thenReturn(contacts);
 
     service.executeNow(JOB_KEY, programmeJobDataMap);
 

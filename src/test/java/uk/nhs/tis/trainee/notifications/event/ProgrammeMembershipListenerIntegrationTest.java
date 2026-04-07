@@ -245,9 +245,9 @@ class ProgrammeMembershipListenerIntegrationTest {
         "contactTypeName", TSS_SUPPORT.getContactTypeName()
     );
 
-    URI contactByLoMatcher = argThat(uri -> uri != null && uri.getPath()
-        .equals("/reference/api/local-office-contact-by-lo-name/" + MANAGING_DEANERY));
-    when(restTemplate.getForObject(contactByLoMatcher, eq(List.class)))
+    when(restTemplate.getForObject(argThat(uri -> uri != null && uri.getPath()
+            .equals("/reference/api/local-office-contact-by-lo-name/" + MANAGING_DEANERY)),
+        eq(List.class)))
         .thenAnswer(inv -> {
           URI uri = inv.getArgument(0, URI.class); //consume the argument for assertion
 

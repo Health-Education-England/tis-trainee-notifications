@@ -34,7 +34,7 @@ public enum TraineeType {
   PUBLIC_HEALTH,
   SPECIALTY;
 
-  private static final Set<String> FOUNDATION_GRADES = Set.of("F1","F2");
+  private static final Set<String> FOUNDATION_GRADES = Set.of("F1", "F2");
 
   /**
    * Determine the trainee type from a programme membership.
