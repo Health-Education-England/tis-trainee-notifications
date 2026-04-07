@@ -1035,7 +1035,8 @@ class PlacementServiceTest {
 
     List<Map<String, String>> contactList = List.of(
         Map.of(CONTACT_TYPE_FIELD, LocalOfficeContactType.TSS_SUPPORT.getContactTypeName()));
-    when(notificationService.getOwnerContactList(OWNER)).thenReturn(contactList);
+    when(notificationService.getOwnerContactList(OWNER, TraineeType.FOUNDATION))
+        .thenReturn(contactList);
     when(notificationService.getOwnerContact(contactList, LocalOfficeContactType.TSS_SUPPORT,
         null)).thenReturn(contact);
     when(notificationService.getHrefTypeForContact(contact)).thenReturn(
@@ -1072,8 +1073,9 @@ class PlacementServiceTest {
   @CsvSource(delimiter = '|', nullValues = "null", textBlock = """
       null       | SPECIALTY
       OtherGrade | SPECIALTY
+      F1         | FOUNDATION
+      F2         | FOUNDATION
       """)
-  // TODO: add F1 and F2 mapped to FOUNDATION when foundation in-app enabled.
   void shouldGetInAppContactDetailsBasedOnTraineeType(String gradeAbbreviation,
       TraineeType traineeType) {
     Placement placement = new Placement();
@@ -1090,7 +1092,7 @@ class PlacementServiceTest {
 
     List<Map<String, String>> contactList = List.of(
         Map.of(CONTACT_TYPE_FIELD, LocalOfficeContactType.TSS_SUPPORT.getContactTypeName()));
-    when(notificationService.getOwnerContactList(OWNER, TraineeType.SPECIALTY))
+    when(notificationService.getOwnerContactList(OWNER, traineeType))
         .thenReturn(contactList);
     when(notificationService.getOwnerContact(contactList, LocalOfficeContactType.TSS_SUPPORT,
         null)).thenReturn("contact");
@@ -1189,7 +1191,9 @@ class PlacementServiceTest {
 
   @ParameterizedTest
   @EnumSource(value = NotificationType.class, mode = EnumSource.Mode.INCLUDE,
-      names = {"PLACEMENT_INFORMATION", "USEFUL_INFORMATION", "NON_EMPLOYMENT"})
+      names = {"PLACEMENT_INFORMATION", "USEFUL_INFORMATION", "NON_EMPLOYMENT",
+          "PLACEMENT_INFORMATION_FOUNDATION", "USEFUL_INFORMATION_FOUNDATION",
+          "NON_EMPLOYMENT_FOUNDATION"})
   void shouldNotAddInAppNotificationsWhenPastSentHistoryExist(NotificationType notificationType) {
     Placement placement = new Placement();
     placement.setTisId(TIS_ID);
@@ -1199,6 +1203,9 @@ class PlacementServiceTest {
     placement.setPlacementType(IN_POST);
     placement.setSpecialty(SPECIALTY);
     placement.setSite(SITE);
+    if (notificationType.name().contains("FOUNDATION")) {
+      placement.setGradeAbbreviation(FOUNDATION_GRADE);
+    }
 
     List<HistoryDto> sentNotifications = List.of(
         new HistoryDto("id", new TisReferenceInfo(PLACEMENT, TIS_ID), MessageType.IN_APP,
@@ -1219,7 +1226,9 @@ class PlacementServiceTest {
 
   @ParameterizedTest
   @EnumSource(value = NotificationType.class, mode = EnumSource.Mode.INCLUDE,
-      names = {"PLACEMENT_INFORMATION", "USEFUL_INFORMATION", "NON_EMPLOYMENT"})
+      names = {"PLACEMENT_INFORMATION", "USEFUL_INFORMATION", "NON_EMPLOYMENT",
+          "PLACEMENT_INFORMATION_FOUNDATION", "USEFUL_INFORMATION_FOUNDATION",
+          "NON_EMPLOYMENT_FOUNDATION"})
   void shouldAddInAppNotificationsWhenNoPastSentHistoryWithSameRefType(
       NotificationType notificationType) {
     Placement placement = new Placement();
@@ -1230,6 +1239,9 @@ class PlacementServiceTest {
     placement.setPlacementType(IN_POST);
     placement.setSpecialty(SPECIALTY);
     placement.setSite(SITE);
+    if (notificationType.name().contains("FOUNDATION")) {
+      placement.setGradeAbbreviation(FOUNDATION_GRADE);
+    }
 
     List<HistoryDto> sentNotifications = List.of(
         new HistoryDto("id", new TisReferenceInfo(PROGRAMME_MEMBERSHIP, TIS_ID), MessageType.IN_APP,

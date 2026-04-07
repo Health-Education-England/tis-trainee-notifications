@@ -357,7 +357,7 @@ public class PlacementService {
   }
 
   /**
-   * Creates and sends data for in-app notifications.
+   * Process in-app notifications.
    *
    * @param placement             The updated placement.
    * @param notificationsRecorded The current recorded notification types and their events.
@@ -365,49 +365,63 @@ public class PlacementService {
    */
   private void processInAppNotifications(Placement placement,
       Map<NotificationType, NotificationEvent> notificationsRecorded, TraineeType traineeType) {
-    boolean meetsCriteria = notificationService.meetsCriteria(placement, true);
+    if (!notificationService.meetsCriteria(placement, true)) {
+      return;
+    }
 
-    if (meetsCriteria) {
-      String owner = placement.getOwner();
-      List<Map<String, String>> contactList = notificationService.getOwnerContactList(owner,
-          traineeType);
-      String localOfficeContact = notificationService.getOwnerContact(contactList,
-          LocalOfficeContactType.TSS_SUPPORT, null);
-      String localOfficeContactType =
-          notificationService.getHrefTypeForContact(localOfficeContact);
+    createInAppNotifications(placement, notificationsRecorded, traineeType);
+  }
+
+  /**
+   * Create in-app notifications.
+   *
+   * @param placement             The updated placement.
+   * @param notificationsRecorded The current recorded notification types and their events.
+   * @param traineeType           The trainee type for the placement.
+   */
+  private void createInAppNotifications(Placement placement,
+      Map<NotificationType, NotificationEvent> notificationsRecorded, TraineeType traineeType) {
+
+    String owner = placement.getOwner();
+    List<Map<String, String>> contactList = notificationService.getOwnerContactList(owner,
+        traineeType);
+    String localOfficeContact = notificationService.getOwnerContact(contactList,
+        LocalOfficeContactType.TSS_SUPPORT, null);
+    String localOfficeContactType =
+        notificationService.getHrefTypeForContact(localOfficeContact);
 
     UserDetails userTraineeDetails = notificationService.getTraineeDetails(
         placement.getPersonId());
     String gmcNumber = (userTraineeDetails != null && userTraineeDetails.gmcNumber() != null)
         ? userTraineeDetails.gmcNumber().trim() : "unknown";
 
-      // PLACEMENT_INFORMATION
-      createUniqueInAppNotification(placement, notificationsRecorded,
-          traineeType != FOUNDATION ? PLACEMENT_INFORMATION : PLACEMENT_INFORMATION_FOUNDATION,
-          traineeType != FOUNDATION ? placementInfoVersion : placementInfoFoundationVersion,
-          Map.of(
-              LOCAL_OFFICE_CONTACT_FIELD, localOfficeContact,
-              LOCAL_OFFICE_CONTACT_TYPE_FIELD, localOfficeContactType,
-              GMC_NUMBER_FIELD, gmcNumber));
+    // PLACEMENT_INFORMATION
+    createUniqueInAppNotification(placement, notificationsRecorded,
+        traineeType != FOUNDATION ? PLACEMENT_INFORMATION : PLACEMENT_INFORMATION_FOUNDATION,
+        traineeType != FOUNDATION ? placementInfoVersion : placementInfoFoundationVersion,
+        Map.of(
+            LOCAL_OFFICE_CONTACT_FIELD, localOfficeContact,
+            LOCAL_OFFICE_CONTACT_TYPE_FIELD, localOfficeContactType,
+            GMC_NUMBER_FIELD, gmcNumber));
 
-      // PLACEMENT_USEFUL_INFORMATION
-      createUniqueInAppNotification(placement, notificationsRecorded,
-          traineeType != FOUNDATION ? USEFUL_INFORMATION : USEFUL_INFORMATION_FOUNDATION,
-          traineeType != FOUNDATION ? placementUsefulInfoVersion : placementUsefulInfoFoundationVersion,
-          Map.of(
-              LOCAL_OFFICE_CONTACT_FIELD, localOfficeContact,
-              LOCAL_OFFICE_CONTACT_TYPE_FIELD, localOfficeContactType,
-              GMC_NUMBER_FIELD, gmcNumber));
+    // PLACEMENT_USEFUL_INFORMATION
+    createUniqueInAppNotification(placement, notificationsRecorded,
+        traineeType != FOUNDATION ? USEFUL_INFORMATION : USEFUL_INFORMATION_FOUNDATION,
+        traineeType != FOUNDATION
+            ? placementUsefulInfoVersion : placementUsefulInfoFoundationVersion,
+        Map.of(
+            LOCAL_OFFICE_CONTACT_FIELD, localOfficeContact,
+            LOCAL_OFFICE_CONTACT_TYPE_FIELD, localOfficeContactType,
+            GMC_NUMBER_FIELD, gmcNumber));
 
-      // NON_EMPLOYMENT
-      createUniqueInAppNotification(placement, notificationsRecorded,
-          traineeType != FOUNDATION ? NON_EMPLOYMENT : NON_EMPLOYMENT_FOUNDATION,
-          traineeType != FOUNDATION ? nonEmploymentVersion : nonEmploymentFoundationVersion,
-          Map.of(
-              LOCAL_OFFICE_CONTACT_FIELD, localOfficeContact,
-              LOCAL_OFFICE_CONTACT_TYPE_FIELD, localOfficeContactType,
-              GMC_NUMBER_FIELD, gmcNumber));
-    }
+    // NON_EMPLOYMENT
+    createUniqueInAppNotification(placement, notificationsRecorded,
+        traineeType != FOUNDATION ? NON_EMPLOYMENT : NON_EMPLOYMENT_FOUNDATION,
+        traineeType != FOUNDATION ? nonEmploymentVersion : nonEmploymentFoundationVersion,
+        Map.of(
+            LOCAL_OFFICE_CONTACT_FIELD, localOfficeContact,
+            LOCAL_OFFICE_CONTACT_TYPE_FIELD, localOfficeContactType,
+            GMC_NUMBER_FIELD, gmcNumber));
   }
 
   /**
