@@ -83,9 +83,9 @@ public class ProgrammeMembershipService {
   public static final Integer POG_ALL_NOTIFICATION_CUTOFF_WEEKS = 16;
 
   public static final List<String> INCLUDE_CURRICULUM_SUBTYPES
-      = List.of("MEDICAL_CURRICULUM", "MEDICAL_SPR");
+      = List.of("MEDICAL_CURRICULUM", "MEDICAL_SPR", "AFT");
 
-  public static final String ACADEMIC_FOUNDATION_CURRICULUM_NAME = "ACADEMIC FOUNDATION TRAINING";
+  public static final String FOUNDATION_CURRICULUM_SUBTYPE = "AFT";
   public static final String FOUNDATION_SPECIALTY = "FOUNDATION";
   public static final String PUBLIC_HEALTH_SPECIALTY = "Public Health Medicine";
 
