@@ -88,6 +88,7 @@ class ProgrammeMembershipUtilsTest {
 
   private static final String MEDICAL_CURRICULUM_1 = "Medical_curriculum";
   private static final String MEDICAL_CURRICULUM_2 = "Medical_spr";
+  private static final String MEDICAL_CURRICULUM_3 = "AFT";
   private static final String INCLUDED_SPECIALTY_1 = "some-specialty";
   private static final String INCLUDED_SPECIALTY_2 = "Public Health Medicine";
   private static final LocalDate START_DATE = LocalDate.now().plusYears(1);
@@ -129,7 +130,7 @@ class ProgrammeMembershipUtilsTest {
   }
 
   @ParameterizedTest
-  @ValueSource(strings = {MEDICAL_CURRICULUM_1, MEDICAL_CURRICULUM_2})
+  @ValueSource(strings = {MEDICAL_CURRICULUM_1, MEDICAL_CURRICULUM_2, MEDICAL_CURRICULUM_3})
   void shouldNotExcludePmWithMedicalSubtypeAndNoExcludedSpecialties(String subtype) {
     Curriculum theCurriculum = new Curriculum(CURRICULUM_NAME, subtype, "INCLUDED_SPECIALTY_1",
         false, CURRICULUM_END_DATE, null);
@@ -1194,14 +1195,14 @@ class ProgrammeMembershipUtilsTest {
   }
 
   @Test
-  void shouldNotBeFoundationProgrammeWhenBothCurriculumNameAndSpecialtyIsNull() {
+  void shouldNotBeFoundationProgrammeWhenBothCurriculumSpecialtyAndSubtypeIsNull() {
     ProgrammeMembership programmeMembership = new ProgrammeMembership();
     programmeMembership.setCurricula(List.of(
-        new Curriculum(null, MEDICAL_CURRICULUM_1, null, false, CURRICULUM_END_DATE,
+        new Curriculum(CURRICULUM_NAME, null, null, false, CURRICULUM_END_DATE,
             null)));
 
     assertThat("Unexpected foundation programme flag.",
-        service.isFoundationProgramme(programmeMembership), is(false));
+        isFoundationProgramme(programmeMembership), is(false));
   }
 
   @ParameterizedTest
@@ -1221,13 +1222,13 @@ class ProgrammeMembershipUtilsTest {
 
   @ParameterizedTest
   @CsvSource(textBlock = """
-      academic foundation training
-      ACADEMIC FOUNDATION TRAINING
-      Academic Foundation Training""")
-  void shouldBeFoundationProgrammeWhenCurriculumNameIsAcademicFoundationTraining(String name) {
+      aft
+      AFT
+      """)
+  void shouldBeFoundationProgrammeWhenCurriculumSubtypeIsAft(String subtype) {
     ProgrammeMembership programmeMembership = new ProgrammeMembership();
     programmeMembership.setCurricula(List.of(
-        new Curriculum(name, MEDICAL_CURRICULUM_1, null, false, CURRICULUM_END_DATE,
+        new Curriculum(null, subtype, null, false, CURRICULUM_END_DATE,
             null)));
 
     assertThat("Unexpected foundation programme flag.",

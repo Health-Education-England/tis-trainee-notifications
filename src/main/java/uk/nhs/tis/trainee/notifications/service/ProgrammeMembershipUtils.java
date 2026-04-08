@@ -26,11 +26,11 @@ import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_POG_MONTH_12;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_POG_MONTH_6;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.TEMPLATE_OWNER_FIELD;
-import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.ACADEMIC_FOUNDATION_CURRICULUM_NAME;
 import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.CCT_DATE_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.COJ_SYNCED_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.DEFERRAL_IF_MORE_THAN_DAYS;
 import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.DESIGNATED_BODY_FIELD;
+import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.FOUNDATION_CURRICULUM_SUBTYPE;
 import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.FOUNDATION_SPECIALTY;
 import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.INCLUDE_CURRICULUM_SUBTYPES;
 import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.PERSON_ID_FIELD;
@@ -246,7 +246,7 @@ public class ProgrammeMembershipUtils {
    * programme membership.
    *
    * <p>This will be TRUE if none of the curricula have curriculumSubType = MEDICAL_CURRICULUM or
-   * MEDICAL_SPR.
+   * MEDICAL_SPR or AFT.
    * Note that specialtyName = 'Public health medicine' or 'Foundation' are no longer excluded.
    *
    * @param programmeMembership the Programme membership.
@@ -412,7 +412,7 @@ public class ProgrammeMembershipUtils {
 
   /**
    * Identify if a programme membership is a foundation programme, by checking if any of the
-   * curricula have a name or specialty indicating it's a foundation programme.
+   * curricula have a subtype or specialty indicating it's a foundation programme.
    *
    * @param programmeMembership The programme membership to check.
    * @return true if the programme membership is a foundation programme, otherwise false.
@@ -420,9 +420,9 @@ public class ProgrammeMembershipUtils {
   public static boolean isFoundationProgramme(ProgrammeMembership programmeMembership) {
     return programmeMembership.getCurricula().stream()
         .anyMatch(curriculum -> {
-          String name = curriculum.curriculumName();
+          String subtype = curriculum.curriculumSubType();
           String specialty = curriculum.curriculumSpecialty();
-          return (name != null && (name.equalsIgnoreCase(ACADEMIC_FOUNDATION_CURRICULUM_NAME))
+          return (subtype != null && (subtype.equalsIgnoreCase(FOUNDATION_CURRICULUM_SUBTYPE))
               || (specialty != null && specialty.equalsIgnoreCase(FOUNDATION_SPECIALTY)));
         });
   }
