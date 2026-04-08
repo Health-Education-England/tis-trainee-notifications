@@ -26,11 +26,11 @@ import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_POG_MONTH_12;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_POG_MONTH_6;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.TEMPLATE_OWNER_FIELD;
-import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.FOUNDATION_CURRICULUM_SUBTYPE;
 import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.CCT_DATE_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.COJ_SYNCED_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.DEFERRAL_IF_MORE_THAN_DAYS;
 import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.DESIGNATED_BODY_FIELD;
+import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.FOUNDATION_CURRICULUM_SUBTYPE;
 import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.FOUNDATION_SPECIALTY;
 import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.INCLUDE_CURRICULUM_SUBTYPES;
 import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.PERSON_ID_FIELD;
