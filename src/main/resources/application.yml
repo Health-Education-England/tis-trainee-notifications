@@ -98,7 +98,11 @@ application:
       in-app: v1.0.0
     non-employment:
       in-app: v1.0.0
+    non-employment-foundation:
+      in-app: v1.0.0
     placement-information:
+      in-app: v1.0.0
+    placement-information-foundation:
       in-app: v1.0.0
     placement-rollout-2024-correction:
       in-app: v1.0.0
@@ -107,6 +111,8 @@ application:
     placement-updated-week-12-foundation:
       email: v1.0.0
     placement-useful-information:
+      in-app: v1.0.0
+    placement-useful-information-foundation:
       in-app: v1.0.0
     programme-created:
       email: v1.3.3
