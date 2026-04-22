@@ -35,6 +35,7 @@ import org.thymeleaf.TemplateEngine;
 import org.thymeleaf.context.Context;
 import uk.nhs.tis.trainee.notifications.model.MessageType;
 import uk.nhs.tis.trainee.notifications.model.NotificationType;
+import uk.nhs.tis.trainee.notifications.model.TraineeType;
 
 /**
  * A service providing consistent template functionality.
@@ -60,6 +61,14 @@ public class TemplateService {
   public Context buildContext(Map<String, Object> variables) {
     // Convert UTC timestamps to the Local Office timezone.
     Map<String, Object> localizedTemplateVariables = localizeTimestamps(variables);
+
+    // Convert trainee type from String to enumeration.
+    localizedTemplateVariables.computeIfPresent("traineeType", (key, value) ->
+        value instanceof String traineeType
+            ? TraineeType.valueOf(traineeType)
+            : value
+    );
+
     Context context = new Context();
     context.setVariables(localizedTemplateVariables);
 
