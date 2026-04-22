@@ -23,8 +23,10 @@ package uk.nhs.tis.trainee.notifications.service;
 
 import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.CoreMatchers.not;
 import static org.hamcrest.CoreMatchers.sameInstance;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.hasItem;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -39,12 +41,14 @@ import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.ArgumentCaptor;
 import org.thymeleaf.TemplateEngine;
 import org.thymeleaf.context.Context;
 import uk.nhs.tis.trainee.notifications.model.MessageType;
 import uk.nhs.tis.trainee.notifications.model.NotificationType;
+import uk.nhs.tis.trainee.notifications.model.TraineeType;
 
 class TemplateServiceTest {
 
@@ -59,6 +63,31 @@ class TemplateServiceTest {
   void setUp() {
     templateEngine = mock(TemplateEngine.class);
     service = new TemplateService(templateEngine, TIMEZONE);
+  }
+
+  @Test
+  void shouldBuildContextWithoutTraineeTypeEnumerationWhenIsMissing() {
+    Context context = service.buildContext(Map.of());
+
+    assertThat("Unexpected trainee type.", context.getVariableNames(), not(hasItem("traineeType")));
+  }
+
+  @ParameterizedTest
+  @EnumSource(TraineeType.class)
+  void shouldBuildContextWithTraineeTypeEnumerationWhenIsEnumeration(TraineeType traineeType) {
+    Context context = service.buildContext(Map.of("traineeType", traineeType));
+
+    Object variable = context.getVariable("traineeType");
+    assertThat("Unexpected trainee type.", variable, is(traineeType));
+  }
+
+  @ParameterizedTest
+  @EnumSource(TraineeType.class)
+  void shouldBuildContextWithTraineeTypeEnumerationWhenIsString(TraineeType traineeType) {
+    Context context = service.buildContext(Map.of("traineeType", traineeType.toString()));
+
+    Object variable = context.getVariable("traineeType");
+    assertThat("Unexpected trainee type.", variable, is(traineeType));
   }
 
   @Test
