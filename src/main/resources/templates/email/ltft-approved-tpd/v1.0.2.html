@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+  <title>LTFT Approved</title>
+</head>
+<body>
+<h1>Email Message</h1>
+<h2>Subject</h2>
+<th:block th:fragment="subject">Notification for Changing hours (LTFT) Application Approval for <th:block th:text="${not #strings.isEmpty(familyName)} ? |Dr ${familyName}| : _">Doctor</th:block> (<th:block th:text="${not #strings.isEmpty(var?.formRef)} ? ${var.formRef} : 'unknown form reference'"></th:block>)
+</th:block><h2>Content</h2>
+<th:block th:fragment="content" th:with="subjectRefs = |GMC: ${not #strings.isEmpty(var?.personalDetails?.gmcNumber) ? var.personalDetails.gmcNumber : 'unknown'}, LTFT Ref No: ${not #strings.isEmpty(var?.formRef) ? var.formRef : 'unknown'}|">
+  <div th:replace="fragments/retry/v1.0.0 :: retry(${originallySentOn})"></div>
+  <div style="text-align:right"><img style="margin-right:25px; height:100px" src='https://trainee.tis.nhs.uk/nhse-logo.png' alt="NHS England logo"/></div>
+  <p>Dear <span th:text="${not #strings.isEmpty(var?.discussions?.tpdName)} ? |${var.discussions.tpdName}| : _">Training Programme Director</span>,</p>
+  <p>
+    An application to change working hours (LTFT) has been approved for the Resident Doctor below.
+  </p>
+  <p>
+    You are receiving this notification because your details were included in the application as part of the discussion about the proposed change.
+  </p>
+  <p>
+    <b>Summary:</b> <span th:text="${not #strings.isEmpty(title)} ? ${title} : 'Dr'"></span> <span th:text="${not #strings.isEmpty(givenName)} ? ${givenName} : _"></span> <span th:text="${not #strings.isEmpty(familyName)} ? ${familyName} : _"></span
+  > applied to change their working hours from <b><span th:text="${not #strings.isEmpty(var?.programmeMembership?.wte)} ? ${var.programmeMembership.wte} : 'unknown'"></span
+  > WTE to <span th:text="${not #strings.isEmpty(var?.change?.wte)} ? ${var.change.wte} : 'unknown'"></span
+  > WTE starting <span th:text="${not #strings.isEmpty(var?.change?.startDate)} ? ${#temporals.format(var.change.startDate, 'd MMMM yyyy')} : 'unknown'"></span
+  ></b>. This has been approved.
+  </p>
+  <p>
+    <b>Resident Doctor</b>
+  </p>
+  <ul>
+    <li>Name: <span th:text="${not #strings.isEmpty(title)} ? ${title} : 'Dr'"></span> <span th:text="${not #strings.isEmpty(givenName)} ? ${givenName} : _"></span> <span th:text="${not #strings.isEmpty(familyName)} ? ${familyName} : _"></span></li>
+    <li>GMC registration no: <th:block th:text="${not #strings.isEmpty(var?.personalDetails?.gmcNumber)} ? ${var.personalDetails.gmcNumber} : 'unknown'"></th:block></li>
+  </ul>
+  <div th:replace="~{fragments/ltft-summary-tpd/v1.0.0 :: ltftSummaryTpd(${var?.programmeMembership?.name}, ${var?.programmeMembership?.startDate}, ${var?.programmeMembership?.wte}, ${var?.change?.startDate}, ${var?.change?.cctDate}, ${var?.change?.wte})}"></div>
+  <p>If you have any questions about this application, <th:block th:with="contact = ${contacts?.get('LTFT_SUPPORT')}">
+    <th:block th:replace="~{fragments/link/v1.0.0 :: link(${contact?.contact}, ${contact?.type}, 'please click on the following link for Local Office Support. ', ${contact?.contact}, '', 'please contact your <strong>Local Office Support team.</strong>', |Ltft Submitted - Enquiries - ${subjectRefs}|)}"></th:block>
+  </th:block>
+  </p>
+  <p>
+    Kind Regards,
+  </p>
+  <p>
+    <th:block th:text="${not #strings.isEmpty(var?.programmeMembership?.managingDeanery)} ? |NHS England - ${var.programmeMembership.managingDeanery}| : 'Your Local Office'"></th:block>
+  </p>
+  <div th:replace="fragments/disclaimer/v1.0.0 :: body"></div>
+</th:block>
+</body>
+</html>

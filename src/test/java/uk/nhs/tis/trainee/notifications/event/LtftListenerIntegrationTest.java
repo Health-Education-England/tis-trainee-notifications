@@ -836,9 +836,9 @@ class LtftListenerIntegrationTest {
 
   @ParameterizedTest
   @CsvSource(delimiter = '|', textBlock = """
-      APPROVED  | LTFT_APPROVED_TPD  | v1.0.1
+      APPROVED  | LTFT_APPROVED_TPD  | v1.0.2
       REJECTED  | LTFT_REJECTED_TPD  | v1.0.0
-      SUBMITTED | LTFT_SUBMITTED_TPD | v1.0.1
+      SUBMITTED | LTFT_SUBMITTED_TPD | v1.0.2
       """)
   void shouldStoreTpdNotificationHistoryWhenMessageSent(String state, NotificationType type,
       String expectedVersion) throws JsonProcessingException {
