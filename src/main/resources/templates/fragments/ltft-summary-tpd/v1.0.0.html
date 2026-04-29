@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+  <title>LTFT summary</title>
+</head>
+<body>
+<div th:fragment="ltftSummaryTpd(programme, startDate, currentWte, changeStartDate, changeCctDate, newWte, reasons)">
+  <p><b>Current programme details</b></p>
+  <ul>
+    <li>Programme: <th:block th:text="${not #strings.isEmpty(programme)} ? ${programme} : 'unknown'"></th:block></li>
+    <li>Programme start date: <th:block th:text="${startDate}? ${#temporals.format(startDate, 'd MMMM yyyy')} : _">unknown</th:block></li>
+    <li>Current working hours: <th:block th:text="${not #strings.isEmpty(currentWte)} ? ${currentWte} : 'unknown'"></th:block> WTE</li>
+  </ul>
+  <p><b>Proposed change</b></p>
+  <ul>
+    <li>New working hours: <th:block th:text="${not #strings.isEmpty(newWte)} ? ${newWte} : 'unknown'"></th:block> WTE</li>
+    <li>Effective from: <th:block th:text="${startDate}? ${#temporals.format(changeStartDate, 'd MMMM yyyy')} : _">unknown</th:block></li>
+    <li>Reason(s) for change:
+      <ul th:if="${reasons != null and reasons.selected != null}">
+        <li th:each="reason : ${reasons.selected}"><th:block th:text="${reason}"></th:block
+        ><th:block th:if="${reason == 'Other' and reasons.otherDetail != null and not #strings.isEmpty(reasons.otherDetail)}" th:text="': ' + ${reasons.otherDetail}"></th:block></li>
+      </ul>
+    </li>
+  </ul>
+</div>
+</body>
+</html>

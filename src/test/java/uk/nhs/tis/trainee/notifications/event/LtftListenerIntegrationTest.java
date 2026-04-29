@@ -719,6 +719,14 @@ class LtftListenerIntegrationTest {
             "wte": 0.5,
             "cctDate": "2027-06-05"
           },
+          "reasons": {
+            "selected": [
+            "Training / career development",
+            "Non-medical development"
+            ],
+            "otherDetail": "",
+            "supportingInformation": "some supporting information"
+          },
           "status": {
             "current" : {
               "state": "%s",
@@ -797,6 +805,14 @@ class LtftListenerIntegrationTest {
             "wte": 0.5,
             "cctDate": "2027-06-05"
           },
+          "reasons": {
+            "selected": [
+            "Training / career development",
+            "Other"
+            ],
+            "otherDetail": "I just need a break from training",
+            "supportingInformation": "some supporting information"
+          },
           "status": {
             "current" : {
               "state": "%s",
@@ -836,9 +852,9 @@ class LtftListenerIntegrationTest {
 
   @ParameterizedTest
   @CsvSource(delimiter = '|', textBlock = """
-      APPROVED  | LTFT_APPROVED_TPD  | v1.0.1
+      APPROVED  | LTFT_APPROVED_TPD  | v1.0.2
       REJECTED  | LTFT_REJECTED_TPD  | v1.0.0
-      SUBMITTED | LTFT_SUBMITTED_TPD | v1.0.1
+      SUBMITTED | LTFT_SUBMITTED_TPD | v1.0.2
       """)
   void shouldStoreTpdNotificationHistoryWhenMessageSent(String state, NotificationType type,
       String expectedVersion) throws JsonProcessingException {
