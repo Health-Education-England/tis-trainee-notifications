@@ -58,6 +58,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -245,11 +246,12 @@ class EmailServiceIntegrationTest {
     variables.put("modifiedByName", "modified by name");
     variables.put("formName", "form name");
     variables.put("discussions", Map.of("tpdName", "TPD name"));
-    variables.put("programmeMembership", Map.of("startDate", "2024-01-01",
+    variables.put("programmeMembership", Map.of("startDate", LocalDate.parse("2024-01-01"),
             "name", "PM name", "wte", 1.0, "managingDeanery", "MD name"));
     variables.put("personalDetails", Map.of("gmcNumber", "1234567"));
     variables.put("change", Map.of("startDate", LocalDate.parse("2024-01-01"), "wte", 0.5,
         "cctDate", LocalDate.parse("2024-01-01")));
+    variables.put("reasons", Map.of("selected", List.of("reason 1", "reason 2")));
     variables.put("stateDetail", Map.of("reason", "some reason", "message", "some message"));
     variables.put("modifiedBy", Map.of("name", "modified by name", "role", "modified by role"));
 

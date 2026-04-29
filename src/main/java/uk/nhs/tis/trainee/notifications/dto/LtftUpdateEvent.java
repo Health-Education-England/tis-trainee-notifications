@@ -25,6 +25,7 @@ import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Map;
 import lombok.Builder;
 import lombok.Data;
@@ -46,6 +47,7 @@ public class LtftUpdateEvent {
   private ProgrammeMembershipDto programmeMembership;
   private DiscussionsDto discussions;
   private ChangeDto change;
+  private ReasonsDto reasons;
   private String state;
   private Instant timestamp;
   private LftfStatusInfoDetailDto stateDetail;
@@ -65,9 +67,23 @@ public class LtftUpdateEvent {
    *
    * @param startDate The start date of the LTFT change.
    * @param wte       The whole time equivalent being requested.
-   * @param cctDate   The CCT/end of programme date..
+   * @param cctDate   The CCT/end of programme date.
    */
   public record ChangeDto(LocalDate startDate, Double wte, LocalDate cctDate) {
+
+  }
+
+  /**
+   * Reasons for the LTFT change.
+   *
+   * @param selected              A list of the selected reasons for the LTFT change.
+   * @param otherDetail           Details of the "other" reason, if "other" is selected.
+   * @param supportingInformation Any supporting information provided by the trainee.
+   */
+  public record ReasonsDto(
+      List<String> selected,
+      String otherDetail,
+      String supportingInformation) {
 
   }
 
