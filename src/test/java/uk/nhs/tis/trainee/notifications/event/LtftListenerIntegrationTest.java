@@ -719,6 +719,14 @@ class LtftListenerIntegrationTest {
             "wte": 0.5,
             "cctDate": "2027-06-05"
           },
+          "reasons": {
+            "selected": [
+            "Training / career development",
+            "Non-medical development"
+            ],
+            "otherDetail": "",
+            "supportingInformation": "some supporting information"
+          },
           "status": {
             "current" : {
               "state": "%s",
@@ -796,6 +804,14 @@ class LtftListenerIntegrationTest {
             "startDate": "2025-04-03",
             "wte": 0.5,
             "cctDate": "2027-06-05"
+          },
+          "reasons": {
+            "selected": [
+            "Training / career development",
+            "Other"
+            ],
+            "otherDetail": "I just need a break from training",
+            "supportingInformation": "some supporting information"
           },
           "status": {
             "current" : {
