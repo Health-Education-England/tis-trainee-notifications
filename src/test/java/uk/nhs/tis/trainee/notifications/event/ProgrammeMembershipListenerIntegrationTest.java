@@ -311,7 +311,7 @@ class ProgrammeMembershipListenerIntegrationTest {
       History.TemplateInfo templateInfo = history.template();
       assertThat("Unexpected template name.", templateInfo.name(),
           is(history.type().getTemplateName()));
-      assertThat("Unexpected template version.", templateInfo.version(), is("v1.0.0"));
+      assertThat("Unexpected template version.", templateInfo.version(), is("v1.0.1"));
 
       Map<String, Object> storedVariables = templateInfo.variables();
       assertThat("Unexpected template variable count.", storedVariables.size(), is(21));
@@ -507,7 +507,7 @@ class ProgrammeMembershipListenerIntegrationTest {
     History.TemplateInfo templateInfo = history.template();
     assertThat("Unexpected template name.", templateInfo.name(),
         is(history.type().getTemplateName()));
-    assertThat("Unexpected template version.", templateInfo.version(), is("v1.0.0"));
+    assertThat("Unexpected template version.", templateInfo.version(), is("v1.0.1"));
 
     Map<String, Object> storedVariables = templateInfo.variables();
     int expectedVariableCount = 21 //basic set
