@@ -107,17 +107,17 @@ application:
     placement-rollout-2024-correction:
       in-app: v1.0.0
     placement-updated-week-12:
-      email: v1.2.0
+      email: v1.2.1
     placement-updated-week-12-foundation:
-      email: v1.0.0
+      email: v1.0.1
     placement-useful-information:
       in-app: v1.0.0
     placement-useful-information-foundation:
       in-app: v1.0.0
     programme-created:
-      email: v1.3.3
+      email: v1.3.4
     programme-day-one:
-      email: v1.1.0
+      email: v1.1.1
     programme-pog-month-12:
       email: v1.0.0
     programme-pog-month-6:
@@ -127,13 +127,13 @@ application:
     programme-updated-week-1:
       email: v1.0.0
     programme-updated-week-2:
-      email: v1.0.0
+      email: v1.0.1
     programme-updated-week-4:
-      email: v1.0.0
+      email: v1.0.1
     programme-updated-week-8:
       email: v1.0.0
     programme-updated-week-12:
-      email: v1.0.0
+      email: v1.0.1
     sponsorship:
       in-app: v1.0.0
     sponsorship-foundation:
