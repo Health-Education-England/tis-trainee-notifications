@@ -19,7 +19,7 @@
     <li>Reason(s) for change:
       <ul th:if="${reasons != null and reasons.selected != null}">
         <li th:each="reason : ${reasons.selected}"><th:block th:text="${reason}"></th:block
-        ><th:block th:if="${reason == 'Other' and reasons.otherDetail != null and not #strings.isEmpty(reasons.otherDetail)}" th:text="': ' + ${reasons.otherDetail}"></th:block></li>
+        ><th:block th:if="${#strings.equalsIgnoreCase(reason, 'other') and reasons.otherDetail != null and not #strings.isEmpty(reasons.otherDetail)}" th:text="': ' + ${reasons.otherDetail}"></th:block></li>
       </ul>
     </li>
   </ul>
