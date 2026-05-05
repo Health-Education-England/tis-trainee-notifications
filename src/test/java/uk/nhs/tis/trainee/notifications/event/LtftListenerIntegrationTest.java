@@ -808,7 +808,7 @@ class LtftListenerIntegrationTest {
           "reasons": {
             "selected": [
             "Training / career development",
-            "Other"
+            "other"
             ],
             "otherDetail": "I just need a break from training",
             "supportingInformation": "some supporting information"
