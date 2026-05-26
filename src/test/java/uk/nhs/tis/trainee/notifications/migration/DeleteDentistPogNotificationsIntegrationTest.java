@@ -143,33 +143,33 @@ class DeleteDentistPogNotificationsIntegrationTest {
   @Test
   void shouldDeleteAllMatchingAndRetainNonMatching() {
     // Should be deleted: non-SCHEDULED, dental programme, POG type
-    History toDelete1 = mongoTemplate.insert(History.builder()
+    final History toDelete1 = mongoTemplate.insert(History.builder()
         .type(PROGRAMME_POG_MONTH_12)
         .template(new TemplateInfo(null, null, Map.of("ProgrammeName", DENTAL_PROGRAMME)))
         .status(SENT)
         .build());
-    History toDelete2 = mongoTemplate.insert(History.builder()
+    final History toDelete2 = mongoTemplate.insert(History.builder()
         .type(PROGRAMME_POG_MONTH_6)
         .template(new TemplateInfo(null, null, Map.of("ProgrammeName", "Orthodontics")))
         .status(SENT)
         .build());
 
     // Should be retained: SCHEDULED
-    History toRetain1 = mongoTemplate.insert(History.builder()
+    final History toRetain1 = mongoTemplate.insert(History.builder()
         .type(PROGRAMME_POG_MONTH_12)
         .template(new TemplateInfo(null, null, Map.of("ProgrammeName", DENTAL_PROGRAMME)))
         .status(SCHEDULED)
         .build());
 
     // Should be retained: non-dental programme
-    History toRetain2 = mongoTemplate.insert(History.builder()
+    final History toRetain2 = mongoTemplate.insert(History.builder()
         .type(PROGRAMME_POG_MONTH_12)
         .template(new TemplateInfo(null, null, Map.of("ProgrammeName", NON_DENTAL_PROGRAMME)))
         .status(SENT)
         .build());
 
     // Should be retained: non-POG type
-    History toRetain3 = mongoTemplate.insert(History.builder()
+    final History toRetain3 = mongoTemplate.insert(History.builder()
         .type(PROGRAMME_CREATED)
         .template(new TemplateInfo(null, null, Map.of("ProgrammeName", DENTAL_PROGRAMME)))
         .status(SENT)

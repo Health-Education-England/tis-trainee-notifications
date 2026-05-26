@@ -57,8 +57,10 @@ public class DeleteDentistPogNotifications {
   @Execution
   public void migrate() {
     CriteriaDefinition notScheduled = Criteria.where("status").ne(SCHEDULED);
-    CriteriaDefinition isPog = Criteria.where("type").in("PROGRAMME_POG_MONTH_12", "PROGRAMME_POG_MONTH_6");
-    CriteriaDefinition isProgrammeOfInterest = Criteria.where("template.variables.ProgrammeName").in(
+    CriteriaDefinition isPog = Criteria.where("type")
+        .in("PROGRAMME_POG_MONTH_12", "PROGRAMME_POG_MONTH_6");
+    CriteriaDefinition isProgrammeOfInterest
+        = Criteria.where("template.variables.ProgrammeName").in(
         "Additional Dental Specialties - Dental and Maxillofacial Radiology - Legacy",
         "Additional Dental Specialties - Oral Medicine - Legacy",
         "Additional Dental Specialties - Oral Microbiology - Legacy",
@@ -140,8 +142,8 @@ public class DeleteDentistPogNotifications {
       log.info("{} non-SCHEDULED POG history deleted for dental programmes",
           result.getDeletedCount());
     } catch (MongoException me) {
-      log.error("Unable to delete non-SCHEDULED POG history for dental programmes due to an " +
-              "error: {} ", me.toString());
+      log.error("Unable to delete non-SCHEDULED POG history for dental programmes due to an "
+              + "error: {} ", me.toString());
     }
   }
 
