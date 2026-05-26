@@ -271,8 +271,8 @@ public class ProgrammeMembershipUtils {
    * Determines whether a programme membership has started or not, based on the start date.
    *
    * @param programmeMembership the Programme membership.
-   * @return true if the programme membership has started, i.e. the start date is in the past or
-   * not set, false if the start date is in the future.
+   * @return true if the programme membership has started, i.e. the start date is before today or
+   * not set, false if the start date is today or in the future.
    */
   public boolean hasStarted(ProgrammeMembership programmeMembership) {
     LocalDate startDate = programmeMembership.getStartDate();
