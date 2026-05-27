@@ -368,8 +368,7 @@ class LtftListenerIntegrationTest {
           },
           "change": {
             "startDate": "2025-04-03",
-            "wte": 0.5,
-            "cctDate": "2027-06-05"
+            "wte": 0.5
           },
           "status": {
             "current" : {
@@ -455,8 +454,7 @@ class LtftListenerIntegrationTest {
           },
           "change": {
             "startDate": "2025-04-03",
-            "wte": 0.5,
-            "cctDate": "2027-06-05"
+            "wte": 0.5
           },
           "status": {
             "current" : {
@@ -566,9 +564,9 @@ class LtftListenerIntegrationTest {
 
   @ParameterizedTest
   @CsvSource(delimiter = '|', textBlock = """
-      APPROVED     | LTFT_APPROVED          | v1.0.2
+      APPROVED     | LTFT_APPROVED          | v1.0.3
       REJECTED     | LTFT_REJECTED          | v1.0.0
-      SUBMITTED    | LTFT_SUBMITTED         | v1.1.0
+      SUBMITTED    | LTFT_SUBMITTED         | v1.1.1
       UNSUBMITTED  | LTFT_UNSUBMITTED       | v1.0.0
       UNSUBMITTED  | LTFT_ADMIN_UNSUBMITTED | v1.0.0
       WITHDRAWN    | LTFT_WITHDRAWN         | v1.0.0
@@ -716,8 +714,7 @@ class LtftListenerIntegrationTest {
           },
           "change": {
             "startDate": "2025-04-03",
-            "wte": 0.5,
-            "cctDate": "2027-06-05"
+            "wte": 0.5
           },
           "reasons": {
             "selected": [
@@ -802,8 +799,7 @@ class LtftListenerIntegrationTest {
           },
           "change": {
             "startDate": "2025-04-03",
-            "wte": 0.5,
-            "cctDate": "2027-06-05"
+            "wte": 0.5
           },
           "reasons": {
             "selected": [
@@ -852,9 +848,9 @@ class LtftListenerIntegrationTest {
 
   @ParameterizedTest
   @CsvSource(delimiter = '|', textBlock = """
-      APPROVED  | LTFT_APPROVED_TPD  | v1.0.2
+      APPROVED  | LTFT_APPROVED_TPD  | v1.0.3
       REJECTED  | LTFT_REJECTED_TPD  | v1.0.0
-      SUBMITTED | LTFT_SUBMITTED_TPD | v1.0.2
+      SUBMITTED | LTFT_SUBMITTED_TPD | v1.0.3
       """)
   void shouldStoreTpdNotificationHistoryWhenMessageSent(String state, NotificationType type,
       String expectedVersion) throws JsonProcessingException {
