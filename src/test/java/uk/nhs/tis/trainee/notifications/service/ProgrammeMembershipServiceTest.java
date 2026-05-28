@@ -878,6 +878,28 @@ class ProgrammeMembershipServiceTest {
   @ParameterizedTest
   @EnumSource(value = NotificationType.class,
       names = {"PROGRAMME_POG_MONTH_12", "PROGRAMME_POG_MONTH_6"})
+  void shouldNotCreateDirectProgrammePogNotificationsIfCurriculumSubtypeExcluded(
+      NotificationType pogType) {
+    when(historyService.findAllHistoryForTrainee(PERSON_ID)).thenReturn(new ArrayList<>());
+
+    ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
+    // Replace the default curriculum with one that has an excluded subtype (DENTAL_CURRICULUM)
+    // but is otherwise POG-eligible, to confirm the subtype exclusion is the reason it is skipped.
+    Curriculum dentalCurriculum = new Curriculum(CURRICULUM_NAME, "DENTAL_CURRICULUM",
+        "specialty", false, CURRICULUM_END_DATE, true);
+    programmeMembership.setCurricula(List.of(dentalCurriculum));
+
+    service.addNotifications(programmeMembership);
+
+    String jobId = pogType + "-" + TIS_ID;
+    verify(notificationService, never()).executeNow(eq(jobId), anyMap());
+    verify(notificationService, never())
+        .scheduleNotification(eq(jobId), anyMap(), any(), anyLong());
+  }
+
+  @ParameterizedTest
+  @EnumSource(value = NotificationType.class,
+      names = {"PROGRAMME_POG_MONTH_12", "PROGRAMME_POG_MONTH_6"})
   void shouldNotSchedulePogNotificationIfNotExcludedButShouldScheduleIsFalse(
       NotificationType pogType) {
     // Arrange: eligible for POG, but shouldSchedulePogNotification returns false

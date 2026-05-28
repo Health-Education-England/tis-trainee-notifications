@@ -253,10 +253,6 @@ public class ProgrammeMembershipUtils {
    * @return true if the programme membership is excluded.
    */
   public boolean isExcluded(ProgrammeMembership programmeMembership) {
-    LocalDate startDate = programmeMembership.getStartDate();
-    if (startDate == null || startDate.isBefore(LocalDate.now(timezone))) {
-      return true;
-    }
 
     List<Curriculum> curricula = programmeMembership.getCurricula();
     if (curricula == null) {
@@ -269,6 +265,19 @@ public class ProgrammeMembershipUtils {
         .anyMatch(INCLUDE_CURRICULUM_SUBTYPES::contains);
 
     return !hasMedicalSubType;
+  }
+
+  /**
+   * Determines whether a programme membership has started or not, based on the start date.
+   *
+   * @param programmeMembership the Programme membership.
+   * @return true if the programme membership has started, i.e. the start date is before today or
+   * not set, false if the start date is today or in the future.
+   */
+  public boolean hasStarted(ProgrammeMembership programmeMembership) {
+    LocalDate startDate = programmeMembership.getStartDate();
+    return startDate == null
+        || startDate.isBefore(LocalDate.now(timezone));
   }
 
   /**

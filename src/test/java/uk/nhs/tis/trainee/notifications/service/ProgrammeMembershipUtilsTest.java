@@ -158,20 +158,20 @@ class ProgrammeMembershipUtilsTest {
   }
 
   @Test
-  void shouldExcludePmThatHasNoStartDate() {
+  void shouldBeAlreadyStartedPmThatHasNoStartDate() {
     Curriculum theCurriculum = new Curriculum(CURRICULUM_NAME, MEDICAL_CURRICULUM_1,
         "INCLUDED_SPECIALTY_1", false,
         CURRICULUM_END_DATE, null);
     ProgrammeMembership programmeMembership = new ProgrammeMembership();
     programmeMembership.setCurricula(List.of(theCurriculum, IGNORED_CURRICULUM));
 
-    boolean isExcluded = service.isExcluded(programmeMembership);
+    boolean hasStarted = service.hasStarted(programmeMembership);
 
-    assertThat("Unexpected excluded value.", isExcluded, is(true));
+    assertThat("Unexpected hasStarted value.", hasStarted, is(true));
   }
 
   @Test
-  void shouldExcludePmThatIsNotFuture() {
+  void shouldBeAlreadyStartedPmThatIsNotFuture() {
     Curriculum theCurriculum = new Curriculum(CURRICULUM_NAME, MEDICAL_CURRICULUM_1,
         "INCLUDED_SPECIALTY_1", false,
         CURRICULUM_END_DATE, null);
@@ -179,9 +179,23 @@ class ProgrammeMembershipUtilsTest {
     programmeMembership.setStartDate(LocalDate.now().minusYears(1));
     programmeMembership.setCurricula(List.of(theCurriculum, IGNORED_CURRICULUM));
 
-    boolean isExcluded = service.isExcluded(programmeMembership);
+    boolean hasStarted = service.hasStarted(programmeMembership);
 
-    assertThat("Unexpected excluded value.", isExcluded, is(true));
+    assertThat("Unexpected hasStarted value.", hasStarted, is(true));
+  }
+
+  @Test
+  void shouldNotBeAlreadyStartedPmThatIsFuture() {
+    Curriculum theCurriculum = new Curriculum(CURRICULUM_NAME, MEDICAL_CURRICULUM_1,
+        "INCLUDED_SPECIALTY_1", false,
+        CURRICULUM_END_DATE, null);
+    ProgrammeMembership programmeMembership = new ProgrammeMembership();
+    programmeMembership.setStartDate(LocalDate.now().plusDays(1));
+    programmeMembership.setCurricula(List.of(theCurriculum, IGNORED_CURRICULUM));
+
+    boolean hasStarted = service.hasStarted(programmeMembership);
+
+    assertThat("Unexpected hasStarted value.", hasStarted, is(false));
   }
 
   @Test

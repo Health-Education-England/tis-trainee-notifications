@@ -73,17 +73,17 @@ application:
     ltft-admin-unsubmitted:
       email: v1.0.0
     ltft-approved:
-      email: v1.0.2
+      email: v1.0.3
     ltft-approved-tpd:
-      email: v1.0.2
+      email: v1.0.3
     ltft-rejected:
       email: v1.0.0
     ltft-rejected-tpd:
       email: v1.0.0
     ltft-submitted:
-      email: v1.1.0
+      email: v1.1.1
     ltft-submitted-tpd:
-      email: v1.0.2
+      email: v1.0.3
     ltft-unsubmitted:
       email: v1.0.0
     ltft-updated:

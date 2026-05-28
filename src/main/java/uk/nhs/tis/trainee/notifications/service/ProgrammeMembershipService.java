@@ -84,6 +84,7 @@ public class ProgrammeMembershipService {
 
   public static final List<String> INCLUDE_CURRICULUM_SUBTYPES
       = List.of("MEDICAL_CURRICULUM", "MEDICAL_SPR", "AFT");
+  // dental trainees will have DENTAL_CURRICULUM or DENTAL_POST_CCST, which are excluded for now.
 
   public static final String FOUNDATION_CURRICULUM_SUBTYPE = "AFT";
   public static final String FOUNDATION_SPECIALTY = "FOUNDATION";
@@ -208,24 +209,27 @@ public class ProgrammeMembershipService {
     Map<NotificationType, History> notificationsAlreadySent = null;
 
     if (!isExcluded) {
-      notificationsAlreadySent = getLatestNotificationsSent(programmeMembership.getPersonId(),
-          programmeMembership.getTisId());
-      createDirectProgrammeNotifications(programmeMembership, notificationsAlreadySent);
-      createInAppNotifications(programmeMembership, notificationsAlreadySent);
-    }
-
-    if (!isFoundationProgramme(programmeMembership)) {
-      // For now, only create direct programme POG notifications for non-foundation.
-      boolean isExcludedPog = pmUtils.isExcludedPog(programmeMembership);
-      log.info("Programme membership {}: excluded POG {}.", programmeMembership.getTisId(),
-          isExcludedPog);
-      if (!isExcludedPog) {
-        if (notificationsAlreadySent == null) {
-          //getLatestNotificationsSent is expensive, so only call it if we need to
-          notificationsAlreadySent = getLatestNotificationsSent(programmeMembership.getPersonId(),
-              programmeMembership.getTisId());
+      if (!pmUtils.hasStarted(programmeMembership)) {
+        log.info("Programme membership {} has not started yet, setting up normal notifications.",
+            programmeMembership.getTisId());
+        notificationsAlreadySent = getLatestNotificationsSent(programmeMembership.getPersonId(),
+            programmeMembership.getTisId());
+        createDirectProgrammeNotifications(programmeMembership, notificationsAlreadySent);
+        createInAppNotifications(programmeMembership, notificationsAlreadySent);
+      }
+      if (!isFoundationProgramme(programmeMembership)) {
+        // For now, only create direct programme POG notifications for non-foundation.
+        boolean isExcludedPog = pmUtils.isExcludedPog(programmeMembership);
+        log.info("Programme membership {}: excluded POG {}.", programmeMembership.getTisId(),
+            isExcludedPog);
+        if (!isExcludedPog) {
+          if (notificationsAlreadySent == null) {
+            //getLatestNotificationsSent is expensive, so only call it if we need to
+            notificationsAlreadySent = getLatestNotificationsSent(programmeMembership.getPersonId(),
+                programmeMembership.getTisId());
+          }
+          createDirectProgrammePogNotifications(programmeMembership, notificationsAlreadySent);
         }
-        createDirectProgrammePogNotifications(programmeMembership, notificationsAlreadySent);
       }
     }
   }
