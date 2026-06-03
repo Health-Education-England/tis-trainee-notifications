@@ -41,6 +41,7 @@ import java.net.URI;
 import java.net.URL;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.Month;
 import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
@@ -89,9 +90,9 @@ import uk.nhs.tis.trainee.notifications.model.TraineeType;
 public class NotificationService {
 
   // Do not send any emails for POG notifications before this date
-  public static final LocalDate POG_EPOCH = LocalDate.of(2026, 2, 1);
+  public static final LocalDate POG_EPOCH = LocalDate.of(2026, Month.FEBRUARY, 1);
   // Do not send any notifications for Foundation placements or programmes before this date
-  public static final LocalDate FOUNDATION_EPOCH = LocalDate.of(2026, 4, 1);
+  public static final LocalDate FOUNDATION_EPOCH = LocalDate.of(2026, Month.APRIL, 1);
 
   protected static final String DEFAULT_NO_CONTACT_MESSAGE = "your local office";
   protected static final List<String> DUMMY_USER_ROLES = List.of("Placeholder", "Dummy Record");
@@ -102,6 +103,8 @@ public class NotificationService {
       = "/api/trainee-profile/local-office-contacts/{tisId}/{contactTypeName}";
   private static final String API_GET_OWNER_CONTACT
       = "/api/local-office-contact-by-lo-name/{localOfficeName}";
+  public static final String API_FIRST_F2_PM
+      = "/api/trainee-profile/first-f2-programme/{tisId}/{placementId}";
   public static final long ONE_DAY_IN_SECONDS = 24 * 60 * 60L;
 
   public static final String TEMPLATE_NOTIFICATION_TYPE_FIELD = "notificationType";
@@ -295,7 +298,7 @@ public class NotificationService {
   public Date getScheduleDate(LocalDate startDate, int daysBeforeStart) {
     Date milestone;
     LocalDate milestoneDate = startDate.minusDays(daysBeforeStart);
-    if (!milestoneDate.isAfter(LocalDate.now())) {
+    if (!milestoneDate.isAfter(LocalDate.now(ZoneId.of(timezone)))) {
       // 'Missed' milestones: schedule to be sent soon, but not immediately
       // in case of human editing 'jitter'.
       milestone = Date.from(Instant.now()
@@ -319,7 +322,7 @@ public class NotificationService {
    */
   public Instant calculateInAppDisplayDate(LocalDate startDate, int daysBeforeStart) {
     LocalDate milestoneDate = startDate.minusDays(daysBeforeStart);
-    if (!milestoneDate.isAfter(LocalDate.now())) {
+    if (!milestoneDate.isAfter(LocalDate.now(ZoneId.of(timezone)))) {
       // 'Missed' milestones: display immediately
       return Instant.now();
     } else {
@@ -660,6 +663,26 @@ public class NotificationService {
       log.warn("Exception requesting local-office-contacts endpoint for trainee {} type {}: {}",
           personId, contactType, rce.toString());
       return Collections.emptySet();
+    }
+  }
+
+  /**
+   * Get Programme Membership details for the first F2 Placement.
+   *
+   * @param personId    The person ID to search for.
+   * @param placementId The placement to search for.
+   * @return The Programme Membership details of the First F2 Placement,
+   *     or null if no Programme Membership found or the Placement is not the first F2.
+   */
+  public ProgrammeMembership getFirstF2ProgrammeMembership(String personId, String placementId) {
+    try {
+      return restTemplate.getForObject(serviceUrl + API_FIRST_F2_PM, ProgrammeMembership.class,
+          Map.of("tisId", personId,
+              "placementId", placementId));
+    } catch (RestClientException rce) {
+      log.warn("Exception occur when requesting first F2 programme membership endpoint for trainee "
+          + personId + ": " + rce);
+      return null;
     }
   }
 

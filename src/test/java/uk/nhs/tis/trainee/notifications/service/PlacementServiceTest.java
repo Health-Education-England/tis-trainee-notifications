@@ -42,6 +42,7 @@ import static uk.nhs.tis.trainee.notifications.model.MessageType.IN_APP;
 import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.SCHEDULED;
 import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.SENT;
 import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.UNREAD;
+import static uk.nhs.tis.trainee.notifications.model.NotificationType.F2_RO_CONNECTION;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.NON_EMPLOYMENT;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.NON_EMPLOYMENT_FOUNDATION;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PLACEMENT_INFORMATION;
@@ -57,16 +58,19 @@ import static uk.nhs.tis.trainee.notifications.service.NotificationService.CONTA
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.ONE_DAY_IN_SECONDS;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.PERSON_ID_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.NotificationService.TEMPLATE_OWNER_FIELD;
+import static uk.nhs.tis.trainee.notifications.service.PlacementService.DESIGNATED_BODY_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.PlacementService.GMC_NUMBER_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.PlacementService.LOCAL_OFFICE_CONTACT_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.PlacementService.LOCAL_OFFICE_CONTACT_TYPE_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.PlacementService.PLACEMENT_SITE_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.PlacementService.PLACEMENT_SPECIALTY_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.PlacementService.PLACEMENT_TYPE_FIELD;
+import static uk.nhs.tis.trainee.notifications.service.PlacementService.RO_NAME_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.PlacementService.START_DATE_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.PlacementService.TIS_ID_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.PlacementService.TRAINEE_TYPE_FIELD;
 
+import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
@@ -96,10 +100,16 @@ import uk.nhs.tis.trainee.notifications.model.MessageType;
 import uk.nhs.tis.trainee.notifications.model.NotificationStatus;
 import uk.nhs.tis.trainee.notifications.model.NotificationType;
 import uk.nhs.tis.trainee.notifications.model.Placement;
+import uk.nhs.tis.trainee.notifications.model.ProgrammeMembership;
+import uk.nhs.tis.trainee.notifications.model.ResponsibleOfficer;
 import uk.nhs.tis.trainee.notifications.model.TisReferenceType;
 import uk.nhs.tis.trainee.notifications.model.TraineeType;
 
 class PlacementServiceTest {
+
+  private static final Clock CLOCK = Clock.fixed(Instant.parse("2026-01-01T00:00:00Z"),
+      ZoneId.of("UTC"));
+  private static final LocalDate NOW_LOCALDATE = LocalDate.now(CLOCK);
 
   private static final String SERVICE_URL =
       "http://localhost:0000/reference/api/local-office-contact/{owner}";
@@ -115,8 +125,12 @@ class PlacementServiceTest {
   private static final String PERSON_ID = "abc";
   private static final String SITE = "site known as";
   private static final String SPECIALTY = "General Practice";
-  private static final String FOUNDATION_GRADE = "F1";
-  private static final LocalDate START_DATE = LocalDate.now().plusYears(1);
+  private static final String FOUNDATION_GRADE_F1 = "F1";
+  private static final String FOUNDATION_GRADE_F2 = "F2";
+  private static final String DESIGNATED_BODY = "Random DBC";
+  private static final String RO_FIRST = "Firstname";
+  private static final String RO_LAST = "Lastname";
+  private static final LocalDate START_DATE = NOW_LOCALDATE.plusYears(1);
   //set a year in the future to allow all notifications to be scheduled
   private static final String PLACEMENT_INFO_VERSION = "v1.2.3";
   private static final String NON_EMPLOYMENT_VERSION = "v2.3.4";
@@ -124,6 +138,7 @@ class PlacementServiceTest {
   private static final String PLACEMENT_INFO_FOUNDATION_VERSION = "v4.5.6";
   private static final String NON_EMPLOYMENT_FOUNDATION_VERSION = "v5.6.7";
   private static final String PLACEMENT_USEFUL_INFO_FOUNDATION_VERSION = "v6.7.8";
+  private static final String F2_RO_CONNECTION_VERSION = "v7.8.9";
   private static final ObjectId HISTORY_ID_1 = ObjectId.get();
   private static final ObjectId HISTORY_ID_2 = ObjectId.get();
   private static final String USER_EMAIL = "email@address";
@@ -131,11 +146,13 @@ class PlacementServiceTest {
   private static final String USER_FAMILY_NAME = "family-name";
   private static final String USER_GIVEN_NAME = "given-name";
   private static final String USER_GMC = "111111";
+
   HistoryService historyService;
   PlacementService service;
   NotificationService notificationService;
   InAppService inAppService;
   RestTemplate restTemplate;
+  ProgrammeMembershipUtils pmUtils;
 
   @BeforeEach
   void setUp() {
@@ -143,10 +160,12 @@ class PlacementServiceTest {
     notificationService = mock(NotificationService.class);
     inAppService = mock(InAppService.class);
     restTemplate = mock(RestTemplate.class);
-    service = new PlacementService(historyService, notificationService, inAppService,
+    pmUtils = mock(ProgrammeMembershipUtils.class);
+    service = new PlacementService(historyService, notificationService, inAppService, pmUtils,
         ZoneId.of("Europe/London"), PLACEMENT_INFO_VERSION, PLACEMENT_USEFUL_INFO_VERSION,
         NON_EMPLOYMENT_VERSION, PLACEMENT_INFO_FOUNDATION_VERSION,
-        PLACEMENT_USEFUL_INFO_FOUNDATION_VERSION, NON_EMPLOYMENT_FOUNDATION_VERSION);
+        PLACEMENT_USEFUL_INFO_FOUNDATION_VERSION, NON_EMPLOYMENT_FOUNDATION_VERSION,
+        F2_RO_CONNECTION_VERSION);
   }
 
   @ParameterizedTest
@@ -175,7 +194,7 @@ class PlacementServiceTest {
   void shouldExcludePlacementThatIsNotFuture() {
     Placement placement = new Placement();
     placement.setPlacementType(IN_POST);
-    placement.setStartDate(LocalDate.now().minusYears(1));
+    placement.setStartDate(NOW_LOCALDATE.minusYears(1));
 
     boolean isExcluded = service.isExcluded(placement);
 
@@ -437,7 +456,6 @@ class PlacementServiceTest {
     placement.setPlacementType(IN_POST);
     placement.setSite(SITE);
     placement.setSpecialty(SPECIALTY);
-    placement.setGradeAbbreviation("another grade");
 
     service.addNotifications(placement);
 
@@ -810,6 +828,12 @@ class PlacementServiceTest {
     placement.setSpecialty(SPECIALTY);
     placement.setSite(SITE);
 
+    when(notificationService.meetsCriteria(placement, true)).thenReturn(true);
+    when(notificationService.placementIsNotifiable(placement, MessageType.IN_APP))
+        .thenReturn(notifiable);
+    when(notificationService.getOwnerContact(any(), any(), any())).thenReturn("");
+    when(notificationService.getHrefTypeForContact(any())).thenReturn("");
+
     Instant expectedDisplayInstant = START_DATE.minusDays(84)
         .atStartOfDay()
         .atZone(ZoneId.systemDefault())
@@ -817,12 +841,6 @@ class PlacementServiceTest {
     UserDetails userAccountDetails =
         new UserDetails(
             null, USER_EMAIL, USER_TITLE, USER_FAMILY_NAME, USER_GIVEN_NAME, USER_GMC);
-
-    when(notificationService.meetsCriteria(placement, true)).thenReturn(true);
-    when(notificationService.placementIsNotifiable(placement, MessageType.IN_APP))
-        .thenReturn(notifiable);
-    when(notificationService.getOwnerContact(any(), any(), any())).thenReturn("");
-    when(notificationService.getHrefTypeForContact(any())).thenReturn("");
     when(notificationService.calculateInAppDisplayDate(START_DATE, 84))
         .thenReturn(expectedDisplayInstant);
     when(notificationService.getTraineeDetails(PERSON_ID)).thenReturn(userAccountDetails);
@@ -873,7 +891,7 @@ class PlacementServiceTest {
     placement.setPlacementType(IN_POST);
     placement.setSpecialty(SPECIALTY);
     placement.setSite(SITE);
-    placement.setGradeAbbreviation(FOUNDATION_GRADE);
+    placement.setGradeAbbreviation(FOUNDATION_GRADE_F1);
 
     Instant expectedDisplayInstant = START_DATE.minusDays(84)
         .atStartOfDay()
@@ -1025,7 +1043,7 @@ class PlacementServiceTest {
     placement.setPlacementType(IN_POST);
     placement.setSpecialty(SPECIALTY);
     placement.setSite(SITE);
-    placement.setGradeAbbreviation(FOUNDATION_GRADE);
+    placement.setGradeAbbreviation(FOUNDATION_GRADE_F1);
 
     UserDetails userAccountDetails =
         new UserDetails(
@@ -1204,7 +1222,7 @@ class PlacementServiceTest {
     placement.setSpecialty(SPECIALTY);
     placement.setSite(SITE);
     if (notificationType.name().contains("FOUNDATION")) {
-      placement.setGradeAbbreviation(FOUNDATION_GRADE);
+      placement.setGradeAbbreviation(FOUNDATION_GRADE_F1);
     }
 
     List<HistoryDto> sentNotifications = List.of(
@@ -1240,7 +1258,7 @@ class PlacementServiceTest {
     placement.setSpecialty(SPECIALTY);
     placement.setSite(SITE);
     if (notificationType.name().contains("FOUNDATION")) {
-      placement.setGradeAbbreviation(FOUNDATION_GRADE);
+      placement.setGradeAbbreviation(FOUNDATION_GRADE_F1);
     }
 
     List<HistoryDto> sentNotifications = List.of(
@@ -1258,6 +1276,173 @@ class PlacementServiceTest {
 
     verify(inAppService).createNotifications(any(), any(), eq(notificationType), any(), any(),
         eq(false), any());
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {true, false})
+  void shouldAddF2RoConnectionNotificationWhenPlacementIsF2AndNoHistoryAndProgrammeFound(
+      boolean notifiable) {
+    Placement placement = new Placement();
+    placement.setTisId(TIS_ID);
+    placement.setPersonId(PERSON_ID);
+    placement.setStartDate(START_DATE);
+    placement.setOwner(OWNER);
+    placement.setPlacementType(IN_POST);
+    placement.setSpecialty(SPECIALTY);
+    placement.setSite(SITE);
+    placement.setGradeAbbreviation(FOUNDATION_GRADE_F2);
+
+    ProgrammeMembership f2Programme = new ProgrammeMembership();
+    f2Programme.setDesignatedBody(DESIGNATED_BODY);
+    ResponsibleOfficer ro = new ResponsibleOfficer("", RO_FIRST, RO_LAST, "", "");
+    f2Programme.setResponsibleOfficer(ro);
+
+    when(notificationService.meetsCriteria(placement, true)).thenReturn(true);
+    when(notificationService.placementIsNotifiable(placement, MessageType.IN_APP))
+        .thenReturn(notifiable);
+    when(notificationService.getOwnerContact(any(), any(), any())).thenReturn("");
+    when(notificationService.getHrefTypeForContact(any())).thenReturn("");
+
+    Instant expectedDisplayInstant = START_DATE.minusDays(84)
+        .atStartOfDay()
+        .atZone(ZoneId.systemDefault())
+        .toInstant();
+    UserDetails userAccountDetails =
+        new UserDetails(
+            null, USER_EMAIL, USER_TITLE, USER_FAMILY_NAME, USER_GIVEN_NAME, USER_GMC);
+    when(notificationService.calculateInAppDisplayDate(START_DATE, 84))
+        .thenReturn(expectedDisplayInstant);
+    when(notificationService.getTraineeDetails(PERSON_ID)).thenReturn(userAccountDetails);
+    when(historyService.isHistoryExistByType(PERSON_ID, F2_RO_CONNECTION)).thenReturn(false);
+    when(notificationService.getFirstF2ProgrammeMembership(PERSON_ID, TIS_ID))
+        .thenReturn(f2Programme);
+    when(pmUtils.getRoName(ro)).thenReturn("Firstname Lastname");
+
+    service.addNotifications(placement);
+
+    ArgumentCaptor<TisReferenceInfo> referenceInfoCaptor = ArgumentCaptor.captor();
+    ArgumentCaptor<Map<String, Object>> variablesCaptor = ArgumentCaptor.captor();
+    ArgumentCaptor<Boolean> doNotStoreJustLogCaptor = ArgumentCaptor.captor();
+
+    verify(inAppService, atLeastOnce()).createNotifications(
+        eq(PERSON_ID),
+        referenceInfoCaptor.capture(),
+        eq(F2_RO_CONNECTION),
+        eq("v7.8.9"),
+        variablesCaptor.capture(),
+        doNotStoreJustLogCaptor.capture(),
+        eq(expectedDisplayInstant));
+
+    TisReferenceInfo referenceInfo = referenceInfoCaptor.getValue();
+    assertThat("Unexpected reference type.", referenceInfo.type(), is(PLACEMENT));
+    assertThat("Unexpected reference id.", referenceInfo.id(), is(TIS_ID));
+
+    Map<String, Object> variables = variablesCaptor.getValue();
+    assertThat("Unexpected designated body.",
+        variables.get(DESIGNATED_BODY_FIELD), is(DESIGNATED_BODY));
+    assertThat("Unexpected RO name.",
+        variables.get(RO_NAME_FIELD), is("Firstname Lastname"));
+
+    assertThat("Unexpected doNotStoreJustLog value.",
+        doNotStoreJustLogCaptor.getValue(), is(!notifiable));
+  }
+
+  @Test
+  void shouldSkipF2RoConnectionNotificationWhenGradeIsNotF2() {
+    Placement placement = new Placement();
+    placement.setTisId(TIS_ID);
+    placement.setPersonId(PERSON_ID);
+    placement.setStartDate(START_DATE);
+    placement.setOwner(OWNER);
+    placement.setPlacementType(IN_POST);
+    placement.setGradeAbbreviation(FOUNDATION_GRADE_F1);
+
+    when(notificationService.meetsCriteria(placement, true)).thenReturn(true);
+    when(notificationService.getOwnerContact(any(), any(), any())).thenReturn("");
+    when(notificationService.getHrefTypeForContact(any())).thenReturn("");
+    when(notificationService.getTraineeDetails(PERSON_ID)).thenReturn(null);
+
+    service.addNotifications(placement);
+
+    verify(inAppService, never()).createNotifications(
+        any(), any(), eq(F2_RO_CONNECTION), any(), any(), anyBoolean(), any());
+    verify(historyService, never()).isHistoryExistByType(any(), eq(F2_RO_CONNECTION));
+  }
+
+  @Test
+  void shouldSkipF2RoConnectionNotificationWhenHistoryAlreadyExists() {
+    Placement placement = new Placement();
+    placement.setTisId(TIS_ID);
+    placement.setPersonId(PERSON_ID);
+    placement.setStartDate(START_DATE);
+    placement.setOwner(OWNER);
+    placement.setPlacementType(IN_POST);
+    placement.setGradeAbbreviation(FOUNDATION_GRADE_F2);
+
+    when(notificationService.meetsCriteria(placement, true)).thenReturn(true);
+    when(notificationService.getOwnerContact(any(), any(), any())).thenReturn("");
+    when(notificationService.getHrefTypeForContact(any())).thenReturn("");
+    when(notificationService.getTraineeDetails(PERSON_ID)).thenReturn(null);
+    when(historyService.isHistoryExistByType(PERSON_ID, F2_RO_CONNECTION)).thenReturn(true);
+
+    service.addNotifications(placement);
+
+    verify(inAppService, never()).createNotifications(
+        any(), any(), eq(F2_RO_CONNECTION), any(), any(), anyBoolean(), any());
+    verify(notificationService, never()).getFirstF2ProgrammeMembership(any(), any());
+  }
+
+  @Test
+  void shouldSkipF2RoConnectionNotificationWhenProgrammeMembershipNotFound() {
+    Placement placement = new Placement();
+    placement.setTisId(TIS_ID);
+    placement.setPersonId(PERSON_ID);
+    placement.setStartDate(START_DATE);
+    placement.setOwner(OWNER);
+    placement.setPlacementType(IN_POST);
+    placement.setGradeAbbreviation(FOUNDATION_GRADE_F2);
+
+    when(notificationService.meetsCriteria(placement, true)).thenReturn(true);
+    when(notificationService.getOwnerContact(any(), any(), any())).thenReturn("");
+    when(notificationService.getHrefTypeForContact(any())).thenReturn("");
+    when(notificationService.getTraineeDetails(PERSON_ID)).thenReturn(null);
+    when(historyService.isHistoryExistByType(PERSON_ID, F2_RO_CONNECTION)).thenReturn(false);
+    when(notificationService.getFirstF2ProgrammeMembership(PERSON_ID, TIS_ID)).thenReturn(null);
+
+    service.addNotifications(placement);
+
+    verify(inAppService, never()).createNotifications(
+        any(), any(), eq(F2_RO_CONNECTION), any(), any(), anyBoolean(), any());
+  }
+
+  @Test
+  void shouldNotScheduleNotificationWhenStartDateIsNull() {
+    Placement placement = new Placement();
+    placement.setTisId(TIS_ID);
+    placement.setPersonId(PERSON_ID);
+    placement.setStartDate(null);
+    placement.setOwner(OWNER);
+    placement.setPlacementType(IN_POST);
+
+    service.addNotifications(placement);
+
+    verify(notificationService, never()).scheduleNotification(any(), any(), any(), anyLong());
+    verifyNoInteractions(inAppService);
+  }
+
+  @Test
+  void shouldNotScheduleNotificationWhenStartDateIsInThePast() {
+    Placement placement = new Placement();
+    placement.setTisId(TIS_ID);
+    placement.setPersonId(PERSON_ID);
+    placement.setStartDate(NOW_LOCALDATE.minusDays(1));
+    placement.setOwner(OWNER);
+    placement.setPlacementType(IN_POST);
+
+    service.addNotifications(placement);
+
+    verify(notificationService, never()).scheduleNotification(any(), any(), any(), anyLong());
+    verifyNoInteractions(inAppService);
   }
 
   @Test

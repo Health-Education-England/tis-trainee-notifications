@@ -60,6 +60,8 @@ application:
       email: v1.0.0
     email-updated-old:
       email: v1.0.0
+    f2-ro-connection:
+      in-app: v1.0.0
     form-submitted:
       email: v1.0.0
     form-updated:

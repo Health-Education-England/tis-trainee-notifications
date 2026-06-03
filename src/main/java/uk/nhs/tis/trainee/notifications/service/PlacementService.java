@@ -22,6 +22,7 @@
 package uk.nhs.tis.trainee.notifications.service;
 
 import static uk.nhs.tis.trainee.notifications.model.MessageType.IN_APP;
+import static uk.nhs.tis.trainee.notifications.model.NotificationType.F2_RO_CONNECTION;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.NON_EMPLOYMENT;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.NON_EMPLOYMENT_FOUNDATION;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PLACEMENT_INFORMATION;
@@ -61,6 +62,7 @@ import uk.nhs.tis.trainee.notifications.model.NotificationEvent;
 import uk.nhs.tis.trainee.notifications.model.NotificationStatus;
 import uk.nhs.tis.trainee.notifications.model.NotificationType;
 import uk.nhs.tis.trainee.notifications.model.Placement;
+import uk.nhs.tis.trainee.notifications.model.ProgrammeMembership;
 import uk.nhs.tis.trainee.notifications.model.TraineeType;
 
 /**
@@ -80,6 +82,8 @@ public class PlacementService {
   public static final String LOCAL_OFFICE_CONTACT_TYPE_FIELD = "localOfficeContactType";
   public static final String GMC_NUMBER_FIELD = "gmcNumber";
   public static final String TRAINEE_TYPE_FIELD = "traineeType";
+  public static final String DESIGNATED_BODY_FIELD = "designatedBody";
+  public static final String RO_NAME_FIELD = "roName";
   private static final String SCHEDULING_NOTIFICATION_LOG =
       "Scheduling notification {} for {}.";
 
@@ -89,6 +93,8 @@ public class PlacementService {
   private final HistoryService historyService;
   private final NotificationService notificationService;
   private final InAppService inAppService;
+  private final ProgrammeMembershipUtils pmUtils;
+
   private final ZoneId timezone;
   private final String placementInfoVersion;
   private final String placementUsefulInfoVersion;
@@ -96,6 +102,7 @@ public class PlacementService {
   private final String placementInfoFoundationVersion;
   private final String placementUsefulInfoFoundationVersion;
   private final String nonEmploymentFoundationVersion;
+  private final String f2RoConnectionVersion;
 
   /**
    * Initialise the Placement Service.
@@ -103,6 +110,7 @@ public class PlacementService {
    * @param historyService                       The history Service to use.
    * @param notificationService                  The notification Service to use.
    * @param inAppService                         The in-app service to use.
+   * @param pmUtils                              The programme membership utilities to use.
    * @param placementInfoVersion                 The placement information in-app notification
    *                                             version.
    * @param placementUsefulInfoVersion           The placement useful information in-app
@@ -114,9 +122,12 @@ public class PlacementService {
    *                                             in-app notification version.
    * @param nonEmploymentFoundationVersion       The non employment foundation in-app notification
    *                                             version.
+   * @param f2RoConnectionVersion                The F2 RO connection in-app notification
+   *                                             version.
    */
   public PlacementService(HistoryService historyService, NotificationService notificationService,
-      InAppService inAppService, @Value("${application.timezone}") ZoneId timezone,
+      InAppService inAppService, ProgrammeMembershipUtils pmUtils,
+      @Value("${application.timezone}") ZoneId timezone,
       @Value("${application.template-versions.placement-information.in-app}")
       String placementInfoVersion,
       @Value("${application.template-versions.placement-useful-information.in-app}")
@@ -128,10 +139,13 @@ public class PlacementService {
       @Value("${application.template-versions.placement-useful-information-foundation.in-app}")
       String placementUsefulInfoFoundationVersion,
       @Value("${application.template-versions.non-employment-foundation.in-app}")
-      String nonEmploymentFoundationVersion) {
+      String nonEmploymentFoundationVersion,
+      @Value("${application.template-versions.f2-ro-connection.in-app}")
+      String f2RoConnectionVersion) {
     this.historyService = historyService;
     this.notificationService = notificationService;
     this.inAppService = inAppService;
+    this.pmUtils = pmUtils;
     this.timezone = timezone;
     this.placementInfoVersion = placementInfoVersion;
     this.placementUsefulInfoVersion = placementUsefulInfoVersion;
@@ -139,6 +153,7 @@ public class PlacementService {
     this.placementInfoFoundationVersion = placementInfoFoundationVersion;
     this.placementUsefulInfoFoundationVersion = placementUsefulInfoFoundationVersion;
     this.nonEmploymentFoundationVersion = nonEmploymentFoundationVersion;
+    this.f2RoConnectionVersion = f2RoConnectionVersion;
   }
 
   /**
@@ -243,7 +258,8 @@ public class PlacementService {
         || notificationType.equals(USEFUL_INFORMATION)
         || notificationType.equals(USEFUL_INFORMATION_FOUNDATION)
         || notificationType.equals(NON_EMPLOYMENT)
-        || notificationType.equals(NON_EMPLOYMENT_FOUNDATION)) {
+        || notificationType.equals(NON_EMPLOYMENT_FOUNDATION)
+        || notificationType.equals(F2_RO_CONNECTION)) {
       return 84;
     } else {
       return null;
@@ -325,7 +341,7 @@ public class PlacementService {
       Map<NotificationType, NotificationEvent> notificationsRecorded, LocalDate startDate,
       NotificationType notificationType) {
 
-    if (startDate == null || startDate.isBefore(LocalDate.now())) {
+    if (startDate == null || startDate.isBefore(LocalDate.now(timezone))) {
       return false;
     }
 
@@ -422,6 +438,29 @@ public class PlacementService {
             LOCAL_OFFICE_CONTACT_FIELD, localOfficeContact,
             LOCAL_OFFICE_CONTACT_TYPE_FIELD, localOfficeContactType,
             GMC_NUMBER_FIELD, gmcNumber));
+
+    // F2_RO_CONNECTION
+    if ("F2".equalsIgnoreCase(placement.getGradeAbbreviation())
+        && !historyService.isHistoryExistByType(placement.getPersonId(), F2_RO_CONNECTION)) {
+      ProgrammeMembership f2Programme = notificationService.getFirstF2ProgrammeMembership(
+          placement.getPersonId(), placement.getTisId());
+      if (f2Programme != null) {
+        createUniqueInAppNotification(placement, notificationsRecorded,
+            F2_RO_CONNECTION,
+            f2RoConnectionVersion,
+            Map.of(
+                DESIGNATED_BODY_FIELD, f2Programme.getDesignatedBody(),
+                RO_NAME_FIELD, pmUtils.getRoName(f2Programme.getResponsibleOfficer())));
+      }
+      else {
+        log.info("The Placement {} is not the first F2 or Placement Programme not found, "
+                + "skipping F2_RO_CONNECTION notification.", placement.getTisId());
+      }
+    }
+    else {
+      log.info("The Placement {} is not F2 or F2_RO_CONNECTION already sent, "
+          + "skipping F2_RO_CONNECTION notification.", placement.getTisId());
+    }
   }
 
   /**

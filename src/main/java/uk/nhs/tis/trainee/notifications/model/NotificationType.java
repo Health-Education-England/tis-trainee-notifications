@@ -43,6 +43,7 @@ public enum NotificationType {
   E_PORTFOLIO("e-portfolio"),
   EMAIL_UPDATED_NEW("email-updated-new"),
   EMAIL_UPDATED_OLD("email-updated-old"),
+  F2_RO_CONNECTION("f2-ro-connection"),
   FORM_SUBMITTED("form-submitted"),
   FORM_UPDATED("form-updated"),
   GMC_REJECTED_LO("gmc-rejected-lo"),
