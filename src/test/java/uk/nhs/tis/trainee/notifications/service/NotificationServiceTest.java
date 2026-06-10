@@ -34,6 +34,7 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyMap;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
@@ -78,8 +79,10 @@ import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipServic
 
 import jakarta.mail.MessagingException;
 import java.net.URI;
+import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.Month;
 import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
@@ -128,6 +131,12 @@ import uk.nhs.tis.trainee.notifications.model.TraineeType;
 
 class NotificationServiceTest {
 
+  private static final String TIMEZONE = "Europe/London";
+  private static final Clock CLOCK = Clock.fixed(Instant.parse("2026-01-01T00:00:00Z"),
+      ZoneId.of(TIMEZONE));
+  private static final LocalDate NOW_LOCALDATE = LocalDate.now(CLOCK);
+  private static final Instant NOW_INSTANT = Instant.now(CLOCK);
+
   private static final String TEMPLATE_VERSION = "template-version";
   private static final String SERVICE_URL = "the-url";
   private static final String REFERENCE_URL = "reference-url";
@@ -136,13 +145,12 @@ class NotificationServiceTest {
   private static final String JOB_KEY = "job-key";
   private static final String TIS_ID = "tis-id";
   private static final String PERSON_ID = "person-id";
-  private static final LocalDate START_DATE = LocalDate.now();
+  private static final LocalDate START_DATE = NOW_LOCALDATE;
   private static final Integer NOTIFICATION_DELAY = 60;
   private static final String WHITELIST_1 = "123";
   private static final String WHITELIST_2 = "456";
   private static final List<String> NOT_WHITELISTED = List.of(WHITELIST_1, WHITELIST_2);
   private static final List<String> WHITELISTED = List.of(WHITELIST_1, WHITELIST_2, PERSON_ID);
-  private static final String TIMEZONE = "Europe/London";
 
   private static final String LOCAL_OFFICE = "local office";
   private static final String LOCAL_OFFICE_CONTACT = "local office contact";
@@ -150,6 +158,7 @@ class NotificationServiceTest {
   private static final String PROGRAMME_NAME = "the programme";
   private static final NotificationType PM_NOTIFICATION_TYPE = PROGRAMME_CREATED;
 
+  private static final String PLACEMENT_ID = "placement-id";
   private static final String PLACEMENT_SPECIALTY = "specialty";
   private static final String PLACEMENT_TYPE = "placement type";
   private static final NotificationType PLACEMENT_NOTIFICATION_TYPE = PLACEMENT_UPDATED_WEEK_12;
@@ -698,7 +707,7 @@ class NotificationServiceTest {
     // Simulate before FOUNDATION_EPOCH (2026-04-01)
     try (var ignored = org.mockito.Mockito.mockStatic(LocalDate.class, invocation -> {
       if (invocation.getMethod().getName().equals("now")) {
-        return LocalDate.of(2026, 3, 31);
+        return LocalDate.of(2026, Month.MARCH, 31);
       }
       return invocation.callRealMethod();
     })) {
@@ -718,7 +727,7 @@ class NotificationServiceTest {
     // Simulate after FOUNDATION_EPOCH (2026-04-01)
     try (var ignored = org.mockito.Mockito.mockStatic(LocalDate.class, invocation -> {
       if (invocation.getMethod().getName().equals("now")) {
-        return LocalDate.of(2026, 4, 2);
+        return LocalDate.of(2026, Month.APRIL, 2);
       }
       return invocation.callRealMethod();
     })) {
@@ -737,7 +746,7 @@ class NotificationServiceTest {
     // Simulate before FOUNDATION_EPOCH to confirm whitelist overrides epoch gate
     try (var ignored = org.mockito.Mockito.mockStatic(LocalDate.class, invocation -> {
       if (invocation.getMethod().getName().equals("now")) {
-        return LocalDate.of(2026, 3, 31);
+        return LocalDate.of(2026, Month.MARCH, 31);
       }
       return invocation.callRealMethod();
     })) {
@@ -757,7 +766,7 @@ class NotificationServiceTest {
     // Simulate after FOUNDATION_EPOCH
     try (var ignored = org.mockito.Mockito.mockStatic(LocalDate.class, invocation -> {
       if (invocation.getMethod().getName().equals("now")) {
-        return LocalDate.of(2026, 4, 2);
+        return LocalDate.of(2026, Month.APRIL, 2);
       }
       return invocation.callRealMethod();
     })) {
@@ -778,7 +787,7 @@ class NotificationServiceTest {
     // Simulate after FOUNDATION_EPOCH
     try (var ignored = org.mockito.Mockito.mockStatic(LocalDate.class, invocation -> {
       if (invocation.getMethod().getName().equals("now")) {
-        return LocalDate.of(2026, 4, 2);
+        return LocalDate.of(2026, Month.APRIL, 2);
       }
       return invocation.callRealMethod();
     })) {
@@ -1472,7 +1481,7 @@ class NotificationServiceTest {
 
   @Test
   void shouldScheduleFutureMilestonesAtUpToNineHoursAfterStartOfCorrectDay() {
-    LocalDate startDate = LocalDate.now().plusMonths(12);
+    LocalDate startDate = NOW_LOCALDATE.plusMonths(12);
     int daysBeforeStart = 100;
     LocalDate milestoneDate = startDate.minusDays(daysBeforeStart);
     Date expectedAfter = Date.from(milestoneDate
@@ -1494,7 +1503,7 @@ class NotificationServiceTest {
 
   @Test
   void shouldScheduleJobsWithRandomness() {
-    LocalDate startDate = LocalDate.now().plusMonths(12);
+    LocalDate startDate = NOW_LOCALDATE.plusMonths(12);
     int daysBeforeStart = 100;
     Date scheduledDate = service.getScheduleDate(startDate, daysBeforeStart);
     Map<String, Object> jobDataMap = new HashMap<>(Map.of(
@@ -1532,7 +1541,7 @@ class NotificationServiceTest {
 
   @Test
   void shouldDisplayFutureInAppMilestonesAtStartOfCorrectDay() {
-    LocalDate startDate = LocalDate.now().plusMonths(12);
+    LocalDate startDate = NOW_LOCALDATE.plusMonths(12);
     int daysBeforeStart = 100;
     LocalDate milestoneDate = startDate.minusDays(daysBeforeStart);
     Instant expectedMilestone = milestoneDate
@@ -2035,6 +2044,39 @@ class NotificationServiceTest {
         is(localOfficeContact.localOffice()));
   }
 
+  @Test
+  void shouldReturnNullWhenRestClientExceptionInGetFirstF2ProgrammeMembership() {
+    when(restTemplate.getForObject(anyString(), eq(ProgrammeMembership.class), anyMap()))
+        .thenThrow(RestClientException.class);
+
+    ProgrammeMembership result = service.getFirstF2ProgrammeMembership(PERSON_ID, PLACEMENT_ID);
+
+    assertThat("Unexpected result.", result, is(nullValue()));
+  }
+
+  @Test
+  void shouldReturnNullWhenGetFirstF2ProgrammeMembershipReturnsNull() {
+    when(restTemplate.getForObject(anyString(), eq(ProgrammeMembership.class), anyMap()))
+        .thenReturn(null);
+
+    ProgrammeMembership result = service.getFirstF2ProgrammeMembership(PERSON_ID, PLACEMENT_ID);
+
+    assertThat("Unexpected result.", result, is(nullValue()));
+  }
+
+  @Test
+  void shouldGetFirstF2ProgrammeMembership() {
+    ProgrammeMembership programmeMembership = new ProgrammeMembership();
+
+    when(restTemplate.getForObject(anyString(), eq(ProgrammeMembership.class),
+        eq(Map.of("tisId", PERSON_ID, "placementId", PLACEMENT_ID))))
+        .thenReturn(programmeMembership);
+
+    ProgrammeMembership result = service.getFirstF2ProgrammeMembership(PERSON_ID, PLACEMENT_ID);
+
+    assertThat("Unexpected result.", result, is(programmeMembership));
+  }
+
   @ParameterizedTest
   @NullAndEmptySource
   @ValueSource(strings = {"https://a.url.com", "something else", "encoded%40thing.com"})
@@ -2242,7 +2284,7 @@ class NotificationServiceTest {
     // Simulate before epoch to ensure whitelist overrides epoch logic
     try (var ignored = org.mockito.Mockito.mockStatic(LocalDate.class, invocation -> {
       if (invocation.getMethod().getName().equals("now")) {
-        return LocalDate.of(2026, 1, 31);
+        return LocalDate.of(2026, Month.JANUARY, 31);
       }
       return invocation.callRealMethod();
     })) {
@@ -2261,7 +2303,7 @@ class NotificationServiceTest {
     // Simulate after epoch
     try (var ignored = org.mockito.Mockito.mockStatic(LocalDate.class, invocation -> {
       if (invocation.getMethod().getName().equals("now")) {
-        return LocalDate.of(2026, 2, 2);
+        return LocalDate.of(2026, Month.FEBRUARY, 2);
       }
       return invocation.callRealMethod();
     })) {
@@ -2281,7 +2323,7 @@ class NotificationServiceTest {
     // Simulate before epoch
     try (var ignored = org.mockito.Mockito.mockStatic(LocalDate.class, invocation -> {
       if (invocation.getMethod().getName().equals("now")) {
-        return LocalDate.of(2026, 1, 31);
+        return LocalDate.of(2026, Month.JANUARY, 31);
       }
       return invocation.callRealMethod();
     })) {
@@ -2301,7 +2343,7 @@ class NotificationServiceTest {
     // Simulate after epoch
     try (var ignored = org.mockito.Mockito.mockStatic(LocalDate.class, invocation -> {
       if (invocation.getMethod().getName().equals("now")) {
-        return LocalDate.of(2026, 2, 2);
+        return LocalDate.of(2026, Month.FEBRUARY, 2);
       }
       return invocation.callRealMethod();
     })) {
@@ -2335,7 +2377,7 @@ class NotificationServiceTest {
 
     when(messagingControllerService.isValidRecipient(PERSON_ID, EMAIL)).thenReturn(recipientValid);
 
-    serviceWhitelisted.saveScheduleHistory(jobDataMap, new Date());
+    serviceWhitelisted.saveScheduleHistory(jobDataMap, Date.from(NOW_INSTANT));
 
     verify(historyService).save(any(History.class));
   }
@@ -2358,8 +2400,8 @@ class NotificationServiceTest {
 
     when(messagingControllerService.isValidRecipient(PERSON_ID, EMAIL)).thenReturn(true);
 
-    service.saveScheduleHistory(jobDataMap, new Date());
-    serviceWhitelisted.saveScheduleHistory(jobDataMap, new Date());
+    service.saveScheduleHistory(jobDataMap, Date.from(NOW_INSTANT));
+    serviceWhitelisted.saveScheduleHistory(jobDataMap, Date.from(NOW_INSTANT));
 
     verify(historyService, times(2)).save(any(History.class));
   }
@@ -2383,7 +2425,7 @@ class NotificationServiceTest {
 
     when(messagingControllerService.isValidRecipient(PERSON_ID, EMAIL)).thenReturn(false);
 
-    service.saveScheduleHistory(jobDataMap, new Date());
+    service.saveScheduleHistory(jobDataMap, Date.from(NOW_INSTANT));
 
     verify(historyService, never()).save(any(History.class));
   }

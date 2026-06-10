@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+  <title>Connecting yourself to your Responsible Officer (RO)</title>
+</head>
+<body>
+<h1>In-App Notification</h1>
+<h2>Subject</h2>
+<th:block th:fragment="subject">Connecting yourself to your Responsible Officer (RO)</th:block>
+<h2>Content</h2>
+<th:block th:fragment="content">
+  <p>
+    For your placement
+    <b>
+      <th:block th:text="${not #strings.isEmpty(specialty)} ? ${specialty} : _">
+        (specialty missing)
+      </th:block>
+     - Foundation Year 2
+    </b>starting on
+    <b>
+      <th:block th:text="${startDate} ? |${#temporals.format(startDate, 'd MMMM yyyy')}| : _">
+        (start date missing)
+      </th:block>
+    </b>, please see the below information.
+  </p>
+  <p><b>Connecting yourself to your Responsible Officer (RO)</b></p>
+  <p>Please note it is your responsibility to ensure you connect to your Responsible Officer
+    <b>(<span th:text="${not #strings.isEmpty(roName)} ? ${roName} : _">responsible officer missing</span>)
+    </b> and Designated body
+    <b>(<span th:text="${not #strings.isEmpty(designatedBody)} ? ${designatedBody} : _">designated body missing</span>)
+    </b>via your GMC Online account when progressing into your Foundation Year 2 (F2) placement.</p>
+  <p>Revalidation will occur 5 years after gaining full registration, F2 is the first year of the 5 year revalidation cycle.</p>
+  <p>Please go to your
+    <a
+      href="https://www.gmc-uk.org/gmc-online-dashboard"
+      th:target="_blank"
+    >GMC Online sign in page</a> and log in using your GMC reference number. Once you have logged in go to 'My Revalidation' click 'Add Designated Body' and enter
+    <b><span th:text="${not #strings.isEmpty(designatedBody)} ? ${designatedBody} : _">designated body missing</span>
+    </b> as your designated body.</p>
+  <p>Please ensure you are connecting to the Postgraduate Dean responsible for the programme you are training in (as detailed above) and not your employer.</p>
+  <p>Please connect to your RO within <b>7 calendar days</b> of commencing in your current training programme.</p>
+  <p>You must remain connected for the duration of your programme this includes any period Out of Programme(OOP) and statutory leave.</p>
+  <p>Some programmes share a Responsible Officer for a Programme so please ensure you use the details we have provided above as this may differ to what you expect. </p>
+  <p><b>Military Trainees should follow instructions provided by the Defence Deanery regarding their connection</b></p>
+</th:block>
+</body>
+</html>

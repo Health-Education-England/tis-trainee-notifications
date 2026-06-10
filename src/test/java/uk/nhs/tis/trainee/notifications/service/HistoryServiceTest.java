@@ -50,14 +50,17 @@ import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.SCHEDULE
 import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.SENT;
 import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.UNREAD;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.COJ_CONFIRMATION;
+import static uk.nhs.tis.trainee.notifications.model.NotificationType.F2_RO_CONNECTION;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.FORM_UPDATED;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PLACEMENT_UPDATED_WEEK_12;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_CREATED;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_DAY_ONE;
 import static uk.nhs.tis.trainee.notifications.model.TisReferenceType.PLACEMENT;
 
+import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.ZoneId;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -111,6 +114,10 @@ class HistoryServiceTest {
   private static final TisReferenceType TIS_REFERENCE_TYPE = PLACEMENT;
   private static final String TIS_REFERENCE_ID = UUID.randomUUID().toString();
 
+  private static final Clock CLOCK = Clock.fixed(Instant.parse("2026-01-01T00:00:00Z"),
+      ZoneId.of("UTC"));
+  private static final Instant NOW = Instant.now(CLOCK);
+
   private HistoryService service;
   private HistoryRepository repository;
   private TemplateService templateService;
@@ -134,8 +141,8 @@ class HistoryServiceTest {
     RecipientInfo recipientInfo = new RecipientInfo(null, null, null);
     TemplateInfo templateInfo = new TemplateInfo(null, null, Map.of());
     TisReferenceInfo tisReferenceInfo = new TisReferenceInfo(null, null);
-    Instant sent = Instant.now();
-    Instant read = Instant.now().plus(Duration.ofDays(1));
+    Instant sent = NOW;
+    Instant read = NOW.plus(Duration.ofDays(1));
     History history = new History(null, tisReferenceInfo, notificationType, recipientInfo,
         templateInfo, null, sent, read, SENT, null, null);
 
@@ -637,7 +644,7 @@ class HistoryServiceTest {
         templateInfo, null, Instant.MIN, Instant.MAX, SENT, null, null);
 
     ObjectId id2 = ObjectId.get();
-    Instant timeNow = Instant.now();
+    Instant timeNow = NOW;
     History history2 = new History(id2, tisReferenceInfo, notificationType, recipientInfo,
         templateInfo, null, timeNow, Instant.MIN, SENT, null, null);
 
@@ -681,6 +688,83 @@ class HistoryServiceTest {
     assertThat("Unexpected history read at.", historyDto1.readAt(), is(Instant.MAX));
   }
 
+  @ParameterizedTest
+  @EnumSource(value = NotificationType.class)
+  void shouldReturnFalseWhenNoHistoryExistsForTrainee(NotificationType notificationType) {
+    when(repository.findAllByRecipient_IdOrderBySentAtDesc(TRAINEE_ID)).thenReturn(List.of());
+
+    boolean result = service.hasHistoryOfType(TRAINEE_ID, notificationType);
+
+    assertThat("Unexpected history existence.", result, is(false));
+  }
+
+  @ParameterizedTest
+  @EnumSource(value = NotificationType.class)
+  void shouldReturnTrueWhenHistoryExistsForType(NotificationType notificationType) {
+    RecipientInfo recipientInfo = new RecipientInfo(TRAINEE_ID, IN_APP, TRAINEE_CONTACT);
+    TemplateInfo templateInfo = new TemplateInfo(TEMPLATE_NAME, TEMPLATE_VERSION,
+        TEMPLATE_VARIABLES);
+    TisReferenceInfo tisReferenceInfo = new TisReferenceInfo(TIS_REFERENCE_TYPE, TIS_REFERENCE_ID);
+
+    ObjectId id1 = ObjectId.get();
+    History history1 = new History(id1, tisReferenceInfo, notificationType, recipientInfo,
+        templateInfo, null, Instant.MIN, Instant.MAX, SENT, null, null);
+
+    when(repository.findAllByRecipient_IdOrderBySentAtDesc(TRAINEE_ID)).thenReturn(
+        List.of(history1));
+
+    boolean result = service.hasHistoryOfType(TRAINEE_ID, notificationType);
+
+    assertThat("Unexpected history existence.", result, is(true));
+  }
+
+  @Test
+  void shouldReturnFalseWhenHistoryExistsButNotForGivenType() {
+    RecipientInfo recipientInfo = new RecipientInfo(TRAINEE_ID, IN_APP, TRAINEE_CONTACT);
+    TemplateInfo templateInfo = new TemplateInfo(TEMPLATE_NAME, TEMPLATE_VERSION,
+        TEMPLATE_VARIABLES);
+    TisReferenceInfo tisReferenceInfo = new TisReferenceInfo(TIS_REFERENCE_TYPE, TIS_REFERENCE_ID);
+
+    ObjectId id1 = ObjectId.get();
+    History history1 = new History(id1, tisReferenceInfo, PROGRAMME_CREATED, recipientInfo,
+        templateInfo, null, Instant.MIN, Instant.MAX, SENT, null, null);
+
+    ObjectId id2 = ObjectId.get();
+    History history2 = new History(id2, tisReferenceInfo, PROGRAMME_DAY_ONE, recipientInfo,
+        templateInfo, null, NOW, Instant.MIN, SENT, null, null);
+
+    when(repository.findAllByRecipient_IdOrderBySentAtDesc(TRAINEE_ID)).thenReturn(
+        List.of(history1, history2));
+
+    boolean result = service.hasHistoryOfType(TRAINEE_ID, F2_RO_CONNECTION);
+
+    assertThat("Unexpected history existence.", result, is(false));
+  }
+
+  @ParameterizedTest
+  @EnumSource(value = NotificationType.class)
+  void shouldReturnTrueWhenMoreThanOneHistoryExistsForType(NotificationType notificationType) {
+    RecipientInfo recipientInfo = new RecipientInfo(TRAINEE_ID, IN_APP, TRAINEE_CONTACT);
+    TemplateInfo templateInfo = new TemplateInfo(TEMPLATE_NAME, TEMPLATE_VERSION,
+        TEMPLATE_VARIABLES);
+    TisReferenceInfo tisReferenceInfo = new TisReferenceInfo(TIS_REFERENCE_TYPE, TIS_REFERENCE_ID);
+
+    ObjectId id1 = ObjectId.get();
+    History history1 = new History(id1, tisReferenceInfo, notificationType, recipientInfo,
+        templateInfo, null, Instant.MIN, Instant.MAX, SENT, null, null);
+
+    ObjectId id2 = ObjectId.get();
+    History history2 = new History(id2, tisReferenceInfo, notificationType, recipientInfo,
+        templateInfo, null, NOW, Instant.MIN, SENT, null, null);
+
+    when(repository.findAllByRecipient_IdOrderBySentAtDesc(TRAINEE_ID)).thenReturn(
+        List.of(history1, history2));
+
+    boolean result = service.hasHistoryOfType(TRAINEE_ID, notificationType);
+
+    assertThat("Unexpected history existence.", result, is(true));
+  }
+
   @Test
   void shouldGetPagedHistorySummaries() {
     RecipientInfo recipientInfo = new RecipientInfo(TRAINEE_ID, EMAIL, TRAINEE_CONTACT);
@@ -693,7 +777,7 @@ class HistoryServiceTest {
         templateInfo, null, Instant.MIN, Instant.MAX, SENT, null, null);
 
     ObjectId id2 = ObjectId.get();
-    Instant timeNow = Instant.now();
+    Instant timeNow = NOW;
     History history2 = new History(id2, tisReferenceInfo, FORM_UPDATED, recipientInfo,
         templateInfo, null, timeNow, Instant.MIN, SENT, null, null);
 
@@ -742,7 +826,7 @@ class HistoryServiceTest {
         templateInfo, null, Instant.MIN, Instant.MAX, SENT, null, null);
 
     ObjectId id2 = ObjectId.get();
-    Instant timeNow = Instant.now();
+    Instant timeNow = NOW;
     History history2 = new History(id2, tisReferenceInfo, FORM_UPDATED, recipientInfo,
         templateInfo, null, timeNow, Instant.MIN, SENT, null, null);
 
@@ -943,7 +1027,7 @@ class HistoryServiceTest {
         templateInfo, null, Instant.MIN, Instant.MAX, SENT, null, null);
 
     ObjectId id2 = ObjectId.get();
-    Instant timeNow = Instant.now();
+    Instant timeNow = NOW;
     History history2 = new History(id2, tisReferenceInfo, notificationType, recipientInfo,
         templateInfo, null, timeNow, Instant.MIN, SENT, null, null);
 
@@ -1204,7 +1288,7 @@ class HistoryServiceTest {
     TisReferenceInfo tisReferenceInfo = new TisReferenceInfo(TIS_REFERENCE_TYPE, TIS_REFERENCE_ID);
 
     History history = new History(notificationId, tisReferenceInfo, notificationType, recipientInfo,
-        templateInfo, null, Instant.now(), Instant.now(), SENT, null, null);
+        templateInfo, null, NOW, NOW, SENT, null, null);
     when(repository.findById(any())).thenReturn(Optional.of(history));
 
     String templatePath = "type/test/template/v1.2.3";
@@ -1245,7 +1329,7 @@ class HistoryServiceTest {
     TisReferenceInfo tisReferenceInfo = new TisReferenceInfo(TIS_REFERENCE_TYPE, TIS_REFERENCE_ID);
 
     History history = new History(notificationId, tisReferenceInfo, notificationType, recipientInfo,
-        templateInfo, null, Instant.now(), Instant.now(), SENT, null, null);
+        templateInfo, null, NOW, NOW, SENT, null, null);
     when(repository.findByIdAndRecipient_Id(any(), any())).thenReturn(Optional.of(history));
 
     String templatePath = "type/test/template/v1.2.3";
@@ -1279,7 +1363,7 @@ class HistoryServiceTest {
     TisReferenceInfo tisReferenceInfo = new TisReferenceInfo(TIS_REFERENCE_TYPE, TIS_REFERENCE_ID);
 
     History history = new History(notificationId, tisReferenceInfo, notificationType, recipientInfo,
-        templateInfo, null, Instant.now(), Instant.now(), SENT, null, null);
+        templateInfo, null, NOW, NOW, SENT, null, null);
     when(repository.findByIdAndRecipient_Id(any(), any())).thenReturn(Optional.of(history));
 
     String templatePath = "type/test/template/v1.2.3";
@@ -1308,9 +1392,9 @@ class HistoryServiceTest {
         TEMPLATE_VARIABLES);
     TisReferenceInfo tisReferenceInfo = new TisReferenceInfo(TIS_REFERENCE_TYPE, TIS_REFERENCE_ID);
 
-    Instant sentAt = Instant.now().minusSeconds(60);
+    Instant sentAt = NOW.minusSeconds(60);
     History history = new History(notificationId, tisReferenceInfo, notificationType, recipientInfo,
-        templateInfo, null, sentAt, Instant.now(), SENT, null, null);
+        templateInfo, null, sentAt, NOW, SENT, null, null);
     when(repository.findByIdAndRecipient_Id(any(), any())).thenReturn(Optional.of(history));
 
     String templatePath = "type/test/template/v1.2.3";
@@ -1360,7 +1444,7 @@ class HistoryServiceTest {
     TisReferenceInfo tisReferenceInfo = new TisReferenceInfo(TIS_REFERENCE_TYPE, TIS_REFERENCE_ID);
 
     History history = new History(notificationId, tisReferenceInfo, notificationType, recipientInfo,
-        templateInfo, null, Instant.now(), Instant.now(), SENT, null, null);
+        templateInfo, null, NOW, NOW, SENT, null, null);
     when(repository.findByIdAndRecipient_Id(any(), any())).thenReturn(Optional.of(history));
 
     String templatePath = "type/test/template/v1.2.3";
@@ -1424,11 +1508,11 @@ class HistoryServiceTest {
         TEMPLATE_VARIABLES);
     TisReferenceInfo tisReferenceInfo = new TisReferenceInfo(TIS_REFERENCE_TYPE, TIS_REFERENCE_ID);
 
-    Instant existingTimestamp = Instant.now();
+    Instant existingTimestamp = NOW;
     Instant olderTimestamp = existingTimestamp.minusSeconds(60);
 
     History foundHistory = new History(notificationId, tisReferenceInfo, PROGRAMME_CREATED,
-        recipientInfo, templateInfo, null, Instant.now(), null, UNREAD, null, null,
+        recipientInfo, templateInfo, null, NOW, null, UNREAD, null, null,
         existingTimestamp);
 
     String templatePath = "email/test/template/v1.2.3";
@@ -1459,16 +1543,16 @@ class HistoryServiceTest {
         TEMPLATE_VARIABLES);
     TisReferenceInfo tisReferenceInfo = new TisReferenceInfo(TIS_REFERENCE_TYPE, TIS_REFERENCE_ID);
 
-    Instant existingTimestamp = Instant.now();
+    Instant existingTimestamp = NOW;
     Instant newerTimestamp = existingTimestamp.plusSeconds(60);
     String statusDetail = "Updated status detail";
 
     History foundHistory = new History(notificationId, tisReferenceInfo, PROGRAMME_CREATED,
-        recipientInfo, templateInfo, null, Instant.now(), null, UNREAD, null, null,
+        recipientInfo, templateInfo, null, NOW, null, UNREAD, null, null,
         existingTimestamp);
 
     History updatedHistory = new History(notificationId, tisReferenceInfo, PROGRAMME_CREATED,
-        recipientInfo, templateInfo, null, Instant.now(), null, SENT, statusDetail, null,
+        recipientInfo, templateInfo, null, NOW, null, SENT, statusDetail, null,
         newerTimestamp);
 
     String templatePath = "email/test/template/v1.2.3";
@@ -1518,12 +1602,12 @@ class HistoryServiceTest {
 
     ObjectId id2 = ObjectId.get();
     History history2 = new History(id2, tisReferenceInfo, PROGRAMME_DAY_ONE, oldRecipient,
-        templateInfo, null, Instant.now(), null, UNREAD, null, null);
+        templateInfo, null, NOW, null, UNREAD, null, null);
 
     History updatedHistory1 = new History(id1, tisReferenceInfo, PROGRAMME_CREATED, newRecipient,
         templateInfo, null, Instant.MIN, Instant.MAX, SENT, null, null);
     History updatedHistory2 = new History(id2, tisReferenceInfo, PROGRAMME_DAY_ONE, newRecipient,
-        templateInfo, null, Instant.now(), null, UNREAD, null, null);
+        templateInfo, null, NOW, null, UNREAD, null, null);
 
     when(repository.findAllByRecipient_IdOrderBySentAtDesc("oldId"))
         .thenReturn(List.of(history1, history2));

@@ -267,6 +267,19 @@ public class HistoryService {
   }
 
   /**
+   * Check if the specific type of notification history exists for a trainee.
+   *
+   * @param  traineeId the ID of trainee to check with.
+   * @param  type the notification type.
+   * @return boolean true if the specific type of notification history exist.
+   */
+  public boolean hasHistoryOfType(String traineeId, NotificationType type) {
+
+    return findAllHistoryForTrainee(traineeId).stream()
+        .anyMatch(h -> type.equals(h.type()));
+  }
+
+  /**
    * Return page of all sent historic notifications for the given Trainee.
    *
    * @param traineeId The ID of the trainee to get notifications for.
