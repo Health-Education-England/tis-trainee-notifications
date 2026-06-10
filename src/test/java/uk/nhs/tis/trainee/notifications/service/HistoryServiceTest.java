@@ -693,14 +693,14 @@ class HistoryServiceTest {
   void shouldReturnFalseWhenNoHistoryExistsForTrainee(NotificationType notificationType) {
     when(repository.findAllByRecipient_IdOrderBySentAtDesc(TRAINEE_ID)).thenReturn(List.of());
 
-    boolean result = service.isHistoryExistByType(TRAINEE_ID, any());
+    boolean result = service.hasHistoryOfType(TRAINEE_ID, notificationType);
 
     assertThat("Unexpected history existence.", result, is(false));
   }
 
   @ParameterizedTest
   @EnumSource(value = NotificationType.class)
-  void shouldReturnFalseWhenHistoryExistsForType(NotificationType notificationType) {
+  void shouldReturnTrueWhenHistoryExistsForType(NotificationType notificationType) {
     RecipientInfo recipientInfo = new RecipientInfo(TRAINEE_ID, IN_APP, TRAINEE_CONTACT);
     TemplateInfo templateInfo = new TemplateInfo(TEMPLATE_NAME, TEMPLATE_VERSION,
         TEMPLATE_VARIABLES);
@@ -713,7 +713,7 @@ class HistoryServiceTest {
     when(repository.findAllByRecipient_IdOrderBySentAtDesc(TRAINEE_ID)).thenReturn(
         List.of(history1));
 
-    boolean result = service.isHistoryExistByType(TRAINEE_ID, notificationType);
+    boolean result = service.hasHistoryOfType(TRAINEE_ID, notificationType);
 
     assertThat("Unexpected history existence.", result, is(true));
   }
@@ -736,7 +736,7 @@ class HistoryServiceTest {
     when(repository.findAllByRecipient_IdOrderBySentAtDesc(TRAINEE_ID)).thenReturn(
         List.of(history1, history2));
 
-    boolean result = service.isHistoryExistByType(TRAINEE_ID, F2_RO_CONNECTION);
+    boolean result = service.hasHistoryOfType(TRAINEE_ID, F2_RO_CONNECTION);
 
     assertThat("Unexpected history existence.", result, is(false));
   }
@@ -760,7 +760,7 @@ class HistoryServiceTest {
     when(repository.findAllByRecipient_IdOrderBySentAtDesc(TRAINEE_ID)).thenReturn(
         List.of(history1, history2));
 
-    boolean result = service.isHistoryExistByType(TRAINEE_ID, notificationType);
+    boolean result = service.hasHistoryOfType(TRAINEE_ID, notificationType);
 
     assertThat("Unexpected history existence.", result, is(true));
   }

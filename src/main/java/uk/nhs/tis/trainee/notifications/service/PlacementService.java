@@ -205,6 +205,7 @@ public class PlacementService {
     notificationTypes.add(NON_EMPLOYMENT);
     notificationTypes.add(NON_EMPLOYMENT_FOUNDATION);
     notificationTypes.add(PLACEMENT_ROLLOUT_2024_CORRECTION);
+    notificationTypes.add(F2_RO_CONNECTION);
 
     for (NotificationType milestone : notificationTypes) {
       Optional<HistoryDto> historyItem = correspondence.stream()
@@ -441,7 +442,7 @@ public class PlacementService {
 
     // F2_RO_CONNECTION
     if ("F2".equalsIgnoreCase(placement.getGradeAbbreviation())
-        && !historyService.isHistoryExistByType(placement.getPersonId(), F2_RO_CONNECTION)) {
+        && !historyService.hasHistoryOfType(placement.getPersonId(), F2_RO_CONNECTION)) {
       ProgrammeMembership f2Programme = notificationService.getFirstF2ProgrammeMembership(
           placement.getPersonId(), placement.getTisId());
       if (f2Programme != null) {

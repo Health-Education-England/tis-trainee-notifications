@@ -1313,7 +1313,7 @@ class PlacementServiceTest {
     when(notificationService.calculateInAppDisplayDate(START_DATE, 84))
         .thenReturn(expectedDisplayInstant);
     when(notificationService.getTraineeDetails(PERSON_ID)).thenReturn(userAccountDetails);
-    when(historyService.isHistoryExistByType(PERSON_ID, F2_RO_CONNECTION)).thenReturn(false);
+    when(historyService.hasHistoryOfType(PERSON_ID, F2_RO_CONNECTION)).thenReturn(false);
     when(notificationService.getFirstF2ProgrammeMembership(PERSON_ID, TIS_ID))
         .thenReturn(f2Programme);
     when(pmUtils.getRoName(ro)).thenReturn("Firstname Lastname");
@@ -1366,7 +1366,7 @@ class PlacementServiceTest {
 
     verify(inAppService, never()).createNotifications(
         any(), any(), eq(F2_RO_CONNECTION), any(), any(), anyBoolean(), any());
-    verify(historyService, never()).isHistoryExistByType(any(), eq(F2_RO_CONNECTION));
+    verify(historyService, never()).hasHistoryOfType(any(), eq(F2_RO_CONNECTION));
   }
 
   @Test
@@ -1383,7 +1383,7 @@ class PlacementServiceTest {
     when(notificationService.getOwnerContact(any(), any(), any())).thenReturn("");
     when(notificationService.getHrefTypeForContact(any())).thenReturn("");
     when(notificationService.getTraineeDetails(PERSON_ID)).thenReturn(null);
-    when(historyService.isHistoryExistByType(PERSON_ID, F2_RO_CONNECTION)).thenReturn(true);
+    when(historyService.hasHistoryOfType(PERSON_ID, F2_RO_CONNECTION)).thenReturn(true);
 
     service.addNotifications(placement);
 
@@ -1406,7 +1406,7 @@ class PlacementServiceTest {
     when(notificationService.getOwnerContact(any(), any(), any())).thenReturn("");
     when(notificationService.getHrefTypeForContact(any())).thenReturn("");
     when(notificationService.getTraineeDetails(PERSON_ID)).thenReturn(null);
-    when(historyService.isHistoryExistByType(PERSON_ID, F2_RO_CONNECTION)).thenReturn(false);
+    when(historyService.hasHistoryOfType(PERSON_ID, F2_RO_CONNECTION)).thenReturn(false);
     when(notificationService.getFirstF2ProgrammeMembership(PERSON_ID, TIS_ID)).thenReturn(null);
 
     service.addNotifications(placement);
