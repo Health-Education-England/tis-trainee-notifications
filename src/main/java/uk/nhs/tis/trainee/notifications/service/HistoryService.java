@@ -33,6 +33,7 @@ import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.UNREAD;
 
 import java.time.Instant;
 import java.util.AbstractMap;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -352,15 +353,74 @@ public class HistoryService {
    */
   public List<History> findAllScheduledForTrainee(
       String traineeId, TisReferenceType tisReferenceType, String refId) {
-    List<History> history = repository.findAllByRecipient_IdOrderBySentAtDesc(traineeId);
+    List<History> history
+        = repository.findAllScheduledByRecipientIdOrderBySentAtDesc(traineeId, Instant.now());
 
     return history.stream()
-        // In-app notifications scheduled by future send date,
-        // while email notification scheduled by SCHEDULED status
-        .filter(h -> (h.sentAt().isAfter(Instant.now())) || (h.status().equals(SCHEDULED)))
         .filter(h -> h.tisReference().id().equals(refId)
             && h.tisReference().type().equals(tisReferenceType))
         .toList();
+  }
+
+  /**
+   * Find all scheduled notifications for the given Trainee from DB. Email notifications are
+   * identified by SCHEDULED status, and in-app notifications by a future sentAt timestamp.
+   *
+   * @param traineeId The ID of the trainee to get notifications for.
+   * @return The found notifications, empty if none found.
+   */
+  public List<History> findAllScheduledForTrainee(String traineeId) {
+    return repository.findAllScheduledByRecipientIdOrderBySentAtDesc(traineeId, Instant.now());
+  }
+
+  /**
+   * Update the email address on all scheduled notifications for the given trainee. This updates
+   * both the recipient contact email (for EMAIL type notifications) and the template variable
+   * "email" if present.
+   *
+   * @param traineeId The ID of the trainee whose notifications should be updated.
+   * @param newEmail  The new email address.
+   */
+  public void updateScheduledNotificationEmail(String traineeId, String newEmail) {
+    List<History> scheduledNotifications = findAllScheduledForTrainee(traineeId);
+
+    log.info("Found {} scheduled notifications for trainee {} to update email.",
+        scheduledNotifications.size(), traineeId);
+
+    for (History h : scheduledNotifications) {
+      boolean needsUpdate = false;
+      History updated = h;
+
+      // Update recipient.contact for email notifications.
+      if (h.recipient().type() == EMAIL
+          && (h.recipient().contact() == null
+          || !h.recipient().contact().equalsIgnoreCase(newEmail))) {
+        History.RecipientInfo newRecipient = new History.RecipientInfo(
+            h.recipient().id(), EMAIL, newEmail);
+        updated = updated.withRecipient(newRecipient);
+        needsUpdate = true;
+      }
+
+      // Update template.variables.email if it exists.
+      if (h.template() != null && h.template().variables() != null
+          && h.template().variables().containsKey("email")) {
+        Object existingEmail = h.template().variables().get("email");
+        if (!newEmail.equalsIgnoreCase(String.valueOf(existingEmail))) {
+          Map<String, Object> updatedVars = new HashMap<>(h.template().variables());
+          updatedVars.put("email", newEmail);
+          History.TemplateInfo newTemplate = new History.TemplateInfo(
+              updated.template().name(), updated.template().version(), updatedVars);
+          updated = updated.withTemplate(newTemplate);
+          needsUpdate = true;
+        }
+      }
+
+      if (needsUpdate) {
+        log.info("Updating email for scheduled notification {} for trainee {}.",
+            h.id(), traineeId);
+        save(updated);
+      }
+    }
   }
 
   /**

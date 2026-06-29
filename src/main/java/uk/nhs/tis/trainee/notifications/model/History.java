@@ -55,6 +55,7 @@ public record History(
     NotificationType type,
     @With
     RecipientInfo recipient,
+    @With
     TemplateInfo template,
     List<StoredFile> attachments,
     Instant sentAt,

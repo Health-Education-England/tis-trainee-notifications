@@ -57,6 +57,9 @@ public class ContactDetailsService {
       return;
     }
 
+    // Update email on all scheduled notifications for the trainee.
+    historyService.updateScheduledNotificationEmail(traineeId, contactDetails.getEmail());
+
     List<History> failedMessages
         = historyService.findAllFailedForTrainee(traineeId);
     List<History> onesToResend = failedMessages.stream()
