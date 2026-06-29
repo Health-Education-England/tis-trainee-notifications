@@ -963,54 +963,6 @@ class HistoryServiceIntegrationTest {
   }
 
   @Test
-  void shouldFindAllScheduledForTraineeWithoutReferenceParams() {
-    RecipientInfo emailRecipient = new RecipientInfo(TRAINEE_ID, EMAIL, TRAINEE_CONTACT);
-    RecipientInfo inAppRecipient = new RecipientInfo(TRAINEE_ID, IN_APP, TRAINEE_CONTACT);
-    TemplateInfo templateInfo = new TemplateInfo(TEMPLATE_NAME, TEMPLATE_VERSION,
-        TEMPLATE_VARIABLES);
-    TisReferenceInfo tisReferenceInfo = new TisReferenceInfo(TIS_REFERENCE_TYPE, TIS_REFERENCE_ID);
-
-    // Scheduled email notification (status = SCHEDULED)
-    History scheduledEmail = service.save(new History(null, tisReferenceInfo, FORM_UPDATED,
-        emailRecipient, templateInfo, null, SENT_AT, null, SCHEDULED, null, null));
-
-    // In-app notification with future sentAt
-    Instant futureTime = Instant.now().plus(Duration.ofDays(7)).truncatedTo(ChronoUnit.MILLIS);
-    History futureInApp = service.save(new History(null, tisReferenceInfo, FORM_UPDATED,
-        inAppRecipient, templateInfo, null, futureTime, null, UNREAD, null, null));
-
-    // Sent email notification (should NOT be included)
-    service.save(new History(null, tisReferenceInfo, FORM_UPDATED, emailRecipient,
-        templateInfo, null, SENT_AT, null, SENT, null, null));
-
-    // Failed email notification (should NOT be included)
-    service.save(new History(null, tisReferenceInfo, FORM_UPDATED, emailRecipient,
-        templateInfo, null, SENT_AT, null, FAILED, null, null));
-
-    List<History> result = service.findAllScheduledForTrainee(TRAINEE_ID);
-
-    assertThat("Unexpected scheduled count.", result.size(), is(2));
-    List<ObjectId> ids = result.stream().map(History::id).toList();
-    assertThat("Unexpected scheduled IDs.", ids, hasItems(scheduledEmail.id(), futureInApp.id()));
-  }
-
-  @Test
-  void shouldNotFindScheduledForOtherTrainee() {
-    String otherTraineeId = "other-trainee";
-    RecipientInfo otherRecipient = new RecipientInfo(otherTraineeId, EMAIL, "other@test.com");
-    TemplateInfo templateInfo = new TemplateInfo(TEMPLATE_NAME, TEMPLATE_VERSION,
-        TEMPLATE_VARIABLES);
-    TisReferenceInfo tisReferenceInfo = new TisReferenceInfo(TIS_REFERENCE_TYPE, TIS_REFERENCE_ID);
-
-    service.save(new History(null, tisReferenceInfo, FORM_UPDATED, otherRecipient,
-        templateInfo, null, SENT_AT, null, SCHEDULED, null, null));
-
-    List<History> result = service.findAllScheduledForTrainee(TRAINEE_ID);
-
-    assertThat("Unexpected scheduled count.", result.size(), is(0));
-  }
-
-  @Test
   void shouldUpdateScheduledEmailNotificationRecipientContact() {
     String oldEmail = "old@example.com";
     String newEmail = "new@example.com";

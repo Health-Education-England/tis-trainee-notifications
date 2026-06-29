@@ -1107,46 +1107,6 @@ class HistoryServiceTest {
     assertThat("Unexpected failed history last retry.", failed1.lastRetry(), is(Instant.MAX));
   }
 
-  @Test
-  void shouldFindAllScheduledForTraineeIncludingScheduledStatusAndFutureSentAt() {
-    RecipientInfo emailRecipient = new RecipientInfo(TRAINEE_ID, EMAIL, TRAINEE_CONTACT);
-    RecipientInfo inAppRecipient = new RecipientInfo(TRAINEE_ID, IN_APP, null);
-    TemplateInfo templateInfo = new TemplateInfo(TEMPLATE_NAME, TEMPLATE_VERSION,
-        TEMPLATE_VARIABLES);
-    TisReferenceInfo tisReferenceInfo = new TisReferenceInfo(TIS_REFERENCE_TYPE, TIS_REFERENCE_ID);
-
-    // Scheduled email notification (status = SCHEDULED)
-    ObjectId id1 = ObjectId.get();
-    History scheduledEmail = new History(id1, tisReferenceInfo, PROGRAMME_CREATED, emailRecipient,
-        templateInfo, null, Instant.MIN, null, SCHEDULED, null, null);
-
-    // In-app notification with future sentAt
-    ObjectId id2 = ObjectId.get();
-    Instant futureTime = Instant.now().plus(Duration.ofDays(7));
-    History futureInApp = new History(id2, tisReferenceInfo, PROGRAMME_CREATED, inAppRecipient,
-        templateInfo, null, futureTime, null, UNREAD, null, null);
-
-    when(repository.findAllScheduledByRecipientIdOrderBySentAtDesc(
-        eq(TRAINEE_ID), any(Instant.class)))
-        .thenReturn(List.of(scheduledEmail, futureInApp));
-
-    List<History> result = service.findAllScheduledForTrainee(TRAINEE_ID);
-
-    assertThat("Unexpected scheduled count.", result.size(), is(2));
-    assertThat("Unexpected scheduled notification.", result, hasItem(scheduledEmail));
-    assertThat("Unexpected scheduled notification.", result, hasItem(futureInApp));
-  }
-
-  @Test
-  void shouldFindNoScheduledForTraineeWhenNoneExist() {
-    when(repository.findAllScheduledByRecipientIdOrderBySentAtDesc(
-        eq(TRAINEE_ID), any(Instant.class)))
-        .thenReturn(List.of());
-
-    List<History> result = service.findAllScheduledForTrainee(TRAINEE_ID);
-
-    assertThat("Unexpected scheduled count.", result.size(), is(0));
-  }
 
   @Test
   void shouldUpdateRecipientEmailForScheduledEmailNotification() {

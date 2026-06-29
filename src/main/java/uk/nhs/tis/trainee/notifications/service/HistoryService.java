@@ -363,17 +363,6 @@ public class HistoryService {
   }
 
   /**
-   * Find all scheduled notifications for the given Trainee from DB. Email notifications are
-   * identified by SCHEDULED status, and in-app notifications by a future sentAt timestamp.
-   *
-   * @param traineeId The ID of the trainee to get notifications for.
-   * @return The found notifications, empty if none found.
-   */
-  public List<History> findAllScheduledForTrainee(String traineeId) {
-    return repository.findAllScheduledByRecipientIdOrderBySentAtDesc(traineeId, Instant.now());
-  }
-
-  /**
    * Update the email address on all scheduled notifications for the given trainee. This updates
    * both the recipient contact email (for EMAIL type notifications) and the template variable
    * "email" if present.
@@ -382,7 +371,8 @@ public class HistoryService {
    * @param newEmail  The new email address.
    */
   public void updateScheduledNotificationEmail(String traineeId, String newEmail) {
-    List<History> scheduledNotifications = findAllScheduledForTrainee(traineeId);
+    List<History> scheduledNotifications =
+        repository.findAllScheduledByRecipientIdOrderBySentAtDesc(traineeId, Instant.now());
 
     log.info("Found {} scheduled notifications for trainee {} to update email.",
         scheduledNotifications.size(), traineeId);
