@@ -1336,6 +1336,20 @@ class HistoryServiceTest {
   }
 
   @Test
+  void shouldNotUpdateScheduledNotificationWhenTraineeIdIsNull() {
+    service.updateScheduledNotificationEmail(null, "new@example.com");
+
+    verifyNoInteractions(repository);
+  }
+
+  @Test
+  void shouldNotUpdateScheduledNotificationWhenNewEmailIsNull() {
+    service.updateScheduledNotificationEmail(TRAINEE_ID, null);
+
+    verifyNoInteractions(repository);
+  }
+
+  @Test
   void shouldDeleteHistoryForTrainee() {
 
     service.deleteHistoryForTrainee(HISTORY_ID, TRAINEE_ID);

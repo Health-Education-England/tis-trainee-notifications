@@ -371,6 +371,10 @@ public class HistoryService {
    * @param newEmail  The new email address.
    */
   public void updateScheduledNotificationEmail(String traineeId, String newEmail) {
+    if (traineeId == null || newEmail == null) {
+      log.warn("Cannot update scheduled notification emails: traineeId or newEmail is null.");
+      return;
+    }
     List<History> scheduledNotifications =
         repository.findAllScheduledByRecipientIdOrderBySentAtDesc(traineeId, Instant.now());
 
