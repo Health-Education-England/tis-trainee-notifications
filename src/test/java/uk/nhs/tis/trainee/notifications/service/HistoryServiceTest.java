@@ -1006,7 +1006,9 @@ class HistoryServiceTest {
 
   @Test
   void shouldFindNoHistoryForTraineeWhenScheduledInAppNotificationsNotExist() {
-    when(repository.findAllScheduledByRecipientIdOrderBySentAtDesc(eq(TRAINEE_ID), any(Instant.class))).thenReturn(List.of());
+    when(repository.findAllScheduledByRecipientIdOrderBySentAtDesc(
+        eq(TRAINEE_ID), any(Instant.class)))
+        .thenReturn(List.of());
 
     List<History> history = service.findAllScheduledForTrainee(
         TRAINEE_ID, TIS_REFERENCE_TYPE, TIS_REFERENCE_ID);
@@ -1024,29 +1026,31 @@ class HistoryServiceTest {
     TisReferenceInfo tisReferenceInfo = new TisReferenceInfo(TIS_REFERENCE_TYPE, TIS_REFERENCE_ID);
     TisReferenceInfo otherReferenceInfo = new TisReferenceInfo(TIS_REFERENCE_TYPE, "other-id");
 
-    // Matching reference
     ObjectId id1 = ObjectId.get();
-    History history1 = new History(id1, tisReferenceInfo, notificationType, recipientInfo,
-        templateInfo, null, Instant.MAX, Instant.MIN, SCHEDULED, null, null);
+    History history1 = new History(id1, otherReferenceInfo, notificationType, recipientInfo,
+        templateInfo, null, Instant.MIN, Instant.MAX, SENT, null, null);
 
-    // Different reference (should be filtered out by service)
     ObjectId id2 = ObjectId.get();
-    History history2 = new History(id2, otherReferenceInfo, notificationType, recipientInfo,
-        templateInfo, null, Instant.MAX, Instant.MIN, SCHEDULED, null, null);
+    History history2 = new History(id2, tisReferenceInfo, notificationType, recipientInfo,
+        templateInfo, null, Instant.MIN, Instant.MIN, SENT, null, null);
+
+    ObjectId id3 = ObjectId.get();
+    History history3 = new History(id3, tisReferenceInfo, notificationType, recipientInfo,
+        templateInfo, null, Instant.MAX, Instant.MIN, SENT, null, null);
 
     when(repository.findAllScheduledByRecipientIdOrderBySentAtDesc(
         eq(TRAINEE_ID), any(Instant.class)))
-        .thenReturn(List.of(history1, history2));
+        .thenReturn(List.of(history3, history2, history1));
 
     when(templateService.process(any(), any(), anyMap())).thenReturn("");
 
     List<History> history = service.findAllScheduledForTrainee(
         TRAINEE_ID, TIS_REFERENCE_TYPE, TIS_REFERENCE_ID);
 
-    assertThat("Unexpected history count.", history.size(), is(1));
+    assertThat("Unexpected history count.", history.size(), is(2));
 
     History returnedHistory1 = history.get(0);
-    assertThat("Unexpected history id.", returnedHistory1.id(), is(id1));
+    assertThat("Unexpected history id.", returnedHistory1.id(), is(id3));
     TisReferenceInfo referenceInfo2 = history.get(0).tisReference();
     assertThat("Unexpected history TIS reference type.", referenceInfo2.type(),
         is(TIS_REFERENCE_TYPE));

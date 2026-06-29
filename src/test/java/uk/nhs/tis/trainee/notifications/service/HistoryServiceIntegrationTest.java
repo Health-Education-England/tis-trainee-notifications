@@ -966,10 +966,10 @@ class HistoryServiceIntegrationTest {
   void shouldUpdateScheduledEmailNotificationRecipientContact() {
     String oldEmail = "old@example.com";
     String newEmail = "new@example.com";
-    RecipientInfo recipientInfo = new RecipientInfo(TRAINEE_ID, EMAIL, oldEmail);
-    TemplateInfo templateInfo = new TemplateInfo(TEMPLATE_NAME, TEMPLATE_VERSION,
+    final RecipientInfo recipientInfo = new RecipientInfo(TRAINEE_ID, EMAIL, oldEmail);
+    final TemplateInfo templateInfo = new TemplateInfo(TEMPLATE_NAME, TEMPLATE_VERSION,
         Map.of("key1", "value1"));
-    TisReferenceInfo tisReferenceInfo = new TisReferenceInfo(TIS_REFERENCE_TYPE, TIS_REFERENCE_ID);
+    final TisReferenceInfo tisReferenceInfo = new TisReferenceInfo(TIS_REFERENCE_TYPE, TIS_REFERENCE_ID);
 
     service.save(new History(null, tisReferenceInfo, FORM_UPDATED, recipientInfo,
         templateInfo, null, SENT_AT, null, SCHEDULED, null, null));
@@ -988,10 +988,10 @@ class HistoryServiceIntegrationTest {
   void shouldUpdateScheduledNotificationTemplateVariablesEmail() {
     String oldEmail = "old@example.com";
     String newEmail = "new@example.com";
-    RecipientInfo recipientInfo = new RecipientInfo(TRAINEE_ID, EMAIL, oldEmail);
+    final RecipientInfo recipientInfo = new RecipientInfo(TRAINEE_ID, EMAIL, oldEmail);
     Map<String, Object> variables = Map.of("email", oldEmail, "familyName", "Smith");
-    TemplateInfo templateInfo = new TemplateInfo(TEMPLATE_NAME, TEMPLATE_VERSION, variables);
-    TisReferenceInfo tisReferenceInfo = new TisReferenceInfo(TIS_REFERENCE_TYPE, TIS_REFERENCE_ID);
+    final TemplateInfo templateInfo = new TemplateInfo(TEMPLATE_NAME, TEMPLATE_VERSION, variables);
+    final TisReferenceInfo tisReferenceInfo = new TisReferenceInfo(TIS_REFERENCE_TYPE, TIS_REFERENCE_ID);
 
     service.save(new History(null, tisReferenceInfo, FORM_UPDATED, recipientInfo,
         templateInfo, null, SENT_AT, null, SCHEDULED, null, null));
@@ -1013,10 +1013,10 @@ class HistoryServiceIntegrationTest {
   void shouldNotUpdateNonScheduledNotificationsWhenUpdatingEmail() {
     String oldEmail = "old@example.com";
     String newEmail = "new@example.com";
-    RecipientInfo recipientInfo = new RecipientInfo(TRAINEE_ID, EMAIL, oldEmail);
+    final RecipientInfo recipientInfo = new RecipientInfo(TRAINEE_ID, EMAIL, oldEmail);
     Map<String, Object> variables = Map.of("email", oldEmail);
-    TemplateInfo templateInfo = new TemplateInfo(TEMPLATE_NAME, TEMPLATE_VERSION, variables);
-    TisReferenceInfo tisReferenceInfo = new TisReferenceInfo(TIS_REFERENCE_TYPE, TIS_REFERENCE_ID);
+    final TemplateInfo templateInfo = new TemplateInfo(TEMPLATE_NAME, TEMPLATE_VERSION, variables);
+    final TisReferenceInfo tisReferenceInfo = new TisReferenceInfo(TIS_REFERENCE_TYPE, TIS_REFERENCE_ID);
 
     // Sent notification should not be updated
     History sentHistory = service.save(new History(null, tisReferenceInfo, FORM_UPDATED,
@@ -1051,10 +1051,10 @@ class HistoryServiceIntegrationTest {
     String oldEmail = "old@example.com";
     String newEmail = "new@example.com";
     String otherTraineeId = "other-trainee";
-    RecipientInfo otherRecipient = new RecipientInfo(otherTraineeId, EMAIL, oldEmail);
+    final RecipientInfo otherRecipient = new RecipientInfo(otherTraineeId, EMAIL, oldEmail);
     Map<String, Object> variables = Map.of("email", oldEmail);
-    TemplateInfo templateInfo = new TemplateInfo(TEMPLATE_NAME, TEMPLATE_VERSION, variables);
-    TisReferenceInfo tisReferenceInfo = new TisReferenceInfo(TIS_REFERENCE_TYPE, TIS_REFERENCE_ID);
+    final TemplateInfo templateInfo = new TemplateInfo(TEMPLATE_NAME, TEMPLATE_VERSION, variables);
+    final TisReferenceInfo tisReferenceInfo = new TisReferenceInfo(TIS_REFERENCE_TYPE, TIS_REFERENCE_ID);
 
     service.save(new History(null, tisReferenceInfo, FORM_UPDATED, otherRecipient,
         templateInfo, null, SENT_AT, null, SCHEDULED, null, null));
@@ -1073,11 +1073,11 @@ class HistoryServiceIntegrationTest {
   void shouldUpdateMultipleScheduledNotificationsForTrainee() {
     String oldEmail = "old@example.com";
     String newEmail = "new@example.com";
-    RecipientInfo recipientInfo = new RecipientInfo(TRAINEE_ID, EMAIL, oldEmail);
+    final RecipientInfo recipientInfo = new RecipientInfo(TRAINEE_ID, EMAIL, oldEmail);
     Map<String, Object> variables = Map.of("email", oldEmail, "key1", "value1");
-    TemplateInfo templateInfo = new TemplateInfo(TEMPLATE_NAME, TEMPLATE_VERSION, variables);
-    TisReferenceInfo tisReferenceInfo1 = new TisReferenceInfo(TIS_REFERENCE_TYPE, TIS_REFERENCE_ID);
-    TisReferenceInfo tisReferenceInfo2 = new TisReferenceInfo(TIS_REFERENCE_TYPE,
+    final TemplateInfo templateInfo = new TemplateInfo(TEMPLATE_NAME, TEMPLATE_VERSION, variables);
+    final TisReferenceInfo tisReferenceInfo1 = new TisReferenceInfo(TIS_REFERENCE_TYPE, TIS_REFERENCE_ID);
+    final TisReferenceInfo tisReferenceInfo2 = new TisReferenceInfo(TIS_REFERENCE_TYPE,
         TIS_REFERENCE_ID_2);
 
     service.save(new History(null, tisReferenceInfo1, FORM_UPDATED, recipientInfo,
