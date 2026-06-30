@@ -61,6 +61,7 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneId;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -1005,7 +1006,9 @@ class HistoryServiceTest {
 
   @Test
   void shouldFindNoHistoryForTraineeWhenScheduledInAppNotificationsNotExist() {
-    when(repository.findAllByRecipient_IdOrderBySentAtDesc(TRAINEE_ID)).thenReturn(List.of());
+    when(repository.findAllScheduledByRecipientIdOrderBySentAtDesc(
+        eq(TRAINEE_ID), any(Instant.class)))
+        .thenReturn(List.of());
 
     List<History> history = service.findAllScheduledForTrainee(
         TRAINEE_ID, TIS_REFERENCE_TYPE, TIS_REFERENCE_ID);
@@ -1021,29 +1024,30 @@ class HistoryServiceTest {
     TemplateInfo templateInfo = new TemplateInfo(TEMPLATE_NAME, TEMPLATE_VERSION,
         TEMPLATE_VARIABLES);
     TisReferenceInfo tisReferenceInfo = new TisReferenceInfo(TIS_REFERENCE_TYPE, TIS_REFERENCE_ID);
+    TisReferenceInfo otherReferenceInfo = new TisReferenceInfo(TIS_REFERENCE_TYPE, "other-id");
 
     ObjectId id1 = ObjectId.get();
-    History history1 = new History(id1, tisReferenceInfo, notificationType, recipientInfo,
+    History history1 = new History(id1, otherReferenceInfo, notificationType, recipientInfo,
         templateInfo, null, Instant.MIN, Instant.MAX, SENT, null, null);
 
     ObjectId id2 = ObjectId.get();
-    Instant timeNow = NOW;
     History history2 = new History(id2, tisReferenceInfo, notificationType, recipientInfo,
-        templateInfo, null, timeNow, Instant.MIN, SENT, null, null);
+        templateInfo, null, Instant.MIN, Instant.MIN, SENT, null, null);
 
     ObjectId id3 = ObjectId.get();
     History history3 = new History(id3, tisReferenceInfo, notificationType, recipientInfo,
         templateInfo, null, Instant.MAX, Instant.MIN, SENT, null, null);
 
-    when(repository.findAllByRecipient_IdOrderBySentAtDesc(TRAINEE_ID)).thenReturn(
-        List.of(history3, history2, history1));
+    when(repository.findAllScheduledByRecipientIdOrderBySentAtDesc(
+        eq(TRAINEE_ID), any(Instant.class)))
+        .thenReturn(List.of(history3, history2, history1));
 
     when(templateService.process(any(), any(), anyMap())).thenReturn("");
 
     List<History> history = service.findAllScheduledForTrainee(
         TRAINEE_ID, TIS_REFERENCE_TYPE, TIS_REFERENCE_ID);
 
-    assertThat("Unexpected history count.", history.size(), is(1));
+    assertThat("Unexpected history count.", history.size(), is(2));
 
     History returnedHistory1 = history.get(0);
     assertThat("Unexpected history id.", returnedHistory1.id(), is(id3));
@@ -1105,6 +1109,244 @@ class HistoryServiceTest {
     assertThat("Unexpected failed history read at.", failed1.readAt(), is(Instant.MAX));
     assertThat("Unexpected failed history status.", failed1.status(), is(FAILED));
     assertThat("Unexpected failed history last retry.", failed1.lastRetry(), is(Instant.MAX));
+  }
+
+
+  @Test
+  void shouldUpdateRecipientEmailForScheduledEmailNotification() {
+    String oldEmail = "old@example.com";
+    String newEmail = "new@example.com";
+    RecipientInfo recipientInfo = new RecipientInfo(TRAINEE_ID, EMAIL, oldEmail);
+    TemplateInfo templateInfo = new TemplateInfo(TEMPLATE_NAME, TEMPLATE_VERSION,
+        Map.of("key1", "value1"));
+    TisReferenceInfo tisReferenceInfo = new TisReferenceInfo(TIS_REFERENCE_TYPE, TIS_REFERENCE_ID);
+
+    ObjectId id = ObjectId.get();
+    History scheduledEmail = new History(id, tisReferenceInfo, PROGRAMME_CREATED, recipientInfo,
+        templateInfo, null, Instant.MIN, null, SCHEDULED, null, null);
+
+    when(repository.findAllScheduledByRecipientIdOrderBySentAtDesc(
+        eq(TRAINEE_ID), any(Instant.class)))
+        .thenReturn(List.of(scheduledEmail));
+    when(repository.save(any(History.class))).thenAnswer(inv -> inv.getArgument(0));
+
+    service.updateScheduledNotificationEmail(TRAINEE_ID, newEmail);
+
+    ArgumentCaptor<History> historyCaptor = ArgumentCaptor.forClass(History.class);
+    verify(repository).save(historyCaptor.capture());
+
+    History saved = historyCaptor.getValue();
+    assertThat("Unexpected recipient email.", saved.recipient().contact(), is(newEmail));
+    assertThat("Unexpected recipient id.", saved.recipient().id(), is(TRAINEE_ID));
+    assertThat("Unexpected recipient type.", saved.recipient().type(), is(EMAIL));
+  }
+
+  @Test
+  void shouldUpdateTemplateVariablesEmailForScheduledNotification() {
+    String oldEmail = "old@example.com";
+    String newEmail = "new@example.com";
+    RecipientInfo recipientInfo = new RecipientInfo(TRAINEE_ID, EMAIL, oldEmail);
+    Map<String, Object> variables = new HashMap<>(Map.of("email", oldEmail, "key1", "value1"));
+    TemplateInfo templateInfo = new TemplateInfo(TEMPLATE_NAME, TEMPLATE_VERSION, variables);
+    TisReferenceInfo tisReferenceInfo = new TisReferenceInfo(TIS_REFERENCE_TYPE, TIS_REFERENCE_ID);
+
+    ObjectId id = ObjectId.get();
+    History scheduledEmail = new History(id, tisReferenceInfo, PROGRAMME_CREATED, recipientInfo,
+        templateInfo, null, Instant.MIN, null, SCHEDULED, null, null);
+
+    when(repository.findAllScheduledByRecipientIdOrderBySentAtDesc(
+        eq(TRAINEE_ID), any(Instant.class)))
+        .thenReturn(List.of(scheduledEmail));
+    when(repository.save(any(History.class))).thenAnswer(inv -> inv.getArgument(0));
+
+    service.updateScheduledNotificationEmail(TRAINEE_ID, newEmail);
+
+    ArgumentCaptor<History> historyCaptor = ArgumentCaptor.forClass(History.class);
+    verify(repository).save(historyCaptor.capture());
+
+    History saved = historyCaptor.getValue();
+    assertThat("Unexpected recipient email.", saved.recipient().contact(), is(newEmail));
+    assertThat("Unexpected template email variable.", saved.template().variables().get("email"),
+        is(newEmail));
+    assertThat("Unexpected template non-email variable.",
+        saved.template().variables().get("key1"), is("value1"));
+  }
+
+  @Test
+  void shouldNotUpdateScheduledNotificationWhenEmailAlreadyMatches() {
+    RecipientInfo recipientInfo = new RecipientInfo(TRAINEE_ID, EMAIL, TRAINEE_CONTACT);
+    Map<String, Object> variables = new HashMap<>(Map.of("email", TRAINEE_CONTACT));
+    TemplateInfo templateInfo = new TemplateInfo(TEMPLATE_NAME, TEMPLATE_VERSION, variables);
+    TisReferenceInfo tisReferenceInfo = new TisReferenceInfo(TIS_REFERENCE_TYPE, TIS_REFERENCE_ID);
+
+    ObjectId id = ObjectId.get();
+    History scheduledEmail = new History(id, tisReferenceInfo, PROGRAMME_CREATED, recipientInfo,
+        templateInfo, null, Instant.MIN, null, SCHEDULED, null, null);
+
+    when(repository.findAllScheduledByRecipientIdOrderBySentAtDesc(
+        eq(TRAINEE_ID), any(Instant.class)))
+        .thenReturn(List.of(scheduledEmail));
+
+    service.updateScheduledNotificationEmail(TRAINEE_ID, TRAINEE_CONTACT);
+
+    verify(repository, never()).save(any(History.class));
+  }
+
+  @Test
+  void shouldNotUpdateRecipientEmailForInAppScheduledNotification() {
+    String newEmail = "new@example.com";
+    RecipientInfo recipientInfo = new RecipientInfo(TRAINEE_ID, IN_APP, null);
+    TemplateInfo templateInfo = new TemplateInfo(TEMPLATE_NAME, TEMPLATE_VERSION,
+        Map.of("key1", "value1"));
+    TisReferenceInfo tisReferenceInfo = new TisReferenceInfo(TIS_REFERENCE_TYPE, TIS_REFERENCE_ID);
+
+    ObjectId id = ObjectId.get();
+    Instant futureTime = Instant.now().plus(Duration.ofDays(7));
+    History futureInApp = new History(id, tisReferenceInfo, PROGRAMME_CREATED, recipientInfo,
+        templateInfo, null, futureTime, null, UNREAD, null, null);
+
+    when(repository.findAllScheduledByRecipientIdOrderBySentAtDesc(
+        eq(TRAINEE_ID), any(Instant.class)))
+        .thenReturn(List.of(futureInApp));
+
+    service.updateScheduledNotificationEmail(TRAINEE_ID, newEmail);
+
+    // In-app notification without "email" template variable should not be saved
+    verify(repository, never()).save(any(History.class));
+  }
+
+  @Test
+  void shouldUpdateTemplateVariablesEmailForInAppScheduledNotification() {
+    String oldEmail = "old@example.com";
+    String newEmail = "new@example.com";
+    RecipientInfo recipientInfo = new RecipientInfo(TRAINEE_ID, IN_APP, null);
+    Map<String, Object> variables = new HashMap<>(Map.of("email", oldEmail));
+    TemplateInfo templateInfo = new TemplateInfo(TEMPLATE_NAME, TEMPLATE_VERSION, variables);
+    TisReferenceInfo tisReferenceInfo = new TisReferenceInfo(TIS_REFERENCE_TYPE, TIS_REFERENCE_ID);
+
+    ObjectId id = ObjectId.get();
+    Instant futureTime = Instant.now().plus(Duration.ofDays(7));
+    History futureInApp = new History(id, tisReferenceInfo, PROGRAMME_CREATED, recipientInfo,
+        templateInfo, null, futureTime, null, UNREAD, null, null);
+
+    when(repository.findAllScheduledByRecipientIdOrderBySentAtDesc(
+        eq(TRAINEE_ID), any(Instant.class)))
+        .thenReturn(List.of(futureInApp));
+    when(repository.save(any(History.class))).thenAnswer(inv -> inv.getArgument(0));
+
+    service.updateScheduledNotificationEmail(TRAINEE_ID, newEmail);
+
+    ArgumentCaptor<History> historyCaptor = ArgumentCaptor.forClass(History.class);
+    verify(repository).save(historyCaptor.capture());
+
+    History saved = historyCaptor.getValue();
+    assertThat("Unexpected recipient type.", saved.recipient().type(), is(IN_APP));
+    assertThat("Unexpected template email variable.", saved.template().variables().get("email"),
+        is(newEmail));
+  }
+
+  @Test
+  void shouldUpdateRecipientEmailForScheduledEmailNotificationWhenContactIsNull() {
+    String newEmail = "new@example.com";
+    RecipientInfo recipientInfo = new RecipientInfo(TRAINEE_ID, EMAIL, null);
+    TemplateInfo templateInfo = new TemplateInfo(TEMPLATE_NAME, TEMPLATE_VERSION,
+        Map.of("key1", "value1"));
+    TisReferenceInfo tisReferenceInfo = new TisReferenceInfo(TIS_REFERENCE_TYPE, TIS_REFERENCE_ID);
+
+    ObjectId id = ObjectId.get();
+    History scheduledEmail = new History(id, tisReferenceInfo, PROGRAMME_CREATED, recipientInfo,
+        templateInfo, null, Instant.MIN, null, SCHEDULED, null, null);
+
+    when(repository.findAllScheduledByRecipientIdOrderBySentAtDesc(
+        eq(TRAINEE_ID), any(Instant.class)))
+        .thenReturn(List.of(scheduledEmail));
+    when(repository.save(any(History.class))).thenAnswer(inv -> inv.getArgument(0));
+
+    service.updateScheduledNotificationEmail(TRAINEE_ID, newEmail);
+
+    ArgumentCaptor<History> historyCaptor = ArgumentCaptor.forClass(History.class);
+    verify(repository).save(historyCaptor.capture());
+
+    History saved = historyCaptor.getValue();
+    assertThat("Unexpected recipient email.", saved.recipient().contact(), is(newEmail));
+    assertThat("Unexpected recipient id.", saved.recipient().id(), is(TRAINEE_ID));
+    assertThat("Unexpected recipient type.", saved.recipient().type(), is(EMAIL));
+  }
+
+  @Test
+  void shouldNotUpdateTemplateEmailWhenTemplateIsNull() {
+    String newEmail = "new@example.com";
+    RecipientInfo recipientInfo = new RecipientInfo(TRAINEE_ID, EMAIL, "old@example.com");
+    TisReferenceInfo tisReferenceInfo = new TisReferenceInfo(TIS_REFERENCE_TYPE, TIS_REFERENCE_ID);
+
+    ObjectId id = ObjectId.get();
+    History scheduledEmail = new History(id, tisReferenceInfo, PROGRAMME_CREATED, recipientInfo,
+        null, null, Instant.MIN, null, SCHEDULED, null, null);
+
+    when(repository.findAllScheduledByRecipientIdOrderBySentAtDesc(
+        eq(TRAINEE_ID), any(Instant.class)))
+        .thenReturn(List.of(scheduledEmail));
+    when(repository.save(any(History.class))).thenAnswer(inv -> inv.getArgument(0));
+
+    service.updateScheduledNotificationEmail(TRAINEE_ID, newEmail);
+
+    ArgumentCaptor<History> historyCaptor = ArgumentCaptor.forClass(History.class);
+    verify(repository).save(historyCaptor.capture());
+
+    History saved = historyCaptor.getValue();
+    assertThat("Unexpected recipient email.", saved.recipient().contact(), is(newEmail));
+    assertThat("Unexpected template.", saved.template(), nullValue());
+  }
+
+  @Test
+  void shouldNotUpdateTemplateEmailWhenTemplateVariablesAreNull() {
+    String newEmail = "new@example.com";
+    RecipientInfo recipientInfo = new RecipientInfo(TRAINEE_ID, EMAIL, "old@example.com");
+    TemplateInfo templateInfo = new TemplateInfo(TEMPLATE_NAME, TEMPLATE_VERSION, null);
+    TisReferenceInfo tisReferenceInfo = new TisReferenceInfo(TIS_REFERENCE_TYPE, TIS_REFERENCE_ID);
+
+    ObjectId id = ObjectId.get();
+    History scheduledEmail = new History(id, tisReferenceInfo, PROGRAMME_CREATED, recipientInfo,
+        templateInfo, null, Instant.MIN, null, SCHEDULED, null, null);
+
+    when(repository.findAllScheduledByRecipientIdOrderBySentAtDesc(
+        eq(TRAINEE_ID), any(Instant.class)))
+        .thenReturn(List.of(scheduledEmail));
+    when(repository.save(any(History.class))).thenAnswer(inv -> inv.getArgument(0));
+
+    service.updateScheduledNotificationEmail(TRAINEE_ID, newEmail);
+
+    ArgumentCaptor<History> historyCaptor = ArgumentCaptor.forClass(History.class);
+    verify(repository).save(historyCaptor.capture());
+
+    History saved = historyCaptor.getValue();
+    assertThat("Unexpected recipient email.", saved.recipient().contact(), is(newEmail));
+    assertThat("Unexpected template variables.", saved.template().variables(), nullValue());
+  }
+
+  @Test
+  void shouldNotUpdateScheduledNotificationWhenNoScheduledNotificationsExist() {
+    when(repository.findAllScheduledByRecipientIdOrderBySentAtDesc(
+        eq(TRAINEE_ID), any(Instant.class)))
+        .thenReturn(List.of());
+
+    service.updateScheduledNotificationEmail(TRAINEE_ID, "new@example.com");
+
+    verify(repository, never()).save(any(History.class));
+  }
+
+  @Test
+  void shouldNotUpdateScheduledNotificationWhenTraineeIdIsNull() {
+    service.updateScheduledNotificationEmail(null, "new@example.com");
+
+    verifyNoInteractions(repository);
+  }
+
+  @Test
+  void shouldNotUpdateScheduledNotificationWhenNewEmailIsNull() {
+    service.updateScheduledNotificationEmail(TRAINEE_ID, null);
+
+    verifyNoInteractions(repository);
   }
 
   @Test

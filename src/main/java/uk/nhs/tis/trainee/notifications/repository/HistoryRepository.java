@@ -79,6 +79,22 @@ public interface HistoryRepository extends
   List<History> findAllByRecipient_IdAndStatus(String recipientId, String status);
 
   /**
+   * Find all scheduled notifications for the given recipient, ordered by sentAt descending.
+   * A notification is considered scheduled if it has SCHEDULED status (email) or a future sentAt
+   * timestamp (in-app).
+   *
+   * @param recipientId The ID of the recipient to get the history for.
+   * @param now         The current timestamp, used to identify future sentAt values.
+   * @return The found history, empty if none found.
+   */
+  @Query(value = "{ 'recipient.id': ?0,"
+      + " '$or': [ { 'status': 'SCHEDULED' }, { 'sentAt': { '$gt': ?1 } } ] }",
+      sort = "{ 'sentAt': -1 }")
+  // Note: Spring Data only derives sorting from the method name when the query is derived, not when
+  // it is explicitly defined with @Query, hence the sort in the @Query annotation.
+  List<History> findAllScheduledByRecipientIdOrderBySentAtDesc(String recipientId, Instant now);
+
+  /**
    * Remove history Notifications by ID and recipientId.
    *
    * @param id          The ID of the history record.

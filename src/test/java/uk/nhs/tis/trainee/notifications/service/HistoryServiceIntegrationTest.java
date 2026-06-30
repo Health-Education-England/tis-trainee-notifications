@@ -962,6 +962,143 @@ class HistoryServiceIntegrationTest {
         afterMoveTo.size(), is(0));
   }
 
+  @Test
+  void shouldUpdateScheduledEmailNotificationRecipientContact() {
+    String oldEmail = "old@example.com";
+    String newEmail = "new@example.com";
+    RecipientInfo recipientInfo = new RecipientInfo(TRAINEE_ID, EMAIL, oldEmail);
+    TemplateInfo templateInfo = new TemplateInfo(TEMPLATE_NAME, TEMPLATE_VERSION,
+        Map.of("key1", "value1"));
+    TisReferenceInfo tisReferenceInfo = new TisReferenceInfo(TIS_REFERENCE_TYPE, TIS_REFERENCE_ID);
+
+    service.save(new History(null, tisReferenceInfo, FORM_UPDATED, recipientInfo,
+        templateInfo, null, SENT_AT, null, SCHEDULED, null, null));
+
+    service.updateScheduledNotificationEmail(TRAINEE_ID, newEmail);
+
+    List<History> allHistory = service.findAllHistoryForTrainee(TRAINEE_ID);
+    assertThat("Unexpected history count.", allHistory.size(), is(1));
+    assertThat("Unexpected recipient email.", allHistory.get(0).recipient().contact(),
+        is(newEmail));
+    assertThat("Unexpected recipient id.", allHistory.get(0).recipient().id(), is(TRAINEE_ID));
+    assertThat("Unexpected recipient type.", allHistory.get(0).recipient().type(), is(EMAIL));
+  }
+
+  @Test
+  void shouldUpdateScheduledNotificationTemplateVariablesEmail() {
+    String oldEmail = "old@example.com";
+    String newEmail = "new@example.com";
+    RecipientInfo recipientInfo = new RecipientInfo(TRAINEE_ID, EMAIL, oldEmail);
+    Map<String, Object> variables = Map.of("email", oldEmail, "familyName", "Smith");
+    TemplateInfo templateInfo = new TemplateInfo(TEMPLATE_NAME, TEMPLATE_VERSION, variables);
+    TisReferenceInfo tisReferenceInfo = new TisReferenceInfo(TIS_REFERENCE_TYPE, TIS_REFERENCE_ID);
+
+    service.save(new History(null, tisReferenceInfo, FORM_UPDATED, recipientInfo,
+        templateInfo, null, SENT_AT, null, SCHEDULED, null, null));
+
+    service.updateScheduledNotificationEmail(TRAINEE_ID, newEmail);
+
+    List<History> allHistory = service.findAllHistoryForTrainee(TRAINEE_ID);
+    assertThat("Unexpected history count.", allHistory.size(), is(1));
+
+    History updated = allHistory.get(0);
+    assertThat("Unexpected recipient email.", updated.recipient().contact(), is(newEmail));
+    assertThat("Unexpected template email variable.",
+        updated.template().variables().get("email"), is(newEmail));
+    assertThat("Unexpected template familyName variable.",
+        updated.template().variables().get("familyName"), is("Smith"));
+  }
+
+  @Test
+  void shouldNotUpdateNonScheduledNotificationsWhenUpdatingEmail() {
+    String oldEmail = "old@example.com";
+    String newEmail = "new@example.com";
+    RecipientInfo recipientInfo = new RecipientInfo(TRAINEE_ID, EMAIL, oldEmail);
+    Map<String, Object> variables = Map.of("email", oldEmail);
+    TemplateInfo templateInfo = new TemplateInfo(TEMPLATE_NAME, TEMPLATE_VERSION, variables);
+    TisReferenceInfo tisReferenceInfo = new TisReferenceInfo(TIS_REFERENCE_TYPE, TIS_REFERENCE_ID);
+
+    // Sent notification should not be updated
+    History sentHistory = service.save(new History(null, tisReferenceInfo, FORM_UPDATED,
+        recipientInfo, templateInfo, null, SENT_AT, null, SENT, null, null));
+
+    // Scheduled notification should be updated
+    History scheduledHistory = service.save(new History(null, tisReferenceInfo, FORM_UPDATED,
+        recipientInfo, templateInfo, null, SENT_AT, null, SCHEDULED, null, null));
+
+    service.updateScheduledNotificationEmail(TRAINEE_ID, newEmail);
+
+    List<History> allHistory = service.findAllHistoryForTrainee(TRAINEE_ID);
+    assertThat("Unexpected history count.", allHistory.size(), is(2));
+
+    History sentResult = allHistory.stream()
+        .filter(h -> h.id().equals(sentHistory.id())).findFirst().orElseThrow();
+    assertThat("Sent notification email should not change.",
+        sentResult.recipient().contact(), is(oldEmail));
+    assertThat("Sent notification template email should not change.",
+        sentResult.template().variables().get("email"), is(oldEmail));
+
+    History scheduledResult = allHistory.stream()
+        .filter(h -> h.id().equals(scheduledHistory.id())).findFirst().orElseThrow();
+    assertThat("Scheduled notification email should change.",
+        scheduledResult.recipient().contact(), is(newEmail));
+    assertThat("Scheduled notification template email should change.",
+        scheduledResult.template().variables().get("email"), is(newEmail));
+  }
+
+  @Test
+  void shouldNotUpdateScheduledNotificationsForOtherTrainees() {
+    String oldEmail = "old@example.com";
+    String newEmail = "new@example.com";
+    String otherTraineeId = "other-trainee";
+    RecipientInfo otherRecipient = new RecipientInfo(otherTraineeId, EMAIL, oldEmail);
+    Map<String, Object> variables = Map.of("email", oldEmail);
+    TemplateInfo templateInfo = new TemplateInfo(TEMPLATE_NAME, TEMPLATE_VERSION, variables);
+    TisReferenceInfo tisReferenceInfo = new TisReferenceInfo(TIS_REFERENCE_TYPE, TIS_REFERENCE_ID);
+
+    service.save(new History(null, tisReferenceInfo, FORM_UPDATED, otherRecipient,
+        templateInfo, null, SENT_AT, null, SCHEDULED, null, null));
+
+    service.updateScheduledNotificationEmail(TRAINEE_ID, newEmail);
+
+    List<History> otherHistory = service.findAllHistoryForTrainee(otherTraineeId);
+    assertThat("Unexpected history count.", otherHistory.size(), is(1));
+    assertThat("Other trainee email should not change.",
+        otherHistory.get(0).recipient().contact(), is(oldEmail));
+    assertThat("Other trainee template email should not change.",
+        otherHistory.get(0).template().variables().get("email"), is(oldEmail));
+  }
+
+  @Test
+  void shouldUpdateMultipleScheduledNotificationsForTrainee() {
+    String oldEmail = "old@example.com";
+    String newEmail = "new@example.com";
+    RecipientInfo recipientInfo = new RecipientInfo(TRAINEE_ID, EMAIL, oldEmail);
+    Map<String, Object> variables = Map.of("email", oldEmail, "key1", "value1");
+    TemplateInfo templateInfo = new TemplateInfo(TEMPLATE_NAME, TEMPLATE_VERSION, variables);
+    TisReferenceInfo tisReferenceInfo1 = new TisReferenceInfo(TIS_REFERENCE_TYPE, TIS_REFERENCE_ID);
+    TisReferenceInfo tisReferenceInfo2 = new TisReferenceInfo(TIS_REFERENCE_TYPE,
+        TIS_REFERENCE_ID_2);
+
+    service.save(new History(null, tisReferenceInfo1, FORM_UPDATED, recipientInfo,
+        templateInfo, null, SENT_AT, null, SCHEDULED, null, null));
+    service.save(new History(null, tisReferenceInfo2, PROGRAMME_DAY_ONE, recipientInfo,
+        templateInfo, null, SENT_AT, null, SCHEDULED, null, null));
+
+    service.updateScheduledNotificationEmail(TRAINEE_ID, newEmail);
+
+    List<History> allHistory = service.findAllHistoryForTrainee(TRAINEE_ID);
+    assertThat("Unexpected history count.", allHistory.size(), is(2));
+
+    for (History h : allHistory) {
+      assertThat("Unexpected recipient email.", h.recipient().contact(), is(newEmail));
+      assertThat("Unexpected template email variable.",
+          h.template().variables().get("email"), is(newEmail));
+      assertThat("Non-email variable should be unchanged.",
+          h.template().variables().get("key1"), is("value1"));
+    }
+  }
+
   /**
    * Helper method to create a basic History object for testing.
    */

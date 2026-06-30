@@ -84,6 +84,20 @@ class ContactDetailsServiceTest {
     service.updateContactDetails(updatedContactDetails);
 
     verifyNoInteractions(emailService);
+    verifyNoInteractions(historyService);
+  }
+
+  @Test
+  void shouldUpdateScheduledNotificationEmailsWhenEmailIsUpdated() {
+    when(historyService.findAllFailedForTrainee(TRAINEE_ID)).thenReturn(List.of());
+
+    ContactDetails updatedContactDetails = new ContactDetails();
+    updatedContactDetails.setEmail(TRAINEE_CONTACT);
+    updatedContactDetails.setTisId(TRAINEE_ID);
+
+    service.updateContactDetails(updatedContactDetails);
+
+    verify(historyService).updateScheduledNotificationEmail(TRAINEE_ID, TRAINEE_CONTACT);
   }
 
   @Test
