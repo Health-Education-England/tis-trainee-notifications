@@ -101,9 +101,9 @@ import uk.nhs.tis.trainee.notifications.service.MessageSendingService;
 import uk.nhs.tis.trainee.notifications.service.NotificationService;
 import uk.nhs.tis.trainee.notifications.service.UserAccountService;
 
-@SpringBootTest
+@SpringBootTest(properties = {"embedded.containers.enabled=true", "embedded.redis.enabled=true"})
 @Testcontainers
-@ActiveProfiles("test")
+@ActiveProfiles({"test", "redis"})
 class LtftListenerIntegrationTest {
 
   private static final String USER_ID = UUID.randomUUID().toString();
