@@ -148,7 +148,7 @@ class LtftListenerIntegrationTest {
         () -> LTFT_UPDATED_ASSIGNMENT_QUEUE);
     registry.add("application.email.enabled", () -> true);
     registry.add("application.domain", () -> URI.create("https://test.test.test"));
-    registry.add("application.ltft.assignment-cooldown", () -> "PT2S");
+    registry.add("application.ltft.assignment-cooldown", () -> "PT30S");
 
     registry.add("spring.cloud.aws.region.static", localstack::getRegion);
     registry.add("spring.cloud.aws.credentials.access-key", localstack::getAccessKey);
@@ -1142,8 +1142,8 @@ class LtftListenerIntegrationTest {
         .ignoreExceptions()
         .untilAsserted(() -> verify(mailSender).send(messageCaptor.capture()));
 
-    // Wait for the 2-second cooldown to expire.
-    Thread.sleep(2500);
+    // Manually delete cooldown key to simulate expiry (avoids slow sleep).
+    redisTemplate.delete(LtftService.ASSIGNMENT_COOLDOWN_KEY_PREFIX + adminEmail);
 
     // Reset mock to verify the next send independently.
     reset(mailSender);
