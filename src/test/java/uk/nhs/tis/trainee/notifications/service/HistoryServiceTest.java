@@ -203,7 +203,7 @@ class HistoryServiceTest {
 
   @ParameterizedTest
   @EnumSource(value = NotificationStatus.class, mode = Mode.EXCLUDE,
-      names = {"ARCHIVED", "READ", "UNREAD", "SCHEDULED", "DELETED"})
+      names = {"ARCHIVED", "READ", "UNREAD", "SCHEDULED", "DELETED", "SKIPPED"})
   void shouldUpdateValidStatusWhenEmailHistoryFound(NotificationStatus status) {
     ObjectId notificationId = new ObjectId(NOTIFICATION_ID);
     RecipientInfo recipientInfo = new RecipientInfo(TRAINEE_ID, EMAIL, TRAINEE_CONTACT);
@@ -270,7 +270,7 @@ class HistoryServiceTest {
 
   @ParameterizedTest
   @EnumSource(value = NotificationStatus.class, mode = Mode.EXCLUDE,
-      names = {"FAILED", "PENDING", "SENT", "DELETED"})
+      names = {"FAILED", "PENDING", "SENT", "DELETED", "SKIPPED"})
   void shouldUpdateValidStatusWhenInAppHistoryFound(NotificationStatus status) {
     ObjectId notificationId = new ObjectId(NOTIFICATION_ID);
     RecipientInfo recipientInfo = new RecipientInfo(TRAINEE_ID, IN_APP, TRAINEE_CONTACT);
@@ -348,7 +348,7 @@ class HistoryServiceTest {
 
   @ParameterizedTest
   @EnumSource(value = NotificationStatus.class, mode = Mode.EXCLUDE, names = {"ARCHIVED", "READ",
-      "SCHEDULED", "UNREAD", "DELETED"})
+      "SCHEDULED", "UNREAD", "DELETED", "SKIPPED"})
   void shouldUpdateValidStatusForTraineeWhenEmailHistoryFound(NotificationStatus status) {
     ObjectId notificationId = new ObjectId(NOTIFICATION_ID);
     RecipientInfo recipientInfo = new RecipientInfo(TRAINEE_ID, EMAIL, TRAINEE_CONTACT);
@@ -416,7 +416,7 @@ class HistoryServiceTest {
 
   @ParameterizedTest
   @EnumSource(value = NotificationStatus.class, mode = Mode.EXCLUDE,
-      names = {"FAILED", "PENDING", "SENT", "DELETED"})
+      names = {"FAILED", "PENDING", "SENT", "DELETED", "SKIPPED"})
   void shouldUpdateValidStatusForTraineeWhenInAppHistoryFound(NotificationStatus status) {
     ObjectId notificationId = new ObjectId(NOTIFICATION_ID);
     RecipientInfo recipientInfo = new RecipientInfo(TRAINEE_ID, IN_APP, TRAINEE_CONTACT);

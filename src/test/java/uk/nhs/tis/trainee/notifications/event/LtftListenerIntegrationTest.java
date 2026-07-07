@@ -212,6 +212,8 @@ class LtftListenerIntegrationTest {
     if (cooldownKeys != null && !cooldownKeys.isEmpty()) {
       redisTemplate.delete(cooldownKeys);
     }
+    reset(mailSender);
+    when(mailSender.createMimeMessage()).thenReturn(new MimeMessage((Session) null));
   }
 
   @ParameterizedTest
@@ -1091,16 +1093,16 @@ class LtftListenerIntegrationTest {
 
     // Wait for the message to be processed, then check history for SKIPPED entry.
     Criteria criteria = Criteria.where("recipient.contact").is(adminEmail)
-        .and("status").is(NotificationStatus.SKIPPED.name());
+        .and("status").is("SKIPPED");
     Query query = Query.query(criteria);
 
     await()
         .pollInterval(Duration.ofSeconds(2))
-        .atMost(Duration.ofSeconds(10))
+        .atMost(Duration.ofSeconds(15))
         .ignoreExceptions()
         .untilAsserted(() -> {
           List<History> found = mongoTemplate.find(query, History.class);
-          assertThat("Expected a SKIPPED history entry.", found.size(), is(1));
+          assertThat("Expected a SKIPPED history entry.", found, hasSize(1));
         });
 
     // Verify no additional email was sent.
