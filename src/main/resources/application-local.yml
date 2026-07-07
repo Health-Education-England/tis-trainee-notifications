@@ -20,6 +20,7 @@ application:
     gmc-updated: ${local.sqs-path}/tis-trainee-notifications-local-gmc-updated
     ltft-updated: ${local.sqs-path}/tis-trainee-notifications-local-ltft-updated
     ltft-updated-tpd: ${local.sqs-path}/tis-trainee-notifications-local-ltft-updated-tpd
+    ltft-updated-assignment: ${local.sqs-path}/tis-trainee-notifications-local-ltft-updated-assignment
     outbox: ${local.sqs-path}/tis-trainee-notifications-local-outbox
     placement-deleted: ${local.sqs-path}/tis-trainee-notifications-local-placement-deleted
     placement-updated: ${local.sqs-path}/tis-trainee-notifications-local-placement-updated
