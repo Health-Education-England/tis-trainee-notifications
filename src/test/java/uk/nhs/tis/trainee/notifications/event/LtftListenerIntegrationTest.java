@@ -28,8 +28,8 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.hasSize;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.reset;
-import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.testcontainers.containers.localstack.LocalStackContainer.Service.SQS;
@@ -96,6 +96,7 @@ import uk.nhs.tis.trainee.notifications.model.MessageType;
 import uk.nhs.tis.trainee.notifications.model.NotificationStatus;
 import uk.nhs.tis.trainee.notifications.model.NotificationType;
 import uk.nhs.tis.trainee.notifications.service.EmailService;
+import uk.nhs.tis.trainee.notifications.service.EventBroadcastService;
 import uk.nhs.tis.trainee.notifications.service.LtftService;
 import uk.nhs.tis.trainee.notifications.service.MessageSendingService;
 import uk.nhs.tis.trainee.notifications.service.NotificationService;
@@ -179,6 +180,9 @@ class LtftListenerIntegrationTest {
 
   @MockitoBean
   private S3Template s3Template;
+
+  @MockitoBean
+  private EventBroadcastService eventBroadcastService;
 
   @Autowired
   private EmailService emailService;
@@ -1088,28 +1092,20 @@ class LtftListenerIntegrationTest {
     reset(mailSender);
     when(mailSender.createMimeMessage()).thenReturn(new MimeMessage((Session) null));
 
-    // Small delay to ensure Redis cooldown key is fully committed.
-    Thread.sleep(500);
+    // Second message within cooldown — invoke listener directly to avoid SQS timing issues.
+    LtftUpdateEvent secondEvent = JsonMapper.builder().build()
+        .readValue(eventString, LtftUpdateEvent.class);
+    listener.handleLtftUpdateAssignment(secondEvent);
 
-    // Second message within cooldown — should be skipped.
-    sqsTemplate.send(LTFT_UPDATED_ASSIGNMENT_QUEUE, eventJson);
-
-    // Wait for the message to be processed, then check history for SKIPPED entry.
+    // Check history for SKIPPED entry.
     Criteria criteria = Criteria.where("recipient.contact").is(adminEmail)
         .and("status").is(NotificationStatus.SKIPPED);
     Query query = Query.query(criteria);
-
-    await()
-        .pollInterval(Duration.ofSeconds(1))
-        .atMost(Duration.ofSeconds(20))
-        .ignoreExceptions()
-        .untilAsserted(() -> {
-          List<History> found = mongoTemplate.find(query, History.class);
-          assertThat("Expected a SKIPPED history entry.", found, hasSize(1));
-        });
+    List<History> found = mongoTemplate.find(query, History.class);
+    assertThat("Expected a SKIPPED history entry.", found, hasSize(1));
 
     // Verify no additional email was sent.
-    verify(mailSender, times(0)).send(any(MimeMessage.class));
+    verify(mailSender, never()).send(any(MimeMessage.class));
   }
 
   @Test
