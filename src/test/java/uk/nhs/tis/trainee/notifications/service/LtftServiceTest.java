@@ -23,6 +23,7 @@ package uk.nhs.tis.trainee.notifications.service;
 
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.eq;
@@ -220,6 +221,26 @@ class LtftServiceTest {
         LtftService.ASSIGNMENT_COOLDOWN_KEY_PREFIX + ADMIN_EMAIL,
         "1",
         Duration.ofMinutes(15));
+  }
+
+  @Test
+  void shouldThrowWhenNoTemplateVersionConfigured() {
+    TemplateVersionsProperties templateVersionsWithNullEmail =
+        new TemplateVersionsProperties(Map.of(
+            "ltft-updated-assignment", new MessageTypeVersions(null, null)
+        ));
+    LtftService serviceWithNoTemplate = new LtftService(emailService, historyService,
+        templateVersionsWithNullEmail, redisTemplate, true, Duration.ofMinutes(15));
+
+    LtftUpdateEvent event = LtftUpdateEvent.builder()
+        .traineeId(TRAINEE_ID)
+        .formId(FORM_ID)
+        .assignedAdmin(LtftStatusAssignedDto.builder()
+            .name(ADMIN_NAME).email(ADMIN_EMAIL).role("ADMIN").build())
+        .build();
+
+    assertThrows(IllegalArgumentException.class,
+        () -> serviceWithNoTemplate.handleAssignmentNotification(event));
   }
 }
 
