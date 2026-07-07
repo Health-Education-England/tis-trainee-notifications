@@ -1088,17 +1088,20 @@ class LtftListenerIntegrationTest {
     reset(mailSender);
     when(mailSender.createMimeMessage()).thenReturn(new MimeMessage((Session) null));
 
+    // Small delay to ensure Redis cooldown key is fully committed.
+    Thread.sleep(500);
+
     // Second message within cooldown — should be skipped.
     sqsTemplate.send(LTFT_UPDATED_ASSIGNMENT_QUEUE, eventJson);
 
     // Wait for the message to be processed, then check history for SKIPPED entry.
     Criteria criteria = Criteria.where("recipient.contact").is(adminEmail)
-        .and("status").is("SKIPPED");
+        .and("status").is(NotificationStatus.SKIPPED);
     Query query = Query.query(criteria);
 
     await()
-        .pollInterval(Duration.ofSeconds(2))
-        .atMost(Duration.ofSeconds(15))
+        .pollInterval(Duration.ofSeconds(1))
+        .atMost(Duration.ofSeconds(20))
         .ignoreExceptions()
         .untilAsserted(() -> {
           List<History> found = mongoTemplate.find(query, History.class);
