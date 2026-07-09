@@ -16,6 +16,7 @@ application:
     gmc-updated: dummy-value
     ltft-updated: dummy-value
     ltft-updated-tpd: dummy-value
+    ltft-updated-assignment: dummy-value
     outbox: dummy-value
     placement-updated: dummy-value
     placement-deleted: dummy-value

@@ -28,6 +28,8 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.hasSize;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.testcontainers.containers.localstack.LocalStackContainer.Service.SQS;
@@ -62,6 +64,7 @@ import org.jsoup.nodes.Document;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.mockito.ArgumentCaptor;
@@ -71,6 +74,7 @@ import org.springframework.boot.testcontainers.service.connection.ServiceConnect
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
@@ -89,15 +93,18 @@ import uk.nhs.tis.trainee.notifications.model.History.RecipientInfo;
 import uk.nhs.tis.trainee.notifications.model.History.TemplateInfo;
 import uk.nhs.tis.trainee.notifications.model.LocalOfficeContactType;
 import uk.nhs.tis.trainee.notifications.model.MessageType;
+import uk.nhs.tis.trainee.notifications.model.NotificationStatus;
 import uk.nhs.tis.trainee.notifications.model.NotificationType;
 import uk.nhs.tis.trainee.notifications.service.EmailService;
+import uk.nhs.tis.trainee.notifications.service.EventBroadcastService;
+import uk.nhs.tis.trainee.notifications.service.LtftService;
 import uk.nhs.tis.trainee.notifications.service.MessageSendingService;
 import uk.nhs.tis.trainee.notifications.service.NotificationService;
 import uk.nhs.tis.trainee.notifications.service.UserAccountService;
 
-@SpringBootTest
+@SpringBootTest(properties = {"embedded.containers.enabled=true", "embedded.redis.enabled=true"})
 @Testcontainers
-@ActiveProfiles("test")
+@ActiveProfiles({"test", "redis"})
 class LtftListenerIntegrationTest {
 
   private static final String USER_ID = UUID.randomUUID().toString();
@@ -119,6 +126,7 @@ class LtftListenerIntegrationTest {
 
   private static final String LTFT_UPDATED_QUEUE = UUID.randomUUID().toString();
   private static final String LTFT_UPDATED_TPD_QUEUE = UUID.randomUUID().toString();
+  private static final String LTFT_UPDATED_ASSIGNMENT_QUEUE = UUID.randomUUID().toString();
   private static final Set<LocalOfficeContactType> EXPECTED_CONTACTS = Set.of(LTFT, LTFT_SUPPORT,
       SUPPORTED_RETURN_TO_TRAINING, TSS_SUPPORT);
 
@@ -136,8 +144,11 @@ class LtftListenerIntegrationTest {
   private static void overrideProperties(DynamicPropertyRegistry registry) {
     registry.add("application.queues.ltft-updated", () -> LTFT_UPDATED_QUEUE);
     registry.add("application.queues.ltft-updated-tpd", () -> LTFT_UPDATED_TPD_QUEUE);
+    registry.add("application.queues.ltft-updated-assignment",
+        () -> LTFT_UPDATED_ASSIGNMENT_QUEUE);
     registry.add("application.email.enabled", () -> true);
     registry.add("application.domain", () -> URI.create("https://test.test.test"));
+    registry.add("application.ltft.assignment-cooldown", () -> "PT3S");
 
     registry.add("spring.cloud.aws.region.static", localstack::getRegion);
     registry.add("spring.cloud.aws.credentials.access-key", localstack::getAccessKey);
@@ -151,6 +162,8 @@ class LtftListenerIntegrationTest {
   static void setUpBeforeAll() throws IOException, InterruptedException {
     localstack.execInContainer("awslocal sqs create-queue --queue-name", LTFT_UPDATED_QUEUE);
     localstack.execInContainer("awslocal sqs create-queue --queue-name", LTFT_UPDATED_TPD_QUEUE);
+    localstack.execInContainer("awslocal sqs create-queue --queue-name",
+        LTFT_UPDATED_ASSIGNMENT_QUEUE);
   }
 
   @MockitoBean
@@ -168,6 +181,9 @@ class LtftListenerIntegrationTest {
   @MockitoBean
   private S3Template s3Template;
 
+  @MockitoBean
+  private EventBroadcastService eventBroadcastService;
+
   @Autowired
   private EmailService emailService;
 
@@ -179,6 +195,9 @@ class LtftListenerIntegrationTest {
 
   @Autowired
   private MongoTemplate mongoTemplate;
+
+  @Autowired
+  private RedisTemplate<String, String> redisTemplate;
 
   private String traineeId;
 
@@ -192,6 +211,13 @@ class LtftListenerIntegrationTest {
   @AfterEach
   void cleanUp() {
     mongoTemplate.findAllAndRemove(new Query(), History.class);
+    Set<String> cooldownKeys = redisTemplate.keys(
+        LtftService.ASSIGNMENT_COOLDOWN_KEY_PREFIX + "*");
+    if (cooldownKeys != null && !cooldownKeys.isEmpty()) {
+      redisTemplate.delete(cooldownKeys);
+    }
+    reset(mailSender);
+    when(mailSender.createMimeMessage()).thenReturn(new MimeMessage((Session) null));
   }
 
   @ParameterizedTest
@@ -942,5 +968,202 @@ class LtftListenerIntegrationTest {
       assertThat("Unexpected contact link.", contact.contact(), is("https://test/" + ct));
       assertThat("Unexpected contact HREF type.", contact.type(), is("url"));
     });
+  }
+
+  @Test
+  void shouldSendMinimalAssignmentNotificationWhenNoNameProvided() throws Exception {
+    String adminEmail = "admin@tis.nhs.uk";
+    String eventString = """
+        {
+          "traineeTisId": "%s",
+          "status": {
+            "current" : {
+              "state": "SUBMITTED",
+              "assignedAdmin": {
+                "email": "%s"
+              }
+            }
+          }
+        }
+        """.formatted(traineeId, adminEmail);
+
+    JsonNode eventJson = JsonMapper.builder()
+        .build()
+        .readTree(eventString);
+
+    sqsTemplate.send(LTFT_UPDATED_ASSIGNMENT_QUEUE, eventJson);
+
+    ArgumentCaptor<MimeMessage> messageCaptor = ArgumentCaptor.captor();
+
+    await()
+        .pollInterval(Duration.ofSeconds(2))
+        .atMost(Duration.ofSeconds(10))
+        .ignoreExceptions()
+        .untilAsserted(() -> verify(mailSender).send(messageCaptor.capture()));
+
+    MimeMessage message = messageCaptor.getValue();
+    Document content = Jsoup.parse((String) message.getContent());
+
+    URL resource = getClass().getResource("/email/ltft-updated-assignment-minimal.html");
+    assert resource != null;
+    Document expectedContent = Jsoup.parse(Paths.get(resource.toURI()).toFile());
+    assertThat("Unexpected content.", content.html(), is(expectedContent.html()));
+  }
+
+  @Test
+  void shouldSendFullAssignmentNotificationWhenNameProvided() throws Exception {
+    String adminEmail = "admin@tis.nhs.uk";
+    String adminName = "Admin User";
+    String eventString = """
+        {
+          "traineeTisId": "%s",
+          "status": {
+            "current" : {
+              "state": "SUBMITTED",
+              "assignedAdmin": {
+                "name": "%s",
+                "email": "%s",
+                "role": "ADMIN"
+              }
+            }
+          }
+        }
+        """.formatted(traineeId, adminName, adminEmail);
+
+    JsonNode eventJson = JsonMapper.builder()
+        .build()
+        .readTree(eventString);
+
+    sqsTemplate.send(LTFT_UPDATED_ASSIGNMENT_QUEUE, eventJson);
+
+    ArgumentCaptor<MimeMessage> messageCaptor = ArgumentCaptor.captor();
+
+    await()
+        .pollInterval(Duration.ofSeconds(2))
+        .atMost(Duration.ofSeconds(10))
+        .ignoreExceptions()
+        .untilAsserted(() -> verify(mailSender).send(messageCaptor.capture()));
+
+    MimeMessage message = messageCaptor.getValue();
+    Document content = Jsoup.parse((String) message.getContent());
+
+    URL resource = getClass().getResource(
+        "/email/ltft-updated-assignment-full-email-contacts.html");
+    assert resource != null;
+    Document expectedContent = Jsoup.parse(Paths.get(resource.toURI()).toFile());
+    assertThat("Unexpected content.", content.html(), is(expectedContent.html()));
+  }
+
+  @Test
+  void shouldSkipAssignmentNotificationWhenCooldownActive() throws Exception {
+    String adminEmail = "cooldown-test@tis.nhs.uk";
+    String eventString = """
+        {
+          "traineeTisId": "%s",
+          "formRef": "ltft_form_001",
+          "status": {
+            "current" : {
+              "state": "SUBMITTED",
+              "assignedAdmin": {
+                "name": "Admin User",
+                "email": "%s",
+                "role": "ADMIN"
+              }
+            }
+          }
+        }
+        """.formatted(traineeId, adminEmail);
+
+    JsonNode eventJson = JsonMapper.builder()
+        .build()
+        .readTree(eventString);
+
+    // First message — should send email.
+    sqsTemplate.send(LTFT_UPDATED_ASSIGNMENT_QUEUE, eventJson);
+
+    ArgumentCaptor<MimeMessage> messageCaptor = ArgumentCaptor.captor();
+    await()
+        .pollInterval(Duration.ofSeconds(2))
+        .atMost(Duration.ofSeconds(10))
+        .ignoreExceptions()
+        .untilAsserted(() -> verify(mailSender).send(messageCaptor.capture()));
+
+    // Reset mock so we can verify no further sends.
+    reset(mailSender);
+    when(mailSender.createMimeMessage()).thenReturn(new MimeMessage((Session) null));
+
+    // Second message within cooldown — invoke listener directly to avoid SQS timing issues.
+    LtftUpdateEvent secondEvent = JsonMapper.builder().build()
+        .readValue(eventString, LtftUpdateEvent.class);
+    listener.handleLtftUpdateAssignment(secondEvent);
+
+    // Check history for SKIPPED entry.
+    Criteria criteria = Criteria.where("recipient.contact").is(adminEmail)
+        .and("status").is(NotificationStatus.SKIPPED);
+    Query query = Query.query(criteria);
+    List<History> found = mongoTemplate.find(query, History.class);
+    assertThat("Expected a SKIPPED history entry.", found, hasSize(1));
+
+    // Verify no additional email was sent.
+    verify(mailSender, never()).send(any(MimeMessage.class));
+  }
+
+  @Test
+  void shouldSendAssignmentNotificationAfterCooldownExpires() throws Exception {
+    String adminEmail = "cooldown-expire@tis.nhs.uk";
+    String eventString = """
+        {
+          "traineeTisId": "%s",
+          "formRef": "ltft_form_002",
+          "status": {
+            "current" : {
+              "state": "SUBMITTED",
+              "assignedAdmin": {
+                "name": "Admin User",
+                "email": "%s",
+                "role": "ADMIN"
+              }
+            }
+          }
+        }
+        """.formatted(traineeId, adminEmail);
+
+    JsonNode eventJson = JsonMapper.builder()
+        .build()
+        .readTree(eventString);
+
+    // First message — should send email.
+    sqsTemplate.send(LTFT_UPDATED_ASSIGNMENT_QUEUE, eventJson);
+
+    ArgumentCaptor<MimeMessage> messageCaptor = ArgumentCaptor.captor();
+    await()
+        .pollInterval(Duration.ofSeconds(2))
+        .atMost(Duration.ofSeconds(10))
+        .ignoreExceptions()
+        .untilAsserted(() -> verify(mailSender).send(messageCaptor.capture()));
+
+    // Wait for the cooldown key to expire in Redis (verifies real TTL behaviour).
+    String cooldownKey = LtftService.ASSIGNMENT_COOLDOWN_KEY_PREFIX + adminEmail;
+    await()
+        .atMost(Duration.ofSeconds(10))
+        .until(() -> Boolean.FALSE.equals(redisTemplate.hasKey(cooldownKey)));
+
+    // Reset mock to verify the next send independently.
+    reset(mailSender);
+    when(mailSender.createMimeMessage()).thenReturn(new MimeMessage((Session) null));
+
+    // Third message after cooldown expires — should send email again.
+    sqsTemplate.send(LTFT_UPDATED_ASSIGNMENT_QUEUE, eventJson);
+
+    ArgumentCaptor<MimeMessage> messageCaptor2 = ArgumentCaptor.captor();
+    await()
+        .pollInterval(Duration.ofSeconds(2))
+        .atMost(Duration.ofSeconds(10))
+        .ignoreExceptions()
+        .untilAsserted(() -> verify(mailSender).send(messageCaptor2.capture()));
+
+    // Verify email was sent after cooldown expired.
+    assertThat("Expected email to be sent after cooldown.",
+        messageCaptor2.getValue(), notNullValue());
   }
 }

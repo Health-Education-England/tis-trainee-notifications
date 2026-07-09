@@ -58,6 +58,7 @@ import uk.nhs.tis.trainee.notifications.model.LocalOfficeContactType;
 import uk.nhs.tis.trainee.notifications.model.NotificationType;
 import uk.nhs.tis.trainee.notifications.model.TisReferenceType;
 import uk.nhs.tis.trainee.notifications.service.EmailService;
+import uk.nhs.tis.trainee.notifications.service.LtftService;
 import uk.nhs.tis.trainee.notifications.service.NotificationService;
 
 /**
@@ -74,6 +75,7 @@ public class LtftListener {
 
   private final NotificationService notificationService;
   private final EmailService emailService;
+  private final LtftService ltftService;
   private final TemplateVersionsProperties templateVersions;
   private final boolean emailNotificationsEnabled;
   private final LtftEventMapper ltftEventMapper;
@@ -83,14 +85,18 @@ public class LtftListener {
    *
    * @param notificationService       The service for getting contact lists.
    * @param emailService              The service to use for sending emails.
+   * @param ltftService               The service for LTFT-specific notification logic.
    * @param templateVersions          The configured versions of each template.
    * @param emailNotificationsEnabled Whether email notifications are enabled.
+   * @param ltftEventMapper           The mapper for LTFT events.
    */
   public LtftListener(NotificationService notificationService, EmailService emailService,
-      TemplateVersionsProperties templateVersions, LtftEventMapper ltftEventMapper,
+      LtftService ltftService, TemplateVersionsProperties templateVersions,
+      LtftEventMapper ltftEventMapper,
       @Value("${application.email.enabled}") boolean emailNotificationsEnabled) {
     this.notificationService = notificationService;
     this.emailService = emailService;
+    this.ltftService = ltftService;
     this.templateVersions = templateVersions;
     this.emailNotificationsEnabled = emailNotificationsEnabled;
     this.ltftEventMapper = ltftEventMapper;
@@ -183,6 +189,18 @@ public class LtftListener {
       log.info("No action required for the LTFT update TPD event with notification type '{}', "
           + "ignoring.", event.getState());
     }
+  }
+
+  /**
+   * Handle LTFT assignment update events, where the assigned LO admin is the message recipient.
+   *
+   * @param event The LTFT update event message.
+   * @throws MessagingException If the message could not be sent.
+   */
+  @SqsListener("${application.queues.ltft-updated-assignment}")
+  public void handleLtftUpdateAssignment(LtftUpdateEvent event) throws MessagingException {
+    log.info("Handling LTFT assignment update event {}.", event);
+    ltftService.handleAssignmentNotification(event);
   }
 
   /**

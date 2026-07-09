@@ -68,6 +68,7 @@ import uk.nhs.tis.trainee.notifications.model.LocalOfficeContactType;
 import uk.nhs.tis.trainee.notifications.model.NotificationType;
 import uk.nhs.tis.trainee.notifications.model.TisReferenceType;
 import uk.nhs.tis.trainee.notifications.service.EmailService;
+import uk.nhs.tis.trainee.notifications.service.LtftService;
 import uk.nhs.tis.trainee.notifications.service.NotificationService;
 
 class LtftListenerTest {
@@ -90,12 +91,14 @@ class LtftListenerTest {
   private LtftListener listener;
   private NotificationService notificationService;
   private EmailService emailService;
+  private LtftService ltftService;
   private LtftEventMapper ltftEventMapper;
 
   @BeforeEach
   void setUp() {
     notificationService = mock(NotificationService.class);
     emailService = mock(EmailService.class);
+    ltftService = mock(LtftService.class);
     ltftEventMapper = mock(LtftEventMapper.class);
     when(ltftEventMapper.map(any())).thenAnswer(i -> i.getArguments()[0]);
     TemplateVersionsProperties templateVersions = new TemplateVersionsProperties(Map.of(
@@ -110,8 +113,8 @@ class LtftListenerTest {
         "ltft-rejected", new MessageTypeVersions(VERSION, null),
         "ltft-rejected-tpd", new MessageTypeVersions(VERSION, null)
     ));
-    listener = new LtftListener(notificationService, emailService, templateVersions,
-        ltftEventMapper, true);
+    listener = new LtftListener(notificationService, emailService, ltftService,
+        templateVersions, ltftEventMapper, true);
   }
 
   @ParameterizedTest
@@ -136,7 +139,7 @@ class LtftListenerTest {
     TemplateVersionsProperties templateVersions = new TemplateVersionsProperties(Map.of(
         type.getTemplateName(), new MessageTypeVersions(null, VERSION)
     ));
-    listener = new LtftListener(notificationService, emailService, templateVersions,
+    listener = new LtftListener(notificationService, emailService, ltftService, templateVersions,
         ltftEventMapper, true);
 
     assertThrows(IllegalArgumentException.class, () -> listener.handleLtftUpdate(event));
@@ -231,7 +234,7 @@ class LtftListenerTest {
     TemplateVersionsProperties templateVersions = new TemplateVersionsProperties(Map.of(
         type.getTemplateName(), new MessageTypeVersions(version, null)
     ));
-    listener = new LtftListener(notificationService, emailService, templateVersions,
+    listener = new LtftListener(notificationService, emailService, ltftService, templateVersions,
         ltftEventMapper, true);
 
     listener.handleLtftUpdate(event);
@@ -349,7 +352,7 @@ class LtftListenerTest {
     TemplateVersionsProperties templateVersions = new TemplateVersionsProperties(Map.of(
         type.getTemplateName(), new MessageTypeVersions(null, VERSION)
     ));
-    listener = new LtftListener(notificationService, emailService, templateVersions,
+    listener = new LtftListener(notificationService, emailService, ltftService, templateVersions,
         ltftEventMapper, true);
 
     assertThrows(IllegalArgumentException.class, () -> listener.handleLtftUpdateTpd(event));
@@ -437,7 +440,7 @@ class LtftListenerTest {
     TemplateVersionsProperties templateVersions = new TemplateVersionsProperties(Map.of(
         LTFT_APPROVED_TPD.getTemplateName(), new MessageTypeVersions(VERSION, null)
     ));
-    listener = new LtftListener(notificationService, emailService, templateVersions,
+    listener = new LtftListener(notificationService, emailService, ltftService, templateVersions,
         ltftEventMapper, emailNotificationsEnabled);
 
     when(emailService.getRecipientAccount(TRAINEE_ID)).thenReturn(USER_DETAILS);
@@ -460,7 +463,7 @@ class LtftListenerTest {
     TemplateVersionsProperties templateVersions = new TemplateVersionsProperties(Map.of(
         LTFT_REJECTED_TPD.getTemplateName(), new MessageTypeVersions(VERSION, null)
     ));
-    listener = new LtftListener(notificationService, emailService, templateVersions,
+    listener = new LtftListener(notificationService, emailService, ltftService, templateVersions,
         ltftEventMapper, emailNotificationsEnabled);
 
     when(emailService.getRecipientAccount(TRAINEE_ID)).thenReturn(USER_DETAILS);
@@ -483,7 +486,7 @@ class LtftListenerTest {
     TemplateVersionsProperties templateVersions = new TemplateVersionsProperties(Map.of(
         LTFT_SUBMITTED_TPD.getTemplateName(), new MessageTypeVersions(VERSION, null)
     ));
-    listener = new LtftListener(notificationService, emailService, templateVersions,
+    listener = new LtftListener(notificationService, emailService, ltftService, templateVersions,
         ltftEventMapper, emailNotificationsEnabled);
 
     when(emailService.getRecipientAccount(TRAINEE_ID)).thenReturn(USER_DETAILS);
@@ -529,7 +532,7 @@ class LtftListenerTest {
     TemplateVersionsProperties templateVersions = new TemplateVersionsProperties(Map.of(
         type.getTemplateName(), new MessageTypeVersions(version, null)
     ));
-    listener = new LtftListener(notificationService, emailService, templateVersions,
+    listener = new LtftListener(notificationService, emailService, ltftService, templateVersions,
         ltftEventMapper, true);
 
     when(emailService.getRecipientAccount(any())).thenReturn(USER_DETAILS);
@@ -647,5 +650,17 @@ class LtftListenerTest {
     assertThat("Unexpected programme start date.", programmeMembership.startDate(),
         is(PROGRAMME_START_DATE));
     assertThat("Unexpected event timestamp.", templateEvent.getTimestamp(), is(TIMESTAMP));
+  }
+
+  @Test
+  void shouldDelegateAssignmentEventToLtftService() throws MessagingException {
+    LtftUpdateEvent event = LtftUpdateEvent.builder()
+        .traineeId(TRAINEE_ID)
+        .formId("form-1")
+        .build();
+
+    listener.handleLtftUpdateAssignment(event);
+
+    verify(ltftService).handleAssignmentNotification(event);
   }
 }

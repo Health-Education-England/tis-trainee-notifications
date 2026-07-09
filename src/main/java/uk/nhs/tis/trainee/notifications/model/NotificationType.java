@@ -58,6 +58,7 @@ public enum NotificationType {
   LTFT_SUBMITTED_TPD("ltft-submitted-tpd"),
   LTFT_UNSUBMITTED("ltft-unsubmitted"),
   LTFT_UPDATED("ltft-updated"),
+  LTFT_UPDATED_ASSIGNMENT("ltft-updated-assignment"),
   LTFT_WITHDRAWN("ltft-withdrawn"),
   INDEMNITY_INSURANCE("indemnity-insurance"),
   LTFT("less-than-full-time"),

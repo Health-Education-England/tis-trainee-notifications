@@ -39,6 +39,7 @@ import static uk.nhs.tis.trainee.notifications.model.NotificationType.GMC_UPDATE
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.LTFT_APPROVED_TPD;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.LTFT_REJECTED_TPD;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.LTFT_SUBMITTED_TPD;
+import static uk.nhs.tis.trainee.notifications.model.NotificationType.LTFT_UPDATED_ASSIGNMENT;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PLACEMENT_ROLLOUT_2024_CORRECTION;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PLACEMENT_UPDATED_WEEK_12;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PLACEMENT_UPDATED_WEEK_12_FOUNDATION;
@@ -181,6 +182,10 @@ class EmailServiceIntegrationTest {
       assertThat("Unexpected element tag.", greeting.tagName(), is("p"));
       assertThat("Unexpected greeting.", greeting.text(),
           is("Dear Training Programme Director,"));
+    } else if (notificationType.equals(LTFT_UPDATED_ASSIGNMENT)) {
+      Element greeting = body.children().get(getGreetingElementIndex(notificationType));
+      assertThat("Unexpected element tag.", greeting.tagName(), is("p"));
+      assertThat("Unexpected greeting.", greeting.text(), is("Dear administrator,"));
     } else {
       Element greeting = body.children().get(getGreetingElementIndex(notificationType));
       assertThat("Unexpected element tag.", greeting.tagName(), is("p"));
@@ -223,6 +228,10 @@ class EmailServiceIntegrationTest {
       assertThat("Unexpected element tag.", greeting.tagName(), is("p"));
       assertThat("Unexpected greeting.", greeting.text(),
           is("Dear Training Programme Director,"));
+    } else if (notificationType.equals(LTFT_UPDATED_ASSIGNMENT)) {
+      Element greeting = body.children().get(getGreetingElementIndex(notificationType));
+      assertThat("Unexpected element tag.", greeting.tagName(), is("p"));
+      assertThat("Unexpected greeting.", greeting.text(), is("Dear administrator,"));
     } else {
       Element greeting = body.children().get(getGreetingElementIndex(notificationType));
       assertThat("Unexpected element tag.", greeting.tagName(), is("p"));
@@ -283,11 +292,54 @@ class EmailServiceIntegrationTest {
       Element greeting = body.children().get(getGreetingElementIndex(notificationType));
       assertThat("Unexpected element tag.", greeting.tagName(), is("p"));
       assertThat("Unexpected greeting.", greeting.text(), is("Dear TPD name,"));
+    } else if (notificationType.equals(LTFT_UPDATED_ASSIGNMENT)) {
+      Element greeting = body.children().get(getGreetingElementIndex(notificationType));
+      assertThat("Unexpected element tag.", greeting.tagName(), is("p"));
+      assertThat("Unexpected greeting.", greeting.text(), is("Dear administrator,"));
     } else {
       Element greeting = body.children().get(getGreetingElementIndex(notificationType));
       assertThat("Unexpected element tag.", greeting.tagName(), is("p"));
       assertThat("Unexpected greeting.", greeting.text(), is("Dear Dr Maillig,"));
     }
+  }
+
+  @Test
+  void shouldGreetAdminByNameWhenLtftUpdatedAssignmentAndNameProvided() throws Exception {
+    Map<String, Object> templateVariables = new HashMap<>();
+    templateVariables.put("name", "Jane Smith");
+
+    service.sendMessage(PERSON_ID, RECIPIENT, LTFT_UPDATED_ASSIGNMENT,
+        TEMPLATE_VERSION, templateVariables, null, false);
+
+    ArgumentCaptor<MimeMessage> messageCaptor = ArgumentCaptor.captor();
+    verify(mailSender).send(messageCaptor.capture());
+
+    MimeMessage message = messageCaptor.getValue();
+    Document content = Jsoup.parse((String) message.getContent());
+    Element body = content.body();
+
+    Element greeting = body.children().get(getGreetingElementIndex(LTFT_UPDATED_ASSIGNMENT));
+    assertThat("Unexpected element tag.", greeting.tagName(), is("p"));
+    assertThat("Unexpected greeting.", greeting.text(), is("Dear Jane Smith,"));
+  }
+
+  @Test
+  void shouldGreetAdminWithDefaultWhenLtftUpdatedAssignmentAndNameNotProvided() throws Exception {
+    Map<String, Object> templateVariables = new HashMap<>();
+
+    service.sendMessage(PERSON_ID, RECIPIENT, LTFT_UPDATED_ASSIGNMENT,
+        TEMPLATE_VERSION, templateVariables, null, false);
+
+    ArgumentCaptor<MimeMessage> messageCaptor = ArgumentCaptor.captor();
+    verify(mailSender).send(messageCaptor.capture());
+
+    MimeMessage message = messageCaptor.getValue();
+    Document content = Jsoup.parse((String) message.getContent());
+    Element body = content.body();
+
+    Element greeting = body.children().get(getGreetingElementIndex(LTFT_UPDATED_ASSIGNMENT));
+    assertThat("Unexpected element tag.", greeting.tagName(), is("p"));
+    assertThat("Unexpected greeting.", greeting.text(), is("Dear administrator,"));
   }
 
   @ParameterizedTest
@@ -817,7 +869,7 @@ class EmailServiceIntegrationTest {
            FORM_SUBMITTED, FORM_UPDATED, GMC_UPDATED, GMC_REJECTED_LO, GMC_REJECTED_TRAINEE,
            LTFT_ADMIN_UNSUBMITTED, LTFT_APPROVED, LTFT_APPROVED_TPD, LTFT_UPDATED, LTFT_SUBMITTED,
            LTFT_SUBMITTED_TPD, LTFT_UNSUBMITTED, LTFT_WITHDRAWN, LTFT_REJECTED,
-           LTFT_REJECTED_TPD -> 1;
+           LTFT_REJECTED_TPD, LTFT_UPDATED_ASSIGNMENT -> 1;
       default -> 0;
     };
   }

@@ -27,14 +27,18 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 /**
  * A LTFT update event.
  */
 @Data
 @Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class LtftUpdateEvent {
 
   @JsonAlias("traineeTisId")
@@ -42,6 +46,7 @@ public class LtftUpdateEvent {
   @JsonAlias("id")
   private String formId;
   private String formRef;
+  @JsonAlias("name")
   private String formName;
   private PersonalDetails personalDetails;
   private ProgrammeMembershipDto programmeMembership;
@@ -52,6 +57,7 @@ public class LtftUpdateEvent {
   private Instant timestamp;
   private LftfStatusInfoDetailDto stateDetail;
   private LtftStatusModifiedByDto modifiedBy;
+  private LtftStatusAssignedDto assignedAdmin;
 
   /**
    * A trainee's personal details.
@@ -122,6 +128,18 @@ public class LtftUpdateEvent {
   }
 
   /**
+   * A DTO for the admin assigned to the application.
+   *
+   * @param name  The name of the admin.
+   * @param email The email of the admin.
+   * @param role  The role of the admin (normally ADMIN).
+   */
+  @Builder
+  public record LtftStatusAssignedDto(String name, String email, String role) {
+
+  }
+
+  /**
    * Unpack the current status to set the state, timestamp and detail.
    *
    * @param status The value of the status property.
@@ -145,6 +163,13 @@ public class LtftUpdateEvent {
             .name(modifiedByMap.get("name"))
             .role(modifiedByMap.get("role"))
             .build();
+    Map<String, String> assignedMap = (Map<String, String>) current.get("assignedAdmin");
+    assignedAdmin = assignedMap == null ? null
+        : LtftStatusAssignedDto.builder()
+        .name(assignedMap.get("name"))
+        .role(assignedMap.get("role"))
+        .email(assignedMap.get("email"))
+        .build();
   }
 
   /**

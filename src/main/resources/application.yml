@@ -30,6 +30,7 @@ application:
     gmc-updated: ${GMC_UPDATED_QUEUE}
     ltft-updated: ${LTFT_UPDATED_QUEUE}
     ltft-updated-tpd: ${LTFT_UPDATED_TPD_QUEUE}
+    ltft-updated-assignment: ${LTFT_UPDATED_ASSIGNMENT_QUEUE}
     outbox: ${OUTBOX_QUEUE}
     placement-updated: ${PLACEMENT_UPDATED_QUEUE}
     placement-deleted: ${PLACEMENT_DELETED_QUEUE}
@@ -89,6 +90,8 @@ application:
     ltft-unsubmitted:
       email: v1.0.0
     ltft-updated:
+      email: v1.0.0
+    ltft-updated-assignment:
       email: v1.0.0
     ltft-withdrawn:
       email: v1.0.0
