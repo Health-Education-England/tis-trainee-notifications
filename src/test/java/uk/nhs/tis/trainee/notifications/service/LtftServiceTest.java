@@ -45,6 +45,7 @@ import uk.nhs.tis.trainee.notifications.config.TemplateVersionsProperties;
 import uk.nhs.tis.trainee.notifications.config.TemplateVersionsProperties.MessageTypeVersions;
 import uk.nhs.tis.trainee.notifications.dto.LtftUpdateEvent;
 import uk.nhs.tis.trainee.notifications.dto.LtftUpdateEvent.LtftStatusAssignedDto;
+import uk.nhs.tis.trainee.notifications.dto.LtftUpdateEvent.LtftStatusModifiedByDto;
 import uk.nhs.tis.trainee.notifications.model.History;
 import uk.nhs.tis.trainee.notifications.model.NotificationStatus;
 
@@ -99,6 +100,23 @@ class LtftServiceTest {
         .traineeId(TRAINEE_ID)
         .formId(FORM_ID)
         .assignedAdmin(LtftStatusAssignedDto.builder().name(ADMIN_NAME).build())
+        .build();
+
+    ltftService.handleAssignmentNotification(event);
+
+    verifyNoInteractions(emailService);
+    verifyNoInteractions(historyService);
+  }
+
+  @Test
+  void shouldIgnoreWhenModifiedByNameMatchesAssignedAdminName() throws MessagingException {
+    LtftUpdateEvent event = LtftUpdateEvent.builder()
+        .traineeId(TRAINEE_ID)
+        .formId(FORM_ID)
+        .assignedAdmin(LtftStatusAssignedDto.builder()
+            .name(ADMIN_NAME).email(ADMIN_EMAIL).role("ADMIN").build())
+        .modifiedBy(LtftStatusModifiedByDto.builder()
+            .name(ADMIN_NAME.toLowerCase()).role("ADMIN").build())
         .build();
 
     ltftService.handleAssignmentNotification(event);
