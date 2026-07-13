@@ -97,6 +97,14 @@ public class LtftService {
       return;
     }
 
+    if (event.getModifiedBy() != null && event.getAssignedAdmin().name() != null
+        && event.getAssignedAdmin().name().equalsIgnoreCase(
+            event.getModifiedBy().name())) {
+      log.info("LTFT assignment event modified by the assigned admin '{}', ignoring. (FormId = {})",
+          event.getAssignedAdmin().name(), event.getFormId());
+      return;
+    }
+
     String adminEmail = event.getAssignedAdmin().email();
     String cooldownKey = ASSIGNMENT_COOLDOWN_KEY_PREFIX + adminEmail;
 

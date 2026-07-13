@@ -45,6 +45,7 @@ import uk.nhs.tis.trainee.notifications.config.TemplateVersionsProperties;
 import uk.nhs.tis.trainee.notifications.config.TemplateVersionsProperties.MessageTypeVersions;
 import uk.nhs.tis.trainee.notifications.dto.LtftUpdateEvent;
 import uk.nhs.tis.trainee.notifications.dto.LtftUpdateEvent.LtftStatusAssignedDto;
+import uk.nhs.tis.trainee.notifications.dto.LtftUpdateEvent.LtftStatusModifiedByDto;
 import uk.nhs.tis.trainee.notifications.model.History;
 import uk.nhs.tis.trainee.notifications.model.NotificationStatus;
 
@@ -105,6 +106,121 @@ class LtftServiceTest {
 
     verifyNoInteractions(emailService);
     verifyNoInteractions(historyService);
+  }
+
+  @Test
+  void shouldIgnoreWhenModifiedByNameMatchesAssignedAdminName() throws MessagingException {
+    LtftUpdateEvent event = LtftUpdateEvent.builder()
+        .traineeId(TRAINEE_ID)
+        .formId(FORM_ID)
+        .assignedAdmin(LtftStatusAssignedDto.builder()
+            .name(ADMIN_NAME).email(ADMIN_EMAIL).role("ADMIN").build())
+        .modifiedBy(LtftStatusModifiedByDto.builder()
+            .name(ADMIN_NAME).role("ADMIN").build())
+        .build();
+
+    ltftService.handleAssignmentNotification(event);
+
+    verifyNoInteractions(emailService);
+    verifyNoInteractions(historyService);
+  }
+
+  @Test
+  void shouldIgnoreWhenModifiedByNameMatchesAssignedAdminNameCaseInsensitive()
+      throws MessagingException {
+    LtftUpdateEvent event = LtftUpdateEvent.builder()
+        .traineeId(TRAINEE_ID)
+        .formId(FORM_ID)
+        .assignedAdmin(LtftStatusAssignedDto.builder()
+            .name(ADMIN_NAME).email(ADMIN_EMAIL).role("ADMIN").build())
+        .modifiedBy(LtftStatusModifiedByDto.builder()
+            .name(ADMIN_NAME.toLowerCase()).role("ADMIN").build())
+        .build();
+
+    ltftService.handleAssignmentNotification(event);
+
+    verifyNoInteractions(emailService);
+    verifyNoInteractions(historyService);
+  }
+
+  @Test
+  void shouldNotIgnoreWhenModifiedByIsNull() throws MessagingException {
+    LtftUpdateEvent event = LtftUpdateEvent.builder()
+        .traineeId(TRAINEE_ID)
+        .formId(FORM_ID)
+        .formRef(FORM_REF)
+        .assignedAdmin(LtftStatusAssignedDto.builder()
+            .name(ADMIN_NAME).email(ADMIN_EMAIL).role("ADMIN").build())
+        .modifiedBy(null)
+        .build();
+
+    when(valueOperations.setIfAbsent(any(), any(), any(Duration.class))).thenReturn(true);
+
+    ltftService.handleAssignmentNotification(event);
+
+    verify(emailService).sendMessage(eq(TRAINEE_ID), eq(ADMIN_EMAIL),
+        eq(LTFT_UPDATED_ASSIGNMENT), eq(VERSION), any(), any(), eq(false));
+  }
+
+  @Test
+  void shouldNotIgnoreWhenAssignedAdminNameIsNull() throws MessagingException {
+    LtftUpdateEvent event = LtftUpdateEvent.builder()
+        .traineeId(TRAINEE_ID)
+        .formId(FORM_ID)
+        .formRef(FORM_REF)
+        .assignedAdmin(LtftStatusAssignedDto.builder()
+            .name(null).email(ADMIN_EMAIL).role("ADMIN").build())
+        .modifiedBy(LtftStatusModifiedByDto.builder()
+            .name(ADMIN_NAME).role("ADMIN").build())
+        .build();
+
+    when(valueOperations.setIfAbsent(any(), any(), any(Duration.class))).thenReturn(true);
+
+    ltftService.handleAssignmentNotification(event);
+
+    verify(emailService).sendMessage(eq(TRAINEE_ID), eq(ADMIN_EMAIL),
+        eq(LTFT_UPDATED_ASSIGNMENT), eq(VERSION), any(), any(), eq(false));
+  }
+
+  @Test
+  void shouldNotIgnoreWhenModifiedByNameIsNull() throws MessagingException {
+    LtftUpdateEvent event = LtftUpdateEvent.builder()
+        .traineeId(TRAINEE_ID)
+        .formId(FORM_ID)
+        .formRef(FORM_REF)
+        .assignedAdmin(LtftStatusAssignedDto.builder()
+            .name(ADMIN_NAME).email(ADMIN_EMAIL).role("ADMIN").build())
+        .modifiedBy(LtftStatusModifiedByDto.builder()
+            .name(null).role("ADMIN").build())
+        .build();
+
+    when(valueOperations.setIfAbsent(any(), any(), any(Duration.class))).thenReturn(true);
+
+    ltftService.handleAssignmentNotification(event);
+
+    verify(emailService).sendMessage(eq(TRAINEE_ID), eq(ADMIN_EMAIL),
+        eq(LTFT_UPDATED_ASSIGNMENT), eq(VERSION), any(), any(), eq(false));
+  }
+
+  @Test
+  void shouldNotIgnoreWhenModifiedByNameDiffersFromAssignedAdminName()
+      throws MessagingException {
+    LtftUpdateEvent event = LtftUpdateEvent.builder()
+        .traineeId(TRAINEE_ID)
+        .formId(FORM_ID)
+        .formRef(FORM_REF)
+        .assignedAdmin(LtftStatusAssignedDto.builder()
+            .name(ADMIN_NAME).email(ADMIN_EMAIL).role("ADMIN").build())
+        .modifiedBy(LtftStatusModifiedByDto.builder()
+            .name("Different Person").role("ADMIN").build())
+        .build();
+
+    when(valueOperations.setIfAbsent(any(), any(), any(Duration.class))).thenReturn(true);
+
+    ltftService.handleAssignmentNotification(event);
+
+    verify(emailService).sendMessage(eq(TRAINEE_ID), eq(ADMIN_EMAIL),
+        eq(LTFT_UPDATED_ASSIGNMENT), eq(VERSION), any(), any(), eq(false));
   }
 
   @Test
