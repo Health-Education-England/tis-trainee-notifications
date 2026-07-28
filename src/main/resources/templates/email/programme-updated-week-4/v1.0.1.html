@@ -64,8 +64,11 @@
       ><span th:case="*"><span th:text="${localOfficeContact}"></span></span
       ></th:block> or see our <a href="https://tis-support.hee.nhs.uk/trainees/changes-to-account/">FAQ</a> for details.</p>
       <p>Once you access TIS Self-Service, you will be presented with a set of actions and notifications to read relating to your training programme. Please complete the actions and read the notification as requested.</p>
-      <p>For more information regarding the onboarding process please visit our website: <a th:href="${localOfficeWebsite}"><span th:text="${localOfficeWebsite}"></span></a>.</p
-      ></div
+      <th:block th:switch="${localOfficeWebsite}">
+        <p th:case="'your local office'">For more information regarding the onboarding process please contact your local office.</p>
+        <p th:case="*">For more information regarding the onboarding process please visit our website: <a th:href="${localOfficeWebsite}"><span th:text="${localOfficeWebsite}"></span></a>.</p>
+      </th:block
+    ></div
     ></th:block>
   <p>We look forward to welcoming you to NHS England.</p>
   <p>Kind Regards,</p>

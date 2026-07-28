@@ -36,11 +36,14 @@ import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.testcontainers.containers.localstack.LocalStackContainer.Service.SQS;
+import static uk.nhs.tis.trainee.notifications.model.LocalOfficeContactType.LOCAL_OFFICE_WEBSITE;
 import static uk.nhs.tis.trainee.notifications.model.LocalOfficeContactType.POG;
 import static uk.nhs.tis.trainee.notifications.model.LocalOfficeContactType.TSS_SUPPORT;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_CREATED;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_DAY_ONE;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_UPDATED_WEEK_12;
+import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_UPDATED_WEEK_2;
+import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_UPDATED_WEEK_4;
 import static uk.nhs.tis.trainee.notifications.model.ProgrammeActionType.SIGN_COJ;
 import static uk.nhs.tis.trainee.notifications.model.TisReferenceType.PROGRAMME_MEMBERSHIP;
 import static uk.nhs.tis.trainee.notifications.model.TraineeType.FOUNDATION;
@@ -147,6 +150,7 @@ class ProgrammeMembershipListenerIntegrationTest {
   private static final String LOCAL_OFFICE_CONTACT_EMAIL = "local.office@example.com";
   private static final String
       LOCAL_OFFICE_FOUNDATION_CONTACT_EMAIL = "local.office.foundation@example.com";
+  private static final String LOCAL_OFFICE_WEBSITE_URL = "https://local-office.example.com";
 
   @Value("${service.trainee.url}")
   private String serviceUrl;
@@ -591,6 +595,8 @@ class ProgrammeMembershipListenerIntegrationTest {
       PROGRAMME_DAY_ONE         | null
       PROGRAMME_DAY_ONE         | FOUNDATION
       PROGRAMME_UPDATED_WEEK_12 | null
+      PROGRAMME_UPDATED_WEEK_4  | null
+      PROGRAMME_UPDATED_WEEK_2  | null
       """)
   void shouldSendFullNotificationsWhenTemplateVariablesPresent(NotificationType notificationType,
       TraineeType traineeType) throws MessagingException, IOException, URISyntaxException {
@@ -611,10 +617,50 @@ class ProgrammeMembershipListenerIntegrationTest {
     when(userAccountService.getUserDetailsById(PERSON_ID)).thenReturn(
         new UserDetails(true, EMAIL, TITLE, FAMILY_NAME, GIVEN_NAME, GMC));
 
-    //for day one notification, set start date = today, to ensure it's sent immediately
-    LocalDate startDate = notificationType != PROGRAMME_DAY_ONE
-        ? LocalDate.now().plusWeeks(12)
-        : LocalDate.now();
+    // Override contacts mock to include a website contact for full template rendering.
+    Map<String, String> pogEmailContact = Map.of(
+        "contact", LOCAL_OFFICE_CONTACT_EMAIL,
+        "localOfficeName", MANAGING_DEANERY,
+        "contactTypeName", POG.getContactTypeName()
+    );
+    Map<String, String> loTssEmailContact = Map.of(
+        "contact", LOCAL_OFFICE_CONTACT_EMAIL,
+        "localOfficeName", MANAGING_DEANERY,
+        "contactTypeName", TSS_SUPPORT.getContactTypeName()
+    );
+    Map<String, String> loTssFoundationEmailContact = Map.of(
+        "contact", LOCAL_OFFICE_FOUNDATION_CONTACT_EMAIL,
+        "localOfficeName", MANAGING_DEANERY,
+        "contactTypeName", TSS_SUPPORT.getContactTypeName()
+    );
+    Map<String, String> websiteContact = Map.of(
+        "contact", LOCAL_OFFICE_WEBSITE_URL,
+        "localOfficeName", MANAGING_DEANERY,
+        "contactTypeName", LOCAL_OFFICE_WEBSITE.getContactTypeName()
+    );
+    when(restTemplate.getForObject(argThat(uri -> uri != null && uri.getPath()
+            .equals("/reference/api/local-office-contact-by-lo-name/" + MANAGING_DEANERY)),
+        eq(List.class)))
+        .thenAnswer(inv -> {
+          URI uri = inv.getArgument(0, URI.class);
+          if (uri.getQuery() != null && uri.getQuery().contains("traineeType=FOUNDATION")) {
+            return List.of(pogEmailContact, loTssFoundationEmailContact, websiteContact);
+          } else {
+            return List.of(pogEmailContact, loTssEmailContact, websiteContact);
+          }
+        });
+
+    //set start date to the appropriate offset for the notification type
+    LocalDate startDate;
+    if (notificationType == PROGRAMME_DAY_ONE) {
+      startDate = LocalDate.now();
+    } else if (notificationType == PROGRAMME_UPDATED_WEEK_4) {
+      startDate = LocalDate.now().plusWeeks(4);
+    } else if (notificationType == PROGRAMME_UPDATED_WEEK_2) {
+      startDate = LocalDate.now().plusWeeks(2);
+    } else {
+      startDate = LocalDate.now().plusWeeks(12);
+    }
     sqsTemplate.send(PM_UPDATED_QUEUE,
         buildStandardProgrammeMembershipEvent(startDate, traineeType));
 
@@ -671,6 +717,8 @@ class ProgrammeMembershipListenerIntegrationTest {
       PROGRAMME_DAY_ONE         | null
       PROGRAMME_DAY_ONE         | FOUNDATION
       PROGRAMME_UPDATED_WEEK_12 | null
+      PROGRAMME_UPDATED_WEEK_4  | null
+      PROGRAMME_UPDATED_WEEK_2  | null
       """)
   void shouldSendMinimalNotificationsWhenTemplateVariablesMissing(NotificationType notificationType,
       TraineeType traineeType) throws MessagingException, IOException, URISyntaxException {
@@ -688,10 +736,17 @@ class ProgrammeMembershipListenerIntegrationTest {
     when(userAccountService.getUserDetailsById(PERSON_ID)).thenReturn(
         new UserDetails(true, EMAIL, null, null, null, null));
 
-    //for day one notification, set start date = today, to ensure it's sent immediately
-    LocalDate startDate = notificationType != PROGRAMME_DAY_ONE
-        ? LocalDate.now().plusWeeks(12)
-        : LocalDate.now();
+    //set start date to the appropriate offset for the notification type
+    LocalDate startDate;
+    if (notificationType == PROGRAMME_DAY_ONE) {
+      startDate = LocalDate.now();
+    } else if (notificationType == PROGRAMME_UPDATED_WEEK_4) {
+      startDate = LocalDate.now().plusWeeks(4);
+    } else if (notificationType == PROGRAMME_UPDATED_WEEK_2) {
+      startDate = LocalDate.now().plusWeeks(2);
+    } else {
+      startDate = LocalDate.now().plusWeeks(12);
+    }
     sqsTemplate.send(PM_UPDATED_QUEUE,
         buildStandardProgrammeMembershipEvent(startDate, traineeType));
 
