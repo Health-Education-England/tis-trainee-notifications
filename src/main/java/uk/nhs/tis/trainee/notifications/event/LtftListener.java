@@ -58,6 +58,7 @@ import uk.nhs.tis.trainee.notifications.model.LocalOfficeContactType;
 import uk.nhs.tis.trainee.notifications.model.NotificationType;
 import uk.nhs.tis.trainee.notifications.model.TisReferenceType;
 import uk.nhs.tis.trainee.notifications.service.EmailService;
+import uk.nhs.tis.trainee.notifications.service.HistoryService;
 import uk.nhs.tis.trainee.notifications.service.LtftService;
 import uk.nhs.tis.trainee.notifications.service.NotificationService;
 
@@ -75,6 +76,7 @@ public class LtftListener {
 
   private final NotificationService notificationService;
   private final EmailService emailService;
+  private final HistoryService historyService;
   private final LtftService ltftService;
   private final TemplateVersionsProperties templateVersions;
   private final boolean emailNotificationsEnabled;
@@ -85,17 +87,20 @@ public class LtftListener {
    *
    * @param notificationService       The service for getting contact lists.
    * @param emailService              The service to use for sending emails.
+   * @param historyService            The service for notification history.
    * @param ltftService               The service for LTFT-specific notification logic.
    * @param templateVersions          The configured versions of each template.
    * @param emailNotificationsEnabled Whether email notifications are enabled.
    * @param ltftEventMapper           The mapper for LTFT events.
    */
   public LtftListener(NotificationService notificationService, EmailService emailService,
-      LtftService ltftService, TemplateVersionsProperties templateVersions,
+      HistoryService historyService, LtftService ltftService,
+      TemplateVersionsProperties templateVersions,
       LtftEventMapper ltftEventMapper,
       @Value("${application.email.enabled}") boolean emailNotificationsEnabled) {
     this.notificationService = notificationService;
     this.emailService = emailService;
+    this.historyService = historyService;
     this.ltftService = ltftService;
     this.templateVersions = templateVersions;
     this.emailNotificationsEnabled = emailNotificationsEnabled;
@@ -132,13 +137,23 @@ public class LtftListener {
     String managingDeanery = event.getProgrammeMembership() == null ? null
         : event.getProgrammeMembership().managingDeanery();
 
-    Map<String, Object> templateVariables = Map.of(
+    History.TisReferenceInfo tisReferenceInfo
+        = new History.TisReferenceInfo(TisReferenceType.LTFT, event.getFormId());
+
+    if (notificationType == LTFT_SUBMITTED
+        && historyService.hasNotificationForRevision(traineeTisId,
+        TisReferenceType.LTFT, event.getFormId(), LTFT_SUBMITTED, event.getRevision())) {
+      log.info("Skipping LTFT SUBMITTED notification for trainee {} as revision {} has already "
+          + "been sent.", traineeTisId, event.getRevision());
+      return;
+    }
+
+    Map<String, Object> templateVariables = new HashMap<>(Map.of(
         "var", event,
         "contacts", getContacts(managingDeanery),
         "modifiedRole", statusModifiedByRole
-    );
-    History.TisReferenceInfo tisReferenceInfo
-        = new History.TisReferenceInfo(TisReferenceType.LTFT, event.getFormId());
+    ));
+    templateVariables.put("revision", event.getRevision());
     emailService.sendMessageToExistingUser(traineeTisId, notificationType, templateVersion,
         templateVariables, tisReferenceInfo);
     log.info("LTFT updated notification sent for trainee {}.", traineeTisId);

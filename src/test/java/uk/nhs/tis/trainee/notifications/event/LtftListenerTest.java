@@ -33,6 +33,7 @@ import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 import static uk.nhs.tis.trainee.notifications.model.LocalOfficeContactType.LTFT;
 import static uk.nhs.tis.trainee.notifications.model.LocalOfficeContactType.LTFT_SUPPORT;
@@ -41,6 +42,7 @@ import static uk.nhs.tis.trainee.notifications.model.LocalOfficeContactType.TSS_
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.LTFT_ADMIN_UNSUBMITTED;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.LTFT_APPROVED_TPD;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.LTFT_REJECTED_TPD;
+import static uk.nhs.tis.trainee.notifications.model.NotificationType.LTFT_SUBMITTED;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.LTFT_SUBMITTED_TPD;
 import static uk.nhs.tis.trainee.notifications.model.TraineeType.SPECIALTY;
 
@@ -68,6 +70,7 @@ import uk.nhs.tis.trainee.notifications.model.LocalOfficeContactType;
 import uk.nhs.tis.trainee.notifications.model.NotificationType;
 import uk.nhs.tis.trainee.notifications.model.TisReferenceType;
 import uk.nhs.tis.trainee.notifications.service.EmailService;
+import uk.nhs.tis.trainee.notifications.service.HistoryService;
 import uk.nhs.tis.trainee.notifications.service.LtftService;
 import uk.nhs.tis.trainee.notifications.service.NotificationService;
 
@@ -91,6 +94,7 @@ class LtftListenerTest {
   private LtftListener listener;
   private NotificationService notificationService;
   private EmailService emailService;
+  private HistoryService historyService;
   private LtftService ltftService;
   private LtftEventMapper ltftEventMapper;
 
@@ -98,6 +102,7 @@ class LtftListenerTest {
   void setUp() {
     notificationService = mock(NotificationService.class);
     emailService = mock(EmailService.class);
+    historyService = mock(HistoryService.class);
     ltftService = mock(LtftService.class);
     ltftEventMapper = mock(LtftEventMapper.class);
     when(ltftEventMapper.map(any())).thenAnswer(i -> i.getArguments()[0]);
@@ -113,7 +118,7 @@ class LtftListenerTest {
         "ltft-rejected", new MessageTypeVersions(VERSION, null),
         "ltft-rejected-tpd", new MessageTypeVersions(VERSION, null)
     ));
-    listener = new LtftListener(notificationService, emailService, ltftService,
+    listener = new LtftListener(notificationService, emailService, historyService, ltftService,
         templateVersions, ltftEventMapper, true);
   }
 
@@ -139,8 +144,8 @@ class LtftListenerTest {
     TemplateVersionsProperties templateVersions = new TemplateVersionsProperties(Map.of(
         type.getTemplateName(), new MessageTypeVersions(null, VERSION)
     ));
-    listener = new LtftListener(notificationService, emailService, ltftService, templateVersions,
-        ltftEventMapper, true);
+    listener = new LtftListener(notificationService, emailService, historyService, ltftService,
+        templateVersions, ltftEventMapper, true);
 
     assertThrows(IllegalArgumentException.class, () -> listener.handleLtftUpdate(event));
   }
@@ -234,8 +239,8 @@ class LtftListenerTest {
     TemplateVersionsProperties templateVersions = new TemplateVersionsProperties(Map.of(
         type.getTemplateName(), new MessageTypeVersions(version, null)
     ));
-    listener = new LtftListener(notificationService, emailService, ltftService, templateVersions,
-        ltftEventMapper, true);
+    listener = new LtftListener(notificationService, emailService, historyService, ltftService,
+        templateVersions, ltftEventMapper, true);
 
     listener.handleLtftUpdate(event);
 
@@ -331,6 +336,85 @@ class LtftListenerTest {
     assertThat("Unexpected event timestamp.", templateEvent.getTimestamp(), is(TIMESTAMP));
   }
 
+  @Test
+  void shouldIncludeRevisionInTemplateVariablesWhenLtftUpdated() throws MessagingException {
+    LtftUpdateEvent event = LtftUpdateEvent.builder()
+        .traineeId(TRAINEE_ID)
+        .state("APPROVED")
+        .revision(3)
+        .build();
+
+    listener.handleLtftUpdate(event);
+
+    ArgumentCaptor<Map<String, Object>> templateVarsCaptor = ArgumentCaptor.captor();
+    verify(emailService).sendMessageToExistingUser(any(), any(), any(),
+        templateVarsCaptor.capture(), any());
+
+    Map<String, Object> templateVariables = templateVarsCaptor.getValue();
+    assertThat("Unexpected revision.", templateVariables.get("revision"), is(3));
+  }
+
+  @Test
+  void shouldSkipSendingWhenSubmittedNotificationAlreadySentForRevision()
+      throws MessagingException {
+    String formId = "form-123";
+    Integer revision = 2;
+    LtftUpdateEvent event = LtftUpdateEvent.builder()
+        .traineeId(TRAINEE_ID)
+        .formId(formId)
+        .state("SUBMITTED")
+        .revision(revision)
+        .build();
+
+    when(historyService.hasNotificationForRevision(TRAINEE_ID,
+        TisReferenceType.LTFT, formId, LTFT_SUBMITTED, revision)).thenReturn(true);
+
+    listener.handleLtftUpdate(event);
+
+    verifyNoInteractions(emailService);
+  }
+
+  @Test
+  void shouldSendWhenSubmittedNotificationNotAlreadySentForRevision()
+      throws MessagingException {
+    String formId = "form-123";
+    Integer revision = 2;
+    LtftUpdateEvent event = LtftUpdateEvent.builder()
+        .traineeId(TRAINEE_ID)
+        .formId(formId)
+        .state("SUBMITTED")
+        .revision(revision)
+        .build();
+
+    when(historyService.hasNotificationForRevision(TRAINEE_ID,
+        TisReferenceType.LTFT, formId, LTFT_SUBMITTED, revision)).thenReturn(false);
+
+    listener.handleLtftUpdate(event);
+
+    verify(emailService).sendMessageToExistingUser(eq(TRAINEE_ID), eq(LTFT_SUBMITTED),
+        any(), any(), any());
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"APPROVED", "REJECTED", "UNSUBMITTED", "WITHDRAWN", "Other-Status"})
+  void shouldNotCheckHistoryWhenStateIsNotSubmitted(String state) throws MessagingException {
+    LtftUpdateEvent event = LtftUpdateEvent.builder()
+        .traineeId(TRAINEE_ID)
+        .formId("form-123")
+        .state(state)
+        .revision(1)
+        .modifiedBy(LtftUpdateEvent.LtftStatusModifiedByDto.builder()
+            .name("Test User")
+            .role("TRAINEE")
+            .build())
+        .build();
+
+    listener.handleLtftUpdate(event);
+
+    verifyNoMoreInteractions(historyService);
+    verify(emailService).sendMessageToExistingUser(any(), any(), any(), any(), any());
+  }
+
   @ParameterizedTest
   @ValueSource(strings = {"", "Other-status"})
   void shouldIgnoreNonMatchedNotificationTypesWhenLtftUpdatedForTpd(String state)
@@ -352,8 +436,8 @@ class LtftListenerTest {
     TemplateVersionsProperties templateVersions = new TemplateVersionsProperties(Map.of(
         type.getTemplateName(), new MessageTypeVersions(null, VERSION)
     ));
-    listener = new LtftListener(notificationService, emailService, ltftService, templateVersions,
-        ltftEventMapper, true);
+    listener = new LtftListener(notificationService, emailService, historyService, ltftService,
+        templateVersions, ltftEventMapper, true);
 
     assertThrows(IllegalArgumentException.class, () -> listener.handleLtftUpdateTpd(event));
   }
@@ -440,8 +524,8 @@ class LtftListenerTest {
     TemplateVersionsProperties templateVersions = new TemplateVersionsProperties(Map.of(
         LTFT_APPROVED_TPD.getTemplateName(), new MessageTypeVersions(VERSION, null)
     ));
-    listener = new LtftListener(notificationService, emailService, ltftService, templateVersions,
-        ltftEventMapper, emailNotificationsEnabled);
+    listener = new LtftListener(notificationService, emailService, historyService, ltftService,
+        templateVersions, ltftEventMapper, emailNotificationsEnabled);
 
     when(emailService.getRecipientAccount(TRAINEE_ID)).thenReturn(USER_DETAILS);
 
@@ -463,8 +547,8 @@ class LtftListenerTest {
     TemplateVersionsProperties templateVersions = new TemplateVersionsProperties(Map.of(
         LTFT_REJECTED_TPD.getTemplateName(), new MessageTypeVersions(VERSION, null)
     ));
-    listener = new LtftListener(notificationService, emailService, ltftService, templateVersions,
-        ltftEventMapper, emailNotificationsEnabled);
+    listener = new LtftListener(notificationService, emailService, historyService, ltftService,
+        templateVersions, ltftEventMapper, emailNotificationsEnabled);
 
     when(emailService.getRecipientAccount(TRAINEE_ID)).thenReturn(USER_DETAILS);
 
@@ -486,8 +570,8 @@ class LtftListenerTest {
     TemplateVersionsProperties templateVersions = new TemplateVersionsProperties(Map.of(
         LTFT_SUBMITTED_TPD.getTemplateName(), new MessageTypeVersions(VERSION, null)
     ));
-    listener = new LtftListener(notificationService, emailService, ltftService, templateVersions,
-        ltftEventMapper, emailNotificationsEnabled);
+    listener = new LtftListener(notificationService, emailService, historyService, ltftService,
+        templateVersions, ltftEventMapper, emailNotificationsEnabled);
 
     when(emailService.getRecipientAccount(TRAINEE_ID)).thenReturn(USER_DETAILS);
 
@@ -532,8 +616,8 @@ class LtftListenerTest {
     TemplateVersionsProperties templateVersions = new TemplateVersionsProperties(Map.of(
         type.getTemplateName(), new MessageTypeVersions(version, null)
     ));
-    listener = new LtftListener(notificationService, emailService, ltftService, templateVersions,
-        ltftEventMapper, true);
+    listener = new LtftListener(notificationService, emailService, historyService, ltftService,
+        templateVersions, ltftEventMapper, true);
 
     when(emailService.getRecipientAccount(any())).thenReturn(USER_DETAILS);
 

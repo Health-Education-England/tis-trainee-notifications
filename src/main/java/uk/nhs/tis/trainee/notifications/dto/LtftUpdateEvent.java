@@ -46,6 +46,7 @@ public class LtftUpdateEvent {
   @JsonAlias("id")
   private String formId;
   private String formRef;
+  private Integer revision;
   @JsonAlias("name")
   private String formName;
   private PersonalDetails personalDetails;

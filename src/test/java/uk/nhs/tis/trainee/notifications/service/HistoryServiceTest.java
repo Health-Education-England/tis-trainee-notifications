@@ -46,6 +46,7 @@ import static uk.nhs.tis.trainee.notifications.matcher.InstantCloseTo.closeTo;
 import static uk.nhs.tis.trainee.notifications.model.MessageType.EMAIL;
 import static uk.nhs.tis.trainee.notifications.model.MessageType.IN_APP;
 import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.FAILED;
+import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.PENDING;
 import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.SCHEDULED;
 import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.SENT;
 import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.UNREAD;
@@ -1877,5 +1878,135 @@ class HistoryServiceTest {
 
     verify(eventBroadcastService).publishNotificationsEvent(updatedHistory1);
     verify(eventBroadcastService).publishNotificationsEvent(updatedHistory2);
+  }
+
+  @Test
+  void shouldReturnTrueWhenNotificationExistsForRevision() {
+    TisReferenceInfo tisRef = new TisReferenceInfo(TisReferenceType.LTFT, "form-123");
+    RecipientInfo recipient = new RecipientInfo(TRAINEE_ID, EMAIL, TRAINEE_CONTACT);
+    TemplateInfo template = new TemplateInfo("ltft-submitted", "v1.0.0",
+        Map.of("revision", 2));
+    History history = History.builder()
+        .id(ObjectId.get())
+        .tisReference(tisRef)
+        .type(NotificationType.LTFT_SUBMITTED)
+        .recipient(recipient)
+        .template(template)
+        .build();
+
+    when(repository.findAllByRecipient_IdOrderBySentAtDesc(TRAINEE_ID))
+        .thenReturn(List.of(history));
+
+    boolean result = service.hasNotificationForRevision(TRAINEE_ID,
+        TisReferenceType.LTFT, "form-123", NotificationType.LTFT_SUBMITTED, 2);
+
+    assertThat("Expected notification to be found.", result, is(true));
+  }
+
+  @Test
+  void shouldReturnFalseWhenNoNotificationExistsForTrainee() {
+    when(repository.findAllByRecipient_IdOrderBySentAtDesc(TRAINEE_ID))
+        .thenReturn(List.of());
+
+    boolean result = service.hasNotificationForRevision(TRAINEE_ID,
+        TisReferenceType.LTFT, "form-123", NotificationType.LTFT_SUBMITTED, 2);
+
+    assertThat("Expected no notification found.", result, is(false));
+  }
+
+  @Test
+  void shouldReturnFalseWhenNotificationExistsWithDifferentRevision() {
+    TisReferenceInfo tisRef = new TisReferenceInfo(TisReferenceType.LTFT, "form-123");
+    RecipientInfo recipient = new RecipientInfo(TRAINEE_ID, EMAIL, TRAINEE_CONTACT);
+    TemplateInfo template = new TemplateInfo("ltft-submitted", "v1.0.0",
+        Map.of("revision", 1));
+    History history = History.builder()
+        .id(ObjectId.get())
+        .tisReference(tisRef)
+        .type(NotificationType.LTFT_SUBMITTED)
+        .recipient(recipient)
+        .template(template)
+        .status(PENDING)
+        .build();
+
+    when(repository.findAllByRecipient_IdOrderBySentAtDesc(TRAINEE_ID))
+        .thenReturn(List.of(history));
+
+    boolean result = service.hasNotificationForRevision(TRAINEE_ID,
+        TisReferenceType.LTFT, "form-123", NotificationType.LTFT_SUBMITTED, 2);
+
+    assertThat("Expected no notification found for different revision.", result, is(false));
+  }
+
+  @Test
+  void shouldReturnFalseWhenNotificationExistsWithDifferentRefId() {
+    TisReferenceInfo tisRef = new TisReferenceInfo(TisReferenceType.LTFT, "other-form");
+    RecipientInfo recipient = new RecipientInfo(TRAINEE_ID, EMAIL, TRAINEE_CONTACT);
+    TemplateInfo template = new TemplateInfo("ltft-submitted", "v1.0.0",
+        Map.of("revision", 2));
+    History history = History.builder()
+        .id(ObjectId.get())
+        .tisReference(tisRef)
+        .type(NotificationType.LTFT_SUBMITTED)
+        .recipient(recipient)
+        .template(template)
+        .status(PENDING)
+        .build();
+
+    when(repository.findAllByRecipient_IdOrderBySentAtDesc(TRAINEE_ID))
+        .thenReturn(List.of(history));
+
+    boolean result = service.hasNotificationForRevision(TRAINEE_ID,
+        TisReferenceType.LTFT, "form-123", NotificationType.LTFT_SUBMITTED, 2);
+
+    assertThat("Expected no notification found for different ref ID.", result, is(false));
+  }
+
+  @Test
+  void shouldReturnFalseWhenNotificationExistsWithDifferentNotificationType() {
+    TisReferenceInfo tisRef = new TisReferenceInfo(TisReferenceType.LTFT, "form-123");
+    RecipientInfo recipient = new RecipientInfo(TRAINEE_ID, EMAIL, TRAINEE_CONTACT);
+    TemplateInfo template = new TemplateInfo("ltft-submitted", "v1.0.0",
+        Map.of("revision", 2));
+    History history = History.builder()
+        .id(ObjectId.get())
+        .tisReference(tisRef)
+        .type(NotificationType.LTFT_APPROVED)
+        .recipient(recipient)
+        .template(template)
+        .status(PENDING)
+        .build();
+
+    when(repository.findAllByRecipient_IdOrderBySentAtDesc(TRAINEE_ID))
+        .thenReturn(List.of(history));
+
+    boolean result = service.hasNotificationForRevision(TRAINEE_ID,
+        TisReferenceType.LTFT, "form-123", NotificationType.LTFT_SUBMITTED, 2);
+
+    assertThat("Expected no notification found for different type.", result, is(false));
+  }
+
+  @Test
+  void shouldReturnFalseWhenNotificationExistsWithInAppRecipientType() {
+    TisReferenceInfo tisRef = new TisReferenceInfo(TisReferenceType.LTFT, "form-123");
+    RecipientInfo recipient = new RecipientInfo(TRAINEE_ID, IN_APP, null);
+    TemplateInfo template = new TemplateInfo("ltft-submitted", "v1.0.0",
+        Map.of("revision", 2));
+    History history = History.builder()
+        .id(ObjectId.get())
+        .tisReference(tisRef)
+        .type(NotificationType.LTFT_SUBMITTED)
+        .recipient(recipient)
+        .template(template)
+        .status(PENDING)
+        .build();
+
+    when(repository.findAllByRecipient_IdOrderBySentAtDesc(TRAINEE_ID))
+        .thenReturn(List.of(history));
+
+    boolean result = service.hasNotificationForRevision(TRAINEE_ID,
+        TisReferenceType.LTFT, "form-123", NotificationType.LTFT_SUBMITTED, 2);
+
+    assertThat("Expected no notification found for in-app type.", result, is(false));
   }
 }

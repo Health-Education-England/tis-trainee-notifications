@@ -440,6 +440,34 @@ public class HistoryService {
   }
 
   /**
+   * Check whether an email notification exists for the given trainee, reference, type and
+   * revision.
+   *
+   * @param traineeId        The ID of the trainee to check notifications for.
+   * @param tisReferenceType The reference type of the object.
+   * @param refId            The reference ID of the TisReferenceType.
+   * @param notificationType The notification type of the notification.
+   * @param revision         The revision number to match in template variables.
+   * @return true if a matching sent notification exists, false otherwise.
+   */
+  public boolean hasNotificationForRevision(String traineeId,
+      TisReferenceType tisReferenceType, String refId, NotificationType notificationType,
+      Integer revision) {
+    List<History> history = repository.findAllByRecipient_IdOrderBySentAtDesc(traineeId);
+
+    return history.stream()
+        .filter(h -> h.recipient().type().equals(EMAIL))
+        .filter(h -> h.tisReference() != null
+            && h.tisReference().id().equals(refId)
+            && h.tisReference().type().equals(tisReferenceType))
+        .filter(h -> h.type().equals(notificationType))
+        .anyMatch(h -> h.template() != null
+            && h.template().variables() != null
+            && Objects.equals(revision,
+                h.template().variables().get("revision")));
+  }
+
+  /**
    * Find latest scheduled email notification for the given Trainee by reference and type from DB.
    *
    * @param traineeId        The ID of the trainee to get notifications for.

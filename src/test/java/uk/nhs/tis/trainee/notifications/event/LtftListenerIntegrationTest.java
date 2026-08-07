@@ -676,7 +676,7 @@ class LtftListenerIntegrationTest {
     assertThat("Unexpected template version.", templateInfo.version(), is(expectedVersion));
 
     Map<String, Object> storedVariables = templateInfo.variables();
-    assertThat("Unexpected template variable count.", storedVariables.size(), is(7));
+    assertThat("Unexpected template variable count.", storedVariables.size(), is(8));
     assertThat("Unexpected template variable.", storedVariables.get("familyName"), is(FAMILY_NAME));
     assertThat("Unexpected template variable.", storedVariables.get("givenName"), is(GIVEN_NAME));
 
