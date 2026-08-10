@@ -28,6 +28,7 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
@@ -110,7 +111,7 @@ public class FixScheduledNotificationEmails {
    * @return The list of trainee IDs; empty if the resource cannot be read.
    */
   List<String> loadTraineeIds() {
-    InputStream stream = getClass().getClassLoader().getResourceAsStream(TRAINEE_IDS_RESOURCE);
+    InputStream stream = getTraineeIdsStream();
 
     if (stream == null) {
       log.error("Trainee ID resource file not found: {}", TRAINEE_IDS_RESOURCE);
@@ -123,10 +124,19 @@ public class FixScheduledNotificationEmails {
           .map(String::trim)
           .filter(line -> !line.isEmpty() && !line.startsWith("#"))
           .toList();
-    } catch (IOException e) {
+    } catch (IOException | UncheckedIOException e) {
       log.error("Failed to read trainee ID resource file: {}", TRAINEE_IDS_RESOURCE, e);
       return List.of();
     }
+  }
+
+  /**
+   * Open an input stream for the trainee IDs resource file.
+   *
+   * @return The stream, or {@code null} if the resource is not found on the classpath.
+   */
+  InputStream getTraineeIdsStream() {
+    return getClass().getClassLoader().getResourceAsStream(TRAINEE_IDS_RESOURCE);
   }
 }
 

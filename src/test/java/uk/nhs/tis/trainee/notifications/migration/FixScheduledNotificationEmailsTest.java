@@ -21,6 +21,10 @@
 
 package uk.nhs.tis.trainee.notifications.migration;
 
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.contains;
+import static org.hamcrest.Matchers.empty;
+import static org.hamcrest.Matchers.is;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -28,11 +32,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.contains;
-import static org.hamcrest.Matchers.empty;
-import static org.hamcrest.Matchers.is;
-
+import java.io.IOException;
 import java.io.InputStream;
 import java.util.List;
 import java.util.UUID;
@@ -182,20 +182,40 @@ class FixScheduledNotificationEmailsTest {
   }
 
   @Test
-  void shouldReturnEmptyListWhenResourceFileNotFound() {
+  void shouldReturnEmptyListWhenResourceStreamIsNull() {
     FixScheduledNotificationEmails migrator = new FixScheduledNotificationEmails(
         historyService, notificationService) {
       @Override
-      List<String> loadTraineeIds() {
-        InputStream stream = getClass().getClassLoader()
-            .getResourceAsStream("db/migration/does-not-exist.txt");
-        return stream != null ? List.of("should-not-reach") : List.of();
+      InputStream getTraineeIdsStream() {
+        return null;
       }
     };
 
     List<String> ids = migrator.loadTraineeIds();
 
-    assertThat("Expected empty list when resource is missing.", ids, is(empty()));
+    assertThat("Expected empty list when resource stream is null.", ids, is(empty()));
+  }
+
+  @Test
+  void shouldReturnEmptyListWhenResourceStreamThrowsIOException() {
+    InputStream faultyStream = new InputStream() {
+      @Override
+      public int read() throws IOException {
+        throw new IOException("Simulated read failure");
+      }
+    };
+
+    FixScheduledNotificationEmails migrator = new FixScheduledNotificationEmails(
+        historyService, notificationService) {
+      @Override
+      InputStream getTraineeIdsStream() {
+        return faultyStream;
+      }
+    };
+
+    List<String> ids = migrator.loadTraineeIds();
+
+    assertThat("Expected empty list when resource stream throws IOException.", ids, is(empty()));
   }
 }
 
