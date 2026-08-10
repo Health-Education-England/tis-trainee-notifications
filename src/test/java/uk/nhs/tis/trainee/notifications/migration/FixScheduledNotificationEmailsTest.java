@@ -26,6 +26,7 @@ import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.empty;
 import static org.hamcrest.Matchers.is;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -35,122 +36,107 @@ import static org.mockito.Mockito.when;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.List;
-import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
 import uk.nhs.tis.trainee.notifications.dto.UserDetails;
 import uk.nhs.tis.trainee.notifications.service.HistoryService;
 import uk.nhs.tis.trainee.notifications.service.NotificationService;
 
 class FixScheduledNotificationEmailsTest {
 
-  private static final String TRAINEE_ID_1 = UUID.randomUUID().toString();
-  private static final String TRAINEE_ID_2 = UUID.randomUUID().toString();
+  // IDs must match the entries in the test resource file:
+  // src/test/resources/db/migration/fix-scheduled-notification-emails-trainee-ids.txt
+  private static final String TRAINEE_ID_1 = "trainee-id-aaa";
+  private static final String TRAINEE_ID_2 = "trainee-id-bbb";
+  private static final String TRAINEE_ID_3 = "trainee-id-ccc";
   private static final String NEW_EMAIL = "new@example.com";
 
   private HistoryService historyService;
   private NotificationService notificationService;
-
-  /**
-   * A subclass that overrides trainee ID loading so tests are not tied to file I/O.
-   */
-  private static class TestableMigrator extends FixScheduledNotificationEmails {
-
-    private final List<String> traineeIds;
-
-    TestableMigrator(HistoryService historyService, NotificationService notificationService,
-        List<String> traineeIds) {
-      super(historyService, notificationService);
-      this.traineeIds = traineeIds;
-    }
-
-    @Override
-    List<String> loadTraineeIds() {
-      return traineeIds;
-    }
-  }
+  private FixScheduledNotificationEmails migrator;
 
   @BeforeEach
   void setUp() {
     historyService = mock(HistoryService.class);
     notificationService = mock(NotificationService.class);
+    migrator = new FixScheduledNotificationEmails(historyService, notificationService);
   }
 
   @Test
   void shouldUpdateEmailWhenTraineeDetailsFound() {
-    FixScheduledNotificationEmails migrator =
-        new TestableMigrator(historyService, notificationService, List.of(TRAINEE_ID_1));
-
     UserDetails details = new UserDetails(true, NEW_EMAIL, null, "Smith", "John", null);
     when(notificationService.getTraineeDetails(TRAINEE_ID_1)).thenReturn(details);
 
     migrator.migrate();
 
-    verify(notificationService).getTraineeDetails(TRAINEE_ID_1);
     verify(historyService).updateScheduledNotificationEmail(TRAINEE_ID_1, NEW_EMAIL);
   }
 
   @Test
   void shouldSkipWhenTraineeDetailsNotFound() {
-    FixScheduledNotificationEmails migrator =
-        new TestableMigrator(historyService, notificationService, List.of(TRAINEE_ID_1));
-
-    when(notificationService.getTraineeDetails(TRAINEE_ID_1)).thenReturn(null);
+    // TRAINEE_ID_1 returns null; TRAINEE_ID_2 has valid details to prove others still process.
+    UserDetails validDetails = new UserDetails(true, NEW_EMAIL, null, null, null, null);
+    when(notificationService.getTraineeDetails(TRAINEE_ID_2)).thenReturn(validDetails);
 
     migrator.migrate();
 
-    verify(notificationService).getTraineeDetails(TRAINEE_ID_1);
-    verify(historyService, never()).updateScheduledNotificationEmail(any(), any());
+    verify(historyService, never()).updateScheduledNotificationEmail(eq(TRAINEE_ID_1), any());
+    verify(historyService).updateScheduledNotificationEmail(TRAINEE_ID_2, NEW_EMAIL);
   }
 
   @Test
   void shouldSkipWhenTraineeEmailIsNull() {
-    FixScheduledNotificationEmails migrator =
-        new TestableMigrator(historyService, notificationService, List.of(TRAINEE_ID_1));
-
-    UserDetails details = new UserDetails(true, null, null, "Smith", "John", null);
-    when(notificationService.getTraineeDetails(TRAINEE_ID_1)).thenReturn(details);
+    // TRAINEE_ID_1 has null email; TRAINEE_ID_2 has valid details to prove others still process.
+    UserDetails nullEmailDetails = new UserDetails(true, null, null, "Smith", "John", null);
+    UserDetails validDetails = new UserDetails(true, NEW_EMAIL, null, null, null, null);
+    when(notificationService.getTraineeDetails(TRAINEE_ID_1)).thenReturn(nullEmailDetails);
+    when(notificationService.getTraineeDetails(TRAINEE_ID_2)).thenReturn(validDetails);
 
     migrator.migrate();
 
-    verify(historyService, never()).updateScheduledNotificationEmail(any(), any());
+    verify(historyService, never()).updateScheduledNotificationEmail(eq(TRAINEE_ID_1), any());
+    verify(historyService).updateScheduledNotificationEmail(TRAINEE_ID_2, NEW_EMAIL);
   }
 
   @Test
   void shouldSkipWhenTraineeEmailIsBlank() {
-    FixScheduledNotificationEmails migrator =
-        new TestableMigrator(historyService, notificationService, List.of(TRAINEE_ID_1));
-
-    UserDetails details = new UserDetails(true, "  ", null, "Smith", "John", null);
-    when(notificationService.getTraineeDetails(TRAINEE_ID_1)).thenReturn(details);
+    // TRAINEE_ID_1 has blank email; TRAINEE_ID_2 has valid details to prove others still process.
+    UserDetails blankEmailDetails = new UserDetails(true, "  ", null, "Smith", "John", null);
+    UserDetails validDetails = new UserDetails(true, NEW_EMAIL, null, null, null, null);
+    when(notificationService.getTraineeDetails(TRAINEE_ID_1)).thenReturn(blankEmailDetails);
+    when(notificationService.getTraineeDetails(TRAINEE_ID_2)).thenReturn(validDetails);
 
     migrator.migrate();
 
-    verify(historyService, never()).updateScheduledNotificationEmail(any(), any());
+    verify(historyService, never()).updateScheduledNotificationEmail(eq(TRAINEE_ID_1), any());
+    verify(historyService).updateScheduledNotificationEmail(TRAINEE_ID_2, NEW_EMAIL);
   }
 
   @Test
-  void shouldProcessMultipleTrainees() {
-    FixScheduledNotificationEmails migrator =
-        new TestableMigrator(historyService, notificationService,
-            List.of(TRAINEE_ID_1, TRAINEE_ID_2));
-
+  void shouldProcessAllTraineesInResourceFile() {
     UserDetails details1 = new UserDetails(true, "email1@example.com", null, null, null, null);
     UserDetails details2 = new UserDetails(true, "email2@example.com", null, null, null, null);
+    UserDetails details3 = new UserDetails(true, "email3@example.com", null, null, null, null);
     when(notificationService.getTraineeDetails(TRAINEE_ID_1)).thenReturn(details1);
     when(notificationService.getTraineeDetails(TRAINEE_ID_2)).thenReturn(details2);
+    when(notificationService.getTraineeDetails(TRAINEE_ID_3)).thenReturn(details3);
 
     migrator.migrate();
 
     verify(historyService).updateScheduledNotificationEmail(TRAINEE_ID_1, "email1@example.com");
     verify(historyService).updateScheduledNotificationEmail(TRAINEE_ID_2, "email2@example.com");
+    verify(historyService).updateScheduledNotificationEmail(TRAINEE_ID_3, "email3@example.com");
   }
 
   @Test
-  void shouldDoNothingWhenTraineeIdListIsEmpty() {
-    FixScheduledNotificationEmails migrator =
-        new TestableMigrator(historyService, notificationService, List.of());
+  void shouldDoNothingWhenResourceStreamIsNull() {
+    FixScheduledNotificationEmails migrator = new FixScheduledNotificationEmails(
+        historyService, notificationService) {
+      @Override
+      InputStream getTraineeIdsStream() {
+        return null;
+      }
+    };
 
     migrator.migrate();
 
@@ -160,10 +146,6 @@ class FixScheduledNotificationEmailsTest {
 
   @Test
   void shouldNotRollback() {
-    FixScheduledNotificationEmails migrator =
-        new TestableMigrator(historyService, notificationService, List.of());
-    Mockito.clearInvocations(historyService, notificationService);
-
     migrator.rollback();
 
     verifyNoInteractions(notificationService);
@@ -172,13 +154,10 @@ class FixScheduledNotificationEmailsTest {
 
   @Test
   void shouldLoadTraineeIdsFromResourceFileIgnoringCommentsAndBlanks() {
-    FixScheduledNotificationEmails migrator =
-        new FixScheduledNotificationEmails(historyService, notificationService);
-
     List<String> ids = migrator.loadTraineeIds();
 
     assertThat("Unexpected trainee IDs loaded.",
-        ids, contains("trainee-id-aaa", "trainee-id-bbb", "trainee-id-ccc"));
+        ids, contains(TRAINEE_ID_1, TRAINEE_ID_2, TRAINEE_ID_3));
   }
 
   @Test
@@ -197,7 +176,7 @@ class FixScheduledNotificationEmailsTest {
   }
 
   @Test
-  void shouldReturnEmptyListWhenResourceStreamThrowsIOException() {
+  void shouldReturnEmptyListWhenResourceStreamThrowsIoException() {
     InputStream faultyStream = new InputStream() {
       @Override
       public int read() throws IOException {
@@ -218,4 +197,3 @@ class FixScheduledNotificationEmailsTest {
     assertThat("Expected empty list when resource stream throws IOException.", ids, is(empty()));
   }
 }
-
