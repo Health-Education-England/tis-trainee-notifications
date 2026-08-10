@@ -1,0 +1,6 @@
+# Test resource for FixScheduledNotificationEmailsTest
+# This comment line and the blank line below should be ignored.
+
+trainee-id-aaa
+trainee-id-bbb
+trainee-id-ccc
