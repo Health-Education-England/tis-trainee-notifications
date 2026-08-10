@@ -129,22 +129,6 @@ class FixScheduledNotificationEmailsTest {
   }
 
   @Test
-  void shouldDoNothingWhenResourceStreamIsNull() {
-    FixScheduledNotificationEmails migrator = new FixScheduledNotificationEmails(
-        historyService, notificationService) {
-      @Override
-      InputStream getTraineeIdsStream() {
-        return null;
-      }
-    };
-
-    migrator.migrate();
-
-    verifyNoInteractions(notificationService);
-    verifyNoInteractions(historyService);
-  }
-
-  @Test
   void shouldNotRollback() {
     migrator.rollback();
 
@@ -162,7 +146,7 @@ class FixScheduledNotificationEmailsTest {
 
   @Test
   void shouldReturnEmptyListWhenResourceStreamIsNull() {
-    FixScheduledNotificationEmails migrator = new FixScheduledNotificationEmails(
+    FixScheduledNotificationEmails migratorWithNullStream = new FixScheduledNotificationEmails(
         historyService, notificationService) {
       @Override
       InputStream getTraineeIdsStream() {
@@ -170,7 +154,7 @@ class FixScheduledNotificationEmailsTest {
       }
     };
 
-    List<String> ids = migrator.loadTraineeIds();
+    List<String> ids = migratorWithNullStream.loadTraineeIds();
 
     assertThat("Expected empty list when resource stream is null.", ids, is(empty()));
   }
@@ -184,7 +168,7 @@ class FixScheduledNotificationEmailsTest {
       }
     };
 
-    FixScheduledNotificationEmails migrator = new FixScheduledNotificationEmails(
+    FixScheduledNotificationEmails migratorWithBrokenStream = new FixScheduledNotificationEmails(
         historyService, notificationService) {
       @Override
       InputStream getTraineeIdsStream() {
@@ -192,7 +176,7 @@ class FixScheduledNotificationEmailsTest {
       }
     };
 
-    List<String> ids = migrator.loadTraineeIds();
+    List<String> ids = migratorWithBrokenStream.loadTraineeIds();
 
     assertThat("Expected empty list when resource stream throws IOException.", ids, is(empty()));
   }
