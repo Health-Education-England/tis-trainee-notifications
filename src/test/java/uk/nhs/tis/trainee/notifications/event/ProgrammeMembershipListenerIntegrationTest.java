@@ -27,12 +27,14 @@ import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.testcontainers.containers.localstack.LocalStackContainer.Service.SQS;
@@ -118,6 +120,7 @@ import uk.nhs.tis.trainee.notifications.model.NotificationType;
 import uk.nhs.tis.trainee.notifications.model.ProgrammeActionType;
 import uk.nhs.tis.trainee.notifications.model.TraineeType;
 import uk.nhs.tis.trainee.notifications.service.EmailService;
+import uk.nhs.tis.trainee.notifications.service.InAppService;
 import uk.nhs.tis.trainee.notifications.service.MessageSendingService;
 import uk.nhs.tis.trainee.notifications.service.NotificationService;
 import uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipUtils;
@@ -205,6 +208,9 @@ class ProgrammeMembershipListenerIntegrationTest {
 
   @MockitoBean
   private RestTemplate restTemplate;
+
+  @MockitoBean
+  private InAppService inAppService;
 
   @Autowired
   private EmailService emailService;
@@ -708,6 +714,11 @@ class ProgrammeMembershipListenerIntegrationTest {
         .replace("{{DATE TODAY}}", LocalDate.now().format(longDateFormatter))
         .replace("{{DATE START}}", startDate.format(longDateFormatter));
     assertThat("Unexpected content.", content.html(), is(expectedContentStr));
+
+    // should not send DAY_ONE in-app notifications to Foundation trainee
+    verify(inAppService, never()).createNotifications(
+        eq(PERSON_ID), any(), eq(NotificationType.DAY_ONE_FOUNDATION),
+        anyString(), anyMap(), anyBoolean(), any(Instant.class));
   }
 
   @ParameterizedTest
@@ -794,6 +805,11 @@ class ProgrammeMembershipListenerIntegrationTest {
     String expectedContentStr = expectedContent.html()
         .replace("{{DATE START}}", startDate.format(longDateFormatter));
     assertThat("Unexpected content.", content.html(), is(expectedContentStr));
+
+    // should not send DAY_ONE in-app notifications to Foundation trainee
+    verify(inAppService, never()).createNotifications(
+        eq(PERSON_ID), any(), eq(NotificationType.DAY_ONE_FOUNDATION),
+        anyString(), anyMap(), anyBoolean(), any(Instant.class));
   }
 
   @ParameterizedTest
