@@ -127,7 +127,6 @@ class ProgrammeMembershipServiceTest {
   private static final String LTFT_FOUNDATION_VERSION = "v13.4.5";
   private static final String DEFERRAL_FOUNDATION_VERSION = "v14.5.6";
   private static final String SPONSORSHIP_FOUNDATION_VERSION = "v15.6.7";
-  private static final String DAY_ONE_FOUNDATION_VERSION = "v16.7.8";
   private static final String USER_EMAIL = "email@address";
   private static final String USER_TITLE = "title";
   private static final String USER_FAMILY_NAME = "family-name";
@@ -154,7 +153,7 @@ class ProgrammeMembershipServiceTest {
     notificationService = mock(NotificationService.class);
     service = new ProgrammeMembershipService(historyService, inAppService, notificationService,
         programmeMembershipUtils, timezone, DAY_ONE_VERSION, DEFERRAL_VERSION, E_PORTFOLIO_VERSION,
-        INDEMNITY_INSURANCE_VERSION, LTFT_VERSION, SPONSORSHIP_VERSION, DAY_ONE_FOUNDATION_VERSION,
+        INDEMNITY_INSURANCE_VERSION, LTFT_VERSION, SPONSORSHIP_VERSION,
         DEFERRAL_FOUNDATION_VERSION, LTFT_FOUNDATION_VERSION, SPONSORSHIP_FOUNDATION_VERSION);
   }
 
@@ -246,9 +245,7 @@ class ProgrammeMembershipServiceTest {
       DEFERRAL_FOUNDATION | v14.5.6 | true
       DEFERRAL_FOUNDATION | v14.5.6 | false
       SPONSORSHIP_FOUNDATION | v15.6.7 | true
-      SPONSORSHIP_FOUNDATION | v15.6.7 | false
-      DAY_ONE_FOUNDATION | v16.7.8 | true
-      DAY_ONE_FOUNDATION | v16.7.8 | false""")
+      SPONSORSHIP_FOUNDATION | v15.6.7 | false""")
   void shouldAddInAppFoundationNotifications(NotificationType notificationType,
       String notificationVersion, boolean notifiablePm) {
     ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
@@ -303,6 +300,41 @@ class ProgrammeMembershipServiceTest {
 
     Boolean doNotStoreJustLog = doNotStoreJustLogCaptor.getValue();
     assertThat("Unexpected doNotStoreJustLog value.", doNotStoreJustLog, is(!notifiablePm));
+  }
+
+  @ParameterizedTest
+  @CsvSource(delimiter = '|', textBlock = """
+      DAY_ONE_FOUNDATION | v16.7.8 | true
+      DAY_ONE_FOUNDATION | v16.7.8 | false""")
+  void shouldNotAddInAppDayOneFoundationNotifications(NotificationType notificationType,
+                                             String notificationVersion, boolean notifiablePm) {
+    ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
+    programmeMembership.setCurricula(List.of(
+        new Curriculum(CURRICULUM_NAME, MEDICAL_CURRICULUM_1, "Foundation", false,
+            CURRICULUM_END_DATE, null)));
+
+    UserDetails userAccountDetails =
+        new UserDetails(
+            null, USER_EMAIL, USER_TITLE, USER_FAMILY_NAME, USER_GIVEN_NAME, USER_GMC);
+
+    when(notificationService.meetsCriteria(programmeMembership, true,
+        true)).thenReturn(true);
+    when(notificationService.programmeMembershipIsNotifiable(programmeMembership,
+        MessageType.IN_APP)).thenReturn(notifiablePm);
+    when(notificationService.getOwnerContact(any(), any(), any(), any())).thenReturn("");
+    when(notificationService.getHrefTypeForContact(any())).thenReturn("");
+    when(notificationService.getTraineeDetails(PERSON_ID)).thenReturn(userAccountDetails);
+
+    service.addNotifications(programmeMembership);
+
+    ArgumentCaptor<TisReferenceInfo> referenceInfoCaptor = ArgumentCaptor.forClass(
+        TisReferenceInfo.class);
+    ArgumentCaptor<Map<String, Object>> variablesCaptor = ArgumentCaptor.captor();
+    ArgumentCaptor<Boolean> doNotStoreJustLogCaptor = ArgumentCaptor.captor();
+
+    verify(inAppService, never()).createNotifications(eq(PERSON_ID), referenceInfoCaptor.capture(),
+        eq(notificationType), eq(notificationVersion), variablesCaptor.capture(),
+        doNotStoreJustLogCaptor.capture(), eq(START_DATE.atStartOfDay(timezone).toInstant()));
   }
 
   @Test
@@ -624,8 +656,8 @@ class ProgrammeMembershipServiceTest {
     verify(inAppService).createNotifications(eq(PERSON_ID), any(),
         eq(NotificationType.SPONSORSHIP_FOUNDATION), eq(SPONSORSHIP_FOUNDATION_VERSION), any(),
         anyBoolean());
-    verify(inAppService).createNotifications(eq(PERSON_ID), any(),
-        eq(NotificationType.DAY_ONE_FOUNDATION), eq(DAY_ONE_FOUNDATION_VERSION), any(),
+    verify(inAppService, never()).createNotifications(eq(PERSON_ID), any(),
+        eq(NotificationType.DAY_ONE_FOUNDATION), any(), any(),
         anyBoolean(), eq(START_DATE.atStartOfDay(timezone).toInstant()));
   }
 
@@ -921,7 +953,7 @@ class ProgrammeMembershipServiceTest {
     ProgrammeMembershipService serviceWithSpyUtils = new ProgrammeMembershipService(
         historyService, inAppService, notificationService, spyUtils, timezone,
         DAY_ONE_VERSION, DEFERRAL_VERSION, E_PORTFOLIO_VERSION,
-        INDEMNITY_INSURANCE_VERSION, LTFT_VERSION, SPONSORSHIP_VERSION, DAY_ONE_FOUNDATION_VERSION,
+        INDEMNITY_INSURANCE_VERSION, LTFT_VERSION, SPONSORSHIP_VERSION,
         DEFERRAL_FOUNDATION_VERSION, LTFT_FOUNDATION_VERSION, SPONSORSHIP_FOUNDATION_VERSION);
 
     serviceWithSpyUtils.addNotifications(programmeMembership);

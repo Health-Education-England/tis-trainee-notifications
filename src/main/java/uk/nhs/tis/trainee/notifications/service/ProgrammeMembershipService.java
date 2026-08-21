@@ -103,8 +103,6 @@ public class ProgrammeMembershipService {
   private final String indemnityInsuranceVersion;
   private final String ltftVersion;
   private final String sponsorshipVersion;
-
-  private final String dayOneFoundationVersion;
   private final String deferralFoundationVersion;
   private final String ltftFoundationVersion;
   private final String sponsorshipFoundationVersion;
@@ -122,7 +120,6 @@ public class ProgrammeMembershipService {
    * @param indemnityInsuranceVersion    The indemnity insurance version.
    * @param ltftVersion                  The LTFT version.
    * @param sponsorshipVersion           The sponsorship version.
-   * @param dayOneFoundationVersion      The day one foundation version.
    * @param deferralFoundationVersion    The deferral foundation version.
    * @param ltftFoundationVersion        The LTFT foundation version.
    * @param sponsorshipFoundationVersion The sponsorship foundation version.
@@ -137,8 +134,6 @@ public class ProgrammeMembershipService {
       String indemnityInsuranceVersion,
       @Value("${application.template-versions.less-than-full-time.in-app}") String ltftVersion,
       @Value("${application.template-versions.sponsorship.in-app}") String sponsorshipVersion,
-      @Value("${application.template-versions.day-one-foundation.in-app}")
-      String dayOneFoundationVersion,
       @Value("${application.template-versions.deferral-foundation.in-app}")
       String deferralFoundationVersion,
       @Value("${application.template-versions.less-than-full-time-foundation.in-app}")
@@ -156,7 +151,6 @@ public class ProgrammeMembershipService {
     this.indemnityInsuranceVersion = indemnityInsuranceVersion;
     this.ltftVersion = ltftVersion;
     this.sponsorshipVersion = sponsorshipVersion;
-    this.dayOneFoundationVersion = dayOneFoundationVersion;
     this.deferralFoundationVersion = deferralFoundationVersion;
     this.ltftFoundationVersion = ltftFoundationVersion;
     this.sponsorshipFoundationVersion = sponsorshipFoundationVersion;
@@ -411,10 +405,10 @@ public class ProgrammeMembershipService {
         isFoundation ? sponsorshipFoundationVersion : sponsorshipVersion,
         gmcNumber);
 
-    createUniqueInAppNotification(programmeMembership, notificationsAlreadySent,
-        isFoundation ? NotificationType.DAY_ONE_FOUNDATION : DAY_ONE,
-        isFoundation ? dayOneFoundationVersion : dayOneVersion,
-        Map.of());
+    if (!isFoundation) {
+      createUniqueInAppNotification(programmeMembership, notificationsAlreadySent,
+          DAY_ONE, dayOneVersion, Map.of());
+    }
   }
 
   /**
