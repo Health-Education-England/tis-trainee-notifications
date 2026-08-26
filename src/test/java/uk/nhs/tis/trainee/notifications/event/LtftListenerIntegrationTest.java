@@ -38,6 +38,7 @@ import static uk.nhs.tis.trainee.notifications.model.LocalOfficeContactType.LTFT
 import static uk.nhs.tis.trainee.notifications.model.LocalOfficeContactType.SUPPORTED_RETURN_TO_TRAINING;
 import static uk.nhs.tis.trainee.notifications.model.LocalOfficeContactType.TSS_SUPPORT;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.LTFT_ADMIN_UNSUBMITTED;
+import static uk.nhs.tis.trainee.notifications.model.NotificationType.LTFT_APPROVED_TPD;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.LTFT_SUBMITTED;
 import static uk.nhs.tis.trainee.notifications.model.TraineeType.SPECIALTY;
 
@@ -961,6 +962,93 @@ class LtftListenerIntegrationTest {
 
     URL resource = getClass().getResource(
         "/email/" + type.getTemplateName() + "-exceptional.html");
+    assert resource != null;
+    Document expectedContent = Jsoup.parse(Paths.get(resource.toURI()).toFile());
+    assertThat("Unexpected content.", content.html(), is(expectedContent.html()));
+  }
+
+  @Test
+  void shouldSendApprovedTpdNotificationWithExceptionalDetailsWhenLtftExceptionalIsAccepted()
+      throws Exception {
+    when(userAccountService.getUserDetailsById(USER_ID)).thenReturn(
+        new UserDetails(true, EMAIL, TITLE, FAMILY_NAME, GIVEN_NAME, GMC));
+
+    when(notificationService.getOwnerContactList(MANAGING_DEANERY, SPECIALTY)).thenReturn(
+        EXPECTED_CONTACTS.stream()
+            .map(ct -> Map.of(
+                "contact", ct + "@example.com",
+                "contactTypeName", ct.getContactTypeName()
+            ))
+            .toList());
+    when(notificationService.getOwnerContact(any(), any(), eq(TSS_SUPPORT),
+        eq(""))).thenCallRealMethod();
+    when(notificationService.getHrefTypeForContact(any())).thenCallRealMethod();
+
+    // APPROVED with Change Start Date same as Exceptional Date
+    String eventString = """
+        {
+          "traineeTisId": "%s",
+          "formRef": "ltft_47165_001",
+          "formName": "form_name",
+          "personalDetails": {
+            "gmcNumber": "1234567"
+          },
+          "programmeMembership": {
+            "name": "General Practice",
+            "startDate": "2025-01-03",
+            "managingDeanery": "%s",
+            "wte": 1.0
+          },
+          "change": {
+            "startDate": "%s",
+            "wte": 0.5
+          },
+          "reasons": {
+            "selected": [
+            "Training / career development",
+            "other"
+            ],
+            "otherDetail": "I just need a break from training",
+            "supportingInformation": "some supporting information"
+          },
+          "status": {
+            "current" : {
+              "state": "APPROVED",
+              "timestamp": "2026-05-04T01:02:03.004Z"
+            }
+          },
+          "discussions": {
+            "tpdName": "%s",
+            "tpdEmail": "%s"
+          },
+          "exceptionalReasons": {
+            "exceptional": %s,
+            "supportingInformation": "%s",
+            "startDate": "%s"
+          }
+        }
+        """.formatted(traineeId, MANAGING_DEANERY, EXCEPTIONAL_DATE, TPD_NAME, TPD_EMAIL,
+        EXCEPTIONAL, EXCEPTIONAL_REASON, EXCEPTIONAL_DATE);
+
+    JsonNode eventJson = JsonMapper.builder()
+        .build()
+        .readTree(eventString);
+
+    sqsTemplate.send(LTFT_UPDATED_TPD_QUEUE, eventJson);
+
+    ArgumentCaptor<MimeMessage> messageCaptor = ArgumentCaptor.captor();
+
+    await()
+        .pollInterval(Duration.ofSeconds(2))
+        .atMost(Duration.ofSeconds(10))
+        .ignoreExceptions()
+        .untilAsserted(() -> verify(mailSender).send(messageCaptor.capture()));
+
+    MimeMessage message = messageCaptor.getValue();
+    Document content = Jsoup.parse((String) message.getContent());
+
+    URL resource = getClass().getResource(
+        "/email/" + LTFT_APPROVED_TPD.getTemplateName() + "-exceptional-accepted.html");
     assert resource != null;
     Document expectedContent = Jsoup.parse(Paths.get(resource.toURI()).toFile());
     assertThat("Unexpected content.", content.html(), is(expectedContent.html()));

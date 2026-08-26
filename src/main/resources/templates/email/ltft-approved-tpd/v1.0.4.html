@@ -21,12 +21,16 @@
   </p>
   <p>
     <b>Summary:</b> <span th:text="${not #strings.isEmpty(title)} ? ${title} : 'Dr'"></span> <span th:text="${not #strings.isEmpty(givenName)} ? ${givenName} : _"></span> <span th:text="${not #strings.isEmpty(familyName)} ? ${familyName} : _"></span
-  > applied to change their working hours from <b><span th:text="${not #strings.isEmpty(var?.programmeMembership?.wte)} ? ${var.programmeMembership.wte} : 'unknown'"></span
-  > WTE to <span th:text="${not #strings.isEmpty(var?.change?.wte)} ? ${var.change.wte} : 'unknown'"></span
-  > WTE starting <span th:text="${not #strings.isEmpty(var?.change?.startDate)} ? ${#temporals.format(var.change.startDate, 'd MMMM yyyy')} : 'unknown'"></span
-  ></b>. This has been approved.
+    >&apos;s application to change their working hours from <b><span th:text="${not #strings.isEmpty(var?.programmeMembership?.wte)} ? ${var.programmeMembership.wte} : 'unknown'"></span
+    > WTE to <span th:text="${not #strings.isEmpty(var?.change?.wte)} ? ${var.change.wte} : 'unknown'"></span
+    > WTE</b> has been approved.
+      <th:block th:if="${var?.exceptionalReasons?.exceptional == true and var?.exceptionalReasons?.startDate != var?.change?.startDate}"
+      >However, the request for the change to take effect from <span th:text="${var?.exceptionalReasons?.startDate != null} ? ${#temporals.format(var.exceptionalReasons.startDate, 'd MMMM yyyy')} : 'unknown'"></span
+      > on exceptional circumstances has not been accepted.</th:block> The revised working hours will start on <span th:text="${var?.change?.startDate != null} ? ${#temporals.format(var.change.startDate, 'd MMMM yyyy')} : 'unknown'"></span
+    >.
   </p>
   <p>
+
     <b>Resident Doctor</b>
   </p>
   <ul>
