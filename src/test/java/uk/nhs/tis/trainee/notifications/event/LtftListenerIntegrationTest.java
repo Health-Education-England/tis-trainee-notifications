@@ -38,6 +38,7 @@ import static uk.nhs.tis.trainee.notifications.model.LocalOfficeContactType.LTFT
 import static uk.nhs.tis.trainee.notifications.model.LocalOfficeContactType.SUPPORTED_RETURN_TO_TRAINING;
 import static uk.nhs.tis.trainee.notifications.model.LocalOfficeContactType.TSS_SUPPORT;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.LTFT_ADMIN_UNSUBMITTED;
+import static uk.nhs.tis.trainee.notifications.model.NotificationType.LTFT_APPROVED_TPD;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.LTFT_SUBMITTED;
 import static uk.nhs.tis.trainee.notifications.model.TraineeType.SPECIALTY;
 
@@ -54,6 +55,7 @@ import java.net.URL;
 import java.nio.file.Paths;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -121,6 +123,9 @@ class LtftListenerIntegrationTest {
   private static final String MODIFIED_BY_NAME = "Anne Other";
   private static final String TPD_NAME = "Mr TPD";
   private static final String TPD_EMAIL = "tpd@email.nhs";
+  private static final Boolean EXCEPTIONAL = true;
+  private static final LocalDate EXCEPTIONAL_DATE = LocalDate.parse("2026-04-03");
+  private static final String EXCEPTIONAL_REASON = "Exceptional reason";
   private static final String STATUS_REASON = "changePercentage";
   private static final String STATUS_REASON_TEXT = "Change WTE percentage";
 
@@ -874,9 +879,186 @@ class LtftListenerIntegrationTest {
 
   @ParameterizedTest
   @CsvSource(delimiter = '|', textBlock = """
-      APPROVED  | LTFT_APPROVED_TPD  | v1.0.3
+      APPROVED  | LTFT_APPROVED_TPD
+      SUBMITTED | LTFT_SUBMITTED_TPD
+      """)
+  void shouldSendTpdNotificationWithExceptionalDetailsWhenLtftIsExceptional(
+      String state, NotificationType type) throws Exception {
+    when(userAccountService.getUserDetailsById(USER_ID)).thenReturn(
+        new UserDetails(true, EMAIL, TITLE, FAMILY_NAME, GIVEN_NAME, GMC));
+
+    when(notificationService.getOwnerContactList(MANAGING_DEANERY, SPECIALTY)).thenReturn(
+        EXPECTED_CONTACTS.stream()
+            .map(ct -> Map.of(
+                "contact", ct + "@example.com",
+                "contactTypeName", ct.getContactTypeName()
+            ))
+            .toList());
+    when(notificationService.getOwnerContact(any(), any(), eq(TSS_SUPPORT),
+        eq(""))).thenCallRealMethod();
+    when(notificationService.getHrefTypeForContact(any())).thenCallRealMethod();
+
+    String eventString = """
+        {
+          "traineeTisId": "%s",
+          "formRef": "ltft_47165_001",
+          "formName": "form_name",
+          "personalDetails": {
+            "gmcNumber": "1234567"
+          },
+          "programmeMembership": {
+            "name": "General Practice",
+            "startDate": "2025-01-03",
+            "managingDeanery": "%s",
+            "wte": 1.0
+          },
+          "change": {
+            "startDate": "2026-12-03",
+            "wte": 0.5
+          },
+          "reasons": {
+            "selected": [
+            "Training / career development",
+            "other"
+            ],
+            "otherDetail": "I just need a break from training",
+            "supportingInformation": "some supporting information"
+          },
+          "status": {
+            "current" : {
+              "state": "%s",
+              "timestamp": "2026-05-04T01:02:03.004Z"
+            }
+          },
+          "discussions": {
+            "tpdName": "%s",
+            "tpdEmail": "%s"
+          },
+          "exceptionalReasons": {
+            "exceptional": %s,
+            "supportingInformation": "%s",
+            "startDate": "%s"
+          }
+        }
+        """.formatted(traineeId, MANAGING_DEANERY, state, TPD_NAME, TPD_EMAIL,
+        EXCEPTIONAL, EXCEPTIONAL_REASON, EXCEPTIONAL_DATE);
+
+    JsonNode eventJson = JsonMapper.builder()
+        .build()
+        .readTree(eventString);
+
+    sqsTemplate.send(LTFT_UPDATED_TPD_QUEUE, eventJson);
+
+    ArgumentCaptor<MimeMessage> messageCaptor = ArgumentCaptor.captor();
+
+    await()
+        .pollInterval(Duration.ofSeconds(2))
+        .atMost(Duration.ofSeconds(10))
+        .ignoreExceptions()
+        .untilAsserted(() -> verify(mailSender).send(messageCaptor.capture()));
+
+    MimeMessage message = messageCaptor.getValue();
+    Document content = Jsoup.parse((String) message.getContent());
+
+    URL resource = getClass().getResource(
+        "/email/" + type.getTemplateName() + "-exceptional.html");
+    assert resource != null;
+    Document expectedContent = Jsoup.parse(Paths.get(resource.toURI()).toFile());
+    assertThat("Unexpected content.", content.html(), is(expectedContent.html()));
+  }
+
+  @Test
+  void shouldSendApprovedTpdNotificationWithExceptionalDetailsWhenLtftExceptionalIsAccepted()
+      throws Exception {
+    when(userAccountService.getUserDetailsById(USER_ID)).thenReturn(
+        new UserDetails(true, EMAIL, TITLE, FAMILY_NAME, GIVEN_NAME, GMC));
+
+    when(notificationService.getOwnerContactList(MANAGING_DEANERY, SPECIALTY)).thenReturn(
+        EXPECTED_CONTACTS.stream()
+            .map(ct -> Map.of(
+                "contact", ct + "@example.com",
+                "contactTypeName", ct.getContactTypeName()
+            ))
+            .toList());
+    when(notificationService.getOwnerContact(any(), any(), eq(TSS_SUPPORT),
+        eq(""))).thenCallRealMethod();
+    when(notificationService.getHrefTypeForContact(any())).thenCallRealMethod();
+
+    // APPROVED with Change Start Date same as Exceptional Date
+    String eventString = """
+        {
+          "traineeTisId": "%s",
+          "formRef": "ltft_47165_001",
+          "formName": "form_name",
+          "personalDetails": {
+            "gmcNumber": "1234567"
+          },
+          "programmeMembership": {
+            "name": "General Practice",
+            "startDate": "2025-01-03",
+            "managingDeanery": "%s",
+            "wte": 1.0
+          },
+          "change": {
+            "startDate": "%s",
+            "wte": 0.5
+          },
+          "reasons": {
+            "selected": [
+            "Training / career development",
+            "other"
+            ],
+            "otherDetail": "I just need a break from training",
+            "supportingInformation": "some supporting information"
+          },
+          "status": {
+            "current" : {
+              "state": "APPROVED",
+              "timestamp": "2026-05-04T01:02:03.004Z"
+            }
+          },
+          "discussions": {
+            "tpdName": "%s",
+            "tpdEmail": "%s"
+          },
+          "exceptionalReasons": {
+            "exceptional": %s,
+            "supportingInformation": "%s",
+            "startDate": "%s"
+          }
+        }
+        """.formatted(traineeId, MANAGING_DEANERY, EXCEPTIONAL_DATE, TPD_NAME, TPD_EMAIL,
+        EXCEPTIONAL, EXCEPTIONAL_REASON, EXCEPTIONAL_DATE);
+
+    JsonNode eventJson = JsonMapper.builder()
+        .build()
+        .readTree(eventString);
+
+    sqsTemplate.send(LTFT_UPDATED_TPD_QUEUE, eventJson);
+
+    ArgumentCaptor<MimeMessage> messageCaptor = ArgumentCaptor.captor();
+
+    await()
+        .pollInterval(Duration.ofSeconds(2))
+        .atMost(Duration.ofSeconds(10))
+        .ignoreExceptions()
+        .untilAsserted(() -> verify(mailSender).send(messageCaptor.capture()));
+
+    MimeMessage message = messageCaptor.getValue();
+    Document content = Jsoup.parse((String) message.getContent());
+
+    URL resource = getClass().getResource(
+        "/email/" + LTFT_APPROVED_TPD.getTemplateName() + "-exceptional-accepted.html");
+    assert resource != null;
+    Document expectedContent = Jsoup.parse(Paths.get(resource.toURI()).toFile());
+    assertThat("Unexpected content.", content.html(), is(expectedContent.html()));
+  }
+
+  @ParameterizedTest
+  @CsvSource(delimiter = '|', textBlock = """
+      APPROVED  | LTFT_APPROVED_TPD  | v1.0.4
       REJECTED  | LTFT_REJECTED_TPD  | v1.0.0
-      SUBMITTED | LTFT_SUBMITTED_TPD | v1.0.3
+      SUBMITTED | LTFT_SUBMITTED_TPD | v1.0.4
       """)
   void shouldStoreTpdNotificationHistoryWhenMessageSent(String state, NotificationType type,
       String expectedVersion) throws JsonProcessingException {
@@ -905,6 +1087,11 @@ class LtftListenerIntegrationTest {
           "discussions": {
             "tpdEmail": "%s"
           },
+          "exceptionalReasons": {
+            "exceptional": "%s",
+            "supportingInformation": "%s",
+            "startDate": "%s"
+          },
           "status": {
             "current" : {
               "state": "%s",
@@ -912,8 +1099,8 @@ class LtftListenerIntegrationTest {
             }
           }
         }
-        """.formatted(traineeId, FORM_REF, LTFT_NAME, MANAGING_DEANERY, TPD_EMAIL, state,
-        TIMESTAMP);
+        """.formatted(traineeId, FORM_REF, LTFT_NAME, MANAGING_DEANERY, TPD_EMAIL, EXCEPTIONAL,
+        EXCEPTIONAL_REASON, EXCEPTIONAL_DATE, state, TIMESTAMP);
 
     JsonNode eventJson = JsonMapper.builder()
         .build()
@@ -958,6 +1145,12 @@ class LtftListenerIntegrationTest {
     assertThat("Unexpected trainee ID.", event.getTraineeId(), is(traineeId));
     assertThat("Unexpected form ref.", event.getFormRef(), is(FORM_REF));
     assertThat("Unexpected form name.", event.getFormName(), is(LTFT_NAME));
+    assertThat("Unexpected exceptional.",
+        event.getExceptionalReasons().exceptional(), is(EXCEPTIONAL));
+    assertThat("Unexpected exceptional date.",
+        event.getExceptionalReasons().startDate(), is(EXCEPTIONAL_DATE));
+    assertThat("Unexpected exceptional reason.",
+        event.getExceptionalReasons().supportingInformation(), is(EXCEPTIONAL_REASON));
     assertThat("Unexpected state.", event.getState(), is(state));
     assertThat("Unexpected timestamp.", event.getTimestamp(), is(TIMESTAMP));
 

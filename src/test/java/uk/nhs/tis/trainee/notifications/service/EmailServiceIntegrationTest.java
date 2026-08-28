@@ -261,6 +261,8 @@ class EmailServiceIntegrationTest {
     variables.put("change", Map.of("startDate", LocalDate.parse("2024-01-01"), "wte", 0.5,
         "cctDate", LocalDate.parse("2024-01-01")));
     variables.put("reasons", Map.of("selected", List.of("reason 1", "reason 2")));
+    variables.put("exceptionalReasons", Map.of("exceptional", true, "supportingInformation",
+        "reason", "startDate", LocalDate.parse("2026-01-01")));
     variables.put("stateDetail", Map.of("reason", "some reason", "message", "some message"));
     variables.put("modifiedBy", Map.of("name", "modified by name", "role", "modified by role"));
 

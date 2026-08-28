@@ -53,6 +53,7 @@ public class LtftUpdateEvent {
   private DiscussionsDto discussions;
   private ChangeDto change;
   private ReasonsDto reasons;
+  private ExceptionalReasonsDto exceptionalReasons;
   private String state;
   private Instant timestamp;
   private LftfStatusInfoDetailDto stateDetail;
@@ -91,6 +92,21 @@ public class LtftUpdateEvent {
       List<String> selected,
       String otherDetail,
       String supportingInformation) {
+
+  }
+
+  /**
+   * Additional reasons for exceptional applications of the LTFT change.
+   *
+   * @param exceptional           Whether the application is exceptional.
+   * @param supportingInformation The supporting information for the exception.
+   * @param startDate             The proposed start date for the exception.
+   */
+  @Builder
+  public record ExceptionalReasonsDto(
+      Boolean exceptional,
+      String supportingInformation,
+      LocalDate startDate) {
 
   }
 
