@@ -26,8 +26,8 @@
     > WTE</b> has been approved.
       <th:block th:if="${var?.exceptionalReasons?.exceptional == true and var?.exceptionalReasons?.startDate != var?.change?.startDate}"
       >However, the request for the change to take effect from <span th:text="${var?.exceptionalReasons?.startDate != null} ? ${#temporals.format(var.exceptionalReasons.startDate, 'd MMMM yyyy')} : 'unknown'"></span
-      > on exceptional circumstances has not been accepted.</th:block> The revised working hours will start on <span th:text="${var?.change?.startDate != null} ? ${#temporals.format(var.change.startDate, 'd MMMM yyyy')} : 'unknown'"></span
-    >.
+      > on exceptional circumstances has not been accepted.</th:block> The revised working hours will start on <b><span th:text="${var?.change?.startDate != null} ? ${#temporals.format(var.change.startDate, 'd MMMM yyyy')} : 'unknown'"></span
+    ></b>.
   </p>
   <p>
 
