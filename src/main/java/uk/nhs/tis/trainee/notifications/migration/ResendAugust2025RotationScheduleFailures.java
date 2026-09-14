@@ -47,7 +47,7 @@ import uk.nhs.tis.trainee.notifications.service.NotificationService;
  * Resend email notifications which failed and got stuck in SCHEDULED.
  */
 @Slf4j
-@ChangeUnit(id = "resendAugust2025RotationScheduleFailures", order = "10")
+@ChangeUnit(id = "resendAugust2025RotationScheduleFailures", order = "010")
 public class ResendAugust2025RotationScheduleFailures {
 
   private static final long WINDOW = Duration.ofDays(1).getSeconds();

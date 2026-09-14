@@ -43,7 +43,7 @@ import uk.nhs.tis.trainee.notifications.model.History;
  * Flag historic missed schedules as failed to avoid sending as overdue.
  */
 @Slf4j
-@ChangeUnit(id = "failHistoricMissedSchedules", order = "11")
+@ChangeUnit(id = "failHistoricMissedSchedules", order = "011")
 public class FailHistoricMissedSchedules {
 
   private final MongoTemplate mongoTemplate;

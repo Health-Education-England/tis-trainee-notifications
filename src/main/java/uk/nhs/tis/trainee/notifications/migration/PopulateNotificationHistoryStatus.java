@@ -37,7 +37,7 @@ import uk.nhs.tis.trainee.notifications.model.NotificationStatus;
  * Populate the status field for all previously sent notifications.
  */
 @Slf4j
-@ChangeUnit(id = "populateNotificationHistoryStatus", order = "1")
+@ChangeUnit(id = "populateNotificationHistoryStatus", order = "001")
 public class PopulateNotificationHistoryStatus {
 
   private static final String PROFILE_COLLECTION = "History";

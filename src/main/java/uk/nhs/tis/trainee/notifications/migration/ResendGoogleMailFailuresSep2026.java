@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright 2025 Crown Copyright (Health Education England)
+ * Copyright 2026 Crown Copyright (Health Education England)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
  * associated documentation files (the "Software"), to deal in the Software without restriction,
@@ -21,16 +21,22 @@
 
 package uk.nhs.tis.trainee.notifications.migration;
 
+import static java.time.ZoneOffset.UTC;
 import static java.util.regex.Pattern.CASE_INSENSITIVE;
 import static uk.nhs.tis.trainee.notifications.model.MessageType.EMAIL;
 import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.FAILED;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.COJ_CONFIRMATION;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.EMAIL_UPDATED_NEW;
-import static uk.nhs.tis.trainee.notifications.model.NotificationType.FORM_UPDATED;
-import static uk.nhs.tis.trainee.notifications.model.NotificationType.LTFT_SUBMITTED;
+import static uk.nhs.tis.trainee.notifications.model.NotificationType.EMAIL_UPDATED_OLD;
+import static uk.nhs.tis.trainee.notifications.model.NotificationType.FORM_SUBMITTED;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PLACEMENT_UPDATED_WEEK_12;
+import static uk.nhs.tis.trainee.notifications.model.NotificationType.PLACEMENT_UPDATED_WEEK_12_FOUNDATION;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_CREATED;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_DAY_ONE;
+import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_POG_MONTH_12;
+import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_POG_MONTH_6;
+import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_UPDATED_WEEK_12;
+import static uk.nhs.tis.trainee.notifications.model.NotificationType.PROGRAMME_UPDATED_WEEK_4;
 
 import io.mongock.api.annotations.ChangeUnit;
 import io.mongock.api.annotations.Execution;
@@ -54,24 +60,29 @@ import uk.nhs.tis.trainee.notifications.service.HistoryService;
 import uk.nhs.tis.trainee.notifications.service.NotificationService;
 
 /**
- * Resend email notifications that failed on the 14th and 15th May due to Google blocking us.
+ * Resend email notifications that failed on the 9th and 10th September 2026.
  */
 @Slf4j
-@ChangeUnit(id = "resendGoogleMailFailures", order = "009")
-public class ResendGoogleMailFailures {
+@ChangeUnit(id = "resendGoogleMailFailuresSep2026", order = "015")
+public class ResendGoogleMailFailuresSep2026 {
 
   private static final long WINDOW = Duration.ofDays(1).getSeconds();
 
   private static final Set<NotificationType> INSTANT_NOTIFICATIONS = Set.of(
       COJ_CONFIRMATION,
       EMAIL_UPDATED_NEW,
-      FORM_UPDATED,
-      LTFT_SUBMITTED
+      EMAIL_UPDATED_OLD,
+      FORM_SUBMITTED
   );
 
   private static final Set<NotificationType> SCHEDULE_NOTIFICATIONS = Set.of(
-      PLACEMENT_UPDATED_WEEK_12,
       PROGRAMME_CREATED,
+      PLACEMENT_UPDATED_WEEK_12,
+      PLACEMENT_UPDATED_WEEK_12_FOUNDATION,
+      PROGRAMME_UPDATED_WEEK_12,
+      PROGRAMME_UPDATED_WEEK_4,
+      PROGRAMME_POG_MONTH_12,
+      PROGRAMME_POG_MONTH_6,
       PROGRAMME_DAY_ONE
   );
 
@@ -85,7 +96,7 @@ public class ResendGoogleMailFailures {
    *
    * @param mongoTemplate The mongo template to use for accessing failed records.
    */
-  public ResendGoogleMailFailures(MongoTemplate mongoTemplate, EmailService emailService,
+  public ResendGoogleMailFailuresSep2026(MongoTemplate mongoTemplate, EmailService emailService,
       HistoryService historyService,
       NotificationService notificationService) {
     this.mongoTemplate = mongoTemplate;
@@ -106,8 +117,8 @@ public class ResendGoogleMailFailures {
         .addCriteria(Criteria.where("status").is(FAILED))
         .addCriteria(Criteria.where("statusDetail").is("Bounce: Transient - General"))
         .addCriteria(Criteria.where("sentAt")
-            .gte(LocalDate.of(2025, 5, 14))
-            .lt(LocalDate.of(2025, 5, 16))
+            .gte(LocalDate.of(2026, 9, 9).atStartOfDay(UTC).toInstant())
+            .lt(LocalDate.of(2026, 9, 11).atStartOfDay(UTC).toInstant())
         );
 
     List<History> failures = mongoTemplate.find(query, History.class);

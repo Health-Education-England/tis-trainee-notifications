@@ -39,7 +39,7 @@ import uk.nhs.tis.trainee.notifications.model.History;
  * Reset existing LTFT_SUBMITTED_TRAINEE notification history records.
  */
 @Slf4j
-@ChangeUnit(id = "resetLtftSubmittedTraineeHistory", order = "8")
+@ChangeUnit(id = "resetLtftSubmittedTraineeHistory", order = "008")
 public class ResetLtftSubmittedTraineeHistory {
 
   private final MongoTemplate mongoTemplate;

@@ -63,7 +63,7 @@ import uk.nhs.tis.trainee.notifications.service.NotificationService;
  * Resend email notifications that failed on the 13th and 14th May 2026.
  */
 @Slf4j
-@ChangeUnit(id = "resendGoogleMailFailures2026", order = "12")
+@ChangeUnit(id = "resendGoogleMailFailures2026", order = "012")
 public class ResendGoogleMailFailures2026 {
 
   private static final long WINDOW = Duration.ofDays(1).getSeconds();

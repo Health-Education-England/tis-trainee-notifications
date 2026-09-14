@@ -34,7 +34,7 @@ import uk.nhs.tis.trainee.notifications.service.EventBroadcastService;
  * Broadcast existing notification history records.
  */
 @Slf4j
-@ChangeUnit(id = "broadcastNotificationHistory", order = "4")
+@ChangeUnit(id = "broadcastNotificationHistory", order = "004")
 public class BroadcastNotificationHistory {
 
   private final MongoTemplate mongoTemplate;

@@ -30,7 +30,7 @@ import lombok.extern.slf4j.Slf4j;
  * Insert SCHEDULED email history records from Quartz to MongoDB.
  */
 @Slf4j
-@ChangeUnit(id = "insertScheduledEmailHistory", order = "5")
+@ChangeUnit(id = "insertScheduledEmailHistory", order = "005")
 public class InsertScheduledEmailHistory {
 
   /**
