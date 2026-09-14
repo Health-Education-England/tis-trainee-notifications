@@ -40,7 +40,7 @@ import uk.nhs.tis.trainee.notifications.model.History;
  * Delete orphan SCHEDULED history from DB.
  */
 @Slf4j
-@ChangeUnit(id = "deleteOrphanScheduledHistory", order = "7")
+@ChangeUnit(id = "deleteOrphanScheduledHistory", order = "007")
 public class DeleteOrphanScheduledHistory {
 
   private final MongoTemplate mongoTemplate;

@@ -50,7 +50,7 @@ import uk.nhs.tis.trainee.notifications.service.NotificationService;
  * Update Thames Valley contacts for all UNREAD in-app notifications.
  */
 @Slf4j
-@ChangeUnit(id = "updateInAppTvContact", order = "6")
+@ChangeUnit(id = "updateInAppTvContact", order = "006")
 public class UpdateInAppTvContact {
 
   protected static final String DESIGNATED_BODY = "NHSE Education Thames Valley";

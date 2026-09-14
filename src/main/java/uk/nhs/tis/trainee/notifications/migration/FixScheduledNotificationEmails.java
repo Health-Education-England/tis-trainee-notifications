@@ -46,7 +46,7 @@ import uk.nhs.tis.trainee.notifications.service.NotificationService;
  * snapshot email values — so the migration is safe to re-run in any environment at any time.
  */
 @Slf4j
-@ChangeUnit(id = "fixScheduledNotificationEmails", order = "13")
+@ChangeUnit(id = "fixScheduledNotificationEmails", order = "013")
 public class FixScheduledNotificationEmails {
 
   static final String TRAINEE_IDS_RESOURCE =

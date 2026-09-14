@@ -40,7 +40,7 @@ import uk.nhs.tis.trainee.notifications.model.History;
  * Delete unread Day One Foundation history.
  */
 @Slf4j
-@ChangeUnit(id = "DeleteUnreadDayOneFoundationHistory", order = "14")
+@ChangeUnit(id = "DeleteUnreadDayOneFoundationHistory", order = "014")
 public class DeleteUnreadDayOneFoundationHistory {
 
   private final MongoTemplate mongoTemplate;
