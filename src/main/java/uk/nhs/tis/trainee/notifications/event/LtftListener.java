@@ -33,6 +33,7 @@ import static uk.nhs.tis.trainee.notifications.model.NotificationType.LTFT_REJEC
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.LTFT_REJECTED_TPD;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.LTFT_SUBMITTED;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.LTFT_SUBMITTED_TPD;
+import static uk.nhs.tis.trainee.notifications.model.NotificationType.LTFT_UNDER_REVIEW;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.LTFT_UNSUBMITTED;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.LTFT_UPDATED;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.LTFT_WITHDRAWN;
@@ -117,6 +118,7 @@ public class LtftListener {
     NotificationType notificationType = switch (event.getState()) {
       case "APPROVED" -> LTFT_APPROVED;
       case "SUBMITTED" -> LTFT_SUBMITTED;
+      case "UNDER_REVIEW" -> LTFT_UNDER_REVIEW;
       case "UNSUBMITTED" ->
           statusModifiedByRole.equals(LTFT_ROLE_ADMIN) ? LTFT_ADMIN_UNSUBMITTED : LTFT_UNSUBMITTED;
       case "WITHDRAWN" -> LTFT_WITHDRAWN;
