@@ -1264,6 +1264,88 @@ class NotificationServiceTest {
         is("https://fresh.example.com"));
   }
 
+  @Test
+  void shouldFailSendWhenReferenceContactLookupFailsRatherThanOverwritePersistedContacts() {
+    UserDetails userAccountDetails = new UserDetails(false, USER_EMAIL, USER_TITLE,
+        USER_FAMILY_NAME, USER_GIVEN_NAME, USER_GMC);
+
+    when(emailService.getRecipientAccountByEmail(USER_EMAIL)).thenReturn(userAccountDetails);
+    when(restTemplate.getForObject(ACCOUNT_DETAILS_URL, UserDetails.class,
+        Map.of(TIS_ID_FIELD, PERSON_ID))).thenReturn(userAccountDetails);
+
+    // Simulate a transient reference-service outage.
+    when(restTemplate.getForObject(argThat(uri -> uri != null && uri.getPath()
+            .equals("reference-url/api/local-office-contact-by-lo-name/" + LOCAL_OFFICE)),
+        eq(List.class))).thenThrow(new RestClientException("transient outage"));
+
+    // Valid contact details persisted when the notification was originally scheduled.
+    programmeJobDataMap.put(TEMPLATE_OWNER_CONTACT_FIELD, "persisted-contact@example.com");
+
+    assertThrows(RestClientException.class,
+        () -> service.executeNow(JOB_KEY, programmeJobDataMap));
+
+    // The persisted contact must not have been overwritten with the default "no contact" value.
+    assertThat("Unexpected persisted owner contact.",
+        programmeJobDataMap.get(TEMPLATE_OWNER_CONTACT_FIELD),
+        is("persisted-contact@example.com"));
+  }
+
+  @Test
+  void shouldNotSendWhenReferenceContactLookupFails() throws MessagingException {
+    UserDetails userAccountDetails = new UserDetails(false, USER_EMAIL, USER_TITLE,
+        USER_FAMILY_NAME, USER_GIVEN_NAME, USER_GMC);
+
+    when(emailService.getRecipientAccountByEmail(USER_EMAIL)).thenReturn(userAccountDetails);
+    when(restTemplate.getForObject(ACCOUNT_DETAILS_URL, UserDetails.class,
+        Map.of(TIS_ID_FIELD, PERSON_ID))).thenReturn(userAccountDetails);
+
+    when(restTemplate.getForObject(argThat(uri -> uri != null && uri.getPath()
+            .equals("reference-url/api/local-office-contact-by-lo-name/" + LOCAL_OFFICE)),
+        eq(List.class))).thenThrow(new RestClientException("transient outage"));
+
+    assertThrows(RestClientException.class,
+        () -> service.executeNow(JOB_KEY, programmeJobDataMap));
+
+    verify(emailService, never()).sendMessage(any(), any(), any(), any(), any(), any(),
+        anyBoolean());
+  }
+
+  @Test
+  void shouldApplyDefaultContactWhenReferenceLookupSucceedsWithNoContacts()
+      throws MessagingException {
+    UserDetails userAccountDetails = new UserDetails(false, USER_EMAIL, USER_TITLE,
+        USER_FAMILY_NAME, USER_GIVEN_NAME, USER_GMC);
+
+    when(emailService.getRecipientAccountByEmail(USER_EMAIL)).thenReturn(userAccountDetails);
+    when(restTemplate.getForObject(ACCOUNT_DETAILS_URL, UserDetails.class,
+        Map.of(TIS_ID_FIELD, PERSON_ID))).thenReturn(userAccountDetails);
+    when(messagingControllerService.isValidRecipient(any(), any()))
+        .thenReturn(true);
+    when(messagingControllerService.isProgrammeMembershipNewStarter(any(), any()))
+        .thenReturn(true);
+    when(messagingControllerService.isProgrammeMembershipInPilot2024(any(), any()))
+        .thenReturn(true);
+
+    // A successful lookup that genuinely returns no contacts.
+    when(restTemplate.getForObject(argThat(uri -> uri != null && uri.getPath()
+            .equals("reference-url/api/local-office-contact-by-lo-name/" + LOCAL_OFFICE)),
+        eq(List.class))).thenReturn(new ArrayList<>());
+
+    // Stale persisted contact that should be replaced following a successful (empty) lookup.
+    programmeJobDataMap.put(TEMPLATE_OWNER_CONTACT_FIELD, "stale-contact@example.com");
+
+    service.executeNow(JOB_KEY, programmeJobDataMap);
+
+    ArgumentCaptor<Map<String, Object>> jobDetailsCaptor = ArgumentCaptor.captor();
+
+    verify(emailService).sendMessage(eq(PERSON_ID), eq(USER_EMAIL), eq(PROGRAMME_CREATED),
+        eq(TEMPLATE_VERSION), jobDetailsCaptor.capture(), any(), anyBoolean());
+
+    Map<String, Object> jobDetailMap = jobDetailsCaptor.getValue();
+    assertThat("Unexpected owner contact.", jobDetailMap.get(TEMPLATE_OWNER_CONTACT_FIELD),
+        is(DEFAULT_NO_CONTACT_MESSAGE));
+  }
+
   @ParameterizedTest
   @CsvSource(delimiter = '|', nullValues = "null", textBlock = """
       FOUNDATION    | contact_foundation

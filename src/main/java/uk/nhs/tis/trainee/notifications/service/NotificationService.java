@@ -388,7 +388,9 @@ public class NotificationService {
         .map(Object::toString)
         .map(TraineeType::valueOf)
         .orElse(SPECIALTY);
-    List<Map<String, String>> ownerContactList = getOwnerContactList(owner, traineeType);
+    // Use the non-swallowing fetch so a transient reference-service outage fails fast (and the send
+    // is retried) rather than overwriting valid persisted contact details with default values.
+    List<Map<String, String>> ownerContactList = fetchOwnerContactList(owner, traineeType);
     String contact = getOwnerContact(ownerContactList, LocalOfficeContactType.ONBOARDING_SUPPORT,
         LocalOfficeContactType.TSS_SUPPORT);
     // Always overwrite with freshly-enriched values, as a previously scheduled notification may
@@ -901,21 +903,42 @@ public class NotificationService {
    */
   public List<Map<String, String>> getOwnerContactList(String localOfficeName,
       TraineeType traineeType) {
-    if (localOfficeName != null) {
-      try {
-        URI uri = UriComponentsBuilder.fromUriString(referenceUrl + API_GET_OWNER_CONTACT)
-            .queryParamIfPresent("traineeType", Optional.ofNullable(traineeType))
-            .buildAndExpand(Map.of(OWNER_FIELD, localOfficeName))
-            .encode()
-            .toUri();
-        List<Map<String, String>> ownerContactList = restTemplate.getForObject(uri, List.class);
-        return ownerContactList == null ? new ArrayList<>() : ownerContactList;
-      } catch (RestClientException rce) {
-        log.warn("Exception occurred when requesting reference local-office-contact-by-lo-name "
-            + "endpoint: " + rce);
-      }
+    try {
+      return fetchOwnerContactList(localOfficeName, traineeType);
+    } catch (RestClientException rce) {
+      log.warn("Exception occurred when requesting reference local-office-contact-by-lo-name "
+          + "endpoint: " + rce);
+      return new ArrayList<>();
     }
-    return new ArrayList<>();
+  }
+
+  /**
+   * Retrieve the full list of contacts for a local office from Trainee Reference Service, allowing
+   * a failed lookup to be distinguished from a successful but empty response.
+   *
+   * <p>Unlike {@link #getOwnerContactList(String, TraineeType)}, a transient reference-service
+   * failure is propagated rather than masked as an empty list. This lets enrichment fail fast (and
+   * the send be retried) instead of overwriting valid persisted contact details with the default
+   * "no contact" values during an outage.
+   *
+   * @param localOfficeName The local office name.
+   * @param traineeType     The trainee type, used for filtering contacts.
+   * @return The list of contacts, or an empty list if no local office name is given or the lookup
+   *     succeeds with no contacts.
+   * @throws RestClientException If the reference-service lookup fails.
+   */
+  private List<Map<String, String>> fetchOwnerContactList(String localOfficeName,
+      TraineeType traineeType) {
+    if (localOfficeName == null) {
+      return new ArrayList<>();
+    }
+    URI uri = UriComponentsBuilder.fromUriString(referenceUrl + API_GET_OWNER_CONTACT)
+        .queryParamIfPresent("traineeType", Optional.ofNullable(traineeType))
+        .buildAndExpand(Map.of(OWNER_FIELD, localOfficeName))
+        .encode()
+        .toUri();
+    List<Map<String, String>> ownerContactList = restTemplate.getForObject(uri, List.class);
+    return ownerContactList == null ? new ArrayList<>() : ownerContactList;
   }
 
   /**
