@@ -173,8 +173,8 @@ public class LtftListener {
                   notificationType)));
 
       Map<String, Object> templateVariables = new HashMap<>(); //this needs to be modifiable
-      templateVariables.putIfAbsent("familyName", userDetails.familyName());
-      templateVariables.putIfAbsent("givenName", userDetails.givenName());
+      templateVariables.put("familyName", userDetails.familyName());
+      templateVariables.put("givenName", userDetails.givenName());
       templateVariables.put("var", event);
       String managingDeanery = event.getProgrammeMembership() == null ? null
           : event.getProgrammeMembership().managingDeanery();
