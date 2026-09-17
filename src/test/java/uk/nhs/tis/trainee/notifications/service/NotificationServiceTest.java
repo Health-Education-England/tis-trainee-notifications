@@ -1168,6 +1168,102 @@ class NotificationServiceTest {
         is(TIS_ID));
   }
 
+  @Test
+  void shouldOverwriteStaleUserDetailsWhenReEnrichingJobDetails() throws MessagingException {
+    UserDetails userAccountDetails = new UserDetails(true, USER_EMAIL, USER_TITLE,
+        USER_FAMILY_NAME, USER_GIVEN_NAME, USER_GMC);
+
+    when(emailService.getRecipientAccountByEmail(USER_EMAIL)).thenReturn(userAccountDetails);
+    when(restTemplate.getForObject(ACCOUNT_DETAILS_URL, UserDetails.class,
+        Map.of(TIS_ID_FIELD, PERSON_ID))).thenReturn(userAccountDetails);
+    when(messagingControllerService.isValidRecipient(any(), any()))
+        .thenReturn(true);
+    when(messagingControllerService.isProgrammeMembershipNewStarter(any(), any()))
+        .thenReturn(true);
+    when(messagingControllerService.isProgrammeMembershipInPilot2024(any(), any()))
+        .thenReturn(true);
+
+    // Simulate stale user details persisted when the notification was originally scheduled.
+    programmeJobDataMap.put("isRegistered", false);
+    programmeJobDataMap.put("title", "stale-title");
+    programmeJobDataMap.put("familyName", "stale-family-name");
+    programmeJobDataMap.put("givenName", "stale-given-name");
+    programmeJobDataMap.put("email", "stale@email");
+    programmeJobDataMap.put("gmcNumber", "0000000");
+    programmeJobDataMap.put("isValidGmc", false);
+
+    service.executeNow(JOB_KEY, programmeJobDataMap);
+
+    ArgumentCaptor<Map<String, Object>> jobDetailsCaptor = ArgumentCaptor.captor();
+
+    verify(emailService).sendMessage(eq(PERSON_ID), eq(USER_EMAIL), eq(PROGRAMME_CREATED),
+        eq(TEMPLATE_VERSION), jobDetailsCaptor.capture(), any(), anyBoolean());
+
+    Map<String, Object> jobDetailMap = jobDetailsCaptor.getValue();
+    assertThat("Unexpected isRegistered.", jobDetailMap.get("isRegistered"), is(true));
+    assertThat("Unexpected title.", jobDetailMap.get("title"), is(USER_TITLE));
+    assertThat("Unexpected family name.", jobDetailMap.get("familyName"), is(USER_FAMILY_NAME));
+    assertThat("Unexpected given name.", jobDetailMap.get("givenName"), is(USER_GIVEN_NAME));
+    assertThat("Unexpected email.", jobDetailMap.get("email"), is(USER_EMAIL));
+    assertThat("Unexpected GMC.", jobDetailMap.get("gmcNumber"), is(USER_GMC));
+    assertThat("Unexpected GMC validity.", jobDetailMap.get("isValidGmc"), is(true));
+  }
+
+  @Test
+  void shouldOverwriteStaleLocalOfficeContactsWhenReEnrichingJobDetails()
+      throws MessagingException {
+    UserDetails userAccountDetails = new UserDetails(false, USER_EMAIL, USER_TITLE,
+        USER_FAMILY_NAME, USER_GIVEN_NAME, USER_GMC);
+
+    when(emailService.getRecipientAccountByEmail(USER_EMAIL)).thenReturn(userAccountDetails);
+    when(restTemplate.getForObject(ACCOUNT_DETAILS_URL, UserDetails.class,
+        Map.of(TIS_ID_FIELD, PERSON_ID))).thenReturn(userAccountDetails);
+    when(messagingControllerService.isValidRecipient(any(), any()))
+        .thenReturn(true);
+    when(messagingControllerService.isProgrammeMembershipNewStarter(any(), any()))
+        .thenReturn(true);
+    when(messagingControllerService.isProgrammeMembershipInPilot2024(any(), any()))
+        .thenReturn(true);
+
+    List<Map<String, String>> contacts = new ArrayList<>();
+    Map<String, String> contact1 = new HashMap<>();
+    contact1.put(CONTACT_TYPE_FIELD, ONBOARDING_SUPPORT.getContactTypeName());
+    contact1.put(CONTACT_FIELD, LOCAL_OFFICE_CONTACT);
+    contacts.add(contact1);
+    Map<String, String> contact2 = new HashMap<>();
+    contact2.put(CONTACT_TYPE_FIELD,
+        LocalOfficeContactType.LOCAL_OFFICE_WEBSITE.getContactTypeName());
+    contact2.put(CONTACT_FIELD, "https://fresh.example.com");
+    contacts.add(contact2);
+
+    when(restTemplate.getForObject(argThat(uri -> uri != null && uri.getPath()
+            .equals("reference-url/api/local-office-contact-by-lo-name/" + LOCAL_OFFICE)),
+        eq(List.class))).thenReturn(contacts);
+
+    // Simulate stale local office contacts persisted when the notification was originally
+    // scheduled.
+    programmeJobDataMap.put(TEMPLATE_OWNER_CONTACT_FIELD, "stale-contact@example.com");
+    programmeJobDataMap.put(TEMPLATE_CONTACT_HREF_FIELD, PROTOCOL_EMAIL.getHrefTypeName());
+    programmeJobDataMap.put(NotificationService.TEMPLATE_OWNER_WEBSITE_FIELD,
+        "https://stale.example.com");
+
+    service.executeNow(JOB_KEY, programmeJobDataMap);
+
+    ArgumentCaptor<Map<String, Object>> jobDetailsCaptor = ArgumentCaptor.captor();
+
+    verify(emailService).sendMessage(eq(PERSON_ID), eq(USER_EMAIL), eq(PROGRAMME_CREATED),
+        eq(TEMPLATE_VERSION), jobDetailsCaptor.capture(), any(), anyBoolean());
+
+    Map<String, Object> jobDetailMap = jobDetailsCaptor.getValue();
+    assertThat("Unexpected owner contact.", jobDetailMap.get(TEMPLATE_OWNER_CONTACT_FIELD),
+        is(LOCAL_OFFICE_CONTACT));
+    assertThat("Unexpected contact href.", jobDetailMap.get(TEMPLATE_CONTACT_HREF_FIELD),
+        is(NON_HREF.toString()));
+    assertThat("Unexpected owner website.",
+        jobDetailMap.get(NotificationService.TEMPLATE_OWNER_WEBSITE_FIELD),
+        is("https://fresh.example.com"));
+  }
+
   @ParameterizedTest
   @CsvSource(delimiter = '|', nullValues = "null", textBlock = """
       FOUNDATION    | contact_foundation

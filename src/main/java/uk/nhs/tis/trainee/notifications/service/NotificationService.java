@@ -391,11 +391,13 @@ public class NotificationService {
     List<Map<String, String>> ownerContactList = getOwnerContactList(owner, traineeType);
     String contact = getOwnerContact(ownerContactList, LocalOfficeContactType.ONBOARDING_SUPPORT,
         LocalOfficeContactType.TSS_SUPPORT);
-    jobDetails.putIfAbsent(TEMPLATE_OWNER_CONTACT_FIELD, contact);
-    jobDetails.putIfAbsent(TEMPLATE_CONTACT_HREF_FIELD, getHrefTypeForContact(contact));
+    // Always overwrite with freshly-enriched values, as a previously scheduled notification may
+    // hold stale details that have since changed (e.g. local office contacts, trainee details).
+    jobDetails.put(TEMPLATE_OWNER_CONTACT_FIELD, contact);
+    jobDetails.put(TEMPLATE_CONTACT_HREF_FIELD, getHrefTypeForContact(contact));
     String website = getOwnerContact(ownerContactList, LocalOfficeContactType.LOCAL_OFFICE_WEBSITE,
         null);
-    jobDetails.putIfAbsent(TEMPLATE_OWNER_WEBSITE_FIELD, website);
+    jobDetails.put(TEMPLATE_OWNER_WEBSITE_FIELD, website);
 
     if (jobDetails.get(TEMPLATE_NOTIFICATION_TYPE_FIELD).toString()
         .equalsIgnoreCase(String.valueOf(PROGRAMME_POG_MONTH_12))
@@ -403,23 +405,23 @@ public class NotificationService {
         .equalsIgnoreCase(String.valueOf(PROGRAMME_POG_MONTH_6))) {
       String pogContact = getOwnerContact(ownerContactList, LocalOfficeContactType.POG,
           LocalOfficeContactType.TSS_SUPPORT);
-      jobDetails.putIfAbsent(TEMPLATE_POG_CONTACT_FIELD, pogContact);
-      jobDetails.putIfAbsent(TEMPLATE_POG_HREF_FIELD, getHrefTypeForContact(pogContact));
+      jobDetails.put(TEMPLATE_POG_CONTACT_FIELD, pogContact);
+      jobDetails.put(TEMPLATE_POG_HREF_FIELD, getHrefTypeForContact(pogContact));
     }
 
     UserDetails userCognitoAccountDetails = getCognitoAccountDetails(userTraineeDetails.email());
 
     UserDetails userAccountDetails = mapUserDetails(userCognitoAccountDetails, userTraineeDetails);
     if (userAccountDetails != null) {
-      jobDetails.putIfAbsent("isRegistered", userAccountDetails.isRegistered());
-      jobDetails.putIfAbsent("title", userAccountDetails.title());
-      jobDetails.putIfAbsent("familyName", userAccountDetails.familyName());
-      jobDetails.putIfAbsent("givenName", userAccountDetails.givenName());
-      jobDetails.putIfAbsent("email", userAccountDetails.email());
-      jobDetails.putIfAbsent("gmcNumber", userAccountDetails.gmcNumber());
+      jobDetails.put("isRegistered", userAccountDetails.isRegistered());
+      jobDetails.put("title", userAccountDetails.title());
+      jobDetails.put("familyName", userAccountDetails.familyName());
+      jobDetails.put("givenName", userAccountDetails.givenName());
+      jobDetails.put("email", userAccountDetails.email());
+      jobDetails.put("gmcNumber", userAccountDetails.gmcNumber());
     }
 
-    jobDetails.putIfAbsent("isValidGmc", isValidGmc((String) jobDetails.get("gmcNumber")));
+    jobDetails.put("isValidGmc", isValidGmc((String) jobDetails.get("gmcNumber")));
 
     return jobDetails;
   }
