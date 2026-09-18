@@ -655,6 +655,33 @@ class EmailServiceTest {
     assertThat("Unexpected template variable.", storedVariables.get("key2"), nullValue());
   }
 
+  @Test
+  void shouldRecomputeStaleHashedEmailWhenMessageResentToNewAddress() throws MessagingException {
+    when(userAccountService.getUserDetailsById(USER_ID)).thenReturn(
+        new UserDetails(true, RECIPIENT, "Mr", "Gilliam",
+            "Anthony", GMC));
+    String newEmailAddress = "newemailaddress";
+
+    // Simulate a persisted notification whose hashedEmail was computed from the original recipient.
+    Map<String, Object> variables = new HashMap<>();
+    variables.put("hashedEmail", service.createMd5Hash(RECIPIENT));
+    TemplateInfo templateInfo = new TemplateInfo(PROGRAMME_CREATED.getTemplateName(), "v1.2.3",
+        variables);
+    TisReferenceInfo tisReferenceInfo = new TisReferenceInfo(REFERENCE_TABLE, REFERENCE_KEY);
+    RecipientInfo recipientInfo = new RecipientInfo(TRAINEE_ID, EMAIL, RECIPIENT);
+
+    History toResend = new History(ObjectId.get(), tisReferenceInfo, PROGRAMME_CREATED,
+        recipientInfo, templateInfo, null, Instant.MIN, null, FAILED, "bounced", null);
+    service.resendMessage(toResend, newEmailAddress);
+
+    ArgumentCaptor<Context> contextCaptor = ArgumentCaptor.captor();
+    verify(templateService, atLeastOnce()).process(any(), any(), contextCaptor.capture());
+
+    Context context = contextCaptor.getValue();
+    assertThat("Unexpected hashed email.", context.getVariable("hashedEmail"),
+        is(service.createMd5Hash(newEmailAddress)));
+  }
+
   @ParameterizedTest
   @EnumSource(value = MessageType.class, mode = Mode.EXCLUDE, names = "EMAIL")
   void shouldNotResendNonEmailMessageTypes(MessageType messageType)

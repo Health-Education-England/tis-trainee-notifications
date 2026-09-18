@@ -388,14 +388,18 @@ public class NotificationService {
         .map(Object::toString)
         .map(TraineeType::valueOf)
         .orElse(SPECIALTY);
-    List<Map<String, String>> ownerContactList = getOwnerContactList(owner, traineeType);
+    // Use the non-swallowing fetch so a transient reference-service outage fails fast (and the send
+    // is retried) rather than overwriting valid persisted contact details with default values.
+    List<Map<String, String>> ownerContactList = fetchOwnerContactList(owner, traineeType);
     String contact = getOwnerContact(ownerContactList, LocalOfficeContactType.ONBOARDING_SUPPORT,
         LocalOfficeContactType.TSS_SUPPORT);
-    jobDetails.putIfAbsent(TEMPLATE_OWNER_CONTACT_FIELD, contact);
-    jobDetails.putIfAbsent(TEMPLATE_CONTACT_HREF_FIELD, getHrefTypeForContact(contact));
+    // Always overwrite with freshly-enriched values, as a previously scheduled notification may
+    // hold stale details that have since changed (e.g. local office contacts, trainee details).
+    jobDetails.put(TEMPLATE_OWNER_CONTACT_FIELD, contact);
+    jobDetails.put(TEMPLATE_CONTACT_HREF_FIELD, getHrefTypeForContact(contact));
     String website = getOwnerContact(ownerContactList, LocalOfficeContactType.LOCAL_OFFICE_WEBSITE,
         null);
-    jobDetails.putIfAbsent(TEMPLATE_OWNER_WEBSITE_FIELD, website);
+    jobDetails.put(TEMPLATE_OWNER_WEBSITE_FIELD, website);
 
     if (jobDetails.get(TEMPLATE_NOTIFICATION_TYPE_FIELD).toString()
         .equalsIgnoreCase(String.valueOf(PROGRAMME_POG_MONTH_12))
@@ -403,23 +407,23 @@ public class NotificationService {
         .equalsIgnoreCase(String.valueOf(PROGRAMME_POG_MONTH_6))) {
       String pogContact = getOwnerContact(ownerContactList, LocalOfficeContactType.POG,
           LocalOfficeContactType.TSS_SUPPORT);
-      jobDetails.putIfAbsent(TEMPLATE_POG_CONTACT_FIELD, pogContact);
-      jobDetails.putIfAbsent(TEMPLATE_POG_HREF_FIELD, getHrefTypeForContact(pogContact));
+      jobDetails.put(TEMPLATE_POG_CONTACT_FIELD, pogContact);
+      jobDetails.put(TEMPLATE_POG_HREF_FIELD, getHrefTypeForContact(pogContact));
     }
 
     UserDetails userCognitoAccountDetails = getCognitoAccountDetails(userTraineeDetails.email());
 
     UserDetails userAccountDetails = mapUserDetails(userCognitoAccountDetails, userTraineeDetails);
     if (userAccountDetails != null) {
-      jobDetails.putIfAbsent("isRegistered", userAccountDetails.isRegistered());
-      jobDetails.putIfAbsent("title", userAccountDetails.title());
-      jobDetails.putIfAbsent("familyName", userAccountDetails.familyName());
-      jobDetails.putIfAbsent("givenName", userAccountDetails.givenName());
-      jobDetails.putIfAbsent("email", userAccountDetails.email());
-      jobDetails.putIfAbsent("gmcNumber", userAccountDetails.gmcNumber());
+      jobDetails.put("isRegistered", userAccountDetails.isRegistered());
+      jobDetails.put("title", userAccountDetails.title());
+      jobDetails.put("familyName", userAccountDetails.familyName());
+      jobDetails.put("givenName", userAccountDetails.givenName());
+      jobDetails.put("email", userAccountDetails.email());
+      jobDetails.put("gmcNumber", userAccountDetails.gmcNumber());
     }
 
-    jobDetails.putIfAbsent("isValidGmc", isValidGmc((String) jobDetails.get("gmcNumber")));
+    jobDetails.put("isValidGmc", isValidGmc((String) jobDetails.get("gmcNumber")));
 
     return jobDetails;
   }
@@ -899,21 +903,42 @@ public class NotificationService {
    */
   public List<Map<String, String>> getOwnerContactList(String localOfficeName,
       TraineeType traineeType) {
-    if (localOfficeName != null) {
-      try {
-        URI uri = UriComponentsBuilder.fromUriString(referenceUrl + API_GET_OWNER_CONTACT)
-            .queryParamIfPresent("traineeType", Optional.ofNullable(traineeType))
-            .buildAndExpand(Map.of(OWNER_FIELD, localOfficeName))
-            .encode()
-            .toUri();
-        List<Map<String, String>> ownerContactList = restTemplate.getForObject(uri, List.class);
-        return ownerContactList == null ? new ArrayList<>() : ownerContactList;
-      } catch (RestClientException rce) {
-        log.warn("Exception occurred when requesting reference local-office-contact-by-lo-name "
-            + "endpoint: " + rce);
-      }
+    try {
+      return fetchOwnerContactList(localOfficeName, traineeType);
+    } catch (RestClientException rce) {
+      log.warn("Exception occurred when requesting reference local-office-contact-by-lo-name "
+          + "endpoint: " + rce);
+      return new ArrayList<>();
     }
-    return new ArrayList<>();
+  }
+
+  /**
+   * Retrieve the full list of contacts for a local office from Trainee Reference Service, allowing
+   * a failed lookup to be distinguished from a successful but empty response.
+   *
+   * <p>Unlike {@link #getOwnerContactList(String, TraineeType)}, a transient reference-service
+   * failure is propagated rather than masked as an empty list. This lets enrichment fail fast (and
+   * the send be retried) instead of overwriting valid persisted contact details with the default
+   * "no contact" values during an outage.
+   *
+   * @param localOfficeName The local office name.
+   * @param traineeType     The trainee type, used for filtering contacts.
+   * @return The list of contacts, or an empty list if no local office name is given or the lookup
+   *     succeeds with no contacts.
+   * @throws RestClientException If the reference-service lookup fails.
+   */
+  private List<Map<String, String>> fetchOwnerContactList(String localOfficeName,
+      TraineeType traineeType) {
+    if (localOfficeName == null) {
+      return new ArrayList<>();
+    }
+    URI uri = UriComponentsBuilder.fromUriString(referenceUrl + API_GET_OWNER_CONTACT)
+        .queryParamIfPresent("traineeType", Optional.ofNullable(traineeType))
+        .buildAndExpand(Map.of(OWNER_FIELD, localOfficeName))
+        .encode()
+        .toUri();
+    List<Map<String, String>> ownerContactList = restTemplate.getForObject(uri, List.class);
+    return ownerContactList == null ? new ArrayList<>() : ownerContactList;
   }
 
   /**

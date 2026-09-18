@@ -293,9 +293,12 @@ public class EmailService {
       Map<String, Object> templateVariables, ObjectId notificationId, List<StoredFile> attachments)
       throws MessagingException {
 
-    // Add the application domain for any templates with hyperlinks.
+    // Add the application domain for any templates with hyperlinks. This may be intentionally
+    // overridden by the caller, so is only set when absent.
     templateVariables.putIfAbsent("domain", appDomain);
-    templateVariables.putIfAbsent("hashedEmail", createMd5Hash(recipient));
+    // Always derive the hashed email from the actual recipient, overwriting any (stale) value
+    // carried over from a persisted notification (e.g. when resending to a corrected address).
+    templateVariables.put("hashedEmail", createMd5Hash(recipient));
 
     Context templateContext = templateService.buildContext(templateVariables);
     final String subject = templateService.process(templateName, Set.of("subject"),
