@@ -306,8 +306,7 @@ public class NotificationService {
     } else {
       // Future milestone.
       milestone = Date.from(milestoneDate
-          .atStartOfDay()
-          .atZone(ZoneId.of(timezone))
+          .atStartOfDay(ZoneId.of(timezone))
           .toInstant());
     }
     return milestone;
@@ -328,8 +327,7 @@ public class NotificationService {
     } else {
       // Future milestone.
       return milestoneDate
-          .atStartOfDay()
-          .atZone(ZoneId.of(timezone))
+          .atStartOfDay(ZoneId.of(timezone))
           .toInstant();
     }
   }
