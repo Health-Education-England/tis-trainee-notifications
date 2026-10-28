@@ -1659,16 +1659,19 @@ class NotificationServiceTest {
 
   @Test
   void shouldScheduleFutureMilestonesAtUpToNineHoursAfterStartOfCorrectDay() {
-    LocalDate startDate = NOW_LOCALDATE.plusMonths(12);
+    // The service compares against the real current date, so the milestone must be in the
+    // future relative to the system clock rather than the fixed test clock.
+    ZoneId zoneId = ZoneId.of(TIMEZONE);
+    LocalDate startDate = LocalDate.now(zoneId).plusMonths(12);
     int daysBeforeStart = 100;
     LocalDate milestoneDate = startDate.minusDays(daysBeforeStart);
     Date expectedAfter = Date.from(milestoneDate
-        .atStartOfDay().minus(1, ChronoUnit.MILLIS)
-        .atZone(ZoneId.of(TIMEZONE))
+        .atStartOfDay(zoneId)
+        .minus(1, ChronoUnit.MILLIS)
         .toInstant());
     Date expectedBefore = Date.from(milestoneDate
-        .atStartOfDay().plusHours(9)
-        .atZone(ZoneId.of(TIMEZONE))
+        .atStartOfDay(zoneId)
+        .plusHours(9)
         .toInstant());
 
     Date scheduledDate = service.getScheduleDate(startDate, daysBeforeStart);
@@ -1681,9 +1684,13 @@ class NotificationServiceTest {
 
   @Test
   void shouldScheduleJobsWithRandomness() {
-    LocalDate startDate = NOW_LOCALDATE.plusMonths(12);
+    // The service compares against the real current date, so the milestone must be in the
+    // future relative to the system clock rather than the fixed test clock.
+    LocalDate startDate = LocalDate.now(ZoneId.of(TIMEZONE)).plusMonths(12);
     int daysBeforeStart = 100;
     Date scheduledDate = service.getScheduleDate(startDate, daysBeforeStart);
+    assertThat("Unexpected base schedule date.", scheduledDate.toInstant(),
+        is(startDate.minusDays(daysBeforeStart).atStartOfDay(ZoneId.of(TIMEZONE)).toInstant()));
     Map<String, Object> jobDataMap = new HashMap<>(Map.of(
         PERSON_ID_FIELD, PERSON_ID,
         TIS_ID_FIELD, TIS_ID,
@@ -1700,11 +1707,20 @@ class NotificationServiceTest {
     serviceWhitelisted.scheduleNotification("id3", jobDataMap, scheduledDate, ONE_DAY_IN_SECONDS);
 
     ArgumentCaptor<History> historyCaptor = ArgumentCaptor.captor();
-    verify(historyService, times(3)).save(any());
+    verify(historyService, times(3)).save(historyCaptor.capture());
+
+    List<Instant> sentAts = historyCaptor.getAllValues().stream().map(History::sentAt).toList();
+    Instant windowStart = scheduledDate.toInstant();
+    Instant windowEnd = windowStart.plusSeconds(ONE_DAY_IN_SECONDS);
+    sentAts.forEach(sentAt -> {
+      assertThat("Unexpected early randomised date.", sentAt.isBefore(windowStart), is(false));
+      assertThat("Unexpected late randomised date.", sentAt.isAfter(windowEnd), is(false));
+    });
+
     //there is a less than 1 in 10^9 chance that all three dates are the same
     assertThat("Unexpected repeated scheduled date: either you are exceptionally unlucky "
             + "or something is wrong.",
-        historyCaptor.getAllValues().stream().map(History::sentAt).distinct().count(), not(1));
+        sentAts.stream().distinct().count(), not(1L));
   }
 
   @Test
@@ -1719,12 +1735,14 @@ class NotificationServiceTest {
 
   @Test
   void shouldDisplayFutureInAppMilestonesAtStartOfCorrectDay() {
-    LocalDate startDate = NOW_LOCALDATE.plusMonths(12);
+    // The service compares against the real current date, so the milestone must be in the
+    // future relative to the system clock rather than the fixed test clock.
+    ZoneId zoneId = ZoneId.of(TIMEZONE);
+    LocalDate startDate = LocalDate.now(zoneId).plusMonths(12);
     int daysBeforeStart = 100;
     LocalDate milestoneDate = startDate.minusDays(daysBeforeStart);
     Instant expectedMilestone = milestoneDate
-        .atStartOfDay()
-        .atZone(ZoneId.of(TIMEZONE))
+        .atStartOfDay(zoneId)
         .toInstant();
 
     Instant scheduledDate = service.calculateInAppDisplayDate(startDate, daysBeforeStart);
