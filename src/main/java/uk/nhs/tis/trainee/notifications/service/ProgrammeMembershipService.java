@@ -48,6 +48,7 @@ import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import uk.nhs.tis.trainee.notifications.config.LtftOnboardedProperties;
 import uk.nhs.tis.trainee.notifications.dto.UserDetails;
 import uk.nhs.tis.trainee.notifications.model.Curriculum;
 import uk.nhs.tis.trainee.notifications.model.History;
@@ -73,6 +74,7 @@ public class ProgrammeMembershipService {
   public static final String BLOCK_INDEMNITY_FIELD = "hasBlockIndemnity";
   public static final String LOCAL_OFFICE_CONTACT_FIELD = "localOfficeContact";
   public static final String LOCAL_OFFICE_CONTACT_TYPE_FIELD = "localOfficeContactType";
+  public static final String LTFT_ONBOARDED_FIELD = "ltftOnboarded";
   public static final String COJ_SYNCED_FIELD = "conditionsOfJoiningSyncedAt";
   public static final String GMC_NUMBER_FIELD = "gmcNumber";
   public static final String RO_NAME_FIELD = "roName";
@@ -106,6 +108,8 @@ public class ProgrammeMembershipService {
   private final String deferralFoundationVersion;
   private final String ltftFoundationVersion;
   private final String sponsorshipFoundationVersion;
+  private final Set<String> ltftOnboardedDeaneries;
+  private final Set<String> ltftFoundationOnboardedDeaneries;
 
   /**
    * Initialise the programme membership service.
@@ -123,6 +127,7 @@ public class ProgrammeMembershipService {
    * @param deferralFoundationVersion    The deferral foundation version.
    * @param ltftFoundationVersion        The LTFT foundation version.
    * @param sponsorshipFoundationVersion The sponsorship foundation version.
+   * @param ltftOnboardedProperties      The properties of the deaneries onboarded to LTFT
    */
   public ProgrammeMembershipService(HistoryService historyService, InAppService inAppService,
       NotificationService notificationService, ProgrammeMembershipUtils pmUtils,
@@ -139,7 +144,8 @@ public class ProgrammeMembershipService {
       @Value("${application.template-versions.less-than-full-time-foundation.in-app}")
       String ltftFoundationVersion,
       @Value("${application.template-versions.sponsorship-foundation.in-app}")
-      String sponsorshipFoundationVersion) {
+      String sponsorshipFoundationVersion,
+      LtftOnboardedProperties ltftOnboardedProperties) {
     this.historyService = historyService;
     this.inAppService = inAppService;
     this.notificationService = notificationService;
@@ -154,6 +160,8 @@ public class ProgrammeMembershipService {
     this.deferralFoundationVersion = deferralFoundationVersion;
     this.ltftFoundationVersion = ltftFoundationVersion;
     this.sponsorshipFoundationVersion = sponsorshipFoundationVersion;
+    this.ltftOnboardedDeaneries = ltftOnboardedProperties.onboardedDeaneries();
+    this.ltftFoundationOnboardedDeaneries = ltftOnboardedProperties.foundationOnboardedDeaneries();
   }
 
   /**
@@ -436,7 +444,22 @@ public class ProgrammeMembershipService {
         notificationType, notificationVersion, Map.of(
             LOCAL_OFFICE_CONTACT_FIELD, contact,
             LOCAL_OFFICE_CONTACT_TYPE_FIELD, contactHrefType,
-            GMC_NUMBER_FIELD, gmcNumber));
+            GMC_NUMBER_FIELD, gmcNumber,
+            LTFT_ONBOARDED_FIELD, isLtftOnboarded(programmeMembership)));
+  }
+
+  /**
+   * Check if the deanery of the programme membership is in a region for onboarding for LTFT.
+   *
+   * @param programmeMembership      The programme membership.
+   * @return true if managing deanery is one of the onboarding regions.
+   */
+  private boolean isLtftOnboarded(ProgrammeMembership programmeMembership) {
+    String deanery = programmeMembership.getManagingDeanery();
+    Set<String> onboarded = isFoundationProgramme(programmeMembership)
+        ? ltftFoundationOnboardedDeaneries
+        : ltftOnboardedDeaneries;
+    return deanery != null && onboarded.contains(deanery);
   }
 
   /**
