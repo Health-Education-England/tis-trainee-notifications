@@ -30,6 +30,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 import static uk.nhs.tis.trainee.notifications.model.NotificationType.LTFT_UPDATED_ASSIGNMENT;
 
@@ -44,6 +45,7 @@ import org.springframework.data.redis.core.ValueOperations;
 import uk.nhs.tis.trainee.notifications.config.TemplateVersionsProperties;
 import uk.nhs.tis.trainee.notifications.config.TemplateVersionsProperties.MessageTypeVersions;
 import uk.nhs.tis.trainee.notifications.dto.LtftUpdateEvent;
+import uk.nhs.tis.trainee.notifications.dto.LtftUpdateEvent.LtftAssignmentDto;
 import uk.nhs.tis.trainee.notifications.dto.LtftUpdateEvent.LtftStatusAssignedDto;
 import uk.nhs.tis.trainee.notifications.dto.LtftUpdateEvent.LtftStatusModifiedByDto;
 import uk.nhs.tis.trainee.notifications.model.History;
@@ -55,6 +57,8 @@ class LtftServiceTest {
   private static final String TRAINEE_ID = "47165";
   private static final String ADMIN_EMAIL = "admin@example.com";
   private static final String ADMIN_NAME = "Admin Name";
+  private static final String REVIEWER_EMAIL = "reviewer@example.com";
+  private static final String REVIEWER_NAME = "Reviewer Name";
   private static final String FORM_ID = "form-123";
   private static final String FORM_REF = "ltft_47165_001";
 
@@ -357,6 +361,228 @@ class LtftServiceTest {
 
     assertThrows(IllegalArgumentException.class,
         () -> serviceWithNoTemplate.handleAssignmentNotification(event));
+  }
+
+  @Test
+  void shouldSendToReviewerWhenNoPreviousAssignment() throws MessagingException {
+    LtftUpdateEvent event = LtftUpdateEvent.builder()
+        .traineeId(TRAINEE_ID)
+        .formId(FORM_ID)
+        .assignedReviewer(reviewer())
+        .build();
+
+    when(valueOperations.setIfAbsent(any(), any(), any(Duration.class))).thenReturn(true);
+
+    ltftService.handleAssignmentNotification(event);
+
+    ArgumentCaptor<Map<String, Object>> templateVarsCaptor = ArgumentCaptor.captor();
+    verify(emailService).sendMessage(eq(TRAINEE_ID), eq(REVIEWER_EMAIL),
+        eq(LTFT_UPDATED_ASSIGNMENT), eq(VERSION), templateVarsCaptor.capture(), any(), eq(false));
+    verifyNoMoreInteractions(emailService);
+    assertThat("Unexpected name variable.", templateVarsCaptor.getValue().get("name"),
+        is(REVIEWER_NAME));
+  }
+
+  @Test
+  void shouldSendToAdminAndReviewerWhenNoPreviousAssignment() throws MessagingException {
+    LtftUpdateEvent event = LtftUpdateEvent.builder()
+        .traineeId(TRAINEE_ID)
+        .formId(FORM_ID)
+        .assignedAdmin(admin())
+        .assignedReviewer(reviewer())
+        .build();
+
+    when(valueOperations.setIfAbsent(any(), any(), any(Duration.class))).thenReturn(true);
+
+    ltftService.handleAssignmentNotification(event);
+
+    verify(emailService).sendMessage(eq(TRAINEE_ID), eq(ADMIN_EMAIL),
+        eq(LTFT_UPDATED_ASSIGNMENT), eq(VERSION), any(), any(), eq(false));
+    verify(emailService).sendMessage(eq(TRAINEE_ID), eq(REVIEWER_EMAIL),
+        eq(LTFT_UPDATED_ASSIGNMENT), eq(VERSION), any(), any(), eq(false));
+    verifyNoMoreInteractions(emailService);
+  }
+
+  @Test
+  void shouldIgnoreWhenAssigneesUnchanged() throws MessagingException {
+    LtftUpdateEvent event = LtftUpdateEvent.builder()
+        .traineeId(TRAINEE_ID)
+        .formId(FORM_ID)
+        .assignedAdmin(admin())
+        .assignedReviewer(reviewer())
+        .previousAssignment(new LtftAssignmentDto(admin(), reviewer()))
+        .build();
+
+    ltftService.handleAssignmentNotification(event);
+
+    verifyNoInteractions(emailService);
+    verifyNoInteractions(historyService);
+    verifyNoInteractions(valueOperations);
+  }
+
+  @Test
+  void shouldIgnoreWhenAssigneeEmailsUnchangedIgnoringCase() throws MessagingException {
+    LtftUpdateEvent event = LtftUpdateEvent.builder()
+        .traineeId(TRAINEE_ID)
+        .formId(FORM_ID)
+        .assignedAdmin(admin())
+        .assignedReviewer(reviewer())
+        .previousAssignment(new LtftAssignmentDto(
+            LtftStatusAssignedDto.builder().email(ADMIN_EMAIL.toUpperCase()).build(),
+            LtftStatusAssignedDto.builder().email(REVIEWER_EMAIL.toUpperCase()).build()))
+        .build();
+
+    ltftService.handleAssignmentNotification(event);
+
+    verifyNoInteractions(emailService);
+    verifyNoInteractions(historyService);
+  }
+
+  @Test
+  void shouldSendOnlyToReviewerWhenOnlyReviewerChanged() throws MessagingException {
+    LtftUpdateEvent event = LtftUpdateEvent.builder()
+        .traineeId(TRAINEE_ID)
+        .formId(FORM_ID)
+        .assignedAdmin(admin())
+        .assignedReviewer(reviewer())
+        .modifiedBy(LtftStatusModifiedByDto.builder().name("Someone Else").role("ADMIN").build())
+        .previousAssignment(new LtftAssignmentDto(admin(), null))
+        .build();
+
+    when(valueOperations.setIfAbsent(any(), any(), any(Duration.class))).thenReturn(true);
+
+    ltftService.handleAssignmentNotification(event);
+
+    verify(emailService).sendMessage(eq(TRAINEE_ID), eq(REVIEWER_EMAIL),
+        eq(LTFT_UPDATED_ASSIGNMENT), eq(VERSION), any(), any(), eq(false));
+    verifyNoMoreInteractions(emailService);
+  }
+
+  @Test
+  void shouldSendOnlyToReviewerWhenReviewerReplaced() throws MessagingException {
+    LtftUpdateEvent event = LtftUpdateEvent.builder()
+        .traineeId(TRAINEE_ID)
+        .formId(FORM_ID)
+        .assignedAdmin(admin())
+        .assignedReviewer(reviewer())
+        .previousAssignment(new LtftAssignmentDto(admin(),
+            LtftStatusAssignedDto.builder().name("Old Reviewer").email("old@example.com")
+                .role("REVIEWER").build()))
+        .build();
+
+    when(valueOperations.setIfAbsent(any(), any(), any(Duration.class))).thenReturn(true);
+
+    ltftService.handleAssignmentNotification(event);
+
+    verify(emailService).sendMessage(eq(TRAINEE_ID), eq(REVIEWER_EMAIL),
+        eq(LTFT_UPDATED_ASSIGNMENT), eq(VERSION), any(), any(), eq(false));
+    verifyNoMoreInteractions(emailService);
+  }
+
+  @Test
+  void shouldSendOnlyToAdminWhenOnlyAdminChanged() throws MessagingException {
+    LtftUpdateEvent event = LtftUpdateEvent.builder()
+        .traineeId(TRAINEE_ID)
+        .formId(FORM_ID)
+        .assignedAdmin(admin())
+        .assignedReviewer(reviewer())
+        .previousAssignment(new LtftAssignmentDto(null, reviewer()))
+        .build();
+
+    when(valueOperations.setIfAbsent(any(), any(), any(Duration.class))).thenReturn(true);
+
+    ltftService.handleAssignmentNotification(event);
+
+    verify(emailService).sendMessage(eq(TRAINEE_ID), eq(ADMIN_EMAIL),
+        eq(LTFT_UPDATED_ASSIGNMENT), eq(VERSION), any(), any(), eq(false));
+    verifyNoMoreInteractions(emailService);
+  }
+
+  @Test
+  void shouldSendToAdminWhenPreviousAdminHasNoEmail() throws MessagingException {
+    LtftUpdateEvent event = LtftUpdateEvent.builder()
+        .traineeId(TRAINEE_ID)
+        .formId(FORM_ID)
+        .assignedAdmin(admin())
+        .previousAssignment(new LtftAssignmentDto(
+            LtftStatusAssignedDto.builder().name(ADMIN_NAME).build(), null))
+        .build();
+
+    when(valueOperations.setIfAbsent(any(), any(), any(Duration.class))).thenReturn(true);
+
+    ltftService.handleAssignmentNotification(event);
+
+    verify(emailService).sendMessage(eq(TRAINEE_ID), eq(ADMIN_EMAIL),
+        eq(LTFT_UPDATED_ASSIGNMENT), eq(VERSION), any(), any(), eq(false));
+  }
+
+  @Test
+  void shouldIgnoreWhenReviewerHasNoEmail() throws MessagingException {
+    LtftUpdateEvent event = LtftUpdateEvent.builder()
+        .traineeId(TRAINEE_ID)
+        .formId(FORM_ID)
+        .assignedReviewer(LtftStatusAssignedDto.builder().name(REVIEWER_NAME).build())
+        .build();
+
+    ltftService.handleAssignmentNotification(event);
+
+    verifyNoInteractions(emailService);
+    verifyNoInteractions(historyService);
+  }
+
+  @Test
+  void shouldIgnoreWhenModifiedByNameMatchesAssignedReviewerName() throws MessagingException {
+    LtftUpdateEvent event = LtftUpdateEvent.builder()
+        .traineeId(TRAINEE_ID)
+        .formId(FORM_ID)
+        .assignedReviewer(reviewer())
+        .modifiedBy(LtftStatusModifiedByDto.builder()
+            .name(REVIEWER_NAME.toUpperCase()).role("ADMIN").build())
+        .build();
+
+    ltftService.handleAssignmentNotification(event);
+
+    verifyNoInteractions(emailService);
+    verifyNoInteractions(historyService);
+  }
+
+  @Test
+  void shouldSkipAndLogHistoryWhenReviewerCooldownActive() throws MessagingException {
+    LtftUpdateEvent event = LtftUpdateEvent.builder()
+        .traineeId(TRAINEE_ID)
+        .formId(FORM_ID)
+        .assignedReviewer(reviewer())
+        .build();
+
+    when(valueOperations.setIfAbsent(
+        LtftService.ASSIGNMENT_COOLDOWN_KEY_PREFIX + REVIEWER_EMAIL,
+        "1", Duration.ofMinutes(15)))
+        .thenReturn(false);
+
+    ltftService.handleAssignmentNotification(event);
+
+    verifyNoInteractions(emailService);
+
+    ArgumentCaptor<History> historyCaptor = ArgumentCaptor.forClass(History.class);
+    verify(historyService).save(historyCaptor.capture());
+
+    History saved = historyCaptor.getValue();
+    assertThat("Unexpected status.", saved.status(), is(NotificationStatus.SKIPPED));
+    assertThat("Unexpected type.", saved.type(), is(LTFT_UPDATED_ASSIGNMENT));
+    assertThat("Unexpected recipient contact.", saved.recipient().contact(),
+        is(REVIEWER_EMAIL));
+    assertThat("Unexpected status detail.", saved.statusDetail(),
+        is("Throttled: reviewer recently notified of an LTFT assignment."));
+  }
+
+  private static LtftStatusAssignedDto admin() {
+    return LtftStatusAssignedDto.builder()
+        .name(ADMIN_NAME).email(ADMIN_EMAIL).role("ADMIN").build();
+  }
+
+  private static LtftStatusAssignedDto reviewer() {
+    return LtftStatusAssignedDto.builder()
+        .name(REVIEWER_NAME).email(REVIEWER_EMAIL).role("REVIEWER").build();
   }
 }
 

@@ -36,6 +36,8 @@ import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import uk.nhs.tis.trainee.notifications.config.TemplateVersionsProperties;
 import uk.nhs.tis.trainee.notifications.dto.LtftUpdateEvent;
+import uk.nhs.tis.trainee.notifications.dto.LtftUpdateEvent.LtftAssignmentDto;
+import uk.nhs.tis.trainee.notifications.dto.LtftUpdateEvent.LtftStatusAssignedDto;
 import uk.nhs.tis.trainee.notifications.model.History;
 import uk.nhs.tis.trainee.notifications.model.History.RecipientInfo;
 import uk.nhs.tis.trainee.notifications.model.History.TemplateInfo;
@@ -51,6 +53,8 @@ import uk.nhs.tis.trainee.notifications.model.TisReferenceType;
 public class LtftService {
 
   public static final String ASSIGNMENT_COOLDOWN_KEY_PREFIX = "ltft-assignment-cooldown:";
+  public static final String ROLE_ADMIN = "ADMIN";
+  public static final String ROLE_REVIEWER = "REVIEWER";
 
   private final EmailService emailService;
   private final HistoryService historyService;
@@ -91,22 +95,75 @@ public class LtftService {
    * @throws MessagingException If the email could not be sent.
    */
   public void handleAssignmentNotification(LtftUpdateEvent event) throws MessagingException {
-    if (event.getAssignedAdmin() == null || event.getAssignedAdmin().email() == null) {
-      log.warn("LTFT assignment event has no assigned admin email, ignoring. (FormId = {})",
-          event.getFormId());
+    LtftAssignmentDto previous = event.getPreviousAssignment();
+    boolean previousKnown = previous != null;
+
+    LtftStatusAssignedDto admin = event.getAssignedAdmin();
+    LtftStatusAssignedDto previousAdmin = previousKnown ? previous.assignedAdmin() : null;
+    boolean adminChanged = isNewAssignee(admin, previousAdmin, previousKnown);
+
+    LtftStatusAssignedDto reviewer = event.getAssignedReviewer();
+    LtftStatusAssignedDto previousReviewer = previousKnown ? previous.assignedReviewer() : null;
+    boolean reviewerChanged = isNewAssignee(reviewer, previousReviewer, previousKnown);
+
+    if (!adminChanged && !reviewerChanged) {
+      log.info("LTFT assignment event has no newly assigned admin or reviewer with an email, "
+          + "ignoring. (FormId = {})", event.getFormId());
       return;
     }
 
-    if (event.getModifiedBy() != null && event.getAssignedAdmin().name() != null
-        && event.getAssignedAdmin().name().equalsIgnoreCase(
-            event.getModifiedBy().name())) {
-      log.info("LTFT assignment event modified by the assigned admin '{}', ignoring. (FormId = {})",
-          event.getAssignedAdmin().name(), event.getFormId());
+    if (adminChanged) {
+      notifyAssignee(event, admin, ROLE_ADMIN);
+    }
+
+    if (reviewerChanged) {
+      notifyAssignee(event, reviewer, ROLE_REVIEWER);
+    }
+  }
+
+  /**
+   * Check whether the assignee has been newly assigned.
+   *
+   * @param current       The current assignee.
+   * @param previous      The previous assignee.
+   * @param previousKnown Whether the previous assignment is known.
+   * @return true if there is a current assignee with an email, and it differs from the previous (or
+   *     the previous is unknown).
+   */
+  private boolean isNewAssignee(LtftStatusAssignedDto current, LtftStatusAssignedDto previous,
+      boolean previousKnown) {
+    if (current == null || current.email() == null) {
+      return false;
+    }
+
+    if (!previousKnown || previous == null || previous.email() == null) {
+      return true;
+    }
+
+    return !current.email().equalsIgnoreCase(previous.email());
+  }
+
+  /**
+   * Notify an assignee that they have been assigned an LTFT application.
+   *
+   * @param event       The LTFT update event.
+   * @param assignee    The assignee to notify.
+   * @param defaultRole The role to log if the assignee has no role.
+   * @throws MessagingException If the email could not be sent.
+   */
+  private void notifyAssignee(LtftUpdateEvent event, LtftStatusAssignedDto assignee,
+      String defaultRole) throws MessagingException {
+    String role = assignee.role() == null ? defaultRole : assignee.role();
+
+    if (event.getModifiedBy() != null && assignee.name() != null
+        && assignee.name().equalsIgnoreCase(event.getModifiedBy().name())) {
+      log.info("LTFT assignment event modified by the assigned {} '{}', ignoring. (FormId = {})",
+          role, assignee.name(), event.getFormId());
       return;
     }
 
-    String adminEmail = event.getAssignedAdmin().email();
-    String cooldownKey = ASSIGNMENT_COOLDOWN_KEY_PREFIX + adminEmail;
+    String assigneeEmail = assignee.email();
+    String cooldownKey = ASSIGNMENT_COOLDOWN_KEY_PREFIX + assigneeEmail;
 
     String templateVersion = templateVersions
         .getTemplateVersion(LTFT_UPDATED_ASSIGNMENT, EMAIL)
@@ -117,33 +174,34 @@ public class LtftService {
     String traineeTisId = event.getTraineeId();
     Map<String, Object> templateVariables = new HashMap<>();
     templateVariables.put("var", event);
-    templateVariables.put("name", event.getAssignedAdmin().name());
+    templateVariables.put("name", assignee.name());
 
     TisReferenceInfo tisReferenceInfo =
         new TisReferenceInfo(TisReferenceType.LTFT, event.getFormId());
 
-    // Check Redis cooldown: if the key exists, the admin was recently notified.
+    // Check Redis cooldown: if the key exists, the assignee was recently notified.
     Boolean notNotifiedRecently = redisTemplate.opsForValue()
         .setIfAbsent(cooldownKey, "1", assignmentCooldown);
 
     if (Boolean.TRUE.equals(notNotifiedRecently)) {
       // No recent notification — send the email.
-      emailService.sendMessage(traineeTisId, adminEmail, LTFT_UPDATED_ASSIGNMENT,
+      emailService.sendMessage(traineeTisId, assigneeEmail, LTFT_UPDATED_ASSIGNMENT,
           templateVersion, templateVariables, tisReferenceInfo, !emailNotificationsEnabled);
-      log.info("LTFT assignment notification sent to admin '{}' for form {}.",
-          adminEmail, event.getFormId());
+      log.info("LTFT assignment notification sent to {} '{}' for form {}.",
+          role, assigneeEmail, event.getFormId());
     } else {
       // Cooldown active — log as SKIPPED in history for reporting.
-      RecipientInfo recipientInfo = new RecipientInfo(traineeTisId, EMAIL, adminEmail);
+      RecipientInfo recipientInfo = new RecipientInfo(traineeTisId, EMAIL, assigneeEmail);
       TemplateInfo templateInfo = new TemplateInfo(
           LTFT_UPDATED_ASSIGNMENT.getTemplateName(), templateVersion, templateVariables);
       History skippedHistory = new History(ObjectId.get(), tisReferenceInfo,
           LTFT_UPDATED_ASSIGNMENT, recipientInfo, templateInfo, null,
           Instant.now(), null, NotificationStatus.SKIPPED,
-          "Throttled: admin recently notified of an LTFT assignment.", null);
+          "Throttled: %s recently notified of an LTFT assignment.".formatted(
+              role.toLowerCase()), null);
       historyService.save(skippedHistory);
-      log.info("LTFT assignment notification for admin '{}' skipped due to cooldown, "
-          + "logged as SKIPPED for form {}.", adminEmail, event.getFormId());
+      log.info("LTFT assignment notification for {} '{}' skipped due to cooldown, "
+          + "logged as SKIPPED for form {}.", role, assigneeEmail, event.getFormId());
     }
   }
 }

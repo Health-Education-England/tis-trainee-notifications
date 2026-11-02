@@ -250,6 +250,7 @@ class EmailServiceIntegrationTest {
     Instant timestamp = Instant.now();
     Map<String, Object> variables = new HashMap<>();
     variables.put("formRef", "form ref");
+    variables.put("formId", "form id");
     variables.put("state", "some state");
     variables.put("timestamp", timestamp);
     variables.put("modifiedByName", "modified by name");

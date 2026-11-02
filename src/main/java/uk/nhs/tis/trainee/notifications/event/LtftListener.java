@@ -194,7 +194,8 @@ public class LtftListener {
   }
 
   /**
-   * Handle LTFT assignment update events, where the assigned LO admin is the message recipient.
+   * Handle LTFT assignment update events, where the newly assigned LO admin and/or reviewer is the
+   * message recipient.
    *
    * @param event The LTFT update event message.
    * @throws MessagingException If the message could not be sent.

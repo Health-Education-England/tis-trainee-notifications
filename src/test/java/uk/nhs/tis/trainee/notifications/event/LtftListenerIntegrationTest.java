@@ -1212,9 +1212,12 @@ class LtftListenerIntegrationTest {
   void shouldSendFullAssignmentNotificationWhenNameProvided() throws Exception {
     String adminEmail = "admin@tis.nhs.uk";
     String adminName = "Admin User";
+    String formId = "3fa85f64-5717-4562-b3fc-2c963f66afa6";
     String eventString = """
         {
           "traineeTisId": "%s",
+          "id": "%s",
+          "formRef": "%s",
           "status": {
             "current" : {
               "state": "SUBMITTED",
@@ -1226,7 +1229,7 @@ class LtftListenerIntegrationTest {
             }
           }
         }
-        """.formatted(traineeId, adminName, adminEmail);
+        """.formatted(traineeId, formId, FORM_REF, adminName, adminEmail);
 
     JsonNode eventJson = JsonMapper.builder()
         .build()
@@ -1243,6 +1246,8 @@ class LtftListenerIntegrationTest {
         .untilAsserted(() -> verify(mailSender).send(messageCaptor.capture()));
 
     MimeMessage message = messageCaptor.getValue();
+    assertThat("Unexpected subject.", message.getSubject(),
+        is("LTFT application awaits your review: " + FORM_REF));
     Document content = Jsoup.parse((String) message.getContent());
 
     URL resource = getClass().getResource(

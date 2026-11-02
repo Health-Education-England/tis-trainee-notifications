@@ -94,7 +94,7 @@ application:
     ltft-updated:
       email: v1.0.0
     ltft-updated-assignment:
-      email: v1.0.0
+      email: v1.1.0
     ltft-withdrawn:
       email: v1.0.0
     indemnity-insurance:

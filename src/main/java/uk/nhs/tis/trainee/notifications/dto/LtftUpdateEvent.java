@@ -59,6 +59,8 @@ public class LtftUpdateEvent {
   private LftfStatusInfoDetailDto stateDetail;
   private LtftStatusModifiedByDto modifiedBy;
   private LtftStatusAssignedDto assignedAdmin;
+  private LtftStatusAssignedDto assignedReviewer;
+  private LtftAssignmentDto previousAssignment;
 
   /**
    * A trainee's personal details.
@@ -144,11 +146,11 @@ public class LtftUpdateEvent {
   }
 
   /**
-   * A DTO for the admin assigned to the application.
+   * A DTO for the admin/reviewer assigned to the application.
    *
-   * @param name  The name of the admin.
-   * @param email The email of the admin.
-   * @param role  The role of the admin (normally ADMIN).
+   * @param name  The name of the admin/reviewer.
+   * @param email The email of the admin/reviewer.
+   * @param role  The role of the admin/reviewer (ADMIN or REVIEWER).
    */
   @Builder
   public record LtftStatusAssignedDto(String name, String email, String role) {
@@ -156,7 +158,21 @@ public class LtftUpdateEvent {
   }
 
   /**
-   * Unpack the current status to set the state, timestamp and detail.
+   * A DTO for the admin and reviewer assigned to the application at a point in the status history.
+   *
+   * @param assignedAdmin    The assigned admin.
+   * @param assignedReviewer The assigned reviewer.
+   */
+  @Builder
+  public record LtftAssignmentDto(LtftStatusAssignedDto assignedAdmin,
+                                  LtftStatusAssignedDto assignedReviewer) {
+
+  }
+
+  /**
+   * Unpack the current status to set the state, timestamp and detail, and the previous status
+   * history entry to set the previous assignment. The previous assignment is null when there is no
+   * earlier status history entry available.
    *
    * @param status The value of the status property.
    */
@@ -179,8 +195,31 @@ public class LtftUpdateEvent {
             .name(modifiedByMap.get("name"))
             .role(modifiedByMap.get("role"))
             .build();
-    Map<String, String> assignedMap = (Map<String, String>) current.get("assignedAdmin");
-    assignedAdmin = assignedMap == null ? null
+    assignedAdmin = toAssigned((Map<String, String>) current.get("assignedAdmin"));
+    assignedReviewer = toAssigned((Map<String, String>) current.get("assignedReviewer"));
+
+    // The current status is always the last history entry, so the previous is the one before it.
+    List<Map<String, Object>> history = (List<Map<String, Object>>) status.get("history");
+    if (history != null && history.size() > 1) {
+      Map<String, Object> previous = history.get(history.size() - 2);
+      previousAssignment = previous == null ? null
+          : LtftAssignmentDto.builder()
+              .assignedAdmin(toAssigned((Map<String, String>) previous.get("assignedAdmin")))
+              .assignedReviewer(toAssigned((Map<String, String>) previous.get("assignedReviewer")))
+              .build();
+    } else {
+      previousAssignment = null;
+    }
+  }
+
+  /**
+   * Convert a map to an LtftStatusAssignedDto.
+   *
+   * @param assignedMap The map containing the assigned admin/reviewer details.
+   * @return The LtftStatusAssignedDto, or null if the map is null.
+   */
+  public static LtftStatusAssignedDto toAssigned(Map<String, String> assignedMap) {
+    return assignedMap == null ? null
         : LtftStatusAssignedDto.builder()
         .name(assignedMap.get("name"))
         .role(assignedMap.get("role"))
