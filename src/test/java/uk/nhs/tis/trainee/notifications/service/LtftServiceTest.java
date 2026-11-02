@@ -28,6 +28,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
@@ -499,6 +500,68 @@ class LtftServiceTest {
   }
 
   @Test
+  void shouldSendOnlyToNewAdminWhenAdminReplaced() throws MessagingException {
+    LtftUpdateEvent event = LtftUpdateEvent.builder()
+        .traineeId(TRAINEE_ID)
+        .formId(FORM_ID)
+        .assignedAdmin(admin())
+        .assignedReviewer(reviewer())
+        .previousAssignment(new LtftAssignmentDto(
+            LtftStatusAssignedDto.builder().name("Old Admin").email("old-admin@example.com")
+                .role("ADMIN").build(),
+            reviewer()))
+        .build();
+
+    when(valueOperations.setIfAbsent(any(), any(), any(Duration.class))).thenReturn(true);
+
+    ltftService.handleAssignmentNotification(event);
+
+    ArgumentCaptor<Map<String, Object>> templateVarsCaptor = ArgumentCaptor.captor();
+    verify(emailService).sendMessage(eq(TRAINEE_ID), eq(ADMIN_EMAIL),
+        eq(LTFT_UPDATED_ASSIGNMENT), eq(VERSION), templateVarsCaptor.capture(), any(), eq(false));
+    verifyNoMoreInteractions(emailService);
+    assertThat("Unexpected name variable.", templateVarsCaptor.getValue().get("name"),
+        is(ADMIN_NAME));
+
+    // The unchanged reviewer should not be considered at all, not even as a throttled SKIPPED.
+    verify(valueOperations, never()).setIfAbsent(
+        eq(LtftService.ASSIGNMENT_COOLDOWN_KEY_PREFIX + REVIEWER_EMAIL), any(),
+        any(Duration.class));
+    verifyNoInteractions(historyService);
+  }
+
+  @Test
+  void shouldSendOnlyToNewReviewerWhenReviewerReplacedAndNotToUnchangedAdmin()
+      throws MessagingException {
+    LtftUpdateEvent event = LtftUpdateEvent.builder()
+        .traineeId(TRAINEE_ID)
+        .formId(FORM_ID)
+        .assignedAdmin(admin())
+        .assignedReviewer(reviewer())
+        .previousAssignment(new LtftAssignmentDto(admin(),
+            LtftStatusAssignedDto.builder().name("Old Reviewer").email("old-reviewer@example.com")
+                .role("REVIEWER").build()))
+        .build();
+
+    when(valueOperations.setIfAbsent(any(), any(), any(Duration.class))).thenReturn(true);
+
+    ltftService.handleAssignmentNotification(event);
+
+    ArgumentCaptor<Map<String, Object>> templateVarsCaptor = ArgumentCaptor.captor();
+    verify(emailService).sendMessage(eq(TRAINEE_ID), eq(REVIEWER_EMAIL),
+        eq(LTFT_UPDATED_ASSIGNMENT), eq(VERSION), templateVarsCaptor.capture(), any(), eq(false));
+    verifyNoMoreInteractions(emailService);
+    assertThat("Unexpected name variable.", templateVarsCaptor.getValue().get("name"),
+        is(REVIEWER_NAME));
+
+    // The unchanged admin should not be considered at all, not even as a throttled SKIPPED.
+    verify(valueOperations, never()).setIfAbsent(
+        eq(LtftService.ASSIGNMENT_COOLDOWN_KEY_PREFIX + ADMIN_EMAIL), any(),
+        any(Duration.class));
+    verifyNoInteractions(historyService);
+  }
+
+  @Test
   void shouldSendToAdminWhenPreviousAdminHasNoEmail() throws MessagingException {
     LtftUpdateEvent event = LtftUpdateEvent.builder()
         .traineeId(TRAINEE_ID)
@@ -585,4 +648,3 @@ class LtftServiceTest {
         .name(REVIEWER_NAME).email(REVIEWER_EMAIL).role("REVIEWER").build();
   }
 }
-

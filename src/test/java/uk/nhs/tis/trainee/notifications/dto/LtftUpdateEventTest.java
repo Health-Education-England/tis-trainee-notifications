@@ -75,7 +75,8 @@ class LtftUpdateEventTest {
       "",
       ", \"history\": null",
       ", \"history\": []",
-      ", \"history\": [{\"state\": \"SUBMITTED\"}]"
+      ", \"history\": [{\"state\": \"SUBMITTED\"}]",
+      ", \"history\": [null, {\"state\": \"SUBMITTED\"}]"
   })
   void shouldNotSetPreviousAssignmentWhenNoPreviousHistory(String history)
       throws JsonProcessingException {
@@ -98,6 +99,11 @@ class LtftUpdateEventTest {
 
   @Test
   void shouldSetPreviousAssignmentFromPenultimateHistoryEntry() throws JsonProcessingException {
+    String oldAdmin = """
+        {"name": "Old Admin", "email": "old-admin@example.com", "role": "ADMIN"}""";
+    String oldReviewer = """
+        {"name": "Old Reviewer", "email": "old-reviewer@example.com", "role": "REVIEWER"}""";
+
     String json = """
         {
           "status": {
@@ -112,7 +118,8 @@ class LtftUpdateEventTest {
               },
               {
                 "state": "SUBMITTED",
-                "assignedAdmin": %1$s
+                "assignedAdmin": %3$s,
+                "assignedReviewer": %4$s
               },
               {
                 "state": "SUBMITTED",
@@ -122,15 +129,25 @@ class LtftUpdateEventTest {
             ]
           }
         }
-        """.formatted(ADMIN, REVIEWER);
+        """.formatted(ADMIN, REVIEWER, oldAdmin, oldReviewer);
 
     LtftUpdateEvent event = mapper.readValue(json, LtftUpdateEvent.class);
 
     LtftAssignmentDto previous = event.getPreviousAssignment();
     assertThat("Unexpected previous assignment.", previous, notNullValue());
-    assertThat("Unexpected previous admin email.", previous.assignedAdmin().email(),
-        is("admin@example.com"));
-    assertThat("Unexpected previous reviewer.", previous.assignedReviewer(), nullValue());
+
+    LtftStatusAssignedDto previousAdmin = previous.assignedAdmin();
+    assertThat("Unexpected previous admin name.", previousAdmin.name(), is("Old Admin"));
+    assertThat("Unexpected previous admin email.", previousAdmin.email(),
+        is("old-admin@example.com"));
+    assertThat("Unexpected previous admin role.", previousAdmin.role(), is("ADMIN"));
+
+    LtftStatusAssignedDto previousReviewer = previous.assignedReviewer();
+    assertThat("Unexpected previous reviewer name.", previousReviewer.name(),
+        is("Old Reviewer"));
+    assertThat("Unexpected previous reviewer email.", previousReviewer.email(),
+        is("old-reviewer@example.com"));
+    assertThat("Unexpected previous reviewer role.", previousReviewer.role(), is("REVIEWER"));
   }
 
   @Test
