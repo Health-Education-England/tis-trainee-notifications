@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <title>LTFT Update</title>
+</head>
+<body>
+<h1>Email Message</h1>
+<h2>Subject</h2>
+<th:block th:fragment="subject">LTFT application awaits your review: <th:block th:text="${not #strings.isEmpty(var?.formRef)} ? ${var.formRef} : 'unknown form reference'"></th:block></th:block>
+<h2>Content</h2>
+<th:block th:fragment="content">
+    <div th:replace="fragments/retry/v1.0.0 :: retry(${originallySentOn})"></div>
+    <div style="text-align:right"><img style="margin-right:25px; height:100px" src='https://trainee.tis.nhs.uk/nhse-logo.png' alt="NHS England logo"/></div>
+    <p>Dear <span th:text="${name} ?: 'administrator'">administrator</span>,</p>
+    <p>
+        An LTFT application has been assigned to you and requires your attention.
+    </p>
+    <p>
+        Please visit <a
+            href="https://apps.tis.nhs.uk/admin/ltft?size=20&page=0&status=SUBMITTED,UNDER_REVIEW"
+            target="_blank">Trainee Information System</a> to review the applications. Please complete the next actions at your earliest opportunity as part of the LTFT process so that trainees receive decisions in a timely manner.
+    </p>
+    <p>Kind Regards,</p>
+    <p>TIS Self-Service</p>
+    <div th:replace="fragments/disclaimer/v1.0.0 :: body"></div>
+</th:block>
+</body>
+</html>
