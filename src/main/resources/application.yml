@@ -16,6 +16,30 @@ application:
   environment: ${ENVIRONMENT:local}
   in-app:
     enabled: ${NOTIFICATIONS_IN_APP_ENABLED:false}
+  ltft:
+    onboarded-deaneries:
+      - East Midlands
+      - West Midlands
+      - North East
+      - Wessex
+      - Kent, Surrey and Sussex
+      - East of England
+      - South West
+      - North West London
+      - North Central and East London
+      - South London
+      - London LETBs
+    foundation-onboarded-deaneries:
+      - East Midlands
+      - West Midlands
+      - Wessex
+      - Kent, Surrey and Sussex
+      - East of England
+      - South West
+      - North West London
+      - North Central and East London
+      - South London
+      - London LETBs
   notifications-whitelist: ${NOTIFICATIONS_WHITELIST:}
   immediate-notifications-delay-minutes: ${IMMEDIATE_NOTIFICATIONS_DELAY:60}
   queues:
@@ -100,9 +124,9 @@ application:
     indemnity-insurance:
       in-app: v1.0.0
     less-than-full-time:
-      in-app: v1.0.2
+      in-app: v1.0.3
     less-than-full-time-foundation:
-      in-app: v1.0.0
+      in-app: v1.0.1
     non-employment:
       in-app: v1.0.0
     non-employment-foundation:

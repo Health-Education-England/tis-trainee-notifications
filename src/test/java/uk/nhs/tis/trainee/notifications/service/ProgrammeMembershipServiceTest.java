@@ -66,6 +66,7 @@ import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipServic
 import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.DESIGNATED_BODY_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.LOCAL_OFFICE_CONTACT_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.LOCAL_OFFICE_CONTACT_TYPE_FIELD;
+import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.LTFT_ONBOARDED_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.PROGRAMME_NAME_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.PROGRAMME_NUMBER_FIELD;
 import static uk.nhs.tis.trainee.notifications.service.ProgrammeMembershipService.RO_NAME_FIELD;
@@ -79,6 +80,7 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.bson.types.ObjectId;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -87,6 +89,7 @@ import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.EnumSource.Mode;
 import org.mockito.ArgumentCaptor;
+import uk.nhs.tis.trainee.notifications.config.LtftOnboardedProperties;
 import uk.nhs.tis.trainee.notifications.dto.CojPublishedEvent.ConditionsOfJoining;
 import uk.nhs.tis.trainee.notifications.dto.UserDetails;
 import uk.nhs.tis.trainee.notifications.model.Curriculum;
@@ -154,7 +157,8 @@ class ProgrammeMembershipServiceTest {
     service = new ProgrammeMembershipService(historyService, inAppService, notificationService,
         programmeMembershipUtils, timezone, DAY_ONE_VERSION, DEFERRAL_VERSION, E_PORTFOLIO_VERSION,
         INDEMNITY_INSURANCE_VERSION, LTFT_VERSION, SPONSORSHIP_VERSION,
-        DEFERRAL_FOUNDATION_VERSION, LTFT_FOUNDATION_VERSION, SPONSORSHIP_FOUNDATION_VERSION);
+        DEFERRAL_FOUNDATION_VERSION, LTFT_FOUNDATION_VERSION, SPONSORSHIP_FOUNDATION_VERSION,
+        new LtftOnboardedProperties(Set.of("East Midlands", "Wessex"), Set.of("East Midlands")));
   }
 
   @Test
@@ -429,6 +433,40 @@ class ProgrammeMembershipServiceTest {
 
   @ParameterizedTest
   @CsvSource(delimiter = '|', textBlock = """
+      East Midlands | true
+      Wessex | true
+      Thames Valley | false""")
+  void shouldReturnLtftOnboardingByManagingDeanery(String deanery, boolean expected) {
+    ProgrammeMembership programmeMembership = getDefaultProgrammeMembership();
+    programmeMembership.setManagingDeanery(deanery);
+
+    when(notificationService.meetsCriteria(programmeMembership, true, true)).thenReturn(true);
+
+    List<Map<String, String>> contactList = List.of(
+        Map.of(CONTACT_TYPE_FIELD, LocalOfficeContactType.LTFT.getContactTypeName()));
+    when(notificationService.getOwnerContactList(deanery, SPECIALTY))
+        .thenReturn(contactList);
+    when(notificationService.getOwnerContact(any(), any(), any(), any())).thenReturn("contact");
+    when(notificationService.getOwnerContact(contactList, LocalOfficeContactType.DEFERRAL,
+        LocalOfficeContactType.TSS_SUPPORT, "")).thenReturn("contact");
+    when(notificationService.getOwnerContact(contactList, LocalOfficeContactType.SPONSORSHIP,
+        LocalOfficeContactType.TSS_SUPPORT, "")).thenReturn("contact");
+    when(notificationService.getHrefTypeForContact("contact")).thenReturn(
+        "email");
+
+    service.addNotifications(programmeMembership);
+
+    ArgumentCaptor<Map<String, Object>> variablesCaptor = ArgumentCaptor.captor();
+    verify(inAppService).createNotifications(eq(PERSON_ID), any(), eq(LTFT),
+        eq(LTFT_VERSION), variablesCaptor.capture(), anyBoolean());
+
+    Map<String, Object> variables = variablesCaptor.getValue();
+    assertThat("Unexpected onboarding flag.", variables.get(LTFT_ONBOARDED_FIELD),
+        is(expected));
+  }
+
+  @ParameterizedTest
+  @CsvSource(delimiter = '|', textBlock = """
       email@example.com | PROTOCOL_EMAIL
       https://example.com | ABSOLUTE_URL
       not a href | NON_HREF""")
@@ -461,7 +499,7 @@ class ProgrammeMembershipServiceTest {
         eq(SPONSORSHIP_VERSION), variablesCaptor.capture(), anyBoolean());
 
     Map<String, Object> variables = variablesCaptor.getValue();
-    assertThat("Unexpected variable count.", variables.size(), is(9));
+    assertThat("Unexpected variable count.", variables.size(), is(10));
     assertThat("Unexpected programme name.", variables.get(PROGRAMME_NAME_FIELD),
         is(PROGRAMME_NAME));
     assertThat("Unexpected start date.", variables.get(START_DATE_FIELD), is(START_DATE));
@@ -954,7 +992,8 @@ class ProgrammeMembershipServiceTest {
         historyService, inAppService, notificationService, spyUtils, timezone,
         DAY_ONE_VERSION, DEFERRAL_VERSION, E_PORTFOLIO_VERSION,
         INDEMNITY_INSURANCE_VERSION, LTFT_VERSION, SPONSORSHIP_VERSION,
-        DEFERRAL_FOUNDATION_VERSION, LTFT_FOUNDATION_VERSION, SPONSORSHIP_FOUNDATION_VERSION);
+        DEFERRAL_FOUNDATION_VERSION, LTFT_FOUNDATION_VERSION, SPONSORSHIP_FOUNDATION_VERSION,
+        new LtftOnboardedProperties(Set.of("East Midlands", "Wessex"), Set.of("East Midlands")));
 
     serviceWithSpyUtils.addNotifications(programmeMembership);
 
