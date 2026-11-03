@@ -1212,11 +1212,9 @@ class LtftListenerIntegrationTest {
   void shouldSendFullAssignmentNotificationWhenNameProvided() throws Exception {
     String adminEmail = "admin@tis.nhs.uk";
     String adminName = "Admin User";
-    String formId = "3fa85f64-5717-4562-b3fc-2c963f66afa6";
     String eventString = """
         {
           "traineeTisId": "%s",
-          "id": "%s",
           "formRef": "%s",
           "status": {
             "current" : {
@@ -1229,7 +1227,7 @@ class LtftListenerIntegrationTest {
             }
           }
         }
-        """.formatted(traineeId, formId, FORM_REF, adminName, adminEmail);
+        """.formatted(traineeId, FORM_REF, adminName, adminEmail);
 
     JsonNode eventJson = JsonMapper.builder()
         .build()
