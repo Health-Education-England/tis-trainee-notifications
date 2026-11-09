@@ -53,7 +53,8 @@ class MongoCollectionConfigurationTest {
 
   @Test
   void shouldInitIndexesForUserAccountCollection() {
-    when(template.indexOps(History.class)).thenReturn(mock(IndexOperations.class));
+    IndexOperations historyIndexOperations = mock(IndexOperations.class);
+    when(template.indexOps(History.class)).thenReturn(historyIndexOperations);
     IndexOperations indexOperations = mock(IndexOperations.class);
     when(template.indexOps(UserAccount.class)).thenReturn(indexOperations);
 
@@ -79,7 +80,8 @@ class MongoCollectionConfigurationTest {
   void shouldInitIndexesForNotificationHistoryCollection() {
     IndexOperations indexOperations = mock(IndexOperations.class);
     when(template.indexOps(History.class)).thenReturn(indexOperations);
-    when(template.indexOps(UserAccount.class)).thenReturn(mock(IndexOperations.class));
+    IndexOperations historyIndexOperations = mock(IndexOperations.class);
+    when(template.indexOps(History.class)).thenReturn(historyIndexOperations);
 
     configuration.initIndexes();
 
