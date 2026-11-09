@@ -30,6 +30,7 @@ import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.index.Index;
 import org.springframework.data.mongodb.core.index.IndexOperations;
 import uk.nhs.tis.trainee.notifications.model.History;
+import uk.nhs.tis.trainee.notifications.model.UserAccount;
 
 /**
  * Custom configuration for Mongo collections.
@@ -50,7 +51,13 @@ public class MongoCollectionConfiguration {
    */
   @PostConstruct
   public void initIndexes() {
-    IndexOperations indexOps = template.indexOps(History.class);
-    indexOps.createIndex(new Index().on("recipient.id", Direction.ASC));
+    IndexOperations historyIndexOps = template.indexOps(History.class);
+    historyIndexOps.createIndex(new Index().on("recipient.id", Direction.ASC));
+
+    // Non-unique: a trainee may have multiple accounts and an email may briefly be on two accounts.
+    IndexOperations userAccountIndexOps = template.indexOps(UserAccount.class);
+    userAccountIndexOps.createIndex(new Index().on("sub", Direction.ASC));
+    userAccountIndexOps.createIndex(new Index().on("email", Direction.ASC));
+    userAccountIndexOps.createIndex(new Index().on("traineeId", Direction.ASC));
   }
 }

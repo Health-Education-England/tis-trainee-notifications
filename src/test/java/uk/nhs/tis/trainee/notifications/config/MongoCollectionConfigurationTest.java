@@ -37,6 +37,7 @@ import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.index.IndexDefinition;
 import org.springframework.data.mongodb.core.index.IndexOperations;
 import uk.nhs.tis.trainee.notifications.model.History;
+import uk.nhs.tis.trainee.notifications.model.UserAccount;
 
 class MongoCollectionConfigurationTest {
 
@@ -51,9 +52,34 @@ class MongoCollectionConfigurationTest {
   }
 
   @Test
+  void shouldInitIndexesForUserAccountCollection() {
+    when(template.indexOps(History.class)).thenReturn(mock(IndexOperations.class));
+    IndexOperations indexOperations = mock(IndexOperations.class);
+    when(template.indexOps(UserAccount.class)).thenReturn(indexOperations);
+
+    configuration.initIndexes();
+
+    ArgumentCaptor<IndexDefinition> indexCaptor = ArgumentCaptor.captor();
+    verify(indexOperations, atLeastOnce()).createIndex(indexCaptor.capture());
+
+    List<IndexDefinition> indexes = indexCaptor.getAllValues();
+    assertThat("Unexpected number of indexes.", indexes.size(), is(3));
+
+    List<String> indexKeys = indexes.stream()
+        .flatMap(i -> i.getIndexKeys().keySet().stream())
+        .toList();
+    assertThat("Unexpected number of index keys.", indexKeys.size(), is(3));
+    assertThat("Unexpected index.", indexKeys, hasItems("sub", "email", "traineeId"));
+
+    indexes.forEach(i -> assertThat("Unexpected unique index.",
+        i.getIndexOptions().getBoolean("unique", false), is(false)));
+  }
+
+  @Test
   void shouldInitIndexesForNotificationHistoryCollection() {
     IndexOperations indexOperations = mock(IndexOperations.class);
     when(template.indexOps(History.class)).thenReturn(indexOperations);
+    when(template.indexOps(UserAccount.class)).thenReturn(mock(IndexOperations.class));
 
     configuration.initIndexes();
 

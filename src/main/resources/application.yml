@@ -61,6 +61,7 @@ application:
     programme-membership-updated: ${PROGRAMME_MEMBERSHIP_UPDATED_QUEUE}
     programme-membership-deleted: ${PROGRAMME_MEMBERSHIP_DELETED_QUEUE}
     profile-move: ${PROFILE_MOVE_QUEUE}
+    user-details: ${USER_DETAILS_QUEUE}
   schedules:
     send-scheduled-emails: "@hourly"
   sns:
@@ -196,6 +197,8 @@ spring:
   data:
     mongodb:
       uri: mongodb://${MONGO_USER:admin}:${MONGO_PASSWORD:pwd}@${MONGO_HOST:localhost}:${MONGO_PORT:27017}/${MONGO_DB:notifications}?authSource=admin&retryWrites=false
+      auto-index-creation: true
+      uuid-representation: standard
     redis:
       host: ${REDIS_HOST:localhost}
       port: ${REDIS_PORT:6379}
