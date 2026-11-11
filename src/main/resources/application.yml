@@ -197,7 +197,6 @@ spring:
   data:
     mongodb:
       uri: mongodb://${MONGO_USER:admin}:${MONGO_PASSWORD:pwd}@${MONGO_HOST:localhost}:${MONGO_PORT:27017}/${MONGO_DB:notifications}?authSource=admin&retryWrites=false
-      auto-index-creation: true
       uuid-representation: standard
     redis:
       host: ${REDIS_HOST:localhost}
