@@ -23,6 +23,7 @@ application:
     programme-membership-updated: dummy-value
     programme-membership-deleted: dummy-value
     profile-move: dummy-value
+    user-details: dummy-value
 
 mongock:
   enabled: false

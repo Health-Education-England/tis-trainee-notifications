@@ -31,6 +31,7 @@ import org.springframework.core.convert.converter.Converter;
 import org.springframework.data.convert.Jsr310Converters;
 import org.springframework.data.convert.ReadingConverter;
 import org.springframework.data.mongodb.MongoDatabaseFactory;
+import org.springframework.data.mongodb.config.EnableMongoAuditing;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.convert.MappingMongoConverter;
 import org.springframework.data.mongodb.core.convert.MongoCustomConversions;
@@ -39,6 +40,7 @@ import org.springframework.data.mongodb.core.convert.MongoCustomConversions;
  * Additional configuration for MongoDB.
  */
 @Configuration
+@EnableMongoAuditing
 @Slf4j
 public class MongoConfiguration {
 
