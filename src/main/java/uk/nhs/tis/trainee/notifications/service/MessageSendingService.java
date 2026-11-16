@@ -21,20 +21,15 @@
 
 package uk.nhs.tis.trainee.notifications.service;
 
-import static io.awspring.cloud.sqs.listener.SqsHeaders.MessageSystemAttributes.SQS_AWS_TRACE_HEADER;
 import static java.util.stream.Collectors.toList;
 import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.SCHEDULED;
 
-import com.amazonaws.xray.AWSXRay;
-import com.amazonaws.xray.entities.TraceHeader;
-import com.amazonaws.xray.spring.aop.XRayEnabled;
 import io.awspring.cloud.sqs.operations.SendResult;
 import io.awspring.cloud.sqs.operations.SendResult.Batch;
 import io.awspring.cloud.sqs.operations.SendResult.Failed;
 import io.awspring.cloud.sqs.operations.SqsTemplate;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -56,7 +51,6 @@ import uk.nhs.tis.trainee.notifications.repository.HistoryRepository;
  */
 @Slf4j
 @Service
-@XRayEnabled
 public class MessageSendingService {
 
   private static final int MAX_BATCH_SIZE = 10;
@@ -154,14 +148,6 @@ public class MessageSendingService {
       return new Batch<>(Set.of(), Set.of());
     }
 
-    Map<String, Object> headers = new HashMap<>();
-
-    if (AWSXRay.getTraceEntity() != null) {
-      TraceHeader traceHeader = TraceHeader.fromEntity(AWSXRay.getTraceEntity());
-      log.debug("Trace header '{}' found and will be reused.", traceHeader);
-      headers.put(SQS_AWS_TRACE_HEADER, traceHeader.toString());
-    }
-
     int total = content.size();
     int batchCount = (int) Math.ceil((double) total / MAX_BATCH_SIZE);
     List<SendResult<T>> successful = new ArrayList<>();
@@ -174,7 +160,7 @@ public class MessageSendingService {
       List<T> batch = content.subList(batchStart, batchEnd);
 
       List<Message<T>> messages = batch.stream()
-          .map(payload -> new GenericMessage<>(payload, headers))
+          .map(payload -> new GenericMessage<>(payload))
           .collect(toList());
 
       Batch<T> result = sqsTemplate.sendMany(queue, messages);

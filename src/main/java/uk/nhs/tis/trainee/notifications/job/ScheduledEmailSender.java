@@ -21,7 +21,6 @@
 
 package uk.nhs.tis.trainee.notifications.job;
 
-import com.amazonaws.xray.spring.aop.XRayEnabled;
 import io.awspring.cloud.sqs.operations.SendResult.Failed;
 import java.util.Collection;
 import java.util.List;
@@ -38,7 +37,6 @@ import uk.nhs.tis.trainee.notifications.service.MessageSendingService;
  */
 @Slf4j
 @Component
-@XRayEnabled
 public class ScheduledEmailSender {
 
   private final HistoryService historyService;

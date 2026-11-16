@@ -21,7 +21,6 @@
 
 package uk.nhs.tis.trainee.notifications.event;
 
-import com.amazonaws.xray.spring.aop.XRayEnabled;
 import io.awspring.cloud.sqs.annotation.SqsListener;
 import org.springframework.messaging.Message;
 import org.springframework.stereotype.Component;
@@ -32,7 +31,6 @@ import uk.nhs.tis.trainee.notifications.service.MessageSendingService;
  * Listener for messages in the email outbox.
  */
 @Component
-@XRayEnabled
 public class OutboxListener {
 
   private final MessageSendingService messageSendingService;

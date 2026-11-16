@@ -10,7 +10,7 @@ plugins {
 }
 
 group = "uk.nhs.tis.trainee"
-version = "3.15.0"
+version = "3.16.0"
 
 configurations {
   compileOnly {
@@ -45,7 +45,6 @@ dependencies {
   implementation("io.awspring.cloud:spring-cloud-aws-starter-sns")
   implementation("io.awspring.cloud:spring-cloud-aws-starter-sqs")
   implementation("software.amazon.awssdk:cognitoidentityprovider")
-  implementation(libs.bundles.aws.xray)
 
   // Lombok
   compileOnly("org.projectlombok:lombok")

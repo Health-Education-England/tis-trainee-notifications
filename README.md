@@ -39,7 +39,6 @@ associated document for details of how to provide the region.
 |-------------------------------|--------------------------------------------------------------------|-----------|
 | ACCOUNT_CONFIRMED_QUEUE       | The queue URL for account confirmation events.                     |           |
 | APP_DOMAIN                    | The domain to be used for links in email notifications. (Optional) |           |
-| AWS_XRAY_DAEMON_ADDRESS       | The AWS XRay daemon host. (Optional)                               |           |
 | COGNITO_USER_POOL_ID          | The user pool to get user details from.                            |           |
 | COJ_PUBLISHED_QUEUE           | The queue URL for Conditions of Joining publish events.            |           |
 | ENVIRONMENT                   | The environment to log events against.                             | local     |
