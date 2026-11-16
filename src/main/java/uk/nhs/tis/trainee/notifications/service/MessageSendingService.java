@@ -27,7 +27,6 @@ import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.SCHEDULE
 
 import com.amazonaws.xray.AWSXRay;
 import com.amazonaws.xray.entities.TraceHeader;
-import com.amazonaws.xray.spring.aop.XRayEnabled;
 import io.awspring.cloud.sqs.operations.SendResult;
 import io.awspring.cloud.sqs.operations.SendResult.Batch;
 import io.awspring.cloud.sqs.operations.SendResult.Failed;
@@ -56,7 +55,6 @@ import uk.nhs.tis.trainee.notifications.repository.HistoryRepository;
  */
 @Slf4j
 @Service
-@XRayEnabled
 public class MessageSendingService {
 
   private static final int MAX_BATCH_SIZE = 10;
