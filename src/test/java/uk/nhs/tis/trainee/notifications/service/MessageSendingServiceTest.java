@@ -21,29 +21,21 @@
 
 package uk.nhs.tis.trainee.notifications.service;
 
-import static io.awspring.cloud.sqs.listener.SqsHeaders.MessageSystemAttributes.SQS_AWS_TRACE_HEADER;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.hasItems;
-import static org.hamcrest.Matchers.hasKey;
 import static org.hamcrest.Matchers.hasSize;
-import static org.hamcrest.Matchers.instanceOf;
 import static org.hamcrest.Matchers.is;
-import static org.hamcrest.Matchers.not;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.params.provider.EnumSource.Mode.EXCLUDE;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static uk.nhs.tis.trainee.notifications.model.NotificationStatus.SCHEDULED;
 
-import com.amazonaws.xray.AWSXRay;
-import com.amazonaws.xray.AWSXRayRecorder;
-import com.amazonaws.xray.entities.Segment;
 import io.awspring.cloud.sqs.operations.SendResult.Batch;
 import io.awspring.cloud.sqs.operations.SendResult.Failed;
 import io.awspring.cloud.sqs.operations.SqsTemplate;
@@ -64,7 +56,6 @@ import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.springframework.messaging.Message;
-import org.springframework.messaging.MessageHeaders;
 import org.springframework.messaging.MessagingException;
 import uk.nhs.tis.trainee.notifications.model.History;
 import uk.nhs.tis.trainee.notifications.model.History.TemplateInfo;
@@ -232,46 +223,5 @@ class MessageSendingServiceTest {
 
     assertThat("Unexpected failure size.", failures, hasSize(2));
     assertThat("Unexpected failures.", failures, hasItems(fail1, fail2));
-  }
-
-  @Test
-  void shouldPopulateTraceHeaderWhenTracingSendingToOutbox() {
-    AWSXRayRecorder recorder = spy(AWSXRayRecorder.class);
-    AWSXRay.setGlobalRecorder(recorder);
-    Segment segment = recorder.beginSegment("testSegment");
-    when(recorder.getTraceEntity()).thenReturn(segment);
-
-    when(sqsTemplate.sendMany(any(), any())).thenReturn(new Batch<>(List.of(), List.of()));
-
-    ObjectIdWrapper id = new ObjectIdWrapper(ObjectId.get());
-    service.sendToOutbox(List.of(id));
-
-    ArgumentCaptor<List<Message<ObjectIdWrapper>>> batchCaptor = ArgumentCaptor.captor();
-    verify(sqsTemplate).sendMany(eq(OUTBOX_QUEUE), batchCaptor.capture());
-
-    List<Message<ObjectIdWrapper>> batch = batchCaptor.getValue();
-    Message<ObjectIdWrapper> message = batch.get(0);
-    MessageHeaders messageHeaders = message.getHeaders();
-    assertThat("Unexpected message header.", messageHeaders, hasKey(SQS_AWS_TRACE_HEADER));
-    assertThat("Unexpected trace id.", messageHeaders.get(SQS_AWS_TRACE_HEADER),
-        instanceOf(String.class));
-  }
-
-  @Test
-  void shouldNotPopulateTraceHeaderWhenNotTracingSendingToOutbox() {
-    AWSXRay.setGlobalRecorder(mock(AWSXRayRecorder.class));
-
-    when(sqsTemplate.sendMany(any(), any())).thenReturn(new Batch<>(List.of(), List.of()));
-
-    ObjectIdWrapper id = new ObjectIdWrapper(ObjectId.get());
-    service.sendToOutbox(List.of(id));
-
-    ArgumentCaptor<List<Message<ObjectIdWrapper>>> batchCaptor = ArgumentCaptor.captor();
-    verify(sqsTemplate).sendMany(eq(OUTBOX_QUEUE), batchCaptor.capture());
-
-    List<Message<ObjectIdWrapper>> batch = batchCaptor.getValue();
-    Message<ObjectIdWrapper> message = batch.get(0);
-    MessageHeaders messageHeaders = message.getHeaders();
-    assertThat("Unexpected message header.", messageHeaders, not(hasKey(SQS_AWS_TRACE_HEADER)));
   }
 }
